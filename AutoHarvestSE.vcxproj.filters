@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="papyrus.cpp" />
+    <ClCompile Include="objects.cpp" />
+    <ClCompile Include="dataCase.cpp" />
+    <ClCompile Include="iniSettings.cpp" />
+    <ClCompile Include="containerLister.cpp" />
+    <ClCompile Include="tasks.cpp" />
+    <ClCompile Include="debugs.cpp">
+      <Filter>_Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="sound.cpp" />
+    <ClCompile Include="basketfile.cpp" />
+    <ClCompile Include="PrecompiledHeaders.cpp" />
+    <ClCompile Include="TESFormHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="AlchemyItemHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="ExtraDataListHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="EnchantmentItemHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="GridCellArrayHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="TESObjectARMOHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="TESObjectWEAPHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="TESQuestHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="events.cpp" />
+    <ClCompile Include="SimpleIni.cpp" />
+    <ClCompile Include="IHasValueWeight.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="utils.h" />
+    <ClInclude Include="papyrus.h" />
+    <ClInclude Include="objects.h" />
+    <ClInclude Include="dataCase.h" />
+    <ClInclude Include="iniSettings.h" />
+    <ClInclude Include="containerLister.h" />
+    <ClInclude Include="tasks.h" />
+    <ClInclude Include="debugs.h">
+      <Filter>_Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="strConv.h">
+      <Filter>_Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="sound.h" />
+    <ClInclude Include="basketfile.h" />
+    <ClInclude Include="resource1.h" />
+    <ClInclude Include="PrecompiledHeaders.h" />
+    <ClInclude Include="version.h">
+      <Filter>_Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="TESFormHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="AlchemyItemHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ExtraDataListHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="EnchantmentItemHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="GridCellArrayHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="TESObjectARMOHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="TESObjectWEAPHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="TESQuestHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="events.h" />
+    <ClInclude Include="SimpleIni.h" />
+    <ClInclude Include="IHasValueWeight.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectType.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="resources">
+      <UniqueIdentifier>{a4f07f14-48c8-4bcf-8c16-f1fb15526ea8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Utils">
+      <UniqueIdentifier>{3d5515fb-a938-4b89-89c8-a9bdc2656b3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_FormHelpers">
+      <UniqueIdentifier>{71f0c7fc-4d62-413e-afdf-5872914dd97c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Config">
+      <UniqueIdentifier>{b875b5fc-c381-473b-9a72-57e3f75fee2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Config\TSV">
+      <UniqueIdentifier>{b5922a93-b69b-49fd-9386-b964f03bb6bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Localization">
+      <UniqueIdentifier>{20fe0740-4b0b-4fcb-99a0-149f2b234449}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="exports.def">
+      <Filter>resources</Filter>
+    </None>
+    <None Include="Config\AutoHarvestSE.ini">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="Config\default\blocklist.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\clutter.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\critter.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\excludelist.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\fieldcrop.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\flora.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\gem.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\orevein.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\septim.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\userlist.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="AutoHarvestSE.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Interface\towawot\AutoHarvestSE.dds" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Interface\translations\AutoHarvestSE_czech.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_english.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_french.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_german.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_italian.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_japanese.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_polish.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_russian.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\AutoHarvestSE_spanish.txt">
+      <Filter>Localization</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

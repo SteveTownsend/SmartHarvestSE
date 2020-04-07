@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>AutoHarvestSE</ProjectName>
+    <ProjectGuid>{A9D9042D-D2FF-47EA-B77E-5BD1E424734C}</ProjectGuid>
+    <RootNamespace>AutoHarvestSE</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Common.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Common.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>"$(SolutionDir)install_dll.bat" "$(TargetPath)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Installing DLL...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>"$(SolutionDir)install_dll.bat" "$(TargetPath)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Installing DLL...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="AlchemyItemHelper.cpp" />
+    <ClCompile Include="events.cpp" />
+    <ClCompile Include="ExtraDataListHelper.cpp" />
+    <ClCompile Include="basketfile.cpp" />
+    <ClCompile Include="containerLister.cpp" />
+    <ClCompile Include="debugs.cpp" />
+    <ClCompile Include="EnchantmentItemHelper.cpp" />
+    <ClCompile Include="IHasValueWeight.cpp" />
+    <ClCompile Include="SimpleIni.cpp" />
+    <ClCompile Include="sound.cpp" />
+    <ClCompile Include="PrecompiledHeaders.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="tasks.cpp" />
+    <ClCompile Include="TESFormHelper.cpp" />
+    <ClCompile Include="dataCase.cpp" />
+    <ClCompile Include="iniSettings.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="objects.cpp" />
+    <ClCompile Include="papyrus.cpp" />
+    <ClCompile Include="GridCellArrayHelper.cpp" />
+    <ClCompile Include="TESObjectARMOHelper.cpp" />
+    <ClCompile Include="TESQuestHelper.cpp" />
+    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="TESObjectWEAPHelper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AlchemyItemHelper.h" />
+    <ClInclude Include="events.h" />
+    <ClInclude Include="ExtraDataListHelper.h" />
+    <ClInclude Include="basketfile.h" />
+    <ClInclude Include="containerLister.h" />
+    <ClInclude Include="debugs.h" />
+    <ClInclude Include="EnchantmentItemHelper.h" />
+    <ClInclude Include="IHasValueWeight.h" />
+    <ClInclude Include="ObjectType.h" />
+    <ClInclude Include="PrecompiledHeaders.h" />
+    <ClInclude Include="resource1.h" />
+    <ClInclude Include="SimpleIni.h" />
+    <ClInclude Include="sound.h" />
+    <ClInclude Include="strConv.h" />
+    <ClInclude Include="tasks.h" />
+    <ClInclude Include="TESFormHelper.h" />
+    <ClInclude Include="dataCase.h" />
+    <ClInclude Include="iniSettings.h" />
+    <ClInclude Include="objects.h" />
+    <ClInclude Include="papyrus.h" />
+    <ClInclude Include="GridCellArrayHelper.h" />
+    <ClInclude Include="TESObjectARMOHelper.h" />
+    <ClInclude Include="TESQuestHelper.h" />
+    <ClInclude Include="utils.h" />
+    <ClInclude Include="TESObjectWEAPHelper.h" />
+    <ClInclude Include="version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Config\AutoHarvestSE.ini" />
+    <None Include="Config\default\blocklist.tsv" />
+    <None Include="Config\default\clutter.tsv" />
+    <None Include="Config\default\critter.tsv" />
+    <None Include="Config\default\excludelist.tsv" />
+    <None Include="Config\default\fieldcrop.tsv" />
+    <None Include="Config\default\flora.tsv" />
+    <None Include="Config\default\gem.tsv" />
+    <None Include="Config\default\orevein.tsv" />
+    <None Include="Config\default\septim.tsv" />
+    <None Include="Config\default\userlist.tsv" />
+    <None Include="exports.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CommonLibSSE\CommonLibSSE.vcxproj">
+      <Project>{c1af9204-ee2d-421b-b11e-1d70d8acc11f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
+      <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\skse64_2_00_17\src\skse64\skse64\skse64.vcxproj">
+      <Project>{7028b79c-06e3-4d9a-b38c-1dc3680b1bdb}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\skse64_2_00_17\src\skse64\skse64_common\skse64_common.vcxproj">
+      <Project>{5fd1c08d-db80-480c-a1c6-f0920005cd13}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="AutoHarvestSE.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Interface\towawot\AutoHarvestSE.dds" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Interface\translations\AutoHarvestSE_czech.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_english.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_french.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_german.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_italian.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_japanese.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_polish.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_russian.txt" />
+    <Text Include="Interface\translations\AutoHarvestSE_spanish.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
