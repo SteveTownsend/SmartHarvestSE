@@ -10,7 +10,7 @@
 #include "basketfile.h"
 #include "debugs.h"
 #include "papyrus.h"
-#include "GridCellArrayHelper.h"
+#include "PlayerCellHelper.h"
 
 #include "TESQuestHelper.h"
 #include "RE/SkyrimScript/RemoveItemFunctor.h"
@@ -263,6 +263,9 @@ void SearchTask::Run()
 			_DMESSAGE("block looted container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
 			DataCase::GetInstance()->BlockReference(refrEx.m_ref);
+			// for dead bodies, the REFR is not iterable after a reload, so save those until cell exited
+			if (m_targetType == INIFile::SecondaryType::deadbodies)
+				DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref);
 
 			std::vector<std::pair<RE::TESBoundObject*, int>> targets;
 			targets.reserve(lootableItems.size());
@@ -573,6 +576,8 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 	{
 		unblockAll = true;
 		m_playerCell = playerCell;
+		// forget about dead bodies we remembered for looting after game reload within current cell
+		DataCase::GetInstance()->ForgetDeadBodies();
 	}
 	if (unblockAll)
 	{

@@ -133,11 +133,11 @@ void DataCase::GetTranslationData()
 		std::string keyS = wide_to_utf8(key);
 		std::string translationS = wide_to_utf8(translation);
 
-		lists.translations[keyS] = translationS;
+		translations[keyS] = translationS;
 
 	}
 #if _DEBUG
-	_MESSAGE("* TranslationData(%d)", lists.translations.size());
+	_MESSAGE("* TranslationData(%d)", translations.size());
 #endif
 
 	return;
@@ -322,11 +322,11 @@ void DataCase::GetAmmoData()
 #if _DEBUG
 		_MESSAGE("Adding Projectile %s with ammo %s", proj->GetFullName(), ammo->GetFullName());
 #endif
-		lists.ammoList[proj] = ammo;
+		ammoList[proj] = ammo;
 	}
 
 #if _DEBUG
-	_MESSAGE("* AmmoData(%d)", lists.ammoList.size());
+	_MESSAGE("* AmmoData(%d)", ammoList.size());
 #endif
 }
 
@@ -335,7 +335,7 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 	if (!refr)
 		return false;
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return (lists.blockRefr.insert(refr)).second;
+	return (blockRefr.insert(refr)).second;
 }
 
 bool DataCase::UnblockReference(const RE::TESObjectREFR* refr)
@@ -343,7 +343,7 @@ bool DataCase::UnblockReference(const RE::TESObjectREFR* refr)
 	if (!refr)
 		return false;
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return lists.blockRefr.erase(refr) > 0;
+	return blockRefr.erase(refr) > 0;
 }
 
 bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
@@ -351,7 +351,27 @@ bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 	if (!refr)
 		return false;
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return lists.blockRefr.count(refr) > 0;
+	return blockRefr.count(refr) > 0;
+}
+
+bool DataCase::RememberDeadBody(const RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	return (rememberedDeadBodies.insert(refr)).second;
+}
+
+void DataCase::ForgetDeadBodies()
+{
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	rememberedDeadBodies.clear();
+}
+
+std::vector<const RE::TESObjectREFR*> DataCase::RememberedDeadBodies() const
+{
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	return std::vector<const RE::TESObjectREFR*>(rememberedDeadBodies.cbegin(), rememberedDeadBodies.cend());
 }
 
 bool DataCase::BlockForm(const RE::TESForm* form)
@@ -359,7 +379,7 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	if (!form)
 		return false;
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return (lists.blockForm.insert(form)).second;
+	return (blockForm.insert(form)).second;
 }
 
 bool DataCase::UnblockForm(const RE::TESForm* form)
@@ -367,7 +387,7 @@ bool DataCase::UnblockForm(const RE::TESForm* form)
 	if (!form)
 		return false;
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return lists.blockForm.erase(form) > 0;
+	return blockForm.erase(form) > 0;
 }
 
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
@@ -375,7 +395,7 @@ bool DataCase::IsFormBlocked(const RE::TESForm* form)
 	if (!form)
 		return false;
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return lists.blockForm.count(form) > 0;
+	return blockForm.count(form) > 0;
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
@@ -401,15 +421,15 @@ ObjectType DataCase::GetObjectTypeForFormType(RE::FormType formType) const
 
 const char* DataCase::GetTranslation(const char* key) const
 {
-	const auto& translation(lists.translations.find(key));
-	if (translation == lists.translations.cend())
+	const auto& translation(translations.find(key));
+	if (translation == translations.cend())
 		return nullptr;
 	return translation->second.c_str();
 }
 
 const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
 {
-	return (proj && lists.ammoList.find(proj) != lists.ammoList.end()) ? lists.ammoList[proj] : nullptr;
+	return (proj && ammoList.find(proj) != ammoList.end()) ? ammoList[proj] : nullptr;
 }
 
 const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
@@ -429,11 +449,11 @@ const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 void DataCase::ListsClear()
 {
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	lists.blockRefr.clear();
-	lists.arrowCheck.clear();
+	blockRefr.clear();
+	arrowCheck.clear();
 
 	// reset blocked forms to just the user's list
-	lists.blockForm = lists.userBlockedForm;
+	blockForm = userBlockedForm;
 }
 
 bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
@@ -450,23 +470,23 @@ bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 	}
 
 	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	if (lists.arrowCheck.count(refr) == 0)
+	if (arrowCheck.count(refr) == 0)
 	{
 #if _DEBUG
 		_MESSAGE("pick %0.2f", pos);
 #endif
-		lists.arrowCheck.insert(std::make_pair(refr, pos));
+		arrowCheck.insert(std::make_pair(refr, pos));
 		skip = true;
 	}
 	else
 	{
-		RE::NiPoint3 prev = lists.arrowCheck.at(refr);
+		RE::NiPoint3 prev = arrowCheck.at(refr);
 		if (prev != pos)
 		{
 #if _DEBUG
 			_MESSAGE("moving %0.2f  prev:%0.2f", pos, prev);
 #endif
-			lists.arrowCheck[refr] = pos;
+			arrowCheck[refr] = pos;
 			skip = true;
 		}
 		else
@@ -474,7 +494,7 @@ bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 #if _DEBUG
 			_MESSAGE("catch %0.2f", pos);
 #endif
-			lists.arrowCheck.erase(refr);
+			arrowCheck.erase(refr);
 		}
 	}
 	return skip;
@@ -482,8 +502,8 @@ bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 
 void DataCase::CategorizeLootables()
 {
-	if (!GetTSV(&lists.userBlockedForm, "blocklist.tsv"))
-		GetTSV(&lists.userBlockedForm, "default\\blocklist.tsv");
+	if (!GetTSV(&userBlockedForm, "blocklist.tsv"))
+		GetTSV(&userBlockedForm, "default\\blocklist.tsv");
 
 	GetAmmoData();
 

@@ -130,6 +130,7 @@
     <ClCompile Include="debugs.cpp" />
     <ClCompile Include="EnchantmentItemHelper.cpp" />
     <ClCompile Include="IHasValueWeight.cpp" />
+    <ClCompile Include="PlayerCellHelper.cpp" />
     <ClCompile Include="SimpleIni.cpp" />
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="PrecompiledHeaders.cpp">
@@ -143,7 +144,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="objects.cpp" />
     <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="GridCellArrayHelper.cpp" />
     <ClCompile Include="TESObjectARMOHelper.cpp" />
     <ClCompile Include="TESQuestHelper.cpp" />
     <ClCompile Include="utils.cpp" />
@@ -159,6 +159,7 @@
     <ClInclude Include="EnchantmentItemHelper.h" />
     <ClInclude Include="IHasValueWeight.h" />
     <ClInclude Include="ObjectType.h" />
+    <ClInclude Include="PlayerCellHelper.h" />
     <ClInclude Include="PrecompiledHeaders.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="SimpleIni.h" />
@@ -170,7 +171,6 @@
     <ClInclude Include="iniSettings.h" />
     <ClInclude Include="objects.h" />
     <ClInclude Include="papyrus.h" />
-    <ClInclude Include="GridCellArrayHelper.h" />
     <ClInclude Include="TESObjectARMOHelper.h" />
     <ClInclude Include="TESQuestHelper.h" />
     <ClInclude Include="utils.h" />

@@ -25,6 +25,10 @@ public:
 	bool UnblockReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
 
+	bool RememberDeadBody(const RE::TESObjectREFR* refr);
+	void ForgetDeadBodies();
+	std::vector<const RE::TESObjectREFR*> RememberedDeadBodies() const;
+
 	bool BlockForm(const RE::TESForm* form);
 	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
@@ -57,17 +61,15 @@ public:
 	const RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
 
 private:
-	struct listData
-	{
-		std::unordered_map<std::string, std::string> translations;
+	std::unordered_map<std::string, std::string> translations;
 
-		std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
-		std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
+	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
+	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
 
-		std::unordered_set<const RE::TESForm*> userBlockedForm;
-		std::unordered_set<const RE::TESForm*> blockForm;
-		std::unordered_set<const RE::TESObjectREFR*> blockRefr;
-	} lists;
+	std::unordered_set<const RE::TESForm*> userBlockedForm;
+	std::unordered_set<const RE::TESForm*> blockForm;
+	std::unordered_set<const RE::TESObjectREFR*> blockRefr;
+	std::unordered_set<const RE::TESObjectREFR*> rememberedDeadBodies;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
