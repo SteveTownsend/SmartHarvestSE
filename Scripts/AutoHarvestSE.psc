@@ -13,8 +13,6 @@ Function UnblockEverything() global native
 Form Function GetNthLootableObject(ObjectReference refr, int index) global native
 Function ClearLootableObjects(ObjectReference refr) global native
 
-;Function PlayPickupSound(form baseForm) global native
-
 string Function GetObjectKeyString(int num) global native
 float Function GetSetting(int m_section_first, int m_section_second, string m_key) global native
 Function GetSettingToObjectArray(int m_section_first, int m_section_second, float[] m_values) global native
@@ -31,12 +29,12 @@ Function AllowSearch() global native
 Function DisallowSearch() global native
 bool Function IsSearchAllowed() global native
 
-Function SyncUserlist() global native
-bool Function SaveUserlist() global native
-bool Function LoadUserlist() global native
-Function SyncExcludelist() global native
-bool Function SaveExcludelist() global native
-bool Function LoadExcludelist() global native
+Function SyncUserListWithPlugin() global native
+bool Function SaveUserList() global native
+bool Function LoadUserList() global native
+Function SyncExcludeListWithPlugin() global native
+bool Function SaveExcludeList() global native
+bool Function LoadExcludeList() global native
 
 Function AddLocationToList(int locationType, Form location) global native
 Function DropLocationFromList(int locationType, Form location) global native
@@ -44,6 +42,12 @@ Function DropLocationFromList(int locationType, Form location) global native
 String Function GetTranslation(String key) global native
 String Function Replace(String str, String target, String replacement) global native
 String Function ReplaceArray(String str, String[] targets, String[] replacements) global native
+
+int location_type_user = 1
+int location_type_excluded = 2
+
+Formlist userlist_form
+Formlist excludelist_form
 
 bool Function IsBookObject(int type) global
 	return (type >= 17 && type <= 22)
@@ -96,34 +100,6 @@ form Function GetSelectedItemForm(string menuName) global
 		return none
 	endif
 	return itemForm
-endFunction
-
-function ManageList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
-	if (!m_list || !m_item)
-		return
-	endif
-
-	if(m_list.Find(m_item) != -1)
-		string translation = GetTranslation(trans_remove)
-		if (translation)
-			string msg = Replace(translation, "{ITEMNAME}", m_item.GetName())
-			if (msg)
-				Debug.Notification(msg)
-			endif
-		endif
-		m_list.RemoveAddedForm(m_item)
-		DropLocationFromList(location_type, m_item)
-	else
-		string translation = GetTranslation(trans_add)
-		if (translation)
-			string msg = Replace(translation, "{ITEMNAME}", m_item.GetName())
-			if (msg)
-				Debug.Notification(msg)
-			endif
-		endif
-		m_list.AddForm(m_item)
-		AddLocationToList(location_type, m_item)
-	endif
 endFunction
 
 string Function sif (bool cc, string aa, string bb) global

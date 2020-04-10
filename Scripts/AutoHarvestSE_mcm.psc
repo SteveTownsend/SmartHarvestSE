@@ -17,15 +17,11 @@ int type_Container = 3
 int type_Deadbody = 4
 int type_ValueWeight = 5
 int type_MaxItemCount = 6
+int objType_Septim = 4
+int objType_Key = 6
+int objType_LockPick = 11
 int objType_Ammo = 23
 int objType_Mine = 34
-
-int location_type_user = 1
-int location_type_excluded = 2
-
-Formlist userlist_form
-Formlist excludelist_form
-Formlist blockLocationForm
 
 bool enableAutoHarvest
 bool enableLootContainer
@@ -41,7 +37,7 @@ int pauseHotkeyCode
 int userlistHotkeyCode
 int excludelistHotkeyCode
 
-bool consolidateSettings
+bool useSharedSettings
 
 float radius
 float interval
@@ -52,16 +48,15 @@ int userlistSaveLoad
 string[] s_userlistSaveLoadArray
 int excludelistSaveLoad
 string[] s_excludelistSaveLoadArray
-int questObjectDefinition
-string[] s_questObjectDefinitionArray
+int questObjectScope
+string[] s_questObjectScopeArray
 int crimeCheckNotSneaking
 string[] s_crimeCheckNotSneakingArray
 int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
 string[] s_behaviorToggleArray
-int containerAnimation
-string[] s_containerAnimationArray
+bool playContainerAnimation
 
 bool questObjectLoot
 bool lockedChestLoot
@@ -72,8 +67,8 @@ bool lockedChestGlow
 bool bossChestGlow
 bool enchantItemGlow
 
-bool disableInCombat
-bool disableDrawingWeapon
+bool disableDuringCombat
+bool disableWhileWeaponIsDrawn
 
 int[] id_objectSettingArray
 float[] objectSettingArray
@@ -109,7 +104,6 @@ bool gameReloadLock = false
 ; message flag
 bool objpage_read_once = true
 
-
 int Function CycleInt(int num, int max)
 	int result = num + 1
 	if (result >= max)
@@ -127,12 +121,12 @@ function Load_mcm()
 	pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
 	userlistHotkeyCode = GetSetting(type_Common, type_Config, "userlistHotkeyCode") as int
 	excludelistHotkeyCode = GetSetting(type_Common, type_Config, "excludelistHotkeyCode") as int
-	consolidateSettings = GetSetting(type_Common, type_Config, "consolidateSettings") as bool
+	useSharedSettings = GetSetting(type_Common, type_Config, "useSharedSettings") as bool
 
 	radius = GetSetting(type_AutoHarvest, type_Config, "RadiusFeet") as float
 	interval = GetSetting(type_AutoHarvest, type_Config, "IntervalSeconds") as float
 
-	questObjectDefinition = GetSetting(type_AutoHarvest, type_Config, "questObjectDefinition") as int
+	questObjectScope = GetSetting(type_AutoHarvest, type_Config, "questObjectScope") as int
 	crimeCheckNotSneaking = GetSetting(type_AutoHarvest, type_Config, "crimeCheckNotSneaking") as int
 	crimeCheckSneaking = GetSetting(type_AutoHarvest, type_Config, "crimeCheckSneaking") as int
 	playerBelongingsLoot = GetSetting(type_AutoHarvest, type_Config, "playerBelongingsLoot") as int
@@ -146,9 +140,9 @@ function Load_mcm()
 	bossChestLoot = GetSetting(type_AutoHarvest, type_Config, "bossChestLoot") as bool
 	bossChestGlow = GetSetting(type_AutoHarvest, type_Config, "bossChestGlow") as bool
 
-	disableInCombat = GetSetting(type_AutoHarvest, type_Config, "disableInCombat") as bool
-	disableDrawingWeapon = GetSetting(type_AutoHarvest, type_Config, "disableDrawingWeapon") as bool
-	containerAnimation = GetSetting(type_AutoHarvest, type_Config, "containerAnimation") as int
+	disableDuringCombat = GetSetting(type_AutoHarvest, type_Config, "disableDuringCombat") as bool
+	disableWhileWeaponIsDrawn = GetSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn") as bool
+	playContainerAnimation = GetSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation") as bool
 
 	valueWeightDefault = GetSetting(type_AutoHarvest, type_Config, "valueWeightDefault") as int
 	maxMiningItems = GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int
@@ -177,13 +171,13 @@ function init()
 	radius = defaultRadius
 	interval = defaultInterval
 
-	questObjectDefinition = 0
+	questObjectScope = 0
 	crimeCheckNotSneaking = 2
 	crimeCheckSneaking = 1
 	playerBelongingsLoot = 1
-	containerAnimation = 0
+	playContainerAnimation = false
 
-	consolidateSettings = true
+	useSharedSettings = true
 
 	questObjectLoot = 0
 	questObjectGlow = 1
@@ -194,8 +188,8 @@ function init()
 	bossChestLoot = 0
 	bossChestGlow = 1
 
-	disableInCombat = 0
-	disableDrawingWeapon = 0
+	disableDuringCombat = false
+	disableWhileWeaponIsDrawn = false
 
 	objectSettingArray[1] = 1
 	objectSettingArray[2] = 1
@@ -205,7 +199,7 @@ function init()
 	objectSettingArray[6] = 2
 	objectSettingArray[7] = 1
 	objectSettingArray[8] = 0
-	objectSettingArray[9]= 1
+	objectSettingArray[9] = 1
 	objectSettingArray[10] = 1
 	objectSettingArray[11] = 2
 	objectSettingArray[12] = 0
@@ -364,16 +358,16 @@ Function ApplySetting()
 	PutSetting(type_Common, type_Config, "PauseHotkeyCode", pauseHotkeyCode as float)
 	PutSetting(type_Common, type_Config, "userlistHotkeyCode", userlistHotkeyCode as float)
 	PutSetting(type_Common, type_Config, "excludelistHotkeyCode", excludelistHotkeyCode as float)
-	PutSetting(type_Common, type_Config, "consolidateSettings", consolidateSettings as float)
+	PutSetting(type_Common, type_Config, "useSharedSettings", useSharedSettings as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "RadiusFeet", radius)
 	PutSetting(type_AutoHarvest, type_Config, "IntervalSeconds", interval)
 
-	PutSetting(type_AutoHarvest, type_Config, "questObjectDefinition", questObjectDefinition as float)
+	PutSetting(type_AutoHarvest, type_Config, "questObjectScope", questObjectScope as float)
 	PutSetting(type_AutoHarvest, type_Config, "crimeCheckNotSneaking", crimeCheckNotSneaking as float)
 	PutSetting(type_AutoHarvest, type_Config, "crimeCheckSneaking", crimeCheckSneaking as float)
 	PutSetting(type_AutoHarvest, type_Config, "playerBelongingsLoot", playerBelongingsLoot as float)
-	PutSetting(type_AutoHarvest, type_Config, "containerAnimation", containerAnimation as float)
+	PutSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation", playContainerAnimation as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "questObjectLoot", questObjectLoot as float)
 	PutSetting(type_AutoHarvest, type_Config, "questObjectGlow", questObjectGlow as float)
@@ -384,11 +378,11 @@ Function ApplySetting()
 	PutSetting(type_AutoHarvest, type_Config, "bossChestLoot", bossChestLoot as float)
 	PutSetting(type_AutoHarvest, type_Config, "bossChestGlow", bossChestGlow as float)
 
-	PutSetting(type_AutoHarvest, type_Config, "disableInCombat", disableInCombat as float)
-	PutSetting(type_AutoHarvest, type_Config, "disableDrawingWeapon", disableDrawingWeapon as float)
+	PutSetting(type_AutoHarvest, type_Config, "disableDuringCombat", disableDuringCombat as float)
+	PutSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
 
 	PutSettingObjectArray(type_AutoHarvest, type_ItemObject, objectSettingArray)
-	if (consolidateSettings)
+	if (useSharedSettings)
 		PutSettingObjectArray(type_AutoHarvest, type_Container, objectSettingArray)
 		PutSettingObjectArray(type_AutoHarvest, type_Deadbody, objectSettingArray)
 	else
@@ -449,24 +443,19 @@ Event OnConfigInit()
 	s_excludelistSaveLoadArray[1] = "$AHSE_EXCLUDELIST_RESTORE"
 	s_excludelistSaveLoadArray[2] = "$AHSE_EXCLUDELIST_STORE"
 
-	s_questObjectDefinitionArray = New String[2]
-	s_questObjectDefinitionArray[0] = "$AHSE_QUEST_RELATED"
-	s_questObjectDefinitionArray[1] = "$AHSE_QUEST_FLAG_ONLY"
+	s_questObjectScopeArray = New String[2]
+	s_questObjectScopeArray[0] = "$AHSE_QUEST_RELATED"
+	s_questObjectScopeArray[1] = "$AHSE_QUEST_FLAG_ONLY"
 
 	s_crimeCheckNotSneakingArray = New String[3]
-	s_crimeCheckNotSneakingArray[0] = "$AHSE_ALL"
+	s_crimeCheckNotSneakingArray[0] = "$AHSE_ALLOW_CRIMES"
 	s_crimeCheckNotSneakingArray[1] = "$AHSE_PREVENT_CRIMES"
 	s_crimeCheckNotSneakingArray[2] = "$AHSE_OWNERLESS_ONLY"
 
 	s_crimeCheckSneakingArray = New String[3]
-	s_crimeCheckSneakingArray[0] = "$AHSE_ALL"
+	s_crimeCheckSneakingArray[0] = "$AHSE_ALLOW_CRIMES"
 	s_crimeCheckSneakingArray[1] = "$AHSE_PREVENT_CRIMES"
 	s_crimeCheckSneakingArray[2] = "$AHSE_OWNERLESS_ONLY"
-
-	s_containerAnimationArray = New String[2]
-	s_containerAnimationArray[0] = "$AHSE_DO_NOTHING"
-;	s_containerAnimationArray[1] = "$AHSE_EMPTY_ONLY"
-	s_containerAnimationArray[1] = "$AHSE_ALL"
 
 	s_behaviorToggleArray = New String[2]
 	s_behaviorToggleArray[0] = "$AHSE_DONT_PICK_UP"
@@ -527,8 +516,8 @@ Event OnConfigInit()
 	s_objectTypeNameArray[34] = "$AHSE_OREVEIN"
 	s_objectTypeNameArray[35] = "$AHSE_USERLIST"
 
-	userlist_form = Game.GetFormFromFile(0x0333C, "AutoHarvestSE.esp") as Formlist
-	excludelist_form = Game.GetFormFromFile(0x0333D, "AutoHarvestSE.esp") as Formlist
+	eventScript.userlist_form = Game.GetFormFromFile(0x0333C, "AutoHarvestSE.esp") as Formlist
+	eventScript.excludelist_form = Game.GetFormFromFile(0x0333D, "AutoHarvestSE.esp") as Formlist
 	
 	pushLocationToExcludelist = false
 	pushCellToExcludelist= false
@@ -537,19 +526,13 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-	return 6
+	return 8
 endFunction
 
 Event OnVersionUpdate(int a_version)
 ;	DebugTrace("OnVersionUpdate start" + a_version)
 
 	if (a_version >=5 && CurrentVersion < 5)
-		s_containerAnimationArray = New String[2]
-		s_containerAnimationArray[0] = "$AHSE_DO_NOTHING"
-;		s_containerAnimationArray[1] = "$AHSE_EMPTY_ONLY"
-		s_containerAnimationArray[1] = "$AHSE_ALL"
-		containerAnimation = 0
-
 		type_Config = 1
 		type_ItemObject = 2
 		type_Container = 3
@@ -557,7 +540,7 @@ Event OnVersionUpdate(int a_version)
 		type_ValueWeight = 5
 		type_MaxItemCount = 6
 	endif
-	if (a_version >= 6 && CurrentVersion < 6)
+	if (a_version >= 8 && CurrentVersion < 8)
 		; Major revision to reduce script dependence and autodetect lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 		OnConfigInit()
@@ -589,11 +572,11 @@ endEvent
 Event OnConfigOpen()
 ;	DebugTrace("OnConfigOpen")
 
-	if (consolidateSettings)
+	if (useSharedSettings)
 		Pages = New String[5]
 		Pages[0] = "$AHSE_COMMON1_PAGENAME"
 		Pages[1] = "$AHSE_COMMON2_PAGENAME"
-		Pages[2] = "$AHSE_CONSOLIDATEDSETTINGS_PAGENAME"
+		Pages[2] = "$AHSE_SHARED_SETTINGS_PAGENAME"
 		Pages[3] = "$AHSE_USERLIST_PAGENAME"
 		Pages[4] = "$AHSE_EXCLUDELIST_PAGENAME"
 	else
@@ -609,10 +592,10 @@ Event OnConfigOpen()
 	int index = 0
 	int max_size = 0
 	
-	max_size = userlist_form.GetSize()
+	max_size = eventScript.userlist_form.GetSize()
 	if (max_size > 0)
 		id_userlist_array = Utility.CreateIntArray(max_size)
-		userlist_form_array = userlist_form.toArray()
+		userlist_form_array = eventScript.userlist_form.toArray()
 		userlist_name_array = Utility.CreateStringArray(max_size, "")
 		userlist_flag_array = Utility.CreateBoolArray(max_size, false)
 		
@@ -626,7 +609,7 @@ Event OnConfigOpen()
 		endWhile
 	endif
 
-	max_size = excludelist_form.GetSize()
+	max_size = eventScript.excludelist_form.GetSize()
 	if (max_size > 0)
 		id_excludelist_array = Utility.CreateIntArray(max_size)
 		excludelist_form_array = Utility.CreateFormArray(max_size)
@@ -638,7 +621,7 @@ Event OnConfigOpen()
 
 ;			DebugTrace("   " + index)
 		
-			excludelist_form_array[index] = excludelist_form.GetAt(index)
+			excludelist_form_array[index] = eventScript.excludelist_form.GetAt(index)
 			excludelist_name_array[index] = (excludelist_form_array[index]).GetName()
 			excludelist_flag_array[index] = true
 			
@@ -678,8 +661,8 @@ endFunction
 Event OnConfigClose()
 ;	DebugTrace("OnConfigClose")
 
-	TidyListUp(userlist_form, userlist_form_array, userlist_flag_array, "$AHSE_USERLIST_REMOVED")
-	TidyListUp(excludelist_form, excludelist_form_array, excludelist_flag_array, "$AHSE_EXCLUDELIST_REMOVED")
+	TidyListUp(eventScript.userlist_form, userlist_form_array, userlist_flag_array, "$AHSE_USERLIST_REMOVED")
+	TidyListUp(eventScript.excludelist_form, excludelist_form_array, excludelist_flag_array, "$AHSE_EXCLUDELIST_REMOVED")
 	
 	;--- INI File operation --------------------
 	if (iniSaveLoad == 1) ; load/restore
@@ -693,42 +676,41 @@ Event OnConfigClose()
 	iniSaveLoad = 0
 
 
-	;--- Userlist File operation --------------------
+	;--- UserList File operation --------------------
 	if (userlistSaveLoad == 1) ; load/restore
-		bool result = LoadUserlist()
+		bool result = LoadUserList()
 		if (result)
 			Debug.Notification("$AHSE_USERLIST_RESTORE_MSG")
 		endif
 	elseif (userlistSaveLoad == 2) ; save/store
-		bool result = SaveUserlist()
+		bool result = SaveUserList()
 		if (result)
 			Debug.Notification("$AHSE_USERLIST_STORE_MSG")
 		endif
 	endif
-	SyncUserlist()
+	eventScript.SyncUserList()
 	userlistSaveLoad = 0
 	
 	
-	;--- Excludelist File operation --------------------
+	;--- ExcludeList File operation --------------------
 	if (excludelistSaveLoad == 1) ; load/restore
-		bool result = LoadExcludelist()
+		bool result = LoadExcludeList()
 		if (result)
 			Debug.Notification("$AHSE_EXCLUDELIST_RESTORE_MSG")
 		endif
 	elseif (excludelistSaveLoad == 2) ; save/store
-		bool result = SaveExcludelist()
+		bool result = SaveExcludeList()
 		if (result)
 			Debug.Notification("$AHSE_EXCLUDELIST_STORE_MSG")
 		endif
 	endif
-	SyncExcludelist()
+	eventScript.SyncExcludeList()
 	excludelistSaveLoad = 0
-	
 	
 	if (pushLocationToExcludelist)
 		form locForm = Game.GetPlayer().GetCurrentLocation() as form
 		if (locForm)
-			ManageList(excludelist_form, locForm, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
+			eventScript.ManageExcludeList(locForm)
 		endif
 		pushLocationToExcludelist = false
 	endif
@@ -736,9 +718,9 @@ Event OnConfigClose()
 	if (pushCellToExcludelist)
 		form cellForm = Game.GetPlayer().GetParentCell() as form
 		if (cellForm)
-			ManageList(excludelist_form, cellForm, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
+			eventScript.ManageExcludeList(cellForm)
 		endif
-		pushCellToExcludelist= false
+		pushCellToExcludelist = false
 	endif
 
 	ApplySetting()
@@ -756,7 +738,6 @@ event OnPageReset(string currentPage)
 	EndIf
 
 	if (currentPage == Pages[0])
-	
 
 ; 	======================== LEFT ========================
 		SetCursorFillMode(TOP_TO_BOTTOM)
@@ -765,14 +746,46 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("enableAutoHarvest", "$AHSE_ENABLE_AUTOHARVEST", enableAutoHarvest)
 		AddToggleOptionST("enableLootContainer", "$AHSE_ENABLE_LOOT_CONTAINER", enableLootContainer)
 		AddToggleOptionST("enableLootDeadbody", "$AHSE_ENABLE_LOOT_DEADBODY", enableLootDeadbody)
+		AddKeyMapOptionST("pauseHotkeyCode", "$AHSE_PAUSE_KEY", pauseHotkeyCode)
+		AddToggleOptionST("disableDuringCombat", "$AHSE_DISABLE_DURING_COMBAT", disableDuringCombat)
+		AddToggleOptionST("disableWhileWeaponIsDrawn", "$AHSE_DISABLE_IF_WEAPON_DRAWN", disableWhileWeaponIsDrawn)
+		AddTextOptionST("crimeCheckNotSneaking", "$AHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
+		AddTextOptionST("crimeCheckSneaking", "$AHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
+		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_behaviorToggleArray[playerBelongingsLoot])
+		AddToggleOptionST("unencumberedInCombat", "$AHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
+		AddToggleOptionST("unencumberedInPlayerHouse", "$AHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHouse)
 
-		AddEmptyOption()
+; 	======================== RIGHT ========================
+		SetCursorPosition(1)
 
-		AddHeaderOption("$AHSE_INTERVAL_HEADER")
+		AddHeaderOption("$AHSE_ITEM_HARVEST_DEFAULT_HEADER")
+	    AddSliderOptionST("ValueWeightDefault", "$AHSE_VW_DEFAULT", valueWeightDefault)
 		AddSliderOptionST("Radius", "$AHSE_RADIUS", radius, "$AHSE{0}UNIT")
 		AddSliderOptionST("Interval", "$AHSE_INTERVAL", interval, "$AHSE{1}SEC")
+	    AddSliderOptionST("MaxMiningItems", "$AHSE_MAX_MINING_ITEMS", maxMiningItems)
+		AddToggleOptionST("useSharedSettings", "$AHSE_USE_SHARED_SETTINGS", useSharedSettings)
+		AddMenuOptionST("iniSaveLoad", "$AHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
+		AddKeyMapOptionST("userlistHotkeyCode", "$AHSE_USERLIST_KEY", userlistHotkeyCode)
+		AddMenuOptionST("userlistSaveLoad", "$AHSE_USERLIST_FILE_OPERATION", s_userlistSaveLoadArray[userlistSaveLoad])
+		
+	elseif (currentPage == Pages[1])
 
-		AddEmptyOption()
+; 	======================== LEFT ========================
+		SetCursorFillMode(TOP_TO_BOTTOM)
+
+		AddHeaderOption("$AHSE_SPECIAL_OBJECT_BEHAVIOR_HEADER")
+		AddToggleOptionST("questObjectLoot", "$AHSE_QUESTOBJECT_LOOT", questObjectLoot)
+		AddTextOptionST("questObjectScope", "$AHSE_QUESTOBJECT_SCOPE", s_questObjectScopeArray[questObjectScope])
+		AddToggleOptionST("questObjectGlow", "$AHSE_QUESTOBJECT_GLOW", questObjectGlow)
+		AddToggleOptionST("lockedChestLoot", "$AHSE_LOCKEDCHEST_LOOT", lockedChestLoot)
+		AddToggleOptionST("lockedChestGlow", "$AHSE_LOCKEDCHEST_GLOW", lockedChestGlow)
+		AddToggleOptionST("bossChestLoot", "$AHSE_BOSSCHEST_LOOT", bossChestLoot)
+		AddToggleOptionST("bossChestGlow", "$AHSE_BOSSCHEST_GLOW", bossChestGlow)
+		AddToggleOptionST("enchantItemGlow", "$AHSE_ENCHANTITEM_GLOW", enchantItemGlow)
+		AddToggleOptionST("playContainerAnimation", "$AHSE_PLAY_CONTAINER_ANIMATION", playContainerAnimation)
+
+; 	======================== RIGHT ========================
+		SetCursorPosition(1)
 
 		AddHeaderOption("$AHSE_EXCLUDE_LOCATION_HEADER")
 
@@ -790,75 +803,15 @@ event OnPageReset(string currentPage)
 		endif
 		
 		AddToggleOptionST("pushCellToExcludelist", "$AHSE_CELL_TO_EXCLUDELIST", pushCellToExcludelist, flagCell)
-
-; 	======================== RIGHT ========================
-		SetCursorPosition(1)
-
-		AddHeaderOption("$AHSE_KEYCODE_HEADER")
-		AddKeyMapOptionST("pauseHotkeyCode", "$AHSE_PAUSE_KEY", pauseHotkeyCode)
-		AddKeyMapOptionST("userlistHotkeyCode", "$AHSE_USERLIST_KEY", userlistHotkeyCode)
 		AddKeyMapOptionST("excludelistHotkeyCode", "$AHSE_EXCLUDELIST_KEY", excludelistHotkeyCode)
-
-		AddEmptyOption()
-
-		AddHeaderOption("$AHSE_CONSOLIDATED_HEADER")
-		AddToggleOptionST("consolidateSettings", "$AHSE_CONSOLIDATED_SETTINGS", consolidateSettings)
-
-		AddEmptyOption()
-
-		AddHeaderOption("$AHSE_PRESET_HEADER")
-		AddMenuOptionST("iniSaveLoad", "$AHSE_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
-		AddMenuOptionST("userlistSaveLoad", "$AHSE_USERLIST_FILE_OPERATION", s_userlistSaveLoadArray[userlistSaveLoad])
 		AddMenuOptionST("excludelistSaveLoad", "$AHSE_EXCLUDELIST_FILE_OPERATION", s_excludelistSaveLoadArray[excludelistSaveLoad])
-		
-	elseif (currentPage == Pages[1])
-
-; 	======================== LEFT ========================
-		SetCursorFillMode(TOP_TO_BOTTOM)
-
-		AddHeaderOption("$AHSE_BEHAVIOR_HEADER")
-		AddToggleOptionST("questObjectLoot", "$AHSE_QUESTOBJECT_LOOT", questObjectLoot)
-		AddToggleOptionST("lockedChestLoot", "$AHSE_LOCKEDCHEST_LOOT", lockedChestLoot)
-		AddToggleOptionST("bossChestLoot", "$AHSE_BOSSCHEST_LOOT", bossChestLoot)
-		AddTextOptionST("questObjectDefinition", "$AHSE_QUESTOBJECT_DEFINITION", s_questObjectDefinitionArray[questObjectDefinition])
-		AddTextOptionST("crimeCheckNotSneaking", "$AHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
-		AddTextOptionST("crimeCheckSneaking", "$AHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
-		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_behaviorToggleArray[playerBelongingsLoot])
-		AddTextOptionST("containerAnimation", "$AHSE_CONTAINER_ANIMATION", s_containerAnimationArray[containerAnimation])
-
-		AddHeaderOption("$AHSE_UNENCUMBERED_HEADER")
-		AddToggleOptionST("unencumberedInCombat", "$AHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
-		AddToggleOptionST("unencumberedInPlayerHouse", "$AHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHouse)
-		
-; 	======================== RIGHT ========================
-		SetCursorPosition(1)
-
-		AddHeaderOption("$AHSE_DISABLE_HEADER")
-		AddToggleOptionST("disableInCombat", "$AHSE_DISABLE_INCOMBAT", disableInCombat)
-		AddToggleOptionST("disableDrawingWeapon", "$AHSE_DISABLE_DRAWINGWEAPON", disableDrawingWeapon)
-		
-		AddEmptyOption()
-		AddHeaderOption("$AHSE_VW_DEFAULT_HEADER")
-	    AddSliderOptionST("ValueWeightDefault", "$AHSE_VW_DEFAULT", valueWeightDefault)
-	    AddSliderOptionST("MaxMiningItems", "$AHSE_MAX_MINING_ITEMS", maxMiningItems)
-
-		AddEmptyOption()
-		AddHeaderOption("$AHSE_GLOWS_HEADER")
-		AddToggleOptionST("enchantItemGlow", "$AHSE_ENCHANTITEM_GLOW", enchantItemGlow)
-		AddToggleOptionST("questObjectGlow", "$AHSE_QUESTOBJECT_GLOW", questObjectGlow)
-		AddToggleOptionST("lockedChestGlow", "$AHSE_LOCKEDCHEST_GLOW", lockedChestGlow)
-		AddToggleOptionST("bossChestGlow", "$AHSE_BOSSCHEST_GLOW", bossChestGlow)
 		
 	elseif (currentPage == Pages[2]) ; object harvester
 		
 ; 	======================== LEFT ========================
 		SetCursorFillMode(TOP_TO_BOTTOM)
 
-		if (consolidateSettings)
-			AddHeaderOption("$AHSE_CONSOLIDATED_HEADER")
-		else
-			AddHeaderOption("$AHSE_ITEM_OBJECT_HEADER")
-		endif
+		AddHeaderOption("$AHSE_PICK_UP_ITEM_TYPE_HEADER")
 		
 		int index = 1
 		while (index <= (s_objectTypeNameArray.length - 1))
@@ -875,15 +828,10 @@ event OnPageReset(string currentPage)
 
 		AddHeaderOption("$AHSE_VALUE/WEIGHT_HEADER")
 
-		AddEmptyOption()
-		AddEmptyOption()
-		AddEmptyOption()
-
-		index = 4
+		index = 1
 		while (index <= (s_objectTypeNameArray.length - 1))
-			if (index == objType_Mine)
-				AddEmptyOption()
-			elseif (index == objType_Ammo)
+			; do not request V/W for weightless or unhandleable item types
+			if (index == objType_Mine || index == objType_Ammo || index == objType_Septim  || index == objType_Key || index == objType_LockPick)
 				AddEmptyOption()
 			else
 				id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$AHSE_V/W{1}")
@@ -891,15 +839,15 @@ event OnPageReset(string currentPage)
 			index += 1
 		endWhile
 		
-		if (objpage_read_once && consolidateSettings)
-			ShowMessage("$AHSE_OBJECTPAGE_ANNOUNCE_MSG", "$AHSE_OK")
+		if (objpage_read_once && useSharedSettings)
+			ShowMessage("$AHSE_SHARED_SETTINGS_ANNOUNCE_MSG", "$AHSE_OK")
 			objpage_read_once = false
 		endif
 		
-	elseif (!consolidateSettings && currentPage == Pages[3]) ; container/deadbody
+	elseif (!useSharedSettings && currentPage == Pages[3]) ; container/deadbody
 
 		int flag_option = OPTION_FLAG_NONE
-		if (consolidateSettings)
+		if (useSharedSettings)
 			flag_option = OPTION_FLAG_DISABLED
 		endif
 
@@ -908,14 +856,11 @@ event OnPageReset(string currentPage)
 
 		AddHeaderOption("$AHSE_CONTAINER_HEADER")
 
-;		AddEmptyOption()
-;		AddEmptyOption()
-;		AddEmptyOption()
-
-		int index = 4
+        ; skip activators, which cannot be found in a container
+		int index = 3
 		while (index <= (s_objectTypeNameArray.length - 1))
 			if (index == objType_Mine)
-				AddEmptyOption()
+				; no-op
 			else
 				id_containerArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorArray[(containerSettingArray[index] as int)], flag_option)
 			endif
@@ -927,22 +872,19 @@ event OnPageReset(string currentPage)
 
 		AddHeaderOption("$AHSE_DEADBODY_HEADER")
 
-;		AddEmptyOption()
-;		AddEmptyOption()
-;		AddEmptyOption()
-
-		index = 4
+        ; skip activators, which cannot be found in a container
+		index = 3
 		while (index <= (s_objectTypeNameArray.length - 1))
 			if (index == objType_Mine)
-				AddEmptyOption()
+				; no-op
 			else
 				id_deadbodyArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorArray[(deadbodySettingArray[index] as int)], flag_option)
 			endif
 			index += 1
 		endWhile
-	elseif ((!consolidateSettings && currentPage == Pages[4]) || (consolidateSettings && currentPage == Pages[3])) ; userlist
+	elseif ((!useSharedSettings && currentPage == Pages[4]) || (useSharedSettings && currentPage == Pages[3])) ; userlist
 
-		int size = userlist_form.GetSize()
+		int size = eventScript.userlist_form.GetSize()
 		if (size == 0)
 			return
 		endif
@@ -958,8 +900,8 @@ event OnPageReset(string currentPage)
 			endif
 			index += 1
 		endWhile
-	elseif ((!consolidateSettings && currentPage == Pages[5]) || (consolidateSettings && currentPage == Pages[4])) ; exclude list
-		int size = excludelist_form.GetSize()
+	elseif ((!useSharedSettings && currentPage == Pages[5]) || (useSharedSettings && currentPage == Pages[4])) ; exclude list
+		int size = eventScript.excludelist_form.GetSize()
 		if (size == 0)
 			return
 		endif
@@ -1526,25 +1468,25 @@ state excludelistSaveLoad
 	endEvent
 endState
 
-state consolidateSettings
+state useSharedSettings
 ;	Event OnBeginState()
 ;		int result = GetStateOptionIndex(self.GetState())
 ;		DebugTrace("Entered the running state! " + result)
 ;	EndEvent
 
 	event OnSelectST()
-		consolidateSettings = !(consolidateSettings as bool)
-		SetToggleOptionValueST(consolidateSettings)
+		useSharedSettings = !(useSharedSettings as bool)
+		SetToggleOptionValueST(useSharedSettings)
 		ShowMessage("$AHSE_REOPEN_MSG", false, "$AHSE_OK")
 	endEvent
 
 	event OnDefaultST()
-		consolidateSettings = true
-		SetToggleOptionValueST(consolidateSettings)
+		useSharedSettings = true
+		SetToggleOptionValueST(useSharedSettings)
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_CONSOLIDATED_SETTINGS")
+		SetInfoText("$AHSE_DESC_SHARED_SETTINGS")
 	endEvent
 
 ;	event OnEndState()
@@ -1603,20 +1545,20 @@ state playerBelongingsLoot
 	endEvent
 endState
 
-state questObjectDefinition
+state questObjectScope
 	event OnSelectST()
-		int size = s_questObjectDefinitionArray.length
-		questObjectDefinition = CycleInt(questObjectDefinition, size)
-		SetTextOptionValueST(s_questObjectDefinitionArray[questObjectDefinition])
+		int size = s_questObjectScopeArray.length
+		questObjectScope = CycleInt(questObjectScope, size)
+		SetTextOptionValueST(s_questObjectScopeArray[questObjectScope])
 	endEvent
 
 	event OnDefaultST()
-		questObjectDefinition = 1
-		SetTextOptionValueST(s_questObjectDefinitionArray[questObjectDefinition])
+		questObjectScope = 1
+		SetTextOptionValueST(s_questObjectScopeArray[questObjectScope])
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_QUESTOBJECT_DEFINITION")
+		SetInfoText("$AHSE_DESC_QUESTOBJECT_SCOPE")
 	endEvent
 endState
 
@@ -1732,15 +1674,15 @@ state bossChestGlow
 	endEvent
 endState
 
-state disableInCombat
+state disableDuringCombat
 	event OnSelectST()
-		disableInCombat = !(disableInCombat as bool)
-		SetToggleOptionValueST(disableInCombat)
+		disableDuringCombat = !disableDuringCombat
+		SetToggleOptionValueST(disableDuringCombat)
 	endEvent
 
 	event OnDefaultST()
-		disableInCombat = false
-		SetToggleOptionValueST(disableInCombat)
+		disableDuringCombat = false
+		SetToggleOptionValueST(disableDuringCombat)
 	endEvent
 
 	event OnHighlightST()
@@ -1748,15 +1690,15 @@ state disableInCombat
 	endEvent
 endState
 
-state disableDrawingWeapon
+state disableWhileWeaponIsDrawn
 	event OnSelectST()
-		disableDrawingWeapon = !(disableDrawingWeapon as bool)
-		SetToggleOptionValueST(disableDrawingWeapon)
+		disableWhileWeaponIsDrawn = !disableWhileWeaponIsDrawn
+		SetToggleOptionValueST(disableWhileWeaponIsDrawn)
 	endEvent
 
 	event OnDefaultST()
-		disableDrawingWeapon = false
-		SetToggleOptionValueST(disableDrawingWeapon)
+		disableWhileWeaponIsDrawn = false
+		SetToggleOptionValueST(disableWhileWeaponIsDrawn)
 	endEvent
 
 	event OnHighlightST()
@@ -1764,16 +1706,15 @@ state disableDrawingWeapon
 	endEvent
 endState
 
-state containerAnimation
+state playContainerAnimation
 	event OnSelectST()
-		int size = s_containerAnimationArray.length
-		containerAnimation = CycleInt(containerAnimation, size)
-		SetTextOptionValueST(s_containerAnimationArray[containerAnimation])
+		playContainerAnimation = !playContainerAnimation
+		SetToggleOptionValueST(playContainerAnimation)
 	endEvent
 
 	event OnDefaultST()
-		containerAnimation = 0
-		SetTextOptionValueST(s_containerAnimationArray[containerAnimation])
+		playContainerAnimation = false
+		SetToggleOptionValueST(playContainerAnimation)
 	endEvent
 
 	event OnHighlightST()

@@ -190,6 +190,10 @@
     <None Include="Config\default\septim.tsv" />
     <None Include="Config\default\userlist.tsv" />
     <None Include="exports.def" />
+    <None Include="Scripts\AutoHarvestSE.psc" />
+    <None Include="Scripts\AutoHarvestSE_Events_Alias.psc" />
+    <None Include="Scripts\AutoHarvestSE_HarvestSpell_MGEF.psc" />
+    <None Include="Scripts\AutoHarvestSE_mcm.psc" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CommonLibSSE\CommonLibSSE.vcxproj">

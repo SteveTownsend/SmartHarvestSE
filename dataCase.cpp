@@ -209,6 +209,25 @@ enum FactionFlags
 	kFlag_Vender = 1 << 14,		//  4000
 };
 
+void DataCase::CategorizeNPCDeathItems(void)
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (dhnd)
+	{
+		for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::NPC))
+		{
+			if (!form)
+				continue;
+
+			RE::TESNPC* npc(form->As<RE::TESNPC>());
+			if (!npc || !npc->deathItem)
+				continue;
+
+		}
+	}
+}
+
+
 void DataCase::GetBlockContainerData()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
@@ -315,6 +334,7 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
 	return (lists.blockRefr.insert(refr)).second;
 }
 
@@ -322,6 +342,7 @@ bool DataCase::UnblockReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
 	return lists.blockRefr.erase(refr) > 0;
 }
 
@@ -329,7 +350,32 @@ bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
 	return lists.blockRefr.count(refr) > 0;
+}
+
+bool DataCase::BlockForm(const RE::TESForm* form)
+{
+	if (!form)
+		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	return (lists.blockForm.insert(form)).second;
+}
+
+bool DataCase::UnblockForm(const RE::TESForm* form)
+{
+	if (!form)
+		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	return lists.blockForm.erase(form) > 0;
+}
+
+bool DataCase::IsFormBlocked(const RE::TESForm* form)
+{
+	if (!form)
+		return false;
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	return lists.blockForm.count(form) > 0;
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
@@ -353,6 +399,14 @@ ObjectType DataCase::GetObjectTypeForFormType(RE::FormType formType) const
 	return ObjectType::unknown;
 }
 
+const char* DataCase::GetTranslation(const char* key) const
+{
+	const auto& translation(lists.translations.find(key));
+	if (translation == lists.translations.cend())
+		return nullptr;
+	return translation->second.c_str();
+}
+
 const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
 {
 	return (proj && lists.ammoList.find(proj) != lists.ammoList.end()) ? lists.ammoList[proj] : nullptr;
@@ -363,8 +417,8 @@ const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 	const RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
 	if (produceForm)
 	{
-		const auto matched(m_leveledItemContents.find(produceForm));
-		if (matched != m_leveledItemContents.cend())
+		const auto matched(m_produceFormContents.find(produceForm));
+		if (matched != m_produceFormContents.cend())
 		{
 			return matched->second;
 		}
@@ -374,14 +428,62 @@ const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 
 void DataCase::ListsClear()
 {
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
 	lists.blockRefr.clear();
 	lists.arrowCheck.clear();
+
+	// reset blocked forms to just the user's list
+	lists.blockForm = lists.userBlockedForm;
 }
 
-void DataCase::BuildList()
+bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 {
-	if (!GetTSV(&lists.blockForm, "blocklist.tsv"))
-		GetTSV(&lists.blockForm, "default\\blocklist.tsv");
+	bool skip(false);
+	RE::NiPoint3 pos = refr->GetPosition();
+	if (pos == RE::NiPoint3())
+	{
+#if _DEBUG
+		_MESSAGE("err %0.2f", pos);
+#endif
+		BlockReference(refr);
+		skip = true;
+	}
+
+	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	if (lists.arrowCheck.count(refr) == 0)
+	{
+#if _DEBUG
+		_MESSAGE("pick %0.2f", pos);
+#endif
+		lists.arrowCheck.insert(std::make_pair(refr, pos));
+		skip = true;
+	}
+	else
+	{
+		RE::NiPoint3 prev = lists.arrowCheck.at(refr);
+		if (prev != pos)
+		{
+#if _DEBUG
+			_MESSAGE("moving %0.2f  prev:%0.2f", pos, prev);
+#endif
+			lists.arrowCheck[refr] = pos;
+			skip = true;
+		}
+		else
+		{
+#if _DEBUG
+			_MESSAGE("catch %0.2f", pos);
+#endif
+			lists.arrowCheck.erase(refr);
+		}
+	}
+	return skip;
+}
+
+void DataCase::CategorizeLootables()
+{
+	if (!GetTSV(&lists.userBlockedForm, "blocklist.tsv"))
+		GetTSV(&lists.userBlockedForm, "default\\blocklist.tsv");
 
 	GetAmmoData();
 
@@ -390,7 +492,8 @@ void DataCase::BuildList()
 	SetObjectTypeByKeywords();
 
 	// consumable item categorization is useful for Activator, Flora, Tree and direct access
-	CategorizeConsumables();
+	CategorizeConsumables<RE::AlchemyItem>();
+	CategorizeConsumables<RE::IngredientItem>();
 
 	CategorizeByKeyword<RE::TESObjectACTI>();
 	CategorizeByKeyword<RE::TESObjectMISC>();
@@ -400,56 +503,11 @@ void DataCase::BuildList()
 	CategorizeByIngredient<RE::TESFlora>();
 	CategorizeByIngredient<RE::TESObjectTREE>();
 
+	// NPC Death Items contain lootable objects
+	CategorizeNPCDeathItems();
+
 	GetBlockContainerData();
 	GetTranslationData();
-}
-
-void DataCase::CategorizeConsumables()
-{
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	if (!dhnd)
-		return;
-	for (RE::TESForm* form : dhnd->GetFormArray(RE::AlchemyItem::FORMTYPE))
-	{
-		RE::AlchemyItem* consumable(form->As<RE::AlchemyItem>());
-		if (!consumable)
-		{
-#if _DEBUG
-			_MESSAGE("Skipping non-consumable form 0x%08x", form->formID);
-#endif
-			continue;
-		}
-
-		RE::TESFullName* pFullName = form->As<RE::TESFullName>();
-		if (!pFullName || pFullName->GetFullNameLength() == 0)
-		{
-#if _DEBUG
-			_MESSAGE("Skipping unnamed form 0x%08x", form->formID);
-#endif
-			continue;
-		}
-
-		std::string formName(pFullName->GetFullName());
-		if (GetFormObjectType(form->formID) != ObjectType::unknown)
-		{
-#if _DEBUG
-			_MESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), form->formID);
-#endif
-			continue;
-		}
-
-		const static RE::FormID drinkSound = 0x0B6435;
-		ObjectType objectType(ObjectType::unknown);
-		if (consumable->IsFood())
-			objectType = (consumable->data.consumptionSound && consumable->data.consumptionSound->formID == drinkSound) ? ObjectType::drink : ObjectType::food;
-		else
-			objectType = (consumable->IsPoison()) ? ObjectType::poison : ObjectType::potion;
-
-#if _DEBUG
-		_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), form->formID, GetObjectTypeName(objectType).c_str());
-#endif
-		m_objectTypeByForm[form->formID] = objectType;
-	}
 }
 
 void DataCase::SetObjectTypeByKeywords()
@@ -521,33 +579,50 @@ template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectARMO>()
 	return ObjectType::armor;
 }
 
-// ingredient nullptr indicates this critter is pending resolution
-bool DataCase::SetIngredientForCritter(RE::TESForm* critter, RE::TESForm* ingredient)
+template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::AlchemyItem* consumable)
 {
-	concurrency::critical_section::scoped_lock guard(m_critterIngredientLock);
-	if (!ingredient)
+	const static RE::FormID drinkSound = 0x0B6435;
+	ObjectType objectType(ObjectType::unknown);
+	if (consumable->IsFood())
+		objectType = (consumable->data.consumptionSound && consumable->data.consumptionSound->formID == drinkSound) ? ObjectType::drink : ObjectType::food;
+	else
+		objectType = (consumable->IsPoison()) ? ObjectType::poison : ObjectType::potion;
+	return objectType;
+}
+
+template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem* consumable)
+{
+	return ObjectType::ingredients;
+}
+
+
+// ingredient nullptr indicates this Producer is pending resolution
+bool DataCase::SetLootableForProducer(RE::TESForm* producer, RE::TESForm* lootable)
+{
+	concurrency::critical_section::scoped_lock guard(m_producerIngredientLock);
+	if (!lootable)
 	{
 #if _DEBUG
-		_MESSAGE("Critter %s/0x%08x pending resolution to ingredient", critter->GetName(), critter->formID);
+		_MESSAGE("Producer %s/0x%08x needs resolving to lootable", producer->GetName(), producer->formID);
 #endif
 		// return value signals entry pending resolution found/not found
-		return m_critterIngredient.insert(std::make_pair(critter->As<RE::TESObjectACTI>(), nullptr)).second;
+		return m_producerLootable.insert(std::make_pair(producer, nullptr)).second;
 	}
 	else
 	{
 #if _DEBUG
-		_MESSAGE("Critter %s/0x%08x has ingredient %s/0x%08x", critter->GetName(), critter->formID, ingredient->GetName(), ingredient->formID);
+		_MESSAGE("Producer %s/0x%08x has lootable %s/0x%08x", producer->GetName(), producer->formID, lootable->GetName(), lootable->formID);
 #endif
-		m_critterIngredient[critter->As<RE::TESObjectACTI>()] = ingredient->As<RE::IngredientItem>();
+		m_producerLootable[producer] = lootable;
 		return true;
 	}
 }
 
-const RE::IngredientItem* DataCase::GetIngredientForCritter(RE::TESObjectACTI* activator) const
+const RE::TESForm* DataCase::GetLootableForProducer(RE::TESForm* producer) const
 {
-	concurrency::critical_section::scoped_lock guard(m_critterIngredientLock);
-	const auto matched(m_critterIngredient.find(activator));
-	if (matched != m_critterIngredient.cend())
+	concurrency::critical_section::scoped_lock guard(m_producerIngredientLock);
+	const auto matched(m_producerLootable.find(producer));
+	if (matched != m_producerLootable.cend())
 		return matched->second;
 	return nullptr;
 }
@@ -594,30 +669,28 @@ void DataCase::CategorizeStatics()
 }
 
 template <>
-ObjectType DataCase::IngredientObjectType(const RE::TESFlora* form)
+ObjectType DataCase::DefaultIngredientObjectType(const RE::TESFlora* form)
 {
 	return ObjectType::flora;
 }
 
 template <>
-ObjectType DataCase::IngredientObjectType(const RE::TESObjectTREE* form)
+ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE* form)
 {
 	return ObjectType::food;
 }
 
-DataCase::LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESProduceForm* produceForm,
-	const RE::TESLevItem* rootItem, const std::string& targetName) : 
-	m_produceForm(produceForm), m_rootItem(rootItem), m_contents(nullptr), m_objectType(ObjectType::unknown), m_targetName(targetName)
+void DataCase::LeveledItemCategorizer::CategorizeContents()
+{
+	ProcessContentsAtLevel(m_rootItem);
+}
+
+DataCase::LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem, const std::string& targetName) : 
+	m_rootItem(rootItem), m_targetName(targetName)
 {
 }
 
-std::pair<RE::TESForm*, ObjectType>  DataCase::LeveledItemCategorizer::FindContents()
-{
-	FindContentsAtLevel(m_rootItem);
-	return std::make_pair(m_contents, m_objectType);
-}
-
-void DataCase::LeveledItemCategorizer::FindContentsAtLevel(const RE::TESLevItem* leveledItem)
+void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
 {
 	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
 	{
@@ -628,37 +701,83 @@ void DataCase::LeveledItemCategorizer::FindContentsAtLevel(const RE::TESLevItem*
 		RE::TESLevItem* leveledItem(itemForm->As<RE::TESLevItem>());
 		if (leveledItem)
 		{
-			FindContentsAtLevel(leveledItem);
+			ProcessContentsAtLevel(leveledItem);
 			continue;
 		}
 		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
 		if (itemType != ObjectType::unknown)
 		{
-			if (!m_contents)
-			{
+			ProcessContentLeaf(itemForm, itemType);
+		}
+	}
+}
+
+DataCase::ProduceFormCategorizer::ProduceFormCategorizer(
+	const RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName) :
+	LeveledItemCategorizer(rootItem, targetName), m_produceForm(produceForm), m_contents(nullptr)
+{
+}
+
+void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType)
+{
+	if (!m_contents)
+	{
 #if _DEBUG
-				_MESSAGE("Target %s/0x%08x has contents type %s in form %s/0x%08x", m_targetName.c_str(), m_rootItem->formID,
-					GetObjectTypeName(itemType).c_str(), itemForm->GetName(), itemForm->formID);
+		_MESSAGE("Target %s/0x%08x has contents type %s in form %s/0x%08x", m_targetName.c_str(), m_rootItem->formID,
+			GetObjectTypeName(itemType).c_str(), itemForm->GetName(), itemForm->formID);
 #endif
-				m_contents = itemForm;
-				m_objectType = itemType;
-			}
-			else if (m_contents == itemForm)
+		if (!DataCase::GetInstance()->m_produceFormContents.insert(std::make_pair(m_produceForm, itemForm)).second)
+		{
+#if _DEBUG
+			_MESSAGE("Leveled Item %s/0x%08x contents already present", m_targetName, m_rootItem->formID);
+#endif
+		}
+		else
+		{
+#if _DEBUG
+			_MESSAGE("Leveled Item %s/0x%08x has contents %s/0x%08x",
+				m_targetName, m_rootItem->formID, itemForm->GetName(), itemForm->formID);
+#endif
+			if (!DataCase::GetInstance()->m_objectTypeByForm.insert(std::make_pair(itemForm->formID, itemType)).second)
 			{
 #if _DEBUG
-				_MESSAGE("Target %s/0x%08x contents type %s already recorded", m_targetName.c_str(), m_rootItem->formID,
-					GetObjectTypeName(itemType).c_str());
+				_MESSAGE("Leveled Item %s/0x%08x contents %s/0x%08x already has an ObjectType",
+					m_targetName, m_rootItem->formID, itemForm->GetName(), itemForm->formID);
 #endif
 			}
 			else
 			{
 #if _DEBUG
-				_MESSAGE("Target %s/0x%08x contents type %s already stored under different form %s/0x%08x", m_targetName.c_str(), m_rootItem->formID,
-					GetObjectTypeName(itemType).c_str(), m_contents->GetName(), m_contents->formID);
+				_MESSAGE("Leveled Item %s/0x%08x not stored", m_targetName, m_rootItem->formID);
 #endif
 			}
+			m_contents = itemForm;
 		}
 	}
-
+	else if (m_contents == itemForm)
+	{
+#if _DEBUG
+		_MESSAGE("Target %s/0x%08x contents type %s already recorded", m_targetName.c_str(), m_rootItem->formID,
+			GetObjectTypeName(itemType).c_str());
+#endif
+	}
+	else
+	{
+#if _DEBUG
+		_MESSAGE("Target %s/0x%08x contents type %s already stored under different form %s/0x%08x", m_targetName.c_str(), m_rootItem->formID,
+			GetObjectTypeName(itemType).c_str(), m_contents->GetName(), m_contents->formID);
+#endif
+	}
 }
 
+#if 0
+DataCase::NPCDeathItemCategorizer::NPCDeathItemCategorizer(
+	const RE::TESNPC* npc, const RE::TESLevItem* rootItem, const std::string& targetName) :
+	LeveledItemCategorizer(rootItem, targetName), m_npc(npc)
+{
+}
+
+void DataCase::NPCDeathItemCategorizer::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType)
+{
+}
+#endif

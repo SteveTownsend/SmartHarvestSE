@@ -134,7 +134,7 @@ void DumpItemVW(const TESFormHelper& itemEx)
 void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 {
 #if _DEBUG
-	const RE::TESForm* target(refr.GetIngredient() ? refr.GetIngredient() : refr.m_ref->data.objectReference);
+	const RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.m_ref->data.objectReference);
 	_MESSAGE("0x%08x 0x%02x(%02d) [%s] - %s", target->formID, target->formType, target->formType, refr.m_ref->GetName(), typeName);
 
 	TESFormHelper itemEx(target);

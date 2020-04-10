@@ -14,6 +14,8 @@
 
 #include "CommonLibSSE/include/RE/BGSProjectile.h"
 
+#include "skse64/GameReferences.h"
+
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
@@ -54,7 +56,7 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 	return ashHandle.get().get();
 }
 
-TESObjectREFRHelper::TESObjectREFRHelper(const RE::TESObjectREFR* ref) : m_ref(ref), m_ingredient(nullptr)
+TESObjectREFRHelper::TESObjectREFRHelper(const RE::TESObjectREFR* ref) : m_ref(ref), m_lootable(nullptr)
 {
 	m_objectType = ClassifyType(m_ref);
 	m_typeName = GetObjectTypeName(m_objectType);
@@ -77,10 +79,6 @@ bool TESObjectREFRHelper::IsQuestItem(const bool requireFullQuestFlags)
 
 	RE::RefHandle handle;
 	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(m_ref));
-	/* TODO CommonLibSSE logic unclear. Maybe does not matter as LookupReferenceByHandle will fail if invalid?
-	if (handle == *(g_invalidRefHandle.GetPtr()))
-		return false;
-	*/
 
 	RE::NiPointer<RE::TESObjectREFR> targetRef;
 	RE::LookupReferenceByHandle(handle, targetRef);
@@ -147,25 +145,25 @@ bool TESObjectREFRHelper::IsPlayerOwned()
 	return false;
 }
 
-const RE::IngredientItem* TESObjectREFRHelper::GetIngredient() const
+const RE::TESForm* TESObjectREFRHelper::GetLootable() const
 {
-	return m_ingredient;
+	return m_lootable;
 }
 
-void TESObjectREFRHelper::SetIngredient(const RE::IngredientItem* ingredient)
+void TESObjectREFRHelper::SetLootable(const RE::TESForm* lootable)
 {
-	m_ingredient = ingredient;
+	m_lootable = lootable;
 }
 
 double TESObjectREFRHelper::GetWorth(void) const
 {
-	TESFormHelper itemEx(m_ingredient ? m_ingredient : m_ref->data.objectReference);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->data.objectReference);
 	return itemEx.GetWorth();
 }
 
 double TESObjectREFRHelper::GetWeight(void) const
 {
-	TESFormHelper itemEx(m_ingredient ? m_ingredient : m_ref->data.objectReference);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->data.objectReference);
 	return itemEx.GetWeight();
 }
 
@@ -190,7 +188,7 @@ SInt16 TESObjectREFRHelper::GetItemCount()
 		return 1;
 	if (!m_ref->data.objectReference)
 		return 1;
-	if (m_ingredient)
+	if (m_lootable)
 		return 1;
 	if (m_objectType == ObjectType::oreVein)
 	{

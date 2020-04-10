@@ -29,6 +29,8 @@ public:
 			s_pInstance = new BasketFile();
 		return s_pInstance;
 	}
+
+	const std::unordered_set<RE::TESForm*> GetList(listnum list_number) const;
 private:
 	RE::BGSListForm* formList[MAX];
 	std::unordered_set<RE::TESForm*> list[MAX];

@@ -4,8 +4,7 @@
 
 inline bool IsBookObject(ObjectType objType)
 {
-	return objType >= ObjectType::books && objType
-		<= ObjectType::skillbookRead;
+	return objType >= ObjectType::books && objType <= ObjectType::skillbookRead;
 }
 
 class TESObjectREFRHelper : public IHasValueWeight
@@ -22,8 +21,8 @@ public:
 	std::vector<RE::TESObjectREFR*> GetLinkedRefs(RE::BGSKeyword* keyword);
 	bool IsPlayerOwned(void);
 
-	const RE::IngredientItem* GetIngredient() const;
-	void SetIngredient(const RE::IngredientItem* ingredient);
+	const RE::TESForm* GetLootable() const;
+	void SetLootable(const RE::TESForm* lootable);
 	virtual double GetWeight(void) const override;
 	virtual double GetWorth(void) const override;
 
@@ -34,7 +33,7 @@ protected:
 	virtual UInt32 GetFormID() const;
 
 private:
-	const RE::IngredientItem* m_ingredient;
+	const RE::TESForm* m_lootable;
 };
 
 class ActorHelper

@@ -37,6 +37,7 @@ public:
 	static bool IsPossiblePlayerHouse(const RE::BGSLocation* location);
 	static bool UnlockPossiblePlayerHouse(const RE::BGSLocation* location);
 
+	static void ResetExcludedLocations();
 	static void AddLocationToExcludeList(const RE::TESForm* location);
 	static void DropLocationFromExcludeList(const RE::TESForm* location);
 
@@ -88,6 +89,7 @@ private:
 	static RE::BGSKeyword* m_playerHouseKeyword;
 	static bool m_carryAdjustedForCombat;
 	static bool m_carryAdjustedForPlayerHome;
+	static float m_currentCarryWeightChange;
 
 	static const BSFixedString critterIngredientEvent;
 	static const BSFixedString autoHarvestEvent;

@@ -108,7 +108,7 @@ struct CanLoot_t {
 #endif
 			return false;
 		}
-		if (data->lists.blockForm.count(refr->data.objectReference))
+		if (data->IsFormBlocked(refr->data.objectReference))
 		{
 #if _DEBUG
 			_DMESSAGE("skip blocked REFR base form 0x%08x", formID);
@@ -128,7 +128,7 @@ struct CanLoot_t {
 		RE::TESFullName* fullName = refr->data.objectReference->As<RE::TESFullName>();
 		if (!fullName || fullName->GetFullNameLength() == 0)
 		{
-			data->lists.blockForm.insert(refr->data.objectReference);
+			data->BlockForm(refr->data.objectReference);
 #if _DEBUG
 			_DMESSAGE("block REFR with blank name 0x%08x", formID);
 #endif
@@ -152,17 +152,15 @@ struct CanLoot_t {
 			return false;
 		}
 
+#if _DEBUG
+		_DMESSAGE("lootable candidate 0x%08x", formID);
+#endif
 		return true;
 	}
 } CanLoot;
 
 UInt32 GridCellArrayHelper::GetReferences(std::vector<RE::TESObjectREFR*> *out)
 {
-	UInt32 count(0);
 	TESObjectCELLHelper parent(RE::PlayerCharacter::GetSingleton()->parentCell);
-	if (true || parent.m_cell->IsInteriorCell())	/* confine to player cell at present */
-	{
-		count += parent.GetReferences(out, m_radius, CanLoot);
-	}
- 	return count;
+	return parent.GetReferences(out, m_radius, CanLoot);
 }

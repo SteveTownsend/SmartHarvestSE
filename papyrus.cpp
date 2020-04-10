@@ -210,7 +210,7 @@ namespace papyrus
 
 	void SetIngredientForCritter(RE::StaticFunctionTag* base, RE::TESForm* critter, RE::TESForm* ingredient)
 	{
-		DataCase::GetInstance()->SetIngredientForCritter(critter, ingredient);
+		DataCase::GetInstance()->SetLootableForProducer(critter, ingredient);
 	}
 
 	SInt32 GetCloseReferences(RE::StaticFunctionTag* base, SInt32 type1)
@@ -275,39 +275,43 @@ namespace papyrus
 		DataCase::GetInstance()->ListsClear();
 		SearchTask::UnlockAll();
 	}
-	void SyncUserlist(RE::StaticFunctionTag* base)
+	void SyncUserList(RE::StaticFunctionTag* base)
 	{
 		BasketFile::GetSingleton()->SyncList(BasketFile::USERLIST);
 	}
-	bool SaveUserlist(RE::StaticFunctionTag* base)
+	bool SaveUserList(RE::StaticFunctionTag* base)
 	{
 		return BasketFile::GetSingleton()->SaveFile(BasketFile::USERLIST, "userlist.tsv");
 	}
-	bool LoadUserlist(RE::StaticFunctionTag* base)
+	bool LoadUserList(RE::StaticFunctionTag* base)
 	{
 		return BasketFile::GetSingleton()->LoadFile(BasketFile::USERLIST, "userlist.tsv");
 	}
 
-	void SyncExcludelist(RE::StaticFunctionTag* base)
+	void SyncExcludeList(RE::StaticFunctionTag* base)
 	{
+		SearchTask::ResetExcludedLocations();
+
+		// Add loaded locations to the list of exclusions
 		BasketFile::GetSingleton()->SyncList(BasketFile::EXCLUDELIST);
+		for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::EXCLUDELIST))
+		{
+			SearchTask::AddLocationToExcludeList(exclusion);
+		}
 	}
-	bool SaveExcludelist(RE::StaticFunctionTag* base)
+	bool SaveExcludeList(RE::StaticFunctionTag* base)
 	{
 		return BasketFile::GetSingleton()->SaveFile(BasketFile::EXCLUDELIST, "excludelist.tsv");
 	}
-	bool LoadExcludelist(RE::StaticFunctionTag* base)
+	bool LoadExcludeList(RE::StaticFunctionTag* base)
 	{
 		return BasketFile::GetSingleton()->LoadFile(BasketFile::EXCLUDELIST, "excludelist.tsv");
 	}
 
 	RE::BSFixedString GetTranslation(RE::StaticFunctionTag* base, RE::BSFixedString key)
 	{
-		std::string str = key.c_str();
 		DataCase* data = DataCase::GetInstance();
-		if (data->lists.translations.count(str) == 0)
-			return nullptr;
-		return data->lists.translations[str].c_str();
+		return data->GetTranslation(key.c_str());
 	}
 
 	RE::BSFixedString Replace(RE::StaticFunctionTag* base, RE::BSFixedString str, RE::BSFixedString target, RE::BSFixedString replacement)
@@ -369,13 +373,13 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 
 	papyrus::RegisterFunction(a_vm, "SetIngredientForCritter", AHSE_NAME, papyrus::SetIngredientForCritter);
 
-	papyrus::RegisterFunction(a_vm, "SyncUserlist", AHSE_NAME, papyrus::SyncUserlist);
-	papyrus::RegisterFunction(a_vm, "SaveUserlist", AHSE_NAME, papyrus::SaveUserlist);
-	papyrus::RegisterFunction(a_vm, "LoadUserlist", AHSE_NAME, papyrus::LoadUserlist);
+	papyrus::RegisterFunction(a_vm, "SyncUserListWithPlugin", AHSE_NAME, papyrus::SyncUserList);
+	papyrus::RegisterFunction(a_vm, "SaveUserList", AHSE_NAME, papyrus::SaveUserList);
+	papyrus::RegisterFunction(a_vm, "LoadUserList", AHSE_NAME, papyrus::LoadUserList);
 
-	papyrus::RegisterFunction(a_vm, "SyncExcludelist", AHSE_NAME, papyrus::SyncExcludelist);
-	papyrus::RegisterFunction(a_vm, "SaveExcludelist", AHSE_NAME, papyrus::SaveExcludelist);
-	papyrus::RegisterFunction(a_vm, "LoadExcludelist", AHSE_NAME, papyrus::LoadExcludelist);
+	papyrus::RegisterFunction(a_vm, "SyncExcludeListWithPlugin", AHSE_NAME, papyrus::SyncExcludeList);
+	papyrus::RegisterFunction(a_vm, "SaveExcludeList", AHSE_NAME, papyrus::SaveExcludeList);
+	papyrus::RegisterFunction(a_vm, "LoadExcludeList", AHSE_NAME, papyrus::LoadExcludeList);
 
 	papyrus::RegisterFunction(a_vm, "AllowSearch", AHSE_NAME, papyrus::AllowSearch);
 	papyrus::RegisterFunction(a_vm, "DisallowSearch", AHSE_NAME, papyrus::DisallowSearch);

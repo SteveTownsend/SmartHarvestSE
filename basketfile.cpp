@@ -240,6 +240,11 @@ void BasketFile::SyncList(listnum list_number)
 
 }
 
+const std::unordered_set<RE::TESForm*> BasketFile::GetList(listnum list_number) const
+{
+	return list[list_number];
+}
+
 bool BasketFile::IsinList(listnum list_number, const RE::TESForm * pickupform) const
 {
 	return std::find(formList[list_number]->forms.cbegin(),

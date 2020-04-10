@@ -1,13 +1,12 @@
 Scriptname AutoHarvestSE_Events_Alias extends ReferenceAlias  
 
 import AutoHarvestSE
+import AutoHarvestSE_mcm
 GlobalVariable Property g_EnableLaunched Auto
 
 Keyword property CastKwd auto
 
 Message property userlist_message auto
-Formlist property userlist_form auto
-Formlist property excludelist_form auto
 Message property house_check_message auto
 Message property to_list_message auto
 Container Property list_nametag auto
@@ -26,8 +25,89 @@ int getType_kFlora = 39
 float g_interval = 0.5
 float min_interval = 0.1
 
+Formlist Property userlist_form auto
+Formlist Property excludelist_form auto
 int location_type_user = 1
 int location_type_excluded = 2
+
+Function SyncUserList()
+	SyncUserListWithPlugin()
+endFunction
+
+Function SyncExcludeList()
+	SyncExcludeListWithPlugin()
+	; ensure locations in the ExcludeList Form are present in the plugin's list
+	int index = excludelist_form.GetSize()
+	int current = 0
+	while (current < index)
+        Form nextLocation = excludelist_form.GetAt(current)
+        if (nextLocation)
+        	AddLocationToList(location_type_excluded, nextLocation)
+        endif
+		current += 1
+	endwhile
+
+endFunction
+
+function ManageList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
+	if (!m_list || !m_item)
+		return
+	endif
+
+	if(m_list.Find(m_item) != -1)
+		string translation = GetTranslation(trans_remove)
+		if (translation)
+			string msg = Replace(translation, "{ITEMNAME}", m_item.GetName())
+			if (msg)
+				Debug.Notification(msg)
+			endif
+		endif
+		m_list.RemoveAddedForm(m_item)
+		DropLocationFromList(location_type, m_item)
+	else
+		string translation = GetTranslation(trans_add)
+		if (translation)
+			string msg = Replace(translation, "{ITEMNAME}", m_item.GetName())
+			if (msg)
+				Debug.Notification(msg)
+			endif
+		endif
+		m_list.AddForm(m_item)
+		AddLocationToList(location_type, m_item)
+	endif
+endFunction
+
+function ManageUserList(Form itemForm)
+	ManageList(userlist_form, itemForm, location_type_user, "$AHSE_USERLIST_ADDED", "$AHSE_USERLIST_REMOVED")
+endFunction
+
+function MoveFromExcludeToUserList(Form itemForm)
+	if (excludelist_form.find(itemForm) != -1)
+		int result = ShowMessage(to_list_message, "$AHSE_MOVE_TO_USERLIST", "{ITEMNAME}", itemForm.GetName())
+		if (result == 0)
+			excludelist_form.removeAddedForm(itemForm)
+		else
+			return
+		endif
+	endif
+	ManageUserList(itemForm)
+endFunction
+
+function MoveFromUserToExcludeList(Form itemForm)
+	if (userlist_form.find(itemForm) != -1)
+		int result = ShowMessage(to_list_message, "$AHSE_MOVE_TO_EXCLUDELIST", "{ITEMNAME}", itemForm.GetName())
+		if (result == 0)
+			userlist_form.removeAddedForm(itemForm)
+		else
+			return
+		endif
+	endif
+	ManageExcludeList(itemForm)
+endFunction
+
+function ManageExcludeList(Form itemForm)
+	ManageList(excludelist_form, itemForm, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
+endFunction
 
 Event OnInit()
 endEvent
@@ -44,7 +124,7 @@ Function ApplySetting()
 
 	int s_pauseKey = GetConfig_Pausekey()
 	if (s_pauseKey != 0)
-		 (s_pauseKey)
+		 RegisterForKey(s_pauseKey)
 	endif
 	
 	int s_userlistKey = GetConfig_Userlistkey()
@@ -68,8 +148,8 @@ Function ApplySetting()
 		EndIf
   	endIf
 	
-	SyncUserlist()
-	SyncExcludelist()
+	SyncUserList()
+	SyncExcludeList()
 	
 	utility.waitMenumode(g_interval)
 
@@ -77,7 +157,7 @@ Function ApplySetting()
 	bool isEnabled = existingFlags == 1 || existingFlags == 3
 	string str = sif(isEnabled, "$AHSE_ENABLE", "$AHSE_DISABLE")
 	Debug.Notification(str)
-	; reset blocked lists to allow setting updates to referesh their state
+	; reset blocked lists to allow recheck vs revised settings
 	UnblockEverything()
 	if (isEnabled)
 		AllowSearch()
@@ -156,53 +236,26 @@ Event OnKeyUp(Int keyCode, Float holdTime)
 			endif
 			
 			if (result == 0)
-				if (excludelist_form.find(itemForm) != -1)
-					result = ShowMessage(to_list_message, "$AHSE_MOVE_TO_USERLIST", "{ITEMNAME}", itemForm.GetName())
-					if (result == 0)
-						excludelist_form.removeAddedForm(itemForm)
-					else
-						return
-					endif
-				endif
-				ManageList(userlist_form, itemForm, location_type_user, "$AHSE_USERLIST_ADDED", "$AHSE_USERLIST_REMOVED")
+				MoveFromExcludeToUserList(itemForm)
 			elseIf (result == 1)
-				if (userlist_form.find(itemForm) != -1)
-					result = ShowMessage(to_list_message, "$AHSE_MOVE_TO_EXCLUDELIST", "{ITEMNAME}", itemForm.GetName())
-					if (result == 0)
-						userlist_form.removeAddedForm(itemForm)
-					else
-						return
-					endif
-				endif
-				ManageList(excludelist_form, itemForm, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
+				MoveFromUserToExcludeList(itemForm)
 			EndIf
-			SyncExcludelist()
-			SyncUserlist()
+			SyncExcludeList()
+			SyncUserList()
 		endif
 	endif
 endEvent
 
-
-bool Function IsLocationInExcludelist()
-	bool result = false
-	form locForm = Game.GetPlayer().GetCurrentLocation() as form
-	form cellForm = Game.GetPlayer().GetParentCell() as form
-	if (locForm && excludelist_form.Find(locForm) != -1)
-		result = true
-	elseif (cellForm && excludelist_form.Find(locForm) != -1)
-		result = true
-	endif
-	return result
-EndFunction
-
-; C++ code ensures that this will only ever be invoked once for a given location
+; C++ code ensures that this will only ever be invoked once for a given location, and not if
+; it is already excluded
 Event OnPlayerHouseCheck(Form currentLocation)
-	int result = ShowMessage(house_check_message, "$AHSE_HOUSE_CHECK")
-	;DebugTrace("player house showmessage " + result)
-	if (result == 0 && !excludelist_form.HasForm(currentLocation))
-    	;DebugTrace("player house added to excluded list")
-		ManageList(excludelist_form, currentLocation, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
-	endif
+	; if already excluded no need to check
+    int result = ShowMessage(house_check_message, "$AHSE_HOUSE_CHECK")
+    ;DebugTrace("player house showmessage " + result)
+    if (result == 0)
+   	    ;DebugTrace("player house added to excluded list")
+	    ManageExcludeList(currentLocation)
+    endif
 	;DebugTrace("player house request unlocked")
 	UnlockPossiblePlayerHouse(currentLocation)
 endEvent
@@ -228,76 +281,69 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 	form baseForm = akTarget.GetBaseObject()
 
 	if (IsBookObject(itemType))
-		if (!IsLocationInExcludelist())
-			akActivator.AddItem(akTarget, count, true)
-		endif
+		akActivator.AddItem(akTarget, count, true)
 	elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
 		; no-op but must still unlock
 	elseif (itemType == objType_Mine)
 		;DebugTrace("Harvesting Ore")
-		if (!IsLocationInExcludelist())
-    		;DebugTrace("Ore location valid")
-			MineOreScript oreScript = akTarget as MineOreScript
-			if (oreScript)
-				; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
-				int remaining = oreScript.ResourceCountCurrent
-				if (remaining == -1)
-        		    ;DebugTrace("Vein not yet initialized, start mining")
-        		else
-        		    ;DebugTrace("Vein has ore available: " + remaining)
-        		endif
+		MineOreScript oreScript = akTarget as MineOreScript
+		if (oreScript)
+			; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
+			int remaining = oreScript.ResourceCountCurrent
+			if (remaining == -1)
+       		    ;DebugTrace("Vein not yet initialized, start mining")
+       		else
+       		    ;DebugTrace("Vein has ore available: " + remaining)
+       		endif
 
-				int harvested = 0
-				; 'remaining' is set to -1 before the vein is initialized
-				while (remaining != 0 && harvested < count)
-    				;DebugTrace("Trigger harvesting")
-					oreScript.giveOre()
-					harvested = harvested + 1
-					remaining = oreScript.ResourceCountCurrent
-					;DebugTrace("Ore harvested, amount remaining: " + remaining)
-				endwhile
-				;DebugTrace("Done harvesting")
-			endif
-		endif	
+			int harvested = 0
+			; 'remaining' is set to -1 before the vein is initialized
+			while (remaining != 0 && harvested < count)
+   				;DebugTrace("Trigger harvesting")
+				oreScript.giveOre()
+				harvested = harvested + 1
+				remaining = oreScript.ResourceCountCurrent
+				;DebugTrace("Ore harvested, amount remaining: " + remaining)
+			endwhile
+			;DebugTrace("Done harvesting")
+		endif
 		; don't try to re-harvest excluded, depleted or malformed vein again until we revisit the cell
 		BlockReference(akTarget)
 
 	elseif (!akTarget.IsActivationBlocked())
-		if (!IsLocationInExcludelist())
-			if (itemType == objType_Flora)
-				if (ActivateEx(akTarget, akActivator, silent) && (greenThumbPerk && akActivator.HasPerk(greenThumbPerk)) as bool)
-					float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
-					int countPP = ((count * greenThumbValue) - count) as int
-					if (countPP >= 1)
-						akActivator.AddItem(baseForm, countPP, true)
-					endif
+		if (itemType == objType_Flora)
+			if (ActivateEx(akTarget, akActivator, silent) && (greenThumbPerk && akActivator.HasPerk(greenThumbPerk)) as bool)
+				float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
+				int countPP = ((count * greenThumbValue) - count) as int
+				if (countPP >= 1)
+					akActivator.AddItem(baseForm, countPP, true)
 				endif
-			elseif (itemType == objType_Critter)
-				ActivateEx(akTarget, akActivator, silent)
-			elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
-				ActivateEx(akTarget, akActivator, silent)
-			else
-				if (ActivateEx(akTarget, akActivator, false) && !silent)
-					string activateMsg = none
-					if (count >= 2)
-						string translation = GetTranslation("$AHSE_ACTIVATE(COUNT)_MSG")
-						
-						string[] targets = New String[2]
-						targets[0] = "{ITEMNAME}"
-						targets[1] = "{COUNT}"
+			endif
+		elseif (itemType == objType_Critter)
+			ActivateEx(akTarget, akActivator, silent)
+		elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
+			ActivateEx(akTarget, akActivator, silent)
+		else
+			if (ActivateEx(akTarget, akActivator, false) && !silent)
+				string activateMsg = none
+				if (count >= 2)
+					string translation = GetTranslation("$AHSE_ACTIVATE(COUNT)_MSG")
+					
+					string[] targets = New String[2]
+					targets[0] = "{ITEMNAME}"
+					targets[1] = "{COUNT}"
 
-						string[] replacements = New String[2]
-						replacements[0] = baseForm.GetName()
-						replacements[1] = count as string
-						
-						activateMsg = ReplaceArray(translation, targets, replacements)
-					else
-						string translation = GetTranslation("$AHSE_ACTIVATE_MSG")
-						activateMsg = Replace(translation, "{ITEMNAME}", baseForm.GetName())
-					endif
-					if (activateMsg)
-						Debug.Notification(activateMsg)
-					endif
+					string[] replacements = New String[2]
+					replacements[0] = baseForm.GetName()
+					replacements[1] = count as string
+					
+					activateMsg = ReplaceArray(translation, targets, replacements)
+				else
+					string translation = GetTranslation("$AHSE_ACTIVATE_MSG")
+					activateMsg = Replace(translation, "{ITEMNAME}", baseForm.GetName())
+				endif
+				if (activateMsg)
+					Debug.Notification(activateMsg)
 				endif
 			endif
 		endif
@@ -320,24 +366,18 @@ endEvent
 
 Event OnObjectGlow(ObjectReference akTargetRef, int duration)
 	;DebugTrace("------------ Event OnObjectGlow " + akTargetRef.GetDisplayName())
-
-	if (!IsLocationInExcludelist())
-		EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
-		if (effShader)
-			; play forever - C++ code will tidy up when out of range
-			effShader.Play(akTargetRef, duration)
-		endif
+	EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
+	if (effShader)
+		; play forever - C++ code will tidy up when out of range
+		effShader.Play(akTargetRef, duration)
 	endif
 endEvent
 
 Event OnObjectGlowStop(ObjectReference akTargetRef)
 	;DebugTrace("------------ Event OnObjectGlowStop " + akTargetRef.GetDisplayName())
-
-	if (!IsLocationInExcludelist())
-		EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
-		if (effShader)
-			effShader.Stop(akTargetRef)
-		endif
+	EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
+	if (effShader)
+		effShader.Stop(akTargetRef)
 	endif
 endEvent
 

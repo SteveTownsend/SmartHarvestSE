@@ -21,22 +21,13 @@ public:
 
 	typedef std::unordered_set<const RE::TESForm*> FormCategory;
 
-	struct listData
-	{
-		std::unordered_map<std::string, std::string> translations;
-
-		std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
-		std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
-
-		std::unordered_set<const RE::TESForm*> blockForm;
-		std::unordered_set<const RE::TESObjectREFR*> blockRefr;
-
-		std::vector<RE::TESSound*> sound;
-	} lists;
-
 	bool BlockReference(const RE::TESObjectREFR* refr);
 	bool UnblockReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
+
+	bool BlockForm(const RE::TESForm* form);
+	bool UnblockForm(const RE::TESForm* form);
+	bool IsFormBlocked(const RE::TESForm* form);
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetFormObjectType(RE::FormID formID, ObjectType objectType);
@@ -53,53 +44,97 @@ public:
 		return objectType;
 	}
 
+	const char* GetTranslation(const char* key) const;
+
 	const RE::TESAmmo* ProjToAmmo(const RE::BGSProjectile* proj);
 	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
 
-	void BuildList(void);
+	void CategorizeLootables(void);
 	void ListsClear(void);
+	bool CheckAmmoLootable(RE::TESObjectREFR* refr);
 
-	bool SetIngredientForCritter(RE::TESForm* critter, RE::TESForm* ingredient);
-	const RE::IngredientItem* GetIngredientForCritter(RE::TESObjectACTI* activator) const;
+	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
+	const RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
 
 private:
+	struct listData
+	{
+		std::unordered_map<std::string, std::string> translations;
+
+		std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
+		std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
+
+		std::unordered_set<const RE::TESForm*> userBlockedForm;
+		std::unordered_set<const RE::TESForm*> blockForm;
+		std::unordered_set<const RE::TESObjectREFR*> blockRefr;
+	} lists;
+
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
-	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_leveledItemContents;
+	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
 
-	mutable concurrency::critical_section m_critterIngredientLock;
-	std::unordered_map<const RE::TESObjectACTI*, const RE::IngredientItem*> m_critterIngredient;
+	mutable concurrency::critical_section m_producerIngredientLock;
+	mutable concurrency::critical_section m_blockListLock;
+	std::unordered_map<const RE::TESForm*, const RE::TESForm*> m_producerLootable;
 
 	bool GetTSV(std::unordered_set<const RE::TESForm*> *tsv, const char* fileName);
 
+	void CategorizeNPCDeathItems(void);
 	void GetBlockContainerData(void);
 	void GetAmmoData(void);
 
 	template <typename T>
-	ObjectType IngredientObjectType(const T* form)
+	ObjectType DefaultIngredientObjectType(const T* form)
 	{
 		return ObjectType::unknown;
 	}
 
-	template <>	ObjectType IngredientObjectType(const RE::TESFlora* form);
-	template <>	ObjectType IngredientObjectType(const RE::TESObjectTREE* form);
+	template <>	ObjectType DefaultIngredientObjectType(const RE::TESFlora* form);
+	template <>	ObjectType DefaultIngredientObjectType(const RE::TESObjectTREE* form);
 
 	class LeveledItemCategorizer
 	{
 	public:
-		LeveledItemCategorizer(const RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName);
-		std::pair<RE::TESForm*, ObjectType> FindContents();
+		LeveledItemCategorizer(const RE::TESLevItem* rootItem, const std::string& targetName);
+		void CategorizeContents();
 
 	private:
-		void FindContentsAtLevel(const RE::TESLevItem* leveledItem);
+		void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
 
-		const RE::TESProduceForm* m_produceForm;
+	protected:
+		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) = 0;
+
 		const RE::TESLevItem* m_rootItem;
 		const std::string m_targetName;
-		RE::TESForm* m_contents;
-		ObjectType m_objectType;
 	};
 
+	class ProduceFormCategorizer : public LeveledItemCategorizer
+	{
+	public:
+		ProduceFormCategorizer(const RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName);
+
+	protected:
+		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
+
+	private:
+		const RE::TESProduceForm* m_produceForm;
+		RE::TESForm* m_contents;
+	};
+
+#if 0
+	class NPCDeathItemCategorizer : public LeveledItemCategorizer
+	{
+	public:
+		NPCDeathItemCategorizer(const RE::TESNPC* npc, const RE::TESLevItem* rootItem, const std::string& targetName);
+
+	protected:
+		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
+
+	private:
+		const RE::TESNPC* m_npc;
+	};
+
+#endif
 	template <typename T>
 	void CategorizeByIngredient()
 	{
@@ -118,7 +153,7 @@ private:
 #endif
 
 			const RE::TESBoundObject* ingredient(target->produceItem);
-			if (ingredient == nullptr)
+			if (!ingredient)
 			{
 #if _DEBUG
 				_MESSAGE("No ingredient for %s/0x%08x", targetName, form->formID);
@@ -134,41 +169,27 @@ private:
 #if _DEBUG
 				_MESSAGE("%s/0x%08x ingredient is Leveled Item", targetName, form->formID);
 #endif
-				std::pair<RE::TESForm*, ObjectType> contents(LeveledItemCategorizer(target, leveledItem, targetName).FindContents());
-				if (contents.first)
-				{
-					RE::TESForm* contentsForm(contents.first);
-					if (!m_leveledItemContents.insert(std::make_pair(target, contentsForm)).second)
-					{
-#if _DEBUG
-						_MESSAGE("Leveled Item %s/0x%08x contents already present", targetName, form->formID);
-#endif
-					}
-					else
-					{
-#if _DEBUG
-						_MESSAGE("Leveled Item %s/0x%08x has contents %s/0x%08x", targetName, form->formID, contentsForm->GetName(), contentsForm->formID);
-#endif
-						if (!m_objectTypeByForm.insert(std::make_pair(contentsForm->formFlags, contents.second)).second)
-						{
-#if _DEBUG
-							_MESSAGE("Leveled Item %s/0x%08x contents %s/0x%08x already has an ObjectType", targetName, form->formID, contentsForm->GetName(), contentsForm->formID);
-#endif
-						}
-					}
-				}
-				else
-				{
-#if _DEBUG
-					_MESSAGE("Leveled Item %s/0x%08x not stored", targetName, form->formID);
-#endif
-				}
+				ProduceFormCategorizer(target, leveledItem, targetName).CategorizeContents();
 			}
 			else
 			{
-				storedType = IngredientObjectType(target);
+				// Try the ingredient form on this Produce holder
+				storedType = GetObjectTypeForForm(ingredient);
+				if (storedType != ObjectType::unknown)
+				{
+#if _DEBUG
+					_MESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, form->formID,
+						ingredient->GetName(), ingredient->formID, GetObjectTypeName(storedType).c_str());
+#endif
+					SetLootableForProducer(form, const_cast<RE::TESBoundObject*>(ingredient));
+				}
+else
+				{
+					storedType = DefaultIngredientObjectType(target);
+				}
 				if (storedType != ObjectType::unknown)
 				{ 
+					// Store mapping of Produce holder to ingredient
 					SetFormObjectType(form->formID, storedType);
 #if _DEBUG
 					_MESSAGE("Target %s/0x%08x stored as type %s", targetName, form->formID, GetObjectTypeName(storedType).c_str());
@@ -185,7 +206,58 @@ private:
 	}
 
 	void SetObjectTypeByKeywords();
-	void CategorizeConsumables();
+
+	template <typename T>
+	ObjectType ConsumableObjectType(T* consumable)
+	{
+		return ObjectType::unknown;
+	}
+
+	template <> ObjectType ConsumableObjectType<RE::AlchemyItem>(RE::AlchemyItem* consumable);
+	template <> ObjectType ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem* consumable);
+
+	template <typename T>
+	void CategorizeConsumables()
+	{
+		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+		if (!dhnd)
+			return;
+		for (RE::TESForm* form : dhnd->GetFormArray(T::FORMTYPE))
+		{
+			T* consumable(form->As<T>());
+			if (!consumable)
+			{
+#if _DEBUG
+				_MESSAGE("Skipping non-consumable form 0x%08x", form->formID);
+#endif
+				continue;
+			}
+
+			RE::TESFullName* pFullName = form->As<RE::TESFullName>();
+			if (!pFullName || pFullName->GetFullNameLength() == 0)
+			{
+#if _DEBUG
+				_MESSAGE("Skipping unnamed form 0x%08x", form->formID);
+#endif
+				continue;
+			}
+
+			std::string formName(pFullName->GetFullName());
+			if (GetFormObjectType(form->formID) != ObjectType::unknown)
+			{
+#if _DEBUG
+				_MESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), form->formID);
+#endif
+				continue;
+			}
+
+			ObjectType objectType(ConsumableObjectType<T>(consumable));
+#if _DEBUG
+			_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), form->formID, GetObjectTypeName(objectType).c_str());
+#endif
+			m_objectTypeByForm[form->formID] = objectType;
+		}
+	}
 
 	template <typename T>
 	ObjectType DefaultObjectType()

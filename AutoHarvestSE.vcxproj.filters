@@ -116,6 +116,9 @@
     <Filter Include="Localization">
       <UniqueIdentifier>{20fe0740-4b0b-4fcb-99a0-149f2b234449}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Papyrus Source">
+      <UniqueIdentifier>{80326a15-e29b-42fa-ab74-00049edf6fd7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
@@ -153,6 +156,18 @@
     </None>
     <None Include="Config\default\userlist.tsv">
       <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Scripts\AutoHarvestSE.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\AutoHarvestSE_Events_Alias.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\AutoHarvestSE_HarvestSpell_MGEF.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\AutoHarvestSE_mcm.psc">
+      <Filter>Papyrus Source</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

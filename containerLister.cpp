@@ -69,7 +69,7 @@ bool ContainerLister::GetOrCheckContainerForms(std::unordered_map<RE::TESForm*, 
 				{
 					ExtraDataListHelper exListHelper(extraList);
     				if (!hasQuestObject)
-						hasQuestObject = exListHelper.IsQuestObject(m_requireFullFlags);
+						hasQuestObject = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
 
 					if (!hasEnchItem)
 						hasEnchItem = exListHelper.GetEnchantment() != nullptr;
