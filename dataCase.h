@@ -3,7 +3,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
-#include <concrt.h>
+#include <mutex>
 
 #include "objects.h"
 
@@ -24,17 +24,18 @@ public:
 	bool BlockReference(const RE::TESObjectREFR* refr);
 	bool UnblockReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
+	void ClearBlockedReferences();
 
-	bool RememberDeadBody(const RE::TESObjectREFR* refr);
+	bool RememberDeadBody(RE::FormID refrID);
 	void ForgetDeadBodies();
-	std::vector<const RE::TESObjectREFR*> RememberedDeadBodies() const;
+	std::vector<RE::FormID> RememberedDeadBodies() const;
 
 	bool BlockForm(const RE::TESForm* form);
 	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
-	bool SetFormObjectType(RE::FormID formID, ObjectType objectType);
+	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
 	ObjectType GetObjectTypeForFormType(RE::FormType formType) const;
 
 	template <typename T>
@@ -66,23 +67,24 @@ private:
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
 	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
 
-	std::unordered_set<const RE::TESForm*> userBlockedForm;
+	std::unordered_set<RE::FormID> userBlockedForm;
 	std::unordered_set<const RE::TESForm*> blockForm;
-	std::unordered_set<const RE::TESObjectREFR*> blockRefr;
-	std::unordered_set<const RE::TESObjectREFR*> rememberedDeadBodies;
+	std::unordered_set<RE::FormID> blockRefr;
+	std::unordered_set<RE::FormID> rememberedDeadBodies;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
 	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
 
-	mutable concurrency::critical_section m_producerIngredientLock;
-	mutable concurrency::critical_section m_blockListLock;
+	mutable RecursiveLock m_producerIngredientLock;
+	mutable RecursiveLock m_blockListLock;
 	std::unordered_map<const RE::TESForm*, const RE::TESForm*> m_producerLootable;
 
-	bool GetTSV(std::unordered_set<const RE::TESForm*> *tsv, const char* fileName);
-
+	bool GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName);
+#if 0
 	void CategorizeNPCDeathItems(void);
-	void GetBlockContainerData(void);
+#endif
+	void BlockOffLimitsContainers(void);
 	void GetAmmoData(void);
 
 	template <typename T>
@@ -185,17 +187,25 @@ private:
 #endif
 					SetLootableForProducer(form, const_cast<RE::TESBoundObject*>(ingredient));
 				}
-else
+				else
 				{
 					storedType = DefaultIngredientObjectType(target);
 				}
 				if (storedType != ObjectType::unknown)
 				{ 
 					// Store mapping of Produce holder to ingredient
-					SetFormObjectType(form->formID, storedType);
+					if (SetObjectTypeForForm(form->formID, storedType))
+					{
 #if _DEBUG
-					_MESSAGE("Target %s/0x%08x stored as type %s", targetName, form->formID, GetObjectTypeName(storedType).c_str());
+						_MESSAGE("Target %s/0x%08x stored as type %s", targetName, form->formID, GetObjectTypeName(storedType).c_str());
 #endif
+					}
+					else
+					{
+#if _DEBUG
+						_MESSAGE("Target %s/0x%08x (%s) already stored, check data", targetName, form->formID, GetObjectTypeName(storedType).c_str());
+#endif
+					}
 				}
 				else
 				{
@@ -266,8 +276,32 @@ else
 	{
 		return ObjectType::clutter;
 	}
-
 	template <> ObjectType  DefaultObjectType<RE::TESObjectARMO>();
+
+	template <typename T>
+	ObjectType OverrideIfBadChoice(const ObjectType objectType)
+	{
+		return objectType;
+	}
+	template <> ObjectType OverrideIfBadChoice<RE::TESObjectARMO>(const ObjectType objectType);
+
+	std::unordered_map<std::string, ObjectType> m_objectTypeByActivationVerb;
+	mutable std::unordered_set<std::string> m_unhandledActivationVerbs;
+	ObjectType GetObjectTypeForActivationText(const RE::BSString& activationText) const;
+
+	inline std::string GetVerbFromActivationText(const RE::BSString& activationText) const
+	{
+		std::string strActivation;
+		const char* nextChar(activationText.c_str());
+		size_t index(0);
+		while (!isspace(*nextChar) && index < activationText.size())
+		{
+			strActivation.push_back(*nextChar);
+			++nextChar;
+			++index;
+		}
+		return strActivation;
+	}
 
 	template <typename T>
 	void CategorizeByKeyword()
@@ -276,155 +310,115 @@ else
 		if (!dhnd)
 			return;
 
-#if _DEBUG
-		size_t additions(0);
-#endif
+		// use keywords from preference
 		for (RE::TESForm* form : dhnd->GetFormArray(T::FORMTYPE))
 		{
 			T* typedForm(form->As<T>());
 			if (!typedForm || !typedForm->GetFullNameLength())
 				continue;
 			const char* formName(typedForm->GetFullName());
-			bool stored(false);
-
-			RE::BSString activationText;
-			if (typedForm->GetActivateText(RE::PlayerCharacter::GetSingleton(), activationText))
-			{
-				// activation via 'Catch' -> Critter
-				// activation via 'Harvest' -> Flora
-				// activation via 'Mine' -> Ore Vein
-				static const std::vector<std::pair<std::string, ObjectType>> activators = {
-					{"Catch", ObjectType::critter},
-					{"Harvest", ObjectType::flora},
-					{"Mine", ObjectType::oreVein} };
-
-				std::string strActivation(activationText.c_str(), activationText.size());
 #if _DEBUG
-				_MESSAGE("%s/0x%08x activated using '%s'", formName, form->formID, strActivation.c_str());
+			_MESSAGE("Categorizing %s/0x%08x", formName, form->formID);
 #endif
-				ObjectType activatorType(ObjectType::unknown);
-				for (auto const & activator : activators)
+			if ((form->formFlags & T::RecordFlags::kNonPlayable) == T::RecordFlags::kNonPlayable)
+			{
+#if _DEBUG
+				_MESSAGE("%s/0x%08x is NonPlayable", formName, form->formID);
+#endif
+				continue;
+			}
+			RE::BGSKeywordForm* keywordForm(form->As<RE::BGSKeywordForm>());
+			if (!keywordForm)
+			{
+#if _DEBUG
+				_MESSAGE("%s/0x%08x Not a Keyword", formName, form->formID);
+#endif
+				continue;
+			}
+
+			ObjectType correctType(ObjectType::unknown);
+			bool hasDefault(false);
+			for (UInt32 index = 0; index < keywordForm->GetNumKeywords(); ++index)
+			{
+				std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
+				if (!keyword)
+					continue;
+				const auto matched(m_objectTypeByForm.find(keyword.value()->formID));
+				if (matched != m_objectTypeByForm.cend())
 				{
-					if (strActivation.length() > activator.first.length() && strActivation.compare(0, activator.first.length(), activator.first) == 0)
+					// if default type, postpone storage in case there is a more specific match
+					if (matched->second == DefaultObjectType<T>())
 					{
-						activatorType = activator.second;
-						break;
+						hasDefault = true;
 					}
-				}
-				if (activatorType != ObjectType::unknown)
-				{
-					stored = true;
-					if (SetFormObjectType(form->formID, activatorType))
+					else if (correctType != ObjectType::unknown)
 					{
 #if _DEBUG
-						_MESSAGE("Stored %s/0x%08x as %s", formName, form->formID, GetObjectTypeName(activatorType).c_str());
-						++additions;
+						_MESSAGE("%s/0x%08x mapped to %s already stored with keyword %s, check data", formName, form->formID,
+							GetObjectTypeName(matched->second).c_str(), GetObjectTypeName(correctType).c_str());
 #endif
 					}
 					else
 					{
-#if _DEBUG
-						_MESSAGE("%s/0x%08x (%s) already stored, check data", formName, form->formID, GetObjectTypeName(activatorType).c_str());
-#endif
-					}
-
-				}
-			}
-
-			if (!stored)
-			{
-#if _DEBUG
-				_MESSAGE("Categorizing %s/0x%08x", formName, form->formID);
-#endif
-				RE::BGSKeywordForm* keywordForm(form->As<RE::BGSKeywordForm>());
-				if (!keywordForm)
-				{
-#if _DEBUG
-					_MESSAGE("%s/0x%08x Not a Keyword", formName, form->formID);
-#endif
-					continue;
-				}
-
-				ObjectType correctType(ObjectType::unknown);
-				bool hasDefault(false);
-				for (UInt32 index = 0; index < keywordForm->GetNumKeywords(); ++index)
-				{
-					std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
-					if (!keyword)
-						continue;
-					const auto matched(m_objectTypeByForm.find(keyword.value()->formID));
-					if (matched != m_objectTypeByForm.cend())
-					{
-						// if default type, postpone storage in case there is a more specific match
-						if (matched->second == DefaultObjectType<T>())
-						{
-							hasDefault = true;
-						}
-						else if (correctType != ObjectType::unknown)
-						{
-#if _DEBUG
-							_MESSAGE("%s/0x%08x already stored with a keyword, check data", formName, form->formID);
-#endif
-						}
-						else
-						{
-							correctType = matched->second;
-						}
-					}
-				}
-				if (correctType == ObjectType::unknown && hasDefault)
-				{
-					correctType = DefaultObjectType<T>();
-				}
-				if (correctType == ObjectType::clutter)
-				{
-					// special cases for clutter to preserve historic taxonomy
-					if (CheckObjectModelPath(form, "dwemer"))
-						correctType = ObjectType::clutterDwemer;
-					else if (CheckObjectModelPath(form, "broken"))
-						correctType = ObjectType::clutterBroken;
-				}
-				if (correctType != ObjectType::unknown)
-				{
-					stored = true;
-					if (SetFormObjectType(form->formID, correctType))
-					{
-#if _DEBUG
-						_MESSAGE("Stored %s/0x%08x as %s", formName, form->formID, GetObjectTypeName(correctType).c_str());
-						++additions;
-#endif
+						correctType = matched->second;
 					}
 				}
 			}
-
-			if (!stored)
+			if (correctType == ObjectType::unknown && hasDefault)
 			{
-				// Check if the form has value and store as clutter if so
-				RE::TESValueForm* valueForm(form->As<RE::TESValueForm>());
-				if (valueForm && valueForm->value > 0)
+				correctType = DefaultObjectType<T>();
+			}
+			else
+			{
+				correctType = OverrideIfBadChoice<T>(correctType);
+			}
+			if (correctType != ObjectType::unknown)
+			{
+				if (SetObjectTypeForForm(form->formID, correctType))
 				{
 #if _DEBUG
-					_MESSAGE("Uncategorized %s/0x%08x has value %d as clutter", formName, form->formID, valueForm->value);
-					++additions;
+					_MESSAGE("%s/0x%08x stored as %s", formName, form->formID, GetObjectTypeName(correctType).c_str());
 #endif
-					SetFormObjectType(form->formID, ObjectType::clutter);
 				}
 				else
 				{
 #if _DEBUG
-					_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
+					_MESSAGE("%s/0x%08x (%s) already stored, check data", formName, form->formID, GetObjectTypeName(correctType).c_str());
 #endif
 				}
+				continue;
+			}
 
+			// fail-safe is to check if the form has value and store as clutter if so
+			RE::TESValueForm* valueForm(form->As<RE::TESValueForm>());
+			if (valueForm && valueForm->value > 0)
+			{
+				if (SetObjectTypeForForm(form->formID, ObjectType::clutter))
+				{
+#if _DEBUG
+					_MESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, valueForm->value);
+#endif
+				}
+				else
+				{
+#if _DEBUG
+					_MESSAGE("%s/0x%08x (defaulting as clutter) already stored, check data", formName, form->formID);
+#endif
+				}
+			}
+			else
+			{
+#if _DEBUG
+				_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
+#endif
 			}
 		}
-
-#if _DEBUG
-		_MESSAGE("* Stored %d in-process forms by keyword", additions);
-#endif
 	}
 
 	void GetTranslationData(void);
+	void ActivationVerbsByType(const char* activationVerbKey, const ObjectType objectType);
+	void StoreActivationVerbs(void);
+	void CategorizeByActivationVerb(void);
 
 	std::string GetModelPath(const RE::TESForm* thisForm) const;
 	bool CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg) const;

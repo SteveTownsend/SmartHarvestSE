@@ -15,8 +15,6 @@ enum class ObjectType : UInt8
 	soulgem,
 	keys,
 	clutter,
-	clutterDwemer,
-	clutterBroken,
 	light,
 	// books - must be contiguous
 	books,
@@ -43,5 +41,6 @@ enum class ObjectType : UInt8
 	container,
 	actor,
 	ashPile,
+	manualLoot
 };
 

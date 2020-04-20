@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "dataCase.h"
 #include "iniSettings.h"
+#include "papyrus.h"
 #include "tasks.h"
 
 #include <fstream>
@@ -103,37 +104,46 @@ void DataCase::GetTranslationData()
 		{
 			break;
 		}
-		size_t len(buf.length());
-		// at least $ + wchar_t + \t + wchar_t
-		if (len < 4 || buf[0] != '$')
+		auto nextChar = buf.c_str();
+		size_t offset(0);
+		while (!iswspace(*nextChar) && offset < buf.length())
+		{
+			++nextChar;
+			++offset;
+		}
+		if (offset <= 0)
 			continue;
 
-		wchar_t last = buf[len - 1];
-		if (last == '\r')
-			len--;
+		// Save key and consume whitespace preceding value
+		std::wstring key(buf.c_str(), buf.c_str() + offset);
+		while (iswspace(*nextChar) && offset < buf.length())
+		{
+			++nextChar;
+			++offset;
+		}
 
-		// null terminate
-		// buf[len] = 0;
 
-		UInt32 delimIdx = 0;
-		for (UInt32 i = 0; i < len; i++)
-			if (buf[i] == '\t')
-				delimIdx = i;
+		// use the rest of the line as a value, even if it's empty - omit trailing whitespace
+		size_t whitespace(0);
+		if (offset < buf.length())
+		{
+			auto endString(buf.crbegin());
+			while (iswspace(*endString))
+			{
+				++whitespace;
+				++endString;
+			}
+		}
+		std::wstring translation(buf.c_str() + offset, buf.c_str() + buf.length() - whitespace);
 
-		// at least $ + wchar_t
-		if (delimIdx < 2)
-			continue;
-
-		// replace \t by \0
-		buf[delimIdx] = 0;
-
-		std::wstring key(buf, 0, delimIdx);
-		std::wstring translation(buf, delimIdx+1, len - delimIdx - 1);
-
+		// convert Unicode to UTF8 for UI usage
 		std::string keyS = wide_to_utf8(key);
 		std::string translationS = wide_to_utf8(translation);
 
 		translations[keyS] = translationS;
+#if _DEBUG
+		_DMESSAGE("Translation entry: %s -> %s", keyS.c_str(), translationS.c_str());
+#endif
 
 	}
 #if _DEBUG
@@ -143,7 +153,91 @@ void DataCase::GetTranslationData()
 	return;
 }
 
-bool DataCase::GetTSV(std::unordered_set<const RE::TESForm*> *tsv, const char* fileName)
+// process comma-separated list of allowed ACTI verbs, to make localization INI-based
+void DataCase::ActivationVerbsByType(const char* activationVerbKey, const ObjectType objectType)
+{
+	RE::BSString iniVerbs(GetTranslation(activationVerbKey));
+	std::istringstream verbStream(iniVerbs.c_str());
+	std::string nextVerb;
+	while (std::getline(verbStream, nextVerb, ',')) {
+#if _DEBUG
+		_DMESSAGE("Activation verb %s has ObjectType %s", nextVerb.c_str(), GetObjectTypeName(objectType).c_str());
+#endif
+		m_objectTypeByActivationVerb[nextVerb] = objectType;
+	}
+}
+
+// Some activation verbs are used to handle referenced forms as a catch-all, though we prefer other rules
+void DataCase::StoreActivationVerbs()
+{
+	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_CLUTTER", ObjectType::clutter);
+	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_CRITTER", ObjectType::critter);
+	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_FLORA", ObjectType::flora);
+	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_OREVEIN", ObjectType::oreVein);
+	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
+}
+
+ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activationText) const
+{
+	std::string verb(GetVerbFromActivationText(activationText));
+	const auto verbMatched(m_objectTypeByActivationVerb.find(verb));
+	if (verbMatched != m_objectTypeByActivationVerb.cend())
+	{
+		return verbMatched->second;
+	}
+	else
+	{
+		m_unhandledActivationVerbs.insert(verb);
+	}
+	return ObjectType::unknown;
+}
+void DataCase::CategorizeByActivationVerb()
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+
+	for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::Activator))
+	{
+		RE::TESObjectACTI* typedForm(form->As<RE::TESObjectACTI>());
+		if (!typedForm || !typedForm->GetFullNameLength())
+			continue;
+		const char* formName(typedForm->GetFullName());
+#if _DEBUG
+		_MESSAGE("Categorizing %s/0x%08x by activation verb", formName, form->formID);
+#endif
+
+		ObjectType correctType(ObjectType::unknown);
+		bool hasDefault(false);
+		RE::BSString activationText;
+		if (typedForm->GetActivateText(RE::PlayerCharacter::GetSingleton(), activationText))
+		{
+			ObjectType activatorType(GetObjectTypeForActivationText(activationText));
+			if (activatorType != ObjectType::unknown)
+			{
+				if (SetObjectTypeForForm(form->formID, activatorType))
+				{
+#if _DEBUG
+					_MESSAGE("%s/0x%08x activated using '%s' categorized as %s", formName, form->formID,
+						GetVerbFromActivationText(activationText).c_str(), GetObjectTypeName(activatorType).c_str());
+#endif
+				}
+				else
+				{
+#if _DEBUG
+					_MESSAGE("%s/0x%08x (%s) already stored, check data", formName, form->formID, GetObjectTypeName(activatorType).c_str());
+#endif
+				}
+				continue;
+			}
+		}
+#if _DEBUG
+		_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
+#endif
+	}
+}
+
+bool DataCase::GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName)
 {
 	std::string filepath(FileUtils::GetPluginPath() + std::string(AHSE_NAME) + std::string("\\") + std::string(fileName));
 
@@ -186,16 +280,16 @@ bool DataCase::GetTSV(std::unordered_set<const RE::TESForm*> *tsv, const char* f
 		auto vec = StringUtils::Split(str, '\t');
 		std::string modName = vec[0];
 
-		UInt8 modIndex = PluginUtils::GetLoadedModIndex(vec[0].c_str());
-		if (modIndex == 0xFF)
+		std::optional<UInt8> modIndex = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(vec[0].c_str());
+		if (!modIndex.has_value())
 			continue;
 
 		UInt32 formID = std::stoul(vec[1], nullptr, 16);
-		formID |= (modIndex << 24);
+		formID |= (modIndex.value() << 24);
 
 		RE::TESForm* pForm = RE::TESForm::LookupByID(formID);
 		if (pForm)
-			tsv->insert(pForm);
+			tsv->insert(formID);
 	}
 
 #if _DEBUG
@@ -209,6 +303,7 @@ enum FactionFlags
 	kFlag_Vender = 1 << 14,		//  4000
 };
 
+#if 0
 void DataCase::CategorizeNPCDeathItems(void)
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
@@ -226,10 +321,13 @@ void DataCase::CategorizeNPCDeathItems(void)
 		}
 	}
 }
+#endif
 
-
-void DataCase::GetBlockContainerData()
+void DataCase::BlockOffLimitsContainers()
 {
+#if _DEBUG
+	_DMESSAGE("Pre-emptively block all off-limits containers");
+#endif
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	if (dhnd)
 	{
@@ -238,18 +336,18 @@ void DataCase::GetBlockContainerData()
 			if (!form)
 				continue;
 
-			RE::TESFaction* faction = skyrim_cast<RE::TESFaction*, RE::TESForm>(form);
+			RE::TESFaction* faction = form->As<RE::TESFaction>();
 			if (!faction)
 				continue;
 
 			RE::TESObjectREFR* containerRef = nullptr;
 			if (faction->data.kVendor)
 			{
-				containerRef = (faction->vendorData).merchantContainer;
+				containerRef = faction->vendorData.merchantContainer;
 				if (containerRef)
 				{
-#if _DEBUG2
-					_MESSAGE("[ADD:%d] vendor container : %s(%08X)", index, CALL_MEMBER_FN(containerRef, GetReferenceName)(), containerRef->formID);
+#if _DEBUG
+					_MESSAGE("Blocked vendor container : %s(%08X)", containerRef->GetName(), containerRef->formID);
 #endif
 					BlockReference(containerRef);
 				}
@@ -258,8 +356,8 @@ void DataCase::GetBlockContainerData()
 			containerRef = faction->crimeData.factionStolenContainer;
 			if (containerRef)
 			{
-#if _DEBUG2
-				_MESSAGE("[ADD:%d] stolenGoodsContainer : %s(%08X)", index, CALL_MEMBER_FN(containerRef, GetReferenceName)(), containerRef->formID);
+#if _DEBUG
+				_MESSAGE("Blocked stolenGoodsContainer : %s(%08X)", containerRef->GetName(), containerRef->formID);
 #endif
 				BlockReference(containerRef);
 			}
@@ -267,8 +365,8 @@ void DataCase::GetBlockContainerData()
 			containerRef = faction->crimeData.factionPlayerInventoryContainer;
 			if (containerRef)
 			{
-#if _DEBUG2
-				_MESSAGE("[ADD:%d] playerInventoryContainer : %s(%08X)", index, CALL_MEMBER_FN(containerRef, GetReferenceName)(), containerRef->formID);
+#if _DEBUG
+				_MESSAGE("Blocked playerInventoryContainer : %s(%08X)", containerRef->GetName(), containerRef->formID);
 #endif
 				BlockReference(containerRef);
 			}
@@ -334,51 +432,70 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return (blockRefr.insert(refr)).second;
+	RecursiveLockGuard guard(m_blockListLock);
+	return (blockRefr.insert(refr->GetFormID())).second;
 }
 
 bool DataCase::UnblockReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return blockRefr.erase(refr) > 0;
+	RecursiveLockGuard guard(m_blockListLock);
+	return blockRefr.erase(refr->GetFormID()) > 0;
 }
 
 bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return blockRefr.count(refr) > 0;
+	RecursiveLockGuard guard(m_blockListLock);
+	return blockRefr.count(refr->GetFormID()) > 0;
 }
 
-bool DataCase::RememberDeadBody(const RE::TESObjectREFR* refr)
+void DataCase::ClearBlockedReferences()
 {
-	if (!refr)
-		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return (rememberedDeadBodies.insert(refr)).second;
+#if _DEBUG
+	_DMESSAGE("Reset list of blocked REFRs");
+#endif
+	RecursiveLockGuard guard(m_blockListLock);
+	blockRefr.clear();
+}
+
+bool DataCase::RememberDeadBody(RE::FormID refrID)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	return (rememberedDeadBodies.insert(refrID)).second;
 }
 
 void DataCase::ForgetDeadBodies()
 {
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+#if _DEBUG
+	_DMESSAGE("Clear saved dead bodies from last cell");
+#endif
+	RecursiveLockGuard guard(m_blockListLock);
 	rememberedDeadBodies.clear();
 }
 
-std::vector<const RE::TESObjectREFR*> DataCase::RememberedDeadBodies() const
+std::vector<RE::FormID> DataCase::RememberedDeadBodies() const
 {
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	return std::vector<const RE::TESObjectREFR*>(rememberedDeadBodies.cbegin(), rememberedDeadBodies.cend());
+	RecursiveLockGuard guard(m_blockListLock);
+	std::vector<RE::FormID> stillDead;
+	stillDead.reserve(rememberedDeadBodies.size());
+	for (auto deadBody : rememberedDeadBodies)
+	{
+		RE::TESForm* form(RE::TESForm::LookupByID(deadBody));
+		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
+		if (refr && refr->IsDead())
+			stillDead.push_back(deadBody);
+	}
+	return stillDead;
 }
 
 bool DataCase::BlockForm(const RE::TESForm* form)
 {
 	if (!form)
 		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	RecursiveLockGuard guard(m_blockListLock);
 	return (blockForm.insert(form)).second;
 }
 
@@ -386,7 +503,7 @@ bool DataCase::UnblockForm(const RE::TESForm* form)
 {
 	if (!form)
 		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	RecursiveLockGuard guard(m_blockListLock);
 	return blockForm.erase(form) > 0;
 }
 
@@ -394,7 +511,7 @@ bool DataCase::IsFormBlocked(const RE::TESForm* form)
 {
 	if (!form)
 		return false;
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	RecursiveLockGuard guard(m_blockListLock);
 	return blockForm.count(form) > 0;
 }
 
@@ -406,7 +523,7 @@ ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
 	return ObjectType::unknown;
 }
 
-bool DataCase::SetFormObjectType(RE::FormID formID, ObjectType objectType)
+bool DataCase::SetObjectTypeForForm(RE::FormID formID, ObjectType objectType)
 {
 	return m_objectTypeByForm.insert(std::make_pair(formID, objectType)).second;
 }
@@ -448,12 +565,32 @@ const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 
 void DataCase::ListsClear()
 {
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
-	blockRefr.clear();
+	RecursiveLockGuard guard(m_blockListLock);
+#if _DEBUG
+	_DMESSAGE("Clear arrow history");
+#endif
 	arrowCheck.clear();
 
+	// forget about dead bodies we remembered for looting after game reload within current cell
+	ForgetDeadBodies();
+
 	// reset blocked forms to just the user's list
-	blockForm = userBlockedForm;
+#if _DEBUG
+	_DMESSAGE("Clear blocked forms");
+#endif
+	blockForm.clear();
+	for (RE::FormID formID : userBlockedForm)
+	{
+#if _DEBUG
+		_DMESSAGE("Restore block status for user form 0x%08x", formID);
+#endif
+		RE::TESForm* form(RE::TESForm::LookupByID(formID));
+		if (form)
+			blockForm.insert(form);
+	}
+	// reset blocked references, reseed with off-limits containers
+	ClearBlockedReferences();
+	BlockOffLimitsContainers();
 }
 
 bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
@@ -463,17 +600,17 @@ bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 	if (pos == RE::NiPoint3())
 	{
 #if _DEBUG
-		_MESSAGE("err %0.2f", pos);
+		_MESSAGE("err %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
 #endif
 		BlockReference(refr);
 		skip = true;
 	}
 
-	concurrency::critical_section::scoped_lock guard(m_blockListLock);
+	RecursiveLockGuard guard(m_blockListLock);
 	if (arrowCheck.count(refr) == 0)
 	{
 #if _DEBUG
-		_MESSAGE("pick %0.2f", pos);
+		_MESSAGE("pick %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
 #endif
 		arrowCheck.insert(std::make_pair(refr, pos));
 		skip = true;
@@ -484,7 +621,7 @@ bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 		if (prev != pos)
 		{
 #if _DEBUG
-			_MESSAGE("moving %0.2f  prev:%0.2f", pos, prev);
+			_MESSAGE("moving pos:%0.2f,%0.2f,%0.2f prev:%0.2f %0.2f, %0.2f", pos.x, pos.y, pos.z, prev.x, prev.y, prev.z);
 #endif
 			arrowCheck[refr] = pos;
 			skip = true;
@@ -492,7 +629,7 @@ bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
 		else
 		{
 #if _DEBUG
-			_MESSAGE("catch %0.2f", pos);
+			_MESSAGE("catch %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
 #endif
 			arrowCheck.erase(refr);
 		}
@@ -505,49 +642,125 @@ void DataCase::CategorizeLootables()
 	if (!GetTSV(&userBlockedForm, "blocklist.tsv"))
 		GetTSV(&userBlockedForm, "default\\blocklist.tsv");
 
+	// used to taxonomize ACTIvators
+	GetTranslationData();
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Store Activation Verbs");
+#endif
+	StoreActivationVerbs();
+
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Get Ammo Data");
+#endif
 	GetAmmoData();
 
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize Statics");
+#endif
 	CategorizeStatics();
 
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Set Object Type By Keywords");
+#endif
 	SetObjectTypeByKeywords();
 
 	// consumable item categorization is useful for Activator, Flora, Tree and direct access
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize Consumable: ALCH");
+#endif
 	CategorizeConsumables<RE::AlchemyItem>();
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize Consumable: INGR");
+#endif
 	CategorizeConsumables<RE::IngredientItem>();
 
-	CategorizeByKeyword<RE::TESObjectACTI>();
-	CategorizeByKeyword<RE::TESObjectMISC>();
-	CategorizeByKeyword<RE::TESObjectARMO>();
-
 	// classes inheriting from TESProduceForm may have an ingredient, categorized as the appropriate consumable
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Ingredient: FLOR");
+#endif
 	CategorizeByIngredient<RE::TESFlora>();
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Ingredient: TREE");
+#endif
 	CategorizeByIngredient<RE::TESObjectTREE>();
 
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Keyword: MISC");
+#endif
+	CategorizeByKeyword<RE::TESObjectMISC>();
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Keyword: ARMO");
+#endif
+	CategorizeByKeyword<RE::TESObjectARMO>();
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Keyword: WEAP");
+#endif
+	CategorizeByKeyword<RE::TESObjectWEAP>();
+
+	// Activators are done last, deterministic categorization above is preferable
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Activation Verb ACTI");
+#endif
+	CategorizeByActivationVerb();
+#if _DEBUG
+	for (const auto& unhandledVerb : m_unhandledActivationVerbs)
+	{
+		_MESSAGE("Activation verb %s unhandled at present", unhandledVerb.c_str());
+	}
+#endif
+#if 0
 	// NPC Death Items contain lootable objects
 	CategorizeNPCDeathItems();
-
-	GetBlockContainerData();
-	GetTranslationData();
+#endif
 }
 
+// Classify items by their keywords
 void DataCase::SetObjectTypeByKeywords()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	if (!dhnd)
 		return;
 
-	// Classify Vendor Items of uncertain taxonomy
-	std::unordered_map<std::string, ObjectType> typeByVendorItem =
-	{ 
-		// all in Skyrim core
+	static std::unordered_map<std::string, ObjectType> typeByKeyword =
+	{
+		// Skyrim core
+		{"ArmorLight", ObjectType::armor},
+		{"ArmorHeavy", ObjectType::armor},
+		{"VendorItemArrow", ObjectType::ammo},
+		{"VendorItemBook", ObjectType::books},
+		{"VendorItemRecipe", ObjectType::books},
 		{"VendorItemGem", ObjectType::gems},
 		{"VendorItemOreIngot", ObjectType::oreIngot},
 		{"VendorItemAnimalHide", ObjectType::animalHide},
 		{"VendorItemAnimalPart", ObjectType::animalParts},
 		{"VendorItemJewelry", ObjectType::jewelry},
 		{"VendorItemArmor", ObjectType::armor},
-		{"VendorItemClutter", ObjectType::clutter}
+		{"VendorItemClothing", ObjectType::armor},
+		{"VendorItemIngredient", ObjectType::ingredients},
+		{"VendorItemKey", ObjectType::keys},
+		{"VendorItemPotion", ObjectType::potion},
+		{"VendorItemPoison", ObjectType::poison},
+		{"VendorItemScroll", ObjectType::scrolls},
+		{"VendorItemSpellTome", ObjectType::spellbook},
+		{"VendorItemSoulGem", ObjectType::soulgem},
+		{"VendorItemStaff", ObjectType::weapon},
+		{"VendorItemWeapon", ObjectType::weapon},
+		{"VendorItemClutter", ObjectType::clutter},
+		{"VendorItemFireword", ObjectType::clutter},
+		// Legacy of the Dragonborn
+		{"VendorItemJournal", ObjectType::books},
+		{"VendorItemNote", ObjectType::books},
+		{"VendorItemFateCards", ObjectType::clutter}
 	};
+	static std::vector<std::pair<std::string, ObjectType>> typeByVendorItemSubstring =
+	{
+		// All appear in Skyrim core, extended in mods e.g. CACO, SkyREM EVE
+		// Order is important, we scan linearly during mod/data load
+		{"Drink", ObjectType::drink},
+		{"VendorItemFood", ObjectType::food},
+		{"VendorItemDrink", ObjectType::drink}
+	};
+
 	for (RE::TESForm* form : dhnd->GetFormArray(RE::BGSKeyword::FORMTYPE))
 	{
 		RE::BGSKeyword* keywordDef(form->As<RE::BGSKeyword>());
@@ -556,7 +769,7 @@ void DataCase::SetObjectTypeByKeywords()
 #if _DEBUG
 			_MESSAGE("Skipping non-keyword form 0x%08x", form->formID);
 #endif
-    		continue;
+			continue;
 		}
 
 		std::string keywordName(keywordDef->GetFormEditorID());
@@ -568,28 +781,43 @@ void DataCase::SetObjectTypeByKeywords()
 		}
 
 		ObjectType objectType(ObjectType::unknown);
-		const auto matched(typeByVendorItem.find(keywordName));
-		if (matched != typeByVendorItem.cend())
+		const auto matched(typeByKeyword.find(keywordName));
+		if (matched != typeByKeyword.cend())
 		{
 			objectType = matched->second;
-	    }
+		}
+		else if (const auto substringMatch = std::find_if(typeByVendorItemSubstring.cbegin(), typeByVendorItemSubstring.cend(),
+			[&](const std::pair<std::string, ObjectType>& comparand) -> bool
+			{
+				if (keywordName.find(comparand.first) != std::string::npos)
+				{
+					objectType = comparand.second;
+					return true;
+				}
+				return false;
+			}) != typeByVendorItemSubstring.cend())
+		{
+#if _DEBUG
+			_MESSAGE("0x%08x (%s) matched substring, treated as %s", form->formID, keywordName.c_str(), GetObjectTypeName(objectType).c_str());
+#endif
+		}
 		else if (keywordName.starts_with("VendorItem"))
 		{
 #if _DEBUG
-			_MESSAGE("%s/0x%08x treated as clutter", keywordName.c_str(), form->formID);
+			_MESSAGE("0x%08x (%s) treated as clutter", form->formID, keywordName.c_str());
 #endif
 			objectType = ObjectType::clutter;
 		}
 		else
 		{
 #if _DEBUG
-			_MESSAGE("%s/0x%08x skipped", keywordName.c_str(), form->formID);
+			_MESSAGE("0x%08x (%s) skipped", form->formID, keywordName.c_str());
 #endif
 			continue;
 		}
 		m_objectTypeByForm[form->formID] = objectType;
 #if _DEBUG
-		_MESSAGE("%s/0x%08x stored as %s", keywordName.c_str(), form->formID, GetObjectTypeName(objectType).c_str());
+		_MESSAGE("0x%08x (%s) stored as %s", form->formID, keywordName.c_str(), GetObjectTypeName(objectType).c_str());
 #endif
 	}
 }
@@ -598,6 +826,12 @@ template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectARMO>()
 {
 	return ObjectType::armor;
 }
+
+template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectARMO>(const ObjectType objectType)
+{
+	return objectType == ObjectType::animalHide ? ObjectType::armor : objectType;
+}
+
 
 template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::AlchemyItem* consumable)
 {
@@ -619,7 +853,7 @@ template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::In
 // ingredient nullptr indicates this Producer is pending resolution
 bool DataCase::SetLootableForProducer(RE::TESForm* producer, RE::TESForm* lootable)
 {
-	concurrency::critical_section::scoped_lock guard(m_producerIngredientLock);
+	RecursiveLockGuard guard(m_producerIngredientLock);
 	if (!lootable)
 	{
 #if _DEBUG
@@ -640,7 +874,7 @@ bool DataCase::SetLootableForProducer(RE::TESForm* producer, RE::TESForm* lootab
 
 const RE::TESForm* DataCase::GetLootableForProducer(RE::TESForm* producer) const
 {
-	concurrency::critical_section::scoped_lock guard(m_producerIngredientLock);
+	RecursiveLockGuard guard(m_producerIngredientLock);
 	const auto matched(m_producerLootable.find(producer));
 	if (matched != m_producerLootable.cend())
 		return matched->second;
@@ -749,20 +983,20 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 		if (!DataCase::GetInstance()->m_produceFormContents.insert(std::make_pair(m_produceForm, itemForm)).second)
 		{
 #if _DEBUG
-			_MESSAGE("Leveled Item %s/0x%08x contents already present", m_targetName, m_rootItem->formID);
+			_MESSAGE("Leveled Item %s/0x%08x contents already present", m_targetName.c_str(), m_rootItem->formID);
 #endif
 		}
 		else
 		{
 #if _DEBUG
 			_MESSAGE("Leveled Item %s/0x%08x has contents %s/0x%08x",
-				m_targetName, m_rootItem->formID, itemForm->GetName(), itemForm->formID);
+				m_targetName.c_str(), m_rootItem->formID, itemForm->GetName(), itemForm->formID);
 #endif
 			if (!DataCase::GetInstance()->m_objectTypeByForm.insert(std::make_pair(itemForm->formID, itemType)).second)
 			{
 #if _DEBUG
 				_MESSAGE("Leveled Item %s/0x%08x contents %s/0x%08x already has an ObjectType",
-					m_targetName, m_rootItem->formID, itemForm->GetName(), itemForm->formID);
+					m_targetName.c_str(), m_rootItem->formID, itemForm->GetName(), itemForm->formID);
 #endif
 			}
 			else

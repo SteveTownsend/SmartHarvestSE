@@ -41,7 +41,7 @@ class ActorHelper
 public:
 	ActorHelper(RE::Actor* actor) : m_actor(actor) {}
 	bool IsSneaking(void);
-	bool IsPlayerFollower(void);
+	bool IsPlayerAlly(void);
 	bool IsEssential(void);
 	bool IsSummonable(void);
 private:
@@ -58,4 +58,12 @@ std::string GetObjectTypeName(const RE::TESObjectREFR* refr);
 std::string GetObjectTypeName(RE::TESForm* pForm);
 std::string GetObjectTypeName(const RE::TESForm* pForm);
 std::string GetObjectTypeName(ObjectType type);
+inline bool ValueWeightExempt(ObjectType objectType)
+{
+	return objectType == ObjectType::ammo ||
+		objectType == ObjectType::lockpick ||
+		objectType == ObjectType::keys ||
+		objectType == ObjectType::oreVein ||
+		objectType == ObjectType::septims;
+}
 bool IsPlayable(const RE::TESForm * pForm);

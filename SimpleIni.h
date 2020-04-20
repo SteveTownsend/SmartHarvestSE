@@ -265,6 +265,7 @@ class SimpleIni
 		void SaveDescription(std::string section, std::string key, std::ofstream &file);
 		void ParasitCar(std::string& str);
 		std::string Trim(const std::string& str);
+		std::string Normalize(const std::string& str);
 		std::string m_OptionCommentCharacters;
 };
 

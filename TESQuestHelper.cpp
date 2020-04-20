@@ -9,18 +9,31 @@
 RE::TESQuest* GetTargetQuest(const char* espName, UInt32 questID)
 {
 	static RE::TESQuest* result = nullptr;
+#if _DEBUG
+	static bool listed(false);
+#endif
 	if (!result)
 	{
 		UInt32 formID = 0;
-		UInt32 idx = PluginUtils::GetLoadedModIndex(espName);
-		if (idx != 0xFF)
+		std::optional<UInt8> idx = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(espName);
+		if (idx.has_value())
 		{
-			formID = (idx << 24) | questID;
+			formID = (idx.value() << 24) | questID;
 #if _DEBUG
 			_DMESSAGE("Got formID for questID %08.2x", questID);
 #endif
 		}
-        if (formID != 0)
+#if _DEBUG
+		else if (!listed)
+		{
+			for (const auto& nextFile : RE::TESDataHandler::GetSingleton()->compiledFileCollection.files)
+			{
+				_DMESSAGE("Mod loaded %s", &nextFile->fileName);
+			}
+			listed = true;
+		}
+#endif
+		if (formID != 0)
 		{
 			RE::TESForm* questForm = RE::TESForm::LookupByID(formID);
 #if _DEBUG

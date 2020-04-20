@@ -32,11 +32,22 @@ bool IHasValueWeight::ValueWeightTooLowToLoot(INIFile* settings) const
 			return false;
 		}
 
+		if (worth <= 0. && weight <= 0.)
+		{
+			// this may be a scripted activator without special-case handling - one example is Poison Bloom (xx007cda).
+			// Harvest if non v/w criteria say we should do so.
+#if _DEBUG
+			_MESSAGE("* %s(%08x) - cannot calculate v/w from weight %0.2f and worth %0.2f", GetName(), GetFormID(), weight, worth);
+#endif
+			return false;
+		}
+
 		double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.0;
 #if _DEBUG
 		_MESSAGE("* %s(%08x) item VW %0.2f vs threshold VW %0.2f", GetName(), GetFormID(), vw, valueWeight);
 #endif
-		if (vw < valueWeight)
+		// allow small tolerance for floating point math
+		if (vw < valueWeight && fabs(valueWeight - vw) > 0.01)
 			return true;
 	}
 	return false;

@@ -2,7 +2,7 @@ Scriptname AutoHarvestSE_Events_Alias extends ReferenceAlias
 
 import AutoHarvestSE
 import AutoHarvestSE_mcm
-GlobalVariable Property g_EnableLaunched Auto
+GlobalVariable Property g_LootingEnabled Auto
 
 Keyword property CastKwd auto
 
@@ -15,11 +15,14 @@ Perk Property greenThumbPerk auto
 int type_Common = 1
 int type_AutoHarvest = 2
 int type_Spell = 3
-int objType_Flora = 1
-int objType_Critter = 2
-int objType_Septim = 4
-int objType_Soulgem = 10
-int objType_Mine = 34
+
+; object types must be in sync with the native DLL
+int objType_Flora
+int objType_Critter
+int objType_Septim
+int objType_Soulgem
+int objType_Mine
+
 int getType_kFlora = 39
 
 float g_interval = 0.5
@@ -34,8 +37,9 @@ Function SyncUserList()
 	SyncUserListWithPlugin()
 endFunction
 
+; there are two sources of excluded locations- basket file and the script form. Merge these as best we can.
 Function SyncExcludeList()
-	SyncExcludeListWithPlugin()
+	ClearPluginExcludeList()
 	; ensure locations in the ExcludeList Form are present in the plugin's list
 	int index = excludelist_form.GetSize()
 	int current = 0
@@ -46,7 +50,7 @@ Function SyncExcludeList()
         endif
 		current += 1
 	endwhile
-
+	MergePluginExcludeList()
 endFunction
 
 function ManageList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
@@ -109,6 +113,14 @@ function ManageExcludeList(Form itemForm)
 	ManageList(excludelist_form, itemForm, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
 endFunction
 
+Function SyncNativeObjectTypes()
+	objType_Flora = 1
+	objType_Critter = 2
+	objType_Septim = 4
+	objType_Soulgem = 10
+	objType_Mine = 34
+endFunction
+
 Event OnInit()
 endEvent
 
@@ -147,24 +159,11 @@ Function ApplySetting()
 			g_interval = min_interval
 		EndIf
   	endIf
-	
+
 	SyncUserList()
 	SyncExcludeList()
 	
 	utility.waitMenumode(g_interval)
-
-    int existingFlags = g_EnableLaunched.GetValue() as int
-	bool isEnabled = existingFlags == 1 || existingFlags == 3
-	string str = sif(isEnabled, "$AHSE_ENABLE", "$AHSE_DISABLE")
-	Debug.Notification(str)
-	; reset blocked lists to allow recheck vs revised settings
-	UnblockEverything()
-	if (isEnabled)
-		AllowSearch()
-	Else
-		DisallowSearch()
-	EndIf
-	
 	RegisterForMenu("Loading Menu")
 	;DebugTrace("eventScript ApplySetting finished")
 endFunction
@@ -172,24 +171,16 @@ endFunction
 ;hotkey changes sense of looting
 function Pause()
 	string s_enableStr = none
-    int existingFlags = g_EnableLaunched.GetValue() as int
-	bool isEnabled = existingFlags != 1 && existingFlags != 3
-    if (isEnabled)
-        if (existingFlags >= 2)
-        	g_EnableLaunched.SetValue(3)
-        else
-        	g_EnableLaunched.SetValue(1)
-        endif
+	int priorState = g_LootingEnabled.GetValue() as int
+    if (priorState != 0)
+       	g_LootingEnabled.SetValue(0)
 	else
-        if (existingFlags >= 2)
-        	g_EnableLaunched.SetValue(2)
-        else
-        	g_EnableLaunched.SetValue(0)
-        endif
+       	g_LootingEnabled.SetValue(1)
 	endif
 		
-	string str = sif(isEnabled, "$AHSE_ENABLE", "$AHSE_DISABLE")
-	if (isEnabled)
+	string str = sif(priorState != 0, "$AHSE_ENABLE", "$AHSE_DISABLE")
+	;DebugTrace("Pause, looting-enabled = " + g_LootingEnabled.GetValue())
+	if (priorState == 0)
 		AllowSearch()
 	Else
 		DisallowSearch()
@@ -274,8 +265,9 @@ int Function ShowMessage(Message m_msg, string m_trans, string m_target_text = "
 	return result
 endFunction
 
-Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool silent)
+Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, int silent, int ignoreBlock)
 	;DebugTrace("OnAutoHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
+	;DebugTrace("item type: " + itemType + ", type-mine: " + objType_mine + ", do not notify: " + silent + ", ignore activation blocking: " + ignoreBlock) 
 	
 	Actor akActivator = Game.GetPlayer()
 	form baseForm = akTarget.GetBaseObject()
@@ -284,6 +276,7 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 		akActivator.AddItem(akTarget, count, true)
 	elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
 		; no-op but must still unlock
+
 	elseif (itemType == objType_Mine)
 		;DebugTrace("Harvesting Ore")
 		MineOreScript oreScript = akTarget as MineOreScript
@@ -310,7 +303,11 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 		; don't try to re-harvest excluded, depleted or malformed vein again until we revisit the cell
 		BlockReference(akTarget)
 
-	elseif (!akTarget.IsActivationBlocked())
+    ; Blocked activators may be looted according to a config setting
+	elseif (!akTarget.IsActivationBlocked() || ignoreBlock)
+		if (akTarget.IsActivationBlocked())
+			;DebugTrace("Activator blocked " + akTarget.GetDisplayName())
+		endif
 		if (itemType == objType_Flora)
 			if (ActivateEx(akTarget, akActivator, silent) && (greenThumbPerk && akActivator.HasPerk(greenThumbPerk)) as bool)
 				float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
@@ -365,10 +362,10 @@ Event OnGetCritterIngredient(ObjectReference akTarget)
 endEvent
 
 Event OnObjectGlow(ObjectReference akTargetRef, int duration)
-	;DebugTrace("------------ Event OnObjectGlow " + akTargetRef.GetDisplayName())
 	EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
 	if (effShader)
-		; play forever - C++ code will tidy up when out of range
+		; play for requested duration - C++ code will tidy up when out of range
+	    ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
 		effShader.Play(akTargetRef, duration)
 	endif
 endEvent
@@ -381,11 +378,14 @@ Event OnObjectGlowStop(ObjectReference akTargetRef)
 	endif
 endEvent
 
+Event OnCarryWeightDelta(int weightDelta)
+	Actor player = Game.GetPlayer()
+	player.ModActorValue("CarryWeight", weightDelta as float)
+	;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
+EndEvent
+
 Event OnMenuOpen(String MenuName)
 	if (MenuName == "Loading Menu")
 		UnblockEverything()
 	endif
 endEvent
-
-;waste
-string sAddItemtoInventory

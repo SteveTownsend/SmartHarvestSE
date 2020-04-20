@@ -4,3 +4,9 @@ DeadSKSE
 /*.user
 /Scripts/Compiled
 /*.aps
+/Scripts/.vscode/launch.json
+/Scripts/.vscode/tasks.json
+/SkyrimSE.code-workspace
+/skyrimse.ppj
+/.vscode/launch.json
+/.vscode/tasks.json

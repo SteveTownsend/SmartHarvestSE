@@ -1,7 +1,5 @@
 #pragma once
 
-#include "skse64/GameForms.h"
-
 bool Replace(std::string& str, const std::string& target, const std::string& replacement);
 
 namespace papyrus

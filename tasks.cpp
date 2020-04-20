@@ -21,26 +21,23 @@
 INIFile* SearchTask::m_ini = nullptr;
 UInt64 SearchTask::m_aliasHandle = 0;
 
-concurrency::critical_section SearchTask::m_lock;
-std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_pendingSearch;
+RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
 bool SearchTask::GoodToGo()
 {
+#if 0
 	if (!m_registry)
 	{
 		m_registry = (*g_skyrimVM)->GetClassRegistry();
 	}
-	if (!m_ini)
-	{
-		m_ini = INIFile::GetInstance();
-	}
+#endif
 	if (!m_aliasHandle)
 	{
 		RE::TESQuest* quest = GetTargetQuest(MODNAME, QUEST_ID);
 		m_aliasHandle = (quest) ? TESQuestHelper(quest).GetAliasHandle(0) : 0;
 	}
-	return m_registry && m_ini && m_aliasHandle;
+	return /* m_registry && */ m_aliasHandle;
 }
 
 SearchTask::SearchTask(const std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>>& candidates)
@@ -48,20 +45,20 @@ SearchTask::SearchTask(const std::vector<std::pair<RE::TESObjectREFR*, INIFile::
 {
 }
 
-void SearchTask::Dispose()
-{
-	{
-		// Scoped unlocker to ensure we safely clean up the entry locking this REFR from more SearchTask activity
-		Unlocker cleanup(this);
-	}
-	delete this;
-}
-
+#if 0
 const BSFixedString SearchTask::critterIngredientEvent = "OnGetCritterIngredient";
+const BSFixedString SearchTask::carryWeightDeltaEvent = "OnCarryWeightDelta";
 const BSFixedString SearchTask::autoHarvestEvent = "OnAutoHarvest";
 const BSFixedString SearchTask::objectGlowEvent = "OnObjectGlow";
 const BSFixedString SearchTask::objectGlowStopEvent = "OnObjectGlowStop";
 const BSFixedString SearchTask::playerHouseCheckEvent = "OnPlayerHouseCheck";
+#endif
+const RE::BSFixedString REcritterIngredientEvent = "OnGetCritterIngredient";
+const RE::BSFixedString REcarryWeightDeltaEvent = "OnCarryWeightDelta";
+const RE::BSFixedString REautoHarvestEvent = "OnAutoHarvest";
+const RE::BSFixedString REobjectGlowEvent = "OnObjectGlow";
+const RE::BSFixedString REobjectGlowStopEvent = "OnObjectGlowStop";
+const RE::BSFixedString REplayerHouseCheckEvent = "OnPlayerHouseCheck";
 
 const int AutoHarvestSpamLimit = 10;
 
@@ -76,8 +73,6 @@ void SearchTask::Run()
 		m_refr = candidate.first;
 		INIFile::SecondaryType m_targetType(candidate.second);
 		TESObjectREFRHelper refrEx(m_refr);
-		// Scoped unlocker to ensure we safely clean up the entry locking this REFR from more SearchTask activity
-		Unlocker cleanup(this);
 		if (m_targetType == INIFile::SecondaryType::itemObjects)
 		{
 			ObjectType objType = refrEx.GetObjectType();
@@ -120,6 +115,28 @@ void SearchTask::Run()
 				continue;
 			}
 
+			if (objType == ObjectType::manualLoot &&
+				m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "ManualLootTargetNotify") != 0)
+			{
+				// notify about these, just once
+				std::string notificationText;
+				static RE::BSFixedString manualLootText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_MANUAL_LOOT_MSG")));
+				if (!manualLootText.empty())
+				{
+					notificationText = manualLootText;
+					Replace(notificationText, "{ITEMNAME}", refrEx.m_ref->GetName());
+					if (!notificationText.empty())
+					{
+						RE::DebugNotification(notificationText.c_str());
+					}
+				}
+#if _DEBUG
+				_DMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_refr->data.objectReference->formID);
+#endif
+				data->BlockForm(m_refr->data.objectReference);
+				continue;
+			}
+
 			if (BasketFile::GetSingleton()->IsinList(BasketFile::EXCLUDELIST, m_refr->data.objectReference))
 			{
 #if _DEBUG
@@ -155,34 +172,29 @@ void SearchTask::Run()
 			{
 				TriggerObjectGlow();
 			}
-			SInt32 value = static_cast<SInt32>(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
-			if (value == 0)
+			if (!skipLooting)
 			{
+				LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
+				if (lootingType == LootingType::LeaveBehind)
+				{
 #if _DEBUG
-				_MESSAGE("BLock REFR : value == 0 for 0x%08x", m_refr->data.objectReference->formID);
+					_MESSAGE("Block REFR : LeaveBehind for 0x%08x", m_refr->data.objectReference->formID);
 #endif
-				DataCase::GetInstance()->BlockReference(m_refr);
-				skipLooting = true;
+					data->BlockReference(m_refr);
+					skipLooting = true;
+				}
 			}
 			if (skipLooting)
 				continue;
 
-			if (refrEx.ValueWeightTooLowToLoot(m_ini))
-			{
-#if _DEBUG
-				_MESSAGE("value/weight ratio too low, skip");
-#endif
-				data->BlockReference(m_refr);
-				continue;
-			}
-
-			bool isSilent = (m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()) == 1);
-
+			bool isSilent = !LootingRequiresNotification(
+				LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str())));
 #if _DEBUG
 			_MESSAGE("Enqueue AutoHarvest event");
 #endif
 			// don't let the backlog of messages get too large, it's about 1 per second
-			TriggerAutoHarvest(objType, refrEx.GetItemCount(), isSilent || PendingAutoHarvest() > AutoHarvestSpamLimit);
+			bool ignoreBlocking(m_ini->GetSetting(INIFile::common, INIFile::config, "LootBlockedActivators") != 0);
+			TriggerAutoHarvest(objType, refrEx.GetItemCount(), isSilent || PendingAutoHarvest() > AutoHarvestSpamLimit, ignoreBlocking);
 		}
 		else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 		{
@@ -228,10 +240,9 @@ void SearchTask::Run()
 				}
 			}
 
-			SInt32 questObjectGlow = -1;
 			if (hasQuestObject)
 			{
-				questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
+				SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
 				if (questObjectGlow == 1)
 				{
 					needsGlow = true;
@@ -240,10 +251,9 @@ void SearchTask::Run()
 				skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot")) == 0);
 			}
 
-			SInt32 enchantItemGlow = -1;
 			if (hasEnchantItem)
 			{
-				enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "enchantItemGlow"));
+				SInt32 enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "enchantItemGlow"));
 				if (enchantItemGlow == 1)
 				{
 					needsGlow = true;
@@ -251,7 +261,6 @@ void SearchTask::Run()
 			}
 			if (needsGlow)
 			{
-				// TODO get this to compile vm->SendEvent(m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(m_refr, subEvent_glowObject));
 				TriggerObjectGlow();
 			}
 			if (skipLooting)
@@ -262,15 +271,14 @@ void SearchTask::Run()
 #if _DEBUG
 			_DMESSAGE("block looted container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
-			DataCase::GetInstance()->BlockReference(refrEx.m_ref);
+			data->BlockReference(refrEx.m_ref);
 			// for dead bodies, the REFR is not iterable after a reload, so save those until cell exited
 			if (m_targetType == INIFile::SecondaryType::deadbodies)
-				DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref);
+				DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref->GetFormID());
 
-			std::vector<std::pair<RE::TESBoundObject*, int>> targets;
+			// Build list of lootable targets with count and notification flag for each
+			std::vector<std::tuple<RE::TESBoundObject*, int, bool>> targets;
 			targets.reserve(lootableItems.size());
-			std::vector<bool> notifications;
-			notifications.reserve(lootableItems.size());
 			int count(0);
 			for (auto targetSize : lootableItems)
 			{
@@ -292,8 +300,8 @@ void SearchTask::Run()
 				ObjectType objType = ClassifyType(itemEx.m_form);
 				std::string typeName = GetObjectTypeName(objType);
 
-				SInt32 value = static_cast<SInt32>(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
-				if (value == 0)
+				LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
+				if (lootingType == LootingType::LeaveBehind)
 				{
 #if _DEBUG
 					_DMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
@@ -301,9 +309,7 @@ void SearchTask::Run()
 					data->BlockForm(target);
 					continue;
 				}
-				bool isSilent = (value == 1);
-
-				if (itemEx.ValueWeightTooLowToLoot(m_ini))
+				if (LootingDependsOnValueWeight(lootingType, objType) && itemEx.ValueWeightTooLowToLoot(m_ini))
 				{
 #if _DEBUG
 					_DMESSAGE("block - v/w excludes for 0x%08x", target->formID);
@@ -316,10 +322,9 @@ void SearchTask::Run()
 				if (!bound)
 					continue;
 
-				targets.push_back(std::make_pair(const_cast<RE::TESBoundObject*>(bound), targetSize.second));
-				notifications.push_back(!isSilent);
+				targets.push_back({const_cast<RE::TESBoundObject*>(bound), targetSize.second, LootingRequiresNotification(lootingType)});
 #if _DEBUG
-				_DMESSAGE("get %s from container %s/0x%08x", itemEx.m_form->GetName(),
+				_DMESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetSize.second,
 					refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
 				++count;
@@ -333,14 +338,16 @@ void SearchTask::Run()
 					int playContainerAnimation = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "PlayContainerAnimation"));
 					animate = playContainerAnimation != 0 && refrEx.GetTimeController();
 				}
-				TriggerContainerLootMany(targets, notifications, animate);
+				TriggerContainerLootMany(targets, animate);
 			}
 		}
 	}
 }
 
+#if 0
 VMClassRegistry* SearchTask::m_registry = nullptr;
-concurrency::critical_section SearchTask::m_searchLock;
+#endif
+RecursiveLock SearchTask::m_searchLock;
 bool SearchTask::m_threadStarted = false;
 bool SearchTask::m_searchAllowed = false;
 bool SearchTask::m_sneaking = false;
@@ -350,12 +357,14 @@ std::unordered_set<const RE::BGSLocation*> SearchTask::m_locationCheckedForPlaye
 RE::BGSKeyword* SearchTask::m_playerHouseKeyword(nullptr);
 bool SearchTask::m_carryAdjustedForCombat = false;
 bool SearchTask::m_carryAdjustedForPlayerHome = false;
-float SearchTask::m_currentCarryWeightChange = 0.;
+int SearchTask::m_currentCarryWeightChange = 0;
 
 void SearchTask::SetPlayerHouseKeyword(RE::BGSKeyword* keyword)
 {
 	m_playerHouseKeyword = keyword;
 }
+
+double MinDelay = 0.1;
 
 void SearchTask::Start()
 {
@@ -364,11 +373,22 @@ void SearchTask::Start()
 #if _DEBUG
 		_DMESSAGE("starting thread");
 #endif
+		m_ini = INIFile::GetInstance();
 		while (true)
 		{
-			double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::autoharvest,
+			double delay(m_ini->GetSetting(INIFile::PrimaryType::autoharvest,
 				INIFile::SecondaryType::config, "IntervalSeconds"));
-			StartSearch(static_cast<SInt32>(INIFile::PrimaryType::autoharvest));
+			delay = std::max(MinDelay, delay);
+			if (!IsAllowed())
+			{
+#if _DEBUG
+				_DMESSAGE("search disallowed, game loading or menus open");
+#endif
+			}
+			else
+			{
+				StartSearch(static_cast<SInt32>(INIFile::PrimaryType::autoharvest));
+			}
 #if _DEBUG
 			_DMESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
 #endif
@@ -378,348 +398,378 @@ void SearchTask::Start()
 	}).detach();
 }
 
-float InfiniteWeight = 100000.0;
+int InfiniteWeight = 100000;
+
+RE::TESForm* GetCellOwner(RE::TESObjectCELL* cell)
+{
+	for (RE::BSExtraData& extraData : cell->extraList)
+	{
+		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
+		{
+#if _DEBUG
+			_MESSAGE("TESObjectCELLEx::GetOwner Hit %08x", reinterpret_cast<RE::ExtraOwnership&>(extraData).owner->formID);
+#endif
+			return reinterpret_cast<RE::ExtraOwnership&>(extraData).owner;
+		}
+	}
+	return nullptr;
+}
+
+bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
+{
+	const RE::TESForm* owner = GetCellOwner(cell);
+	if (cell && owner)
+	{
+		if (owner->formType == RE::FormType::NPC)
+		{
+			const RE::TESNPC* npc = owner->As<RE::TESNPC>();
+			RE::TESNPC* playerBase = RE::PlayerCharacter::GetSingleton()->GetActorBase();
+			return (npc && npc == playerBase);
+		}
+		else if (owner->formType == RE::FormType::Faction)
+		{
+			RE::TESFaction* faction = skyrim_cast<RE::TESFaction*, RE::TESForm>(owner);
+			if (faction)
+			{
+				if (RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
+					return true;
+
+				return false;
+			}
+		}
+	}
+	return false;
+}
 
 SInt32 SearchTask::StartSearch(SInt32 type1)
 {
-	WindowsUtils::ScopedTimer elapsed("SearchTask::StartSearch");
-	if (!GoodToGo())
+	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> candidates;
+	UInt32 result(0);
 	{
-#if _DEBUG
-		_DMESSAGE("Prerequisites not in place yet");
-#endif
-		return 0;
-	}
-
-	// disable auto-looting if we are inside player house - player 'current location' may be validly empty
-	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
-	if (!player)
-	{
-#if _DEBUG
-		_DMESSAGE("PlayerCharacter not available");
-#endif
-		return 0;
-	}
-
-	RE::BGSLocation* playerLocation(RE::PlayerCharacter::GetSingleton()->currentLocation);
-	if (IsPossiblePlayerHouse(playerLocation))
-	{
-#if _DEBUG
-		_MESSAGE("Player location %s pending user check for player-house exclusion", playerLocation ? playerLocation->GetName() : "unnamed");
-#endif
-		return 0;
-	}
-	if (playerLocation != m_playerLocation)
-	{
-#if _DEBUG
-		_MESSAGE("Player entered new location %s", playerLocation ? playerLocation->GetName() : "unnamed");
-#endif
-		m_playerLocation = playerLocation;
-		// Player changed location - check if it is a player house unless already excluded
-		if (m_playerLocation && !IsLocationExcluded() && m_locationCheckedForPlayerHouse.count(m_playerLocation) == 0)
+		WindowsUtils::ScopedTimer elapsed("SearchTask::StartSearch");
+		if (!IsAllowed())
 		{
-			m_locationCheckedForPlayerHouse.insert(m_playerLocation);
-			if (m_playerLocation->HasKeyword(m_playerHouseKeyword))
-			{
 #if _DEBUG
-				_MESSAGE("Player House %s requires user confirmation before looting", m_playerLocation->GetName());
+			_DMESSAGE("search disallowed");
 #endif
-				// lock this location until dialog has been handled
-				LockPossiblePlayerHouse(m_playerLocation);
-				PlayerHouseCheckEventFunctor argHouseCheck(reinterpret_cast<TESForm*>(m_playerLocation));
-				m_registry->QueueEvent(m_aliasHandle, &playerHouseCheckEvent, &argHouseCheck);
-				return 0;
+			return 0;
+		}
+
+		if (!GoodToGo())
+		{
+#if _DEBUG
+			_DMESSAGE("Prerequisites not in place yet");
+#endif
+			return 0;
+		}
+
+		// disable auto-looting if we are inside player house - player 'current location' may be validly empty
+		RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
+		if (!player)
+		{
+#if _DEBUG
+			_DMESSAGE("PlayerCharacter not available");
+#endif
+			return 0;
+		}
+
+		RE::BGSLocation* playerLocation(player->currentLocation);
+		if (IsPossiblePlayerHouse(playerLocation))
+		{
+#if _DEBUG
+			_MESSAGE("Player location %s waiting for scripts to sync, or pending user decision on exclusion", playerLocation ? playerLocation->GetName() : "unnamed");
+#endif
+			return 0;
+		}
+		if (playerLocation != m_playerLocation)
+		{
+#if _DEBUG
+			_MESSAGE("Player left old location, now at %s", playerLocation ? playerLocation->GetName() : "unnamed");
+#endif
+			m_playerLocation = playerLocation;
+			// Player changed location - check if it is a player house unless already excluded
+			if (m_playerLocation && !IsLocationExcluded() && m_locationCheckedForPlayerHouse.count(m_playerLocation) == 0)
+			{
+				m_locationCheckedForPlayerHouse.insert(m_playerLocation);
+				if (m_playerLocation->HasKeyword(m_playerHouseKeyword))
+				{
+#if _DEBUG
+					_MESSAGE("Player House %s requires user confirmation before looting", m_playerLocation->GetName());
+#endif
+					// lock this location until dialog has been handled
+					LockPossiblePlayerHouse(m_playerLocation);
+#if 1
+					RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+						m_aliasHandle, REplayerHouseCheckEvent, RE::MakeFunctionArguments(std::move(m_playerLocation)));
+#else
+					PlayerHouseCheckEventFunctor argHouseCheck(reinterpret_cast<TESForm*>(m_playerLocation));
+					m_registry->QueueEvent(m_aliasHandle, &playerHouseCheckEvent, &argHouseCheck);
+#endif
+					return 0;
+				}
 			}
 		}
-	}
 
-	if (!IsAllowed())
-	{
+		// Respect encumbrance quality of life settings
+		bool playerInOwnHouse(m_playerLocation && m_playerLocation->HasKeyword(m_playerHouseKeyword));
+		int carryWeightChange(m_currentCarryWeightChange);
+		if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedInPlayerHome") != 0.0)
+		{
+			// when location changes to/from player house, adjust carry weight accordingly
+			if (playerInOwnHouse != m_carryAdjustedForPlayerHome)
+			{
+				carryWeightChange += playerInOwnHouse ? InfiniteWeight : -InfiniteWeight;
+				m_carryAdjustedForPlayerHome = playerInOwnHouse;
 #if _DEBUG
-		_DMESSAGE("search disallowed");
+				_MESSAGE("Carry weight delta after in-player-home adjustment %d", carryWeightChange);
 #endif
-		return 0;
-	}
+			}
+		}
+		bool playerInCombat(player->IsInCombat());
+		if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedInCombat") != 0.0)
+		{
+			// when state changes in/out of combat, adjust carry weight accordingly
+			if (playerInCombat != m_carryAdjustedForCombat)
+			{
+				carryWeightChange += playerInCombat ? InfiniteWeight : -InfiniteWeight;
+				m_carryAdjustedForCombat = playerInCombat;
+#if _DEBUG
+				_MESSAGE("Carry weight delta after in-combat adjustment %d", carryWeightChange);
+#endif
+			}
+		}
+		if (carryWeightChange != m_currentCarryWeightChange)
+		{
+			int requiredWeightDelta(carryWeightChange - m_currentCarryWeightChange);
+			m_currentCarryWeightChange = carryWeightChange;
+			// handle carry weight update via a script event
+#if _DEBUG
+			_MESSAGE("Adjusted carry weight by delta %d", requiredWeightDelta);
+#endif
+			TriggerCarryWeightDelta(requiredWeightDelta);
+		}
 
-	if (IsLocationExcluded())
-	{
+		if (IsLocationExcluded())
+		{
 #if _DEBUG
-		_DMESSAGE("Player location excluded");
+			_DMESSAGE("Player location excluded");
 #endif
-		return 0;
-	}
+			return 0;
+		}
 
-	if (!RE::PlayerControls::GetSingleton() || !RE::PlayerControls::GetSingleton()->IsActivateControlsEnabled())
-	{
+		if (!RE::PlayerControls::GetSingleton() || !RE::PlayerControls::GetSingleton()->IsActivateControlsEnabled())
+		{
 #if _DEBUG
-		_DMESSAGE("player controls disabled");
+			_DMESSAGE("player controls disabled");
 #endif
-		return 0;
-	}
+			return 0;
+		}
 
-	// By inspection, the stack has steady state size of 1. Opening application/inventory adds 1 each,
-	// opening console adds 2. So this appars to be a catch-all for those conditions.
-	if (!RE::UI::GetSingleton())
-	{
+		// By inspection, the stack has steady state size of 1. Opening application/inventory adds 1 each,
+		// opening console adds 2. So this appars to be a catch-all for those conditions.
+		if (!RE::UI::GetSingleton())
+		{
 #if _DEBUG
-		_DMESSAGE("UI inaccessible");
-		return 0;
+			_DMESSAGE("UI inaccessible");
+			return 0;
 #endif
-	}
-	size_t count(RE::UI::GetSingleton()->menuStack.size());
-    if (count > 1)
-	{
+		}
+		size_t count(RE::UI::GetSingleton()->menuStack.size());
+		if (count > 1)
+		{
 #if _DEBUG
-		_DMESSAGE("console and/or menu(s) active, delta to menu-stack size = %d", count);
+			_DMESSAGE("console and/or menu(s) active, delta to menu-stack size = %d", count);
 #endif
-		return 0;
-	}
+			return 0;
+		}
 
 #if 0
-	// Spell for harvesting, WIP
-	elseif (Game.GetPlayer().HasMagicEffectWithKeyword(CastKwd)); for spell(wip)
-		s_updateDelay = true
+		// Spell for harvesting, WIP
+		elseif (Game.GetPlayer().HasMagicEffectWithKeyword(CastKwd)); for spell(wip)
+			s_updateDelay = true
 #endif
 
-	INIFile* ini = INIFile::GetInstance();
-	if (!ini)
-		return 0;
+		DataCase* data = DataCase::GetInstance();
+		if (!data)
+			return 0;
 
-	// Respect encumbrance quality of life settings
-	bool playerInOwnHouse(m_playerLocation && m_playerLocation->HasKeyword(m_playerHouseKeyword));
-	float carryWeightChange(0.);
-	if (ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedInPlayerHome") != 0.0)
-	{
-		// when location changes to/from player house, adjust carry weight accordingly
-		if (playerInOwnHouse != m_carryAdjustedForPlayerHome)
+		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(type1);
+		if (!m_ini->IsType(first))
+			return 0;
+
+		const int disableDuringCombat = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "disableDuringCombat"));
+		if (disableDuringCombat != 0 && playerInCombat)
 		{
-			carryWeightChange += playerInOwnHouse ? InfiniteWeight : -InfiniteWeight;
-			m_carryAdjustedForPlayerHome = playerInOwnHouse;
 #if _DEBUG
-			_MESSAGE("Carry weight delta after in-player-home adjustment %f", carryWeightChange);
+			_MESSAGE("disableDuringCombat %d", disableDuringCombat);
 #endif
+			return 0;
 		}
-	}
-	bool playerInCombat(RE::PlayerCharacter::GetSingleton()->IsInCombat());
-	if (ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedInCombat") != 0.0)
-	{
-		// when state changes in/out of combat, adjust carry weight accordingly
-		if (playerInCombat != m_carryAdjustedForCombat)
+
+		const int disableWhileWeaponIsDrawn = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "disableWhileWeaponIsDrawn"));
+		if (disableWhileWeaponIsDrawn != 0 && player->IsWeaponDrawn())
 		{
-			carryWeightChange += playerInCombat ? InfiniteWeight : -InfiniteWeight;
-			m_carryAdjustedForCombat = playerInCombat;
 #if _DEBUG
-			_MESSAGE("Carry weight delta after in-combat adjustment %f", carryWeightChange);
+			_MESSAGE("disableWhileWeaponIsDrawn %d", disableWhileWeaponIsDrawn);
 #endif
+			return 0;
 		}
-	}
-	if (carryWeightChange != m_currentCarryWeightChange)
-	{
-		float weightDelta(m_currentCarryWeightChange + carryWeightChange);
-		m_currentCarryWeightChange = carryWeightChange;
-		float newCarryWeight(RE::PlayerCharacter::GetSingleton()->GetActorValue(RE::ActorValue::kCarryWeight) + weightDelta);
-		RE::PlayerCharacter::GetSingleton()->SetActorValue(RE::ActorValue::kCarryWeight, newCarryWeight);
-#if _DEBUG
-		_MESSAGE("Adjusted carry weight to %f using new delta %f", newCarryWeight, weightDelta);
-#endif
-	}
 
-	UInt32 result = 0;
-
-	DataCase* data = DataCase::GetInstance();
-	if (!data)
-		return 0;
-
-	INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(type1);
-	if (!ini->IsType(first))
-		return 0;
-
-	RE::TES* tes(RE::TES::GetSingleton());
-	GridCellArrayHelper grid(ini->GetRadius(first));
-
-	const int disableDuringCombat = static_cast<int>(ini->GetSetting(first, INIFile::config, "disableDuringCombat"));
-	if (disableDuringCombat != 0 && playerInCombat)
-	{
-#if _DEBUG
-		_MESSAGE("disableDuringCombat %d", disableDuringCombat);
-#endif
-		return 0;
-	}
-
-	const int disableWhileWeaponIsDrawn = static_cast<int>(ini->GetSetting(first, INIFile::config, "disableWhileWeaponIsDrawn"));
-	if (disableWhileWeaponIsDrawn != 0 && RE::PlayerCharacter::GetSingleton()->IsWeaponDrawn())
-	{
-#if _DEBUG
-		_MESSAGE("disableWhileWeaponIsDrawn %d", disableWhileWeaponIsDrawn);
-#endif
-		return 0;
-	}
-
-	bool sneaking = RE::PlayerCharacter::GetSingleton()->IsSneaking();
-	bool unblockAll(false);
-	// Reset blocked lists if sneak state or player cell has changed
-	if (m_sneaking != sneaking)
-	{
-		m_sneaking = sneaking;
-		unblockAll = true;
-	}
-	// Player cell should never be empty
-	RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
-	if (!playerCell)
-	{
-#if _DEBUG
-		_MESSAGE("Player location not yet set up");
-#endif
-		return 0;
-	}
-	if (playerCell != m_playerCell)
-	{
-		unblockAll = true;
-		m_playerCell = playerCell;
-		// forget about dead bodies we remembered for looting after game reload within current cell
-		DataCase::GetInstance()->ForgetDeadBodies();
-	}
-	if (unblockAll)
-	{
-		papyrus::UnblockEverything(nullptr);
-	}
-
-	if (m_playerLocation && !m_playerLocation->IsLoaded())
-	{
-#if _DEBUG
-		_MESSAGE("Location %s not loaded", m_playerLocation->GetName());
-#endif
-		return 0;
-	}
-
-	int crimeCheck = static_cast<int>(ini->GetSetting(first, INIFile::config, (sneaking) ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
-	int belongingsCheck = static_cast<int>(ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
-
-	std::vector<RE::TESObjectREFR*> refs;
-
-	result = grid.GetReferences(&refs);
-	if (result == 0)
-		return 0;
-
-	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> candidates;
-	candidates.reserve(refs.size());
-	for (RE::TESObjectREFR* refr : refs)
-	{
-		if (!refr)
-			continue;
-		INIFile::SecondaryType second = INIFile::SecondaryType::itemObjects;
-		RE::TESObjectREFR* ashPileRefr(nullptr);
-		if (refr->data.objectReference->As<RE::TESContainer>())
+		bool sneaking = player->IsSneaking();
+		bool unblockAll(false);
+		// Reset blocked lists if sneak state or player cell has changed
+		if (m_sneaking != sneaking)
 		{
-			if (ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "EnableLootContainer") == 0.0)
-				continue;
-			second = INIFile::SecondaryType::containers;
+			m_sneaking = sneaking;
+			unblockAll = true;
 		}
-		else if (refr->data.objectReference->As<RE::Actor>())
+		// Player cell should never be empty
+		RE::TESObjectCELL* playerCell(player->parentCell);
+		if (playerCell != m_playerCell)
 		{
-			if (ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0 || !refr->IsDead(true))
-				continue;
-
-			ActorHelper actorEx(refr->data.objectReference->As<RE::Actor>());
-			if (actorEx.IsPlayerFollower() || actorEx.IsEssential() || !actorEx.IsSummonable())
+			unblockAll = true;
+			m_playerCell = playerCell;
+#if _DEBUG
+			if (m_playerCell)
 			{
-				DataCase::GetInstance()->BlockReference(refr);
-				continue;
+				_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
 			}
-
-			second = INIFile::SecondaryType::deadbodies;
-		}
-		else if (refr->data.objectReference->As<RE::TESObjectACTI>() && (ashPileRefr = GetAshPile(refr)))
-		{
-			if (ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0)
-				continue;
-			second = INIFile::SecondaryType::deadbodies;
-		}
-		else if (ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableAutoHarvest") == 0.0)
-			continue;
-
-		bool ownership = false;
-		if (crimeCheck == 1)
-		{
-			ownership = refr->IsOffLimits();
-
-#if _DEBUG
-			const char* str = ownership ? "true" : "false";
-			_MESSAGE("***1 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-
-		}
-		else if (crimeCheck == 2)
-		{
-			ownership = refr->IsOffLimits();
-
-#if _DEBUG
-			const char* str = ownership ? "true" : "false";
-			_MESSAGE("***2 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-
-
-			if (!ownership)
+			else
 			{
-				TESObjectREFRHelper refrEx(refr);
-				ownership = refrEx.IsPlayerOwned();
+				_MESSAGE("Player cell cleared");
+			}
+#endif
+		}
+		if (unblockAll)
+		{
+			papyrus::UnblockEverything(nullptr);
+		}
+		if (!m_playerCell)
+		{
+#if _DEBUG
+			_MESSAGE("Player cell not yet set up");
+#endif
+			return 0;
+		}
+
+		int crimeCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, (sneaking) ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
+		int belongingsCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
+
+		std::vector<RE::TESObjectREFR*> refs;
+		PlayerCellHelper(m_playerCell, refs, m_ini->GetRadius(first)).GetReferences();
+		result = static_cast<UInt32>(refs.size());
+		if (result == 0)
+			return 0;
+
+		candidates.reserve(refs.size());
+		for (RE::TESObjectREFR* refr : refs)
+		{
+			if (!refr)
+				continue;
+			INIFile::SecondaryType lootTargetType = INIFile::SecondaryType::itemObjects;
+			RE::TESObjectREFR* ashPileRefr(nullptr);
+			if (refr->data.objectReference->As<RE::TESContainer>())
+			{
+				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "EnableLootContainer") == 0.0)
+					continue;
+				lootTargetType = INIFile::SecondaryType::containers;
+			}
+			else if (refr->data.objectReference->As<RE::Actor>())
+			{
+				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0 || !refr->IsDead(true))
+					continue;
+
+				ActorHelper actorEx(refr->data.objectReference->As<RE::Actor>());
+				bool allied(actorEx.IsPlayerAlly());
+				if (allied || actorEx.IsEssential() || !actorEx.IsSummonable())
+				{
+					data->BlockReference(refr);
+					continue;
+				}
+
+				lootTargetType = INIFile::SecondaryType::deadbodies;
+			}
+			else if (refr->data.objectReference->As<RE::TESObjectACTI>() && (ashPileRefr = GetAshPile(refr)))
+			{
+				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0)
+					continue;
+				lootTargetType = INIFile::SecondaryType::deadbodies;
+			}
+			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableAutoHarvest") == 0.0)
+				continue;
+
+			bool ownership = false;
+			if (crimeCheck == 1)
+			{
+				ownership = refr->IsOffLimits();
+
 #if _DEBUG
 				const char* str = ownership ? "true" : "false";
-				_MESSAGE("***2-1 crimeCheck: %d ownership: %s", crimeCheck, str);
+				_MESSAGE("***1 crimeCheck: %d ownership: %s", crimeCheck, str);
 #endif
+
 			}
-
-			if (!ownership)
+			else if (crimeCheck == 2)
 			{
-				TESObjectCELLHelper cellHelper(RE::PlayerCharacter::GetSingleton()->parentCell);
-				if (cellHelper.m_cell)
-				{
-					ownership = cellHelper.IsPlayerOwned();
+				ownership = refr->IsOffLimits();
 
+#if _DEBUG
+				const char* str = ownership ? "true" : "false";
+				_MESSAGE("***2 crimeCheck: %d ownership: %s", crimeCheck, str);
+#endif
+
+
+				if (!ownership)
+				{
+					TESObjectREFRHelper refrEx(refr);
+					ownership = refrEx.IsPlayerOwned();
+#if _DEBUG
+					const char* str = ownership ? "true" : "false";
+					_MESSAGE("***2-1 crimeCheck: %d ownership: %s", crimeCheck, str);
+#endif
+				}
+
+				if (!ownership)
+				{
+					ownership = IsCellPlayerOwned(m_playerCell);
 #if _DEBUG
 					const char* str = ownership ? "true" : "false";
 					_MESSAGE("***2-2 crimeCheck: %d ownership: %s", crimeCheck, str);
 #endif
 				}
 			}
-		}
 
-		if (!ownership && belongingsCheck == 0)
-		{
-			TESObjectREFRHelper refrEx(refr);
-			ownership = refrEx.IsPlayerOwned();
+			if (!ownership && belongingsCheck == 0)
+			{
+				TESObjectREFRHelper refrEx(refr);
+				ownership = refrEx.IsPlayerOwned();
 
 #if _DEBUG
-			const char* str = ownership ? "true" : "false";
-			_MESSAGE("***3 crimeCheck: %d ownership: %s", crimeCheck, str);
+				const char* str = ownership ? "true" : "false";
+				_MESSAGE("***3 crimeCheck: %d ownership: %s", crimeCheck, str);
 #endif
-		}
+			}
 
-		if (ownership)
-		{
-			DataCase::GetInstance()->BlockReference(refr);
-			continue;
-		}
+			if (ownership)
+			{
+				data->BlockReference(refr);
+				continue;
+			}
 
-		if (ashPileRefr)
-		{
-			refr = ashPileRefr;
-		}
-
-		// Acquire token to allow search to be kicked off here. If a task is already pending do not
-		// create another one.
-		if (SearchTask::LockREFR(refr))
-		{
-			candidates.push_back(std::make_pair(refr, second));
+			if (ashPileRefr)
+			{
+				refr = ashPileRefr;
+			}
+			candidates.push_back(std::make_pair(refr, lootTargetType));
 		}
 	}
-	SKSE::GetTaskInterface()->AddTask(new SearchTask(candidates));
+	SearchTask(candidates).Run();
 	return result;
 }
 
 void SearchTask::Allow()
 {
-	concurrency::critical_section::scoped_lock guard(m_searchLock);
+	RecursiveLockGuard guard(m_searchLock);
 	m_searchAllowed = true;
 	if (!m_threadStarted)
 	{
@@ -730,35 +780,62 @@ void SearchTask::Allow()
 }
 void SearchTask::Disallow()
 {
-	concurrency::critical_section::scoped_lock guard(m_searchLock);
+	RecursiveLockGuard guard(m_searchLock);
 	m_searchAllowed = false;
 }
 bool SearchTask::IsAllowed()
 {
-	concurrency::critical_section::scoped_lock guard(m_searchLock);
+	RecursiveLockGuard guard(m_searchLock);
 	return m_searchAllowed;
 }
 
 void SearchTask::TriggerGetCritterIngredient()
 {
+#if 1
+	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+		m_aliasHandle, REcritterIngredientEvent, RE::MakeFunctionArguments(std::move(m_refr)));
+#else
 	CritterIngredientEventFunctor args(reinterpret_cast<TESObjectREFR*>(m_refr));
 	m_registry->QueueEvent(m_aliasHandle, &critterIngredientEvent, &args);
+#endif
+}
+
+void SearchTask::TriggerCarryWeightDelta(const int delta)
+{
+#if 1
+	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+		m_aliasHandle, REcarryWeightDeltaEvent, RE::MakeFunctionArguments(std::move(delta)));
+#else
+	CarryWeightDeltaEventFunctor args(delta);
+	m_registry->QueueEvent(m_aliasHandle, &carryWeightDeltaEvent, &args);
+#endif
 }
 
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_autoHarvestLock;
 
-void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, bool isSilent)
+void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking)
 {
     // Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 	if (!LockAutoHarvest(m_refr))
 		return;
-	LootEventFunctor args(reinterpret_cast<TESObjectREFR*>(m_refr), static_cast<SInt32>(objType), itemCount, isSilent);
+#if 1
+	SInt32 intType(static_cast<SInt32>(objType));
+	// hack to avoid bool/uint32 ambiguity
+	SInt32 intSilent(static_cast<SInt32>(isSilent));
+	// hack to avoid bool/uint32 ambiguity
+	SInt32 intIgnoreBlocking(static_cast<SInt32>(ignoreBlocking));
+	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+		m_aliasHandle, REautoHarvestEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(intType),
+			std::move(itemCount), std::move(intSilent), std::move(intIgnoreBlocking)));
+#else
+	LootEventFunctor args(reinterpret_cast<TESObjectREFR*>(m_refr), static_cast<SInt32>(objType), itemCount, isSilent, ignoreBlocking);
 	m_registry->QueueEvent(m_aliasHandle, &autoHarvestEvent, &args);
+#endif
 }
 
 bool SearchTask::LockAutoHarvest(const RE::TESObjectREFR* refr)
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	if (!refr)
 		return false;
 	return (m_autoHarvestLock.insert(refr)).second;
@@ -766,7 +843,7 @@ bool SearchTask::LockAutoHarvest(const RE::TESObjectREFR* refr)
 
 bool SearchTask::UnlockAutoHarvest(const RE::TESObjectREFR* refr)
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	if (!refr)
 		return false;
 	return m_autoHarvestLock.erase(refr) > 0;
@@ -774,47 +851,70 @@ bool SearchTask::UnlockAutoHarvest(const RE::TESObjectREFR* refr)
 
 bool SearchTask::IsLockedForAutoHarvest(const RE::TESObjectREFR* refr)
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	return (refr && m_autoHarvestLock.count(refr));
 }
 
 size_t SearchTask::PendingAutoHarvest()
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	return m_autoHarvestLock.size();
 }
 
 std::unordered_set<const RE::BGSLocation*> SearchTask::m_possiblePlayerHouse;
 bool SearchTask::LockPossiblePlayerHouse(const RE::BGSLocation* location)
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
 	if (!location)
 		return false;
+	RecursiveLockGuard guard(m_lock);
 	return (m_possiblePlayerHouse.insert(location)).second;
 }
 
 bool SearchTask::UnlockPossiblePlayerHouse(const RE::BGSLocation* location)
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
 	if (!location)
 		return false;
+	RecursiveLockGuard guard(m_lock);
 	return m_possiblePlayerHouse.erase(location) > 0;
 }
 
+// Check indeterminate status of the location - possibly because a requested UI check is pending,
+// possibly because we are still waiting for the scripts to sync up the list
 bool SearchTask::IsPossiblePlayerHouse(const RE::BGSLocation* location)
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
-	return (location && m_possiblePlayerHouse.count(location));
+	RecursiveLockGuard guard(m_lock);
+	return !m_pluginSynced || (location && m_possiblePlayerHouse.count(location));
 }
 
 std::unordered_set<const RE::TESForm*> SearchTask::m_excludeLocations;
+bool SearchTask::m_pluginSynced(false);
+
+void SearchTask::MergeExcludeList()
+{
+	RecursiveLockGuard guard(m_lock);
+	// Add loaded locations to the list of exclusions
+	BasketFile::GetSingleton()->SyncList(BasketFile::EXCLUDELIST);
+	for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::EXCLUDELIST))
+	{
+		SearchTask::AddLocationToExcludeList(exclusion);
+	}
+	// need to wait for the scripts to sync up before performing player house checks
+	m_pluginSynced = true;
+	// reset carry weight adjustments - scripts will handle the Player Actor Value, our scan will reinstate as needed
+	m_currentCarryWeightChange = 0;
+	m_carryAdjustedForPlayerHome = false;
+	m_carryAdjustedForCombat = false;
+	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
+	m_playerCell = nullptr;
+	m_playerLocation = nullptr;
+}
 
 void SearchTask::ResetExcludedLocations()
 {
 #if _DEBUG
 	_DMESSAGE("Reset list of locations excluded from looting");
 #endif
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	m_excludeLocations.clear();
 }
 
@@ -823,7 +923,7 @@ void SearchTask::AddLocationToExcludeList(const RE::TESForm* location)
 #if _DEBUG
 	_DMESSAGE("Location %s excluded from looting", location->GetName());
 #endif
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	m_excludeLocations.insert(location);
 }
 
@@ -832,25 +932,23 @@ void SearchTask::DropLocationFromExcludeList(const RE::TESForm* location)
 #if _DEBUG
 	_DMESSAGE("Location %s no longer excluded from looting", location->GetName());
 #endif
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	m_excludeLocations.erase(location);
 }
 
 bool SearchTask::IsLocationExcluded()
 {
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	if (!m_playerLocation)
+		return false;
+	RecursiveLockGuard guard(m_lock);
 	return m_excludeLocations.count(m_playerLocation) > 0;
 }
 
-void SearchTask::TriggerContainerLootMany(const std::vector<std::pair<RE::TESBoundObject*, int>>& targets, const std::vector<bool>& notifications, const bool animate)
+void SearchTask::TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBoundObject*, int, bool>>& targets, const bool animate)
 {
 	if (!m_refr)
 		return;
-	auto target(targets.cbegin());
-	auto notification(notifications.cbegin());
-	std::vector<RE::TESForm*> forms;
-	forms.reserve(targets.size());
-	for (; target != targets.cend(); ++target, ++notification)
+	for (const auto target : targets)
 	{
 		RE::ExtraDataList* xList(nullptr);
 		auto first(m_refr->extraList.cbegin());
@@ -858,25 +956,28 @@ void SearchTask::TriggerContainerLootMany(const std::vector<std::pair<RE::TESBou
 		{
 			xList = &m_refr->extraList;
 		}
-		RE::ObjectRefHandle handle(m_refr->RemoveItem(target->first, target->second, RE::ITEM_REMOVE_REASON::kRemove, xList, RE::PlayerCharacter::GetSingleton()));
-		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(target->first, true, false);
+		RE::TESBoundObject* boundObject(std::get<0>(target));
+		int count(std::get<1>(target));
+		bool notify(std::get<2>(target));
+		RE::ObjectRefHandle handle(m_refr->RemoveItem(boundObject, count, RE::ITEM_REMOVE_REASON::kRemove, xList, RE::PlayerCharacter::GetSingleton()));
+		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(boundObject, true, false);
 		if (animate)
 		{
 			m_refr->PlayAnimation("Close", "Open");
 		}
 
-		if (*notification)
+		if (notify)
 		{
 			std::string notificationText;
-			if (target->second > 1)
+			if (count > 1)
 			{
 				static RE::BSFixedString multiActivate(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_ACTIVATE(COUNT)_MSG")));
 				if (!multiActivate.empty())
 				{
 					notificationText = multiActivate;
-					Replace(notificationText, "{ITEMNAME}", target->first->GetName());
+					Replace(notificationText, "{ITEMNAME}", boundObject->GetName());
 					std::ostringstream intStr;
-					intStr << target->second;
+					intStr << count;
 					Replace(notificationText, "{COUNT}", intStr.str());
 				}
 			}
@@ -886,7 +987,7 @@ void SearchTask::TriggerContainerLootMany(const std::vector<std::pair<RE::TESBou
 				if (!singleActivate.empty())
 				{
 					notificationText = singleActivate;
-					Replace(notificationText, "{ITEMNAME}", target->first->GetName());
+					Replace(notificationText, "{ITEMNAME}", boundObject->GetName());
 				}
 			}
 			if (!notificationText.empty())
@@ -901,33 +1002,40 @@ const unsigned int ObjectGlowDuration = 15;
 
 void SearchTask::TriggerObjectGlow()
 {
-	// TODO get this to compile
-	// vm->SendEvent(m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(m_refr, subEvent_glowObject));
 
 	// only send the glow event once per N seconds. This will retrigger on every pass but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
 	// never be so many in a cell that this is a problem.
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	const auto existingGlow(m_glowExpiration.find(m_refr));
 	auto currentTime(std::chrono::high_resolution_clock::now());
 	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
 		return;
 	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(ObjectGlowDuration * 1000.0));
 	m_glowExpiration[m_refr] = expiry;
-
+#if _DEBUG
+	_DMESSAGE("Trigger glow for %s/0x%08x", m_refr->GetName(), m_refr->formID);
+#endif
+#if 1
+	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+		m_aliasHandle, REobjectGlowEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(ObjectGlowDuration)));
+#else
 	ObjectGlowEventFunctor argGlow(reinterpret_cast<TESObjectREFR*>(m_refr), ObjectGlowDuration);
 	m_registry->QueueEvent(m_aliasHandle, &objectGlowEvent, &argGlow);
+#endif
 }
 
 void SearchTask::StopObjectGlow(const RE::TESObjectREFR* refr)
 {
 	// TODO get this to compile
 	// vm->SendEvent(m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(m_refr, subEvent_glowObject));
-	ObjectGlowEventFunctor argGlow(reinterpret_cast<TESObjectREFR*>(const_cast<RE::TESObjectREFR*>(refr)), 0);
+#if 1
+	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+		m_aliasHandle, REobjectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(ObjectGlowDuration)));
+#else
+	ObjectGlowStopEventFunctor argGlow(reinterpret_cast<TESObjectREFR*>(const_cast<RE::TESObjectREFR*>(refr)));
 	m_registry->QueueEvent(m_aliasHandle, &objectGlowStopEvent, &argGlow);
-
-	concurrency::critical_section::scoped_lock guard(m_lock);
-	m_glowExpiration.erase(refr);
+#endif
 }
 
 void SearchTask::UnlockAll()
@@ -935,17 +1043,12 @@ void SearchTask::UnlockAll()
 #if _DEBUG
 	_MESSAGE("Unlock task-pending REFRs");
 #endif
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	RecursiveLockGuard guard(m_lock);
 	// unblock all blocked auto-harvest objects
 	m_autoHarvestLock.clear();
 	// unblock possible player house checks
 	m_possiblePlayerHouse.clear();
-}
-
-// Stop objects glowing and clean up the list
-void SearchTask::UnglowAll()
-{
-	concurrency::critical_section::scoped_lock guard(m_lock);
+	// Stop objects glowing and clean up the list
 	for (auto glowingObject : m_glowExpiration)
 	{
 		StopObjectGlow(glowingObject.first);
@@ -953,43 +1056,16 @@ void SearchTask::UnglowAll()
 	m_glowExpiration.clear();
 }
 
-// returns true if an entry was added
-bool SearchTask::LockREFR(const RE::TESObjectREFR* refr)
-{
-	if (!refr)
-		return false;
-	concurrency::critical_section::scoped_lock guard(m_lock);
-	bool added(m_pendingSearch.insert(refr).second);
-#if _DEBUG
-	_DMESSAGE("LockREFR %s for 0x%08x", added ? "true" : "false", refr->formID);
-#endif
-	return added;
-}
+bool SearchTask::firstTime = true;
 
-// returns true if an entry was removed, clearing the input
-bool SearchTask::UnlockREFR()
+void SearchTask::Init()
 {
-	if (!m_refr)
-		return false;
-	concurrency::critical_section::scoped_lock guard(m_lock);
-	bool removed(m_pendingSearch.erase(m_refr) > 0);
-#if _DEBUG
-	_DMESSAGE("UnlockREFR %s for 0x%08x", removed ? "true" : "false", m_refr->formID);
-#endif
-	m_refr = nullptr;
-	return removed;
-}
-
-bool firstTime = true;
-
-void tasks::Init()
-{
-	WindowsUtils::ScopedTimer elapsed("tasks::Init");
-	papyrus::UnblockEverything(nullptr);
+	WindowsUtils::ScopedTimer elapsed("SearchTask::Init");
     if (firstTime)
 	{
 		DataCase::GetInstance()->CategorizeLootables();
 		firstTime = false;
 	}
+	papyrus::UnblockEverything(nullptr);
 }
 

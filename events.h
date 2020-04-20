@@ -1,9 +1,8 @@
 #pragma once
 
 #include "skse64/PapyrusVM.h"
-#include "skse64/GameForms.h"
-#include "skse64/GameObjects.h"
 #include "skse64/GameReferences.h"
+#include "RE/BSScript/IFunctionArguments.h"
 
 class CritterIngredientEventFunctor : public IFunctionArguments
 {
@@ -17,13 +16,14 @@ private:
 class LootEventFunctor : public IFunctionArguments
 {
 public:
-	LootEventFunctor(TESObjectREFR* refr, SInt32 type, SInt32 count, bool silent);
+	LootEventFunctor(TESObjectREFR* refr, SInt32 type, SInt32 count, bool silent, bool ignoreBlocking);
 	virtual bool Copy(Output* dst);
 private:
 	TESObjectREFR* m_refr;
 	SInt32 m_type;
 	SInt32 m_count;
 	bool m_silent;
+	bool m_ignoreBlocking;
 };
 
 class ContainerLootManyEventFunctor : public IFunctionArguments
@@ -47,6 +47,15 @@ private:
 	const int m_glowDuration;
 };
 
+class ObjectGlowStopEventFunctor : public IFunctionArguments
+{
+public:
+	ObjectGlowStopEventFunctor(TESObjectREFR* refr);
+	virtual bool Copy(Output* dst);
+private:
+	TESObjectREFR* m_refr;
+};
+
 class PlayerHouseCheckEventFunctor : public IFunctionArguments
 {
 public:
@@ -54,4 +63,13 @@ public:
 	virtual bool Copy(Output* dst);
 private:
 	TESForm* m_location;
+};
+
+class CarryWeightDeltaEventFunctor : public IFunctionArguments
+{
+public:
+	CarryWeightDeltaEventFunctor(const int delta);
+	virtual bool Copy(Output* dst);
+private:
+	const int m_delta;
 };

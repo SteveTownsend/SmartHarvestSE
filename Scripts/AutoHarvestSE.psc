@@ -32,7 +32,8 @@ bool Function IsSearchAllowed() global native
 Function SyncUserListWithPlugin() global native
 bool Function SaveUserList() global native
 bool Function LoadUserList() global native
-Function SyncExcludeListWithPlugin() global native
+Function ClearPluginExcludeList() global native
+Function MergePluginExcludeList() global native
 bool Function SaveExcludeList() global native
 bool Function LoadExcludeList() global native
 

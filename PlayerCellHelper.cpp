@@ -5,86 +5,65 @@
 #include "tasks.h"
 #include "PlayerCellHelper.h"
 
-#include <limits>
-
-RE::TESForm* TESObjectCELLHelper::GetOwner(void)
-{
-	for (RE::BSExtraData& extraData : m_cell->extraList)
-	{
-		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
-		{
-#if _DEBUG
-			_MESSAGE("TESObjectCELLEx::GetOwner Hit %08x", reinterpret_cast<RE::ExtraOwnership&>(extraData).owner->formID);
-#endif
-			return reinterpret_cast<RE::ExtraOwnership&>(extraData).owner;
-		}
-	}
-	return nullptr;
-}
-
-bool TESObjectCELLHelper::IsPlayerOwned()
-{
-	RE::TESForm* owner = GetOwner();
-	if (owner)
-	{
-		if (owner->formType == RE::FormType::NPC)
-		{
-			RE::TESNPC* npc = skyrim_cast<RE::TESNPC*, RE::TESForm>(owner);
-			RE::TESNPC* playerBase = skyrim_cast<RE::TESNPC*, RE::TESForm>(RE::PlayerCharacter::GetSingleton()->data.objectReference);
-			return (npc && npc == playerBase);
-		}
-		else if (owner->formType == RE::FormType::Faction)
-		{
-			RE::TESFaction* faction = skyrim_cast<RE::TESFaction*, RE::TESForm>(owner);
-			if (faction)
-			{
-				if (RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
-					return true;
-
-				return false;
-			}
-		}
-	}
-	return false;
-}
-
-double GetDistance(const RE::TESObjectREFR* refr, const double radius)
+bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
 {
 	RE::FormID formID(refr->formID);
 	double dx = fabs(refr->GetPositionX() - RE::PlayerCharacter::GetSingleton()->GetPositionX());
 	double dy = fabs(refr->GetPositionY() - RE::PlayerCharacter::GetSingleton()->GetPositionY());
 	double dz = fabs(refr->GetPositionZ() - RE::PlayerCharacter::GetSingleton()->GetPositionZ());
 
-	// don't do FP math if we can trivially see it's too far away
-	if (dx > radius || dy > radius || dz > radius)
+	// don't do Floating Point math if we can trivially see it's too far away
+	if (dx > m_radius || dy > m_radius || dz > m_radius)
 	{
 #if _DEBUG
-		_DMESSAGE("REFR 0x%08x {%8.2f,%8.2f,%8.2f} trivially too far from player {%8.2f,%8.2f,%8.2f}",
+		_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
 			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionX(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionY(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionZ());
 #endif
-    	return std::numeric_limits<double>::max();
+    	return false;
 	}
 	double distance(sqrt((dx*dx) + (dy*dy) + (dz*dz)));
 #if _DEBUG
-	_DMESSAGE("REFR 0x%08x is %8.2f units from PlayerCharacter", formID, distance);
+	_DMESSAGE("REFR 0x%08x is %.2f units away, loot range %.2f units", formID, distance, m_radius);
 #endif
-	return distance;
+	return distance <= m_radius;
 }
 
-struct CanLoot_t {
-	bool operator()(RE::TESObjectREFR* refr)
+bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
+{
+	// prioritize checks that do not require obtaining a lock
+	if (!refr)
 	{
-		if (!refr)
+#if _DEBUG
+		_DMESSAGE("null REFR");
+#endif
+		return false;
+	}
+
+	// anything out of looting range is skipped - best way to narrow the list of candidates for looting
+	if (!WithinLootingRange(refr))
+		return false;
+
+	RE::FormID formID(refr->formID);
+	// if 3D not loaded do not measure
+	if (!refr->Is3DLoaded())
+	{
+#if _DEBUG
+		_DMESSAGE("skip REFR, 3D not loaded 0x%08x", formID);
+#endif
+		return false;
+	}
+	if (refr->formType == RE::FormType::ActorCharacter)
+	{
+		if (!refr->IsDead(true))
 		{
 #if _DEBUG
-			_DMESSAGE("null REFR");
+			_DMESSAGE("skip living ActorCharacter 0x%08x/%s", formID, fullName->GetFullName());
 #endif
 			return false;
 		}
-		RE::FormID formID(refr->formID);
 		if (refr == RE::PlayerCharacter::GetSingleton())
 		{
 #if _DEBUG
@@ -92,75 +71,169 @@ struct CanLoot_t {
 #endif
 			return false;
 		}
-		if (SearchTask::IsLockedForAutoHarvest(refr))
-		{
-#if _DEBUG
-			_DMESSAGE("skip REFR, harvest pending 0x%08x", formID);
-#endif
-			return false;
-		}
-
-		DataCase* data = DataCase::GetInstance();
-		if (data->IsReferenceBlocked(refr))
-		{
-#if _DEBUG
-			_DMESSAGE("skip blocked REFR for object/container 0x%08x", formID);
-#endif
-			return false;
-		}
-		if (data->IsFormBlocked(refr->data.objectReference))
-		{
-#if _DEBUG
-			_DMESSAGE("skip blocked REFR base form 0x%08x", formID);
-#endif
-			return false;
-		}
-
-		// if 3D not loaded do not measure
-		if (!refr->Is3DLoaded())
-		{
-#if _DEBUG
-			_DMESSAGE("skip REFR, 3D not loaded 0x%08x", formID);
-#endif
-			return false;
-		}
-
-		RE::TESFullName* fullName = refr->data.objectReference->As<RE::TESFullName>();
-		if (!fullName || fullName->GetFullNameLength() == 0)
-		{
-			data->BlockForm(refr->data.objectReference);
-#if _DEBUG
-			_DMESSAGE("block REFR with blank name 0x%08x", formID);
-#endif
-			return false;
-		}
-
-		if (refr->formType == RE::FormType::ActorCharacter && !refr->IsDead(true))
-		{
-#if _DEBUG
-			_DMESSAGE("skip living ActorCharacter 0x%08x", formID);
-#endif
-			return false;
-		}
-
-		if ((refr->data.objectReference->formType == RE::FormType::Flora || refr->data.objectReference->formType == RE::FormType::Tree) &&
-			((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
-		{
-#if _DEBUG
-			_DMESSAGE("skip harvested Flora 0x%08x", formID);
-#endif
-			return false;
-		}
-
-#if _DEBUG
-		_DMESSAGE("lootable candidate 0x%08x", formID);
-#endif
-		return true;
 	}
-} CanLoot;
 
-UInt32 GridCellArrayHelper::GetReferences(std::vector<RE::TESObjectREFR*> *out)
+	if ((refr->data.objectReference->formType == RE::FormType::Flora || refr->data.objectReference->formType == RE::FormType::Tree) &&
+		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
+	{
+#if _DEBUG
+		_DMESSAGE("skip harvested Flora 0x%08x", formID);
+#endif
+		return false;
+	}
+
+	if (SearchTask::IsLockedForAutoHarvest(refr))
+	{
+#if _DEBUG
+		_DMESSAGE("skip REFR, harvest pending 0x%08x", formID);
+#endif
+		return false;
+	}
+
+	DataCase* data = DataCase::GetInstance();
+	if (data->IsReferenceBlocked(refr))
+	{
+#if _DEBUG
+		_DMESSAGE("skip blocked REFR for object/container 0x%08x", formID);
+#endif
+		return false;
+	}
+	if (data->IsFormBlocked(refr->data.objectReference))
+	{
+#if _DEBUG
+		_DMESSAGE("skip blocked REFR base form 0x%08x", formID);
+#endif
+		return false;
+	}
+
+	RE::TESFullName* fullName = refr->data.objectReference->As<RE::TESFullName>();
+	if (!fullName || fullName->GetFullNameLength() == 0)
+	{
+		data->BlockForm(refr->data.objectReference);
+#if _DEBUG
+		_DMESSAGE("block REFR with blank name 0x%08x", formID);
+#endif
+		return false;
+	}
+
+#if _DEBUG
+	_DMESSAGE("lootable candidate 0x%08x", formID);
+#endif
+	return true;
+}
+
+void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 {
-	TESObjectCELLHelper parent(RE::PlayerCharacter::GetSingleton()->parentCell);
-	return parent.GetReferences(out, m_radius, CanLoot);
+	for (const RE::NiPointer<RE::TESObjectREFR>& refptr : cell->references)
+	{
+		/* SKSE logic for TESObjectCELL has 'ref' as TESObjectREFR instance, unk08 is a sentinel value:
+
+		  TESObjectREFR* refr = nullptr;
+		  for (UInt32 index = 0; index < refData.maxSize; index++) {
+			refr = refData.refArray[index].ref;
+			if (refr && refData.refArray[index].unk08)
+			...
+		  }
+		  The array member is GameForms.h->TESObjectCELL::ReferenceData::Reference.
+		  In CommonLibSSE the 'refArray' member is BSTHashMap.h->BSTSet<>::
+		  BSTScatterTableEntry.
+		*/
+		RE::TESObjectREFR* refr(refptr.get());
+		if (refr)
+		{
+			if (!CanLoot(refr))
+				continue;
+
+			m_targets.emplace_back(refr);
+			m_normalRefrs.insert(refr->GetFormID());
+		}
+	}
+}
+
+bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
+{
+	// XCLC data available since both are exterior cells, by construction
+	const auto checkCoordinates(cell->GetCoordinates());
+	const auto myCoordinates(m_cell->GetCoordinates());
+	return std::abs(myCoordinates->cellX - checkCoordinates->cellX) <= 1 &&
+		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
+}
+
+void PlayerCellHelper::GetReferences()
+{
+	WindowsUtils::ScopedTimer elapsed("PlayerCellHelper::GetReferences");
+	if (!m_cell || !m_cell->IsAttached())
+		return;
+
+	GetCellReferences(m_cell);
+	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
+	if (!m_cell->IsInteriorCell())
+	{
+#if _DEBUG
+		_DMESSAGE("Check for adjacent cells to 0x%08x", m_cell->GetFormID());
+#endif
+		RE::TESWorldSpace* worldSpace(m_cell->worldSpace);
+		if (worldSpace)
+		{
+#if _DEBUG
+			_DMESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
+#endif
+			for (const auto& worldCell : worldSpace->cellMap)
+			{
+				RE::TESObjectCELL* candidateCell(worldCell.second);
+				// skip player cell, handled above
+				if (candidateCell == m_cell)
+				{
+#if _DEBUG
+					_DMESSAGE("Player cell, already handled");
+#endif
+					continue;
+				}
+				// sanity checks
+				if (!candidateCell || !candidateCell->IsAttached())
+				{
+#if _DEBUG
+					_DMESSAGE("Candidate cell null or unattached");
+#endif
+					continue;
+				}
+				// do not loot across interior/exterior boundary
+				if (candidateCell->IsInteriorCell())
+				{
+#if _DEBUG
+					_DMESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
+#endif
+					continue;
+				}
+				// check for adjacency on the cell grid
+				if (!IsAdjacent(candidateCell))
+				{
+#if _DEBUG
+					_DMESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
+#endif
+					continue;
+				}
+#if _DEBUG
+				_MESSAGE("Check adjacent cell 0x%08x", candidateCell->GetFormID());
+#endif
+				GetCellReferences(candidateCell);
+			}
+		}
+	}
+
+	// REFR iteration in cell misses "deadbodies" REFR looted prior to a reload.
+	// List resets when player changes cell, so don't check in adjacent cells.
+	std::vector<RE::FormID> deadBodies(DataCase::GetInstance()->RememberedDeadBodies());
+	for (RE::FormID refrID : deadBodies)
+	{
+		if (m_normalRefrs.count(refrID) == 0)
+		{
+			RE::TESForm* form(RE::TESForm::LookupByID(refrID));
+			RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
+			if (!CanLoot(refr))
+				continue;
+
+			m_targets.emplace_back(refr);
+		}
+	}
 }

@@ -145,7 +145,7 @@ void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 	const RE::ExtraDataList *extraData = &refr.m_ref->extraList;
 	DumpExtraData(extraData);
 
-	_MESSAGE("--------------------\n");
+	_MESSAGE("--------------------");
 #endif
 }
 
@@ -225,6 +225,6 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 
 	const RE::ExtraDataList *extraData = &refr.m_ref->extraList;
     DumpExtraData(extraData);
-	_MESSAGE("--------------------\n");
+	_MESSAGE("--------------------");
 #endif
 }

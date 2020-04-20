@@ -23,18 +23,16 @@
 #include <stdexcept>
 #include "SimpleIni.h"
 
-using namespace std;
-
 /**************************************************************************************************************/
 /***                                                                                                        ***/
 /*** Class SimpleIni                                                                                        ***/
 /***                                                                                                        ***/
 /**************************************************************************************************************/
-SimpleIni::SimpleIni(const string& filename) : m_OptionCommentCharacters(";#")
+SimpleIni::SimpleIni(const std::string& filename) : m_OptionCommentCharacters(";#")
 {
 	if(filename!="")
 	{
-		if(!Load(filename)) throw logic_error("Unable to open the file "+filename+" in read mode.");
+		if(!Load(filename)) throw std::logic_error("Unable to open the file "+filename+" in read mode.");
 	}
 }
 
@@ -52,16 +50,16 @@ void SimpleIni::SetOptions(optionKey key, const std::string& value)
 	}
 }
 
-bool SimpleIni::Load(const string& filename)
+bool SimpleIni::Load(const std::string& filename)
 {
 	size_t pos;
 	size_t pos2;
 	size_t length;
-	string line;
-	string section;
-	string key;
-	string comment;
-	ifstream file;
+	std::string line;
+	std::string section;
+	std::string key;
+	std::string comment;
+	std::ifstream file;
 	IniLine iniLine;
 
 
@@ -69,7 +67,7 @@ bool SimpleIni::Load(const string& filename)
 	m_FileName = filename;
 
 	//*** Ouverture du fichier
-	file.open(m_FileName.c_str(), ifstream::in);
+	file.open(m_FileName.c_str(), std::ifstream::in);
 	if(!file) return false;
 
 	//*** Parcours du fichier
@@ -88,8 +86,8 @@ bool SimpleIni::Load(const string& filename)
 		if(line.at(0)=='[')
 		{
 			pos = line.find_first_of(']');
-			if(pos==string::npos) pos = line.length();
-			section = Trim(line.substr(1, pos-1));
+			if(pos== std::string::npos) pos = line.length();
+			section = Normalize(Trim(line.substr(1, pos-1)));
 			if(comment!="")
 			{
 				m_DescriptionMap[section][""] = comment;
@@ -99,19 +97,19 @@ bool SimpleIni::Load(const string& filename)
 		}
 
 		//*** Commentaire ?
-		pos=string::npos;
+		pos= std::string::npos;
 		for(unsigned int i = 0; i < m_OptionCommentCharacters.length(); ++i)
 		{
 			pos2 = line.find_first_of(m_OptionCommentCharacters[i]);
-			if(pos2==string::npos) continue;
-			if(pos==string::npos)
+			if(pos2== std::string::npos) continue;
+			if(pos== std::string::npos)
 			{
 				pos=pos2;
 				continue;
 			}
 			if(pos>pos2) pos = pos2;
 		}
-		if(pos!=string::npos)
+		if(pos!= std::string::npos)
 		{
 			if(pos>0)
 			{
@@ -128,14 +126,14 @@ bool SimpleIni::Load(const string& filename)
 
 		//*** Valeur ?
 		pos = line.find_first_of('=');
-		if(pos!=string::npos)
+		if(pos!= std::string::npos)
 		{
 			iniLine.value = Trim(line.substr(pos+1, length-pos));
 			line.erase(pos, length-pos);
 		}
 
 		//*** Mémorisation
-		key = Trim(line);
+		key = Normalize(Trim(line));
 		m_IniMap[section][key] = iniLine;
 		if(comment!="")
 		{
@@ -154,12 +152,12 @@ bool SimpleIni::Save()
 	return SaveAs(m_FileName);
 }
 
-bool SimpleIni::SaveAs(const string& filename)
+bool SimpleIni::SaveAs(const std::string& filename)
 {
 	std::map<std::string, std::map<std::string, SimpleIni::IniLine> >::iterator itSection;
 	std::map<std::string, SimpleIni::IniLine>::iterator itKey;
 	IniLine iniLine;
-	ofstream file;
+	std::ofstream file;
 	bool first = true;
 
 	file.open(filename.c_str());
@@ -167,9 +165,9 @@ bool SimpleIni::SaveAs(const string& filename)
 
 	for(itSection=m_IniMap.begin(); itSection!=m_IniMap.end(); ++itSection)
 	{
-		if(!first) file << endl;
+		if(!first) file << std::endl;
 		SaveDescription(itSection->first, "", file);
-		if(itSection->first!="") file << "[" << itSection->first << "]" << endl;
+		if(itSection->first!="") file << "[" << itSection->first << "]" << std::endl;
 
 		for(itKey=itSection->second.begin(); itKey!=itSection->second.end(); ++itKey)
 		{
@@ -184,7 +182,7 @@ bool SimpleIni::SaveAs(const string& filename)
 					file << "#";
 				file << iniLine.comment;
 			}
-			file << endl;
+			file << std::endl;
 		}
 		first = false;
 	}
@@ -194,13 +192,13 @@ bool SimpleIni::SaveAs(const string& filename)
 	return true;
 }
 
-void SimpleIni::SaveDescription(string section, string key, ofstream &file)
+void SimpleIni::SaveDescription(std::string section, std::string key, std::ofstream &file)
 {
-	stringstream ss(m_DescriptionMap[section][key]);
-	string item;
+	std::stringstream ss(m_DescriptionMap[section][key]);
+	std::string item;
 	while (std::getline(ss, item, '\n'))
 	{
-		file << "#" << item << endl;
+		file << "#" << item << std::endl;
 	}
 }
 
@@ -209,18 +207,18 @@ void SimpleIni::Free()
 	m_IniMap.clear();
 }
 
-string SimpleIni::GetValue(const string& section, const string& key, const string& defaultValue)
+std::string SimpleIni::GetValue(const std::string& section, const std::string& key, const std::string& defaultValue)
 {
-	map<string, map<string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
+	std::map<std::string, std::map<std::string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
 	if(itSection == m_IniMap.end()) return defaultValue;
 
-	map<string, SimpleIni::IniLine>::iterator itKey=itSection->second.find(key);
+	std::map<std::string, SimpleIni::IniLine>::iterator itKey=itSection->second.find(key);
 	if(itKey == itSection->second.end()) return defaultValue;
 
 	return itKey->second.value;
 }
 
-void SimpleIni::SetValue(const string& section, const string& key, const string& value)
+void SimpleIni::SetValue(const std::string& section, const std::string& key, const std::string& value)
 {
 	IniLine iniLine;
 
@@ -229,18 +227,18 @@ void SimpleIni::SetValue(const string& section, const string& key, const string&
 	m_IniMap[section][key] = iniLine;
 }
 
-string SimpleIni::GetComment(const string& section, const string& key)
+std::string SimpleIni::GetComment(const std::string& section, const std::string& key)
 {
-	map<string, map<string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
+	std::map<std::string, std::map<std::string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
 	if(itSection == m_IniMap.end()) return "";
 
-	map<string, SimpleIni::IniLine>::iterator itKey=itSection->second.find(key);
+	std::map<std::string, SimpleIni::IniLine>::iterator itKey=itSection->second.find(key);
 	if(itKey == itSection->second.end()) return "";
 
 	return itKey->second.comment;
 }
 
-void SimpleIni::SetComment(const string& section, const string& key, const string& comment)
+void SimpleIni::SetComment(const std::string& section, const std::string& key, const std::string& comment)
 {
 	IniLine iniLine;
 
@@ -249,7 +247,7 @@ void SimpleIni::SetComment(const string& section, const string& key, const strin
 	m_IniMap[section][key] = iniLine;
 }
 
-void SimpleIni::DeleteKey(const string& section, const string& key)
+void SimpleIni::DeleteKey(const std::string& section, const std::string& key)
 {
 	m_IniMap[section].erase(key);
 }
@@ -266,7 +264,7 @@ SimpleIni::SectionIterator SimpleIni::endSection()
 
 SimpleIni::KeyIterator SimpleIni::beginKey(const std::string& section)
 {
-	map<string, map<string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
+	std::map<std::string, std::map<std::string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
 	if(itSection == m_IniMap.end())
 	{
 		itSection = m_IniMap.begin();
@@ -278,13 +276,13 @@ SimpleIni::KeyIterator SimpleIni::beginKey(const std::string& section)
 
 SimpleIni::KeyIterator SimpleIni::endKey(const std::string& section)
 {
-	map<string, map<string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
+	std::map<std::string, std::map<std::string, SimpleIni::IniLine> >::iterator itSection=m_IniMap.find(section);
 	if(itSection == m_IniMap.end()) itSection = m_IniMap.begin();
 
 	return KeyIterator(itSection->second.end());
 }
 
-void SimpleIni::ParasitCar(string& str)
+void SimpleIni::ParasitCar(std::string& str)
 {
 	size_t fin=str.size();
 
@@ -293,7 +291,14 @@ void SimpleIni::ParasitCar(string& str)
 	if(str.at(fin-1)<' ') str.erase(fin-1);
 }
 
-string SimpleIni::Trim(const string& str)
+std::string SimpleIni::Normalize(const std::string& str)
+{
+	std::string result;
+	std::transform(str.cbegin(), str.cend(), std::back_inserter(result), tolower);
+	return result;
+}
+
+std::string SimpleIni::Trim(const std::string& str)
 {
 	size_t deb=0;
 	size_t fin=str.size();

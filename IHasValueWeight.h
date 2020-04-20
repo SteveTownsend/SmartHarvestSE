@@ -12,9 +12,10 @@ public:
 	virtual double GetWeight(void) const = 0;
 	virtual double GetWorth(void) const = 0;
 
+	static constexpr float ValueWeightMaximum = 1000.0f;
+
 protected:
-	IHasValueWeight() {}
-	virtual ~IHasValueWeight() {}
+	virtual ~IHasValueWeight() {};
 	virtual const char * GetName() const = 0;
 	virtual UInt32 GetFormID() const = 0;
 

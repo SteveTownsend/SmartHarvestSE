@@ -10,6 +10,7 @@
 
 void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 {
+	static bool scanOK(true);
 	switch (msg->type)
 	{
 	case SKSE::MessagingInterface::kDataLoaded:
@@ -22,16 +23,28 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 #endif
 		break;
 
+	case SKSE::MessagingInterface::kPreLoadGame:
+#if _DEBUG
+		_MESSAGE("Game load starting, disable looting");
+#endif
+		scanOK = SearchTask::IsAllowed();
+		SearchTask::Disallow();
+		break;
+
 	case SKSE::MessagingInterface::kNewGame:
 	case SKSE::MessagingInterface::kPostLoadGame:
 #if _DEBUG
-		_MESSAGE("Initializing Tasks");
+		_MESSAGE("Game load done, initializing Tasks");
 #endif
-		tasks::Init();
+		SearchTask::Init();
 #if _DEBUG
-		_MESSAGE("Initialized Tasks");
+		_MESSAGE("Initialized Tasks, restart looting if allowed");
 #endif
-		break;
+		if (scanOK)
+		{
+			SearchTask::Allow();
+		}
+break;
 	}
 }
 
@@ -41,11 +54,13 @@ extern "C"
 bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_info)
 {
 	std::wostringstream path;
-	path << std::wstring(L"\\My Games\\Skyrim Special Edition\\SKSE\\") << std::wstring(L_AHSE_NAME) << std::wstring(L".log");
-	SKSE::Logger::OpenRelative(FOLDERID_Documents, path.str());
+	path << L"/My Games/Skyrim Special Edition/SKSE/" << std::wstring(L_AHSE_NAME) << L".log";
+	std::wstring wLogPath(path.str());
+	SKSE::Logger::OpenRelative(FOLDERID_Documents, wLogPath);
 	SKSE::Logger::SetPrintLevel(SKSE::Logger::Level::kDebugMessage);
 	SKSE::Logger::SetFlushLevel(SKSE::Logger::Level::kDebugMessage);
 	SKSE::Logger::UseLogStamp(true);
+	SKSE::Logger::UseTimeStamp(true, true, true);
 	SKSE::Logger::UseThreadId(true);
 
 #if _DEBUG

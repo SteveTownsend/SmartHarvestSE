@@ -14,6 +14,7 @@ namespace RE {
 }
 
 #include "version.h"
+#include "RecursiveLock.h"
 
 #include "CommonLibSSE/include/ForceInclude.h"
 

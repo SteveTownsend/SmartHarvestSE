@@ -16,17 +16,17 @@ bool ContainerLister::GetOrCheckContainerForms(std::unordered_map<RE::TESForm*, 
 		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
 			RE::TESBoundObject* item = entry->obj;
 			if (item->formType == RE::FormType::LeveledItem)
-				return true;
+				return false;
 
 			if (entry->count <= 0)
-				return true;
+				return false;
 
 			if (!item->GetPlayable())
-				return true;
+				return false;
 
-			RE::TESFullName* fullName = skyrim_cast<RE::TESFullName*, RE::TESForm>(item);
+			RE::TESFullName* fullName = item->As<RE::TESFullName>();
 			if (!fullName || fullName->GetFullNameLength() == 0)
-				return true;
+				return false;
 
 			lootableItems[item] = entry->count;
 			return true;
@@ -36,17 +36,18 @@ bool ContainerLister::GetOrCheckContainerForms(std::unordered_map<RE::TESForm*, 
 	const RE::ExtraContainerChanges* exChanges = m_refr->extraList.GetByType<RE::ExtraContainerChanges>();
 	if (exChanges && exChanges->changes && exChanges->changes->entryList)
 	{
-		for (const RE::InventoryEntryData* entryData : *exChanges->changes->entryList)
-		{
-			RE::TESBoundObject* item = entryData->object;
+		//for (const RE::InventoryEntryData* entryData : *exChanges->changes->entryList)
+		for (auto entryData = exChanges->changes->entryList->begin(); entryData != exChanges->changes->entryList->end(); ++entryData)
+			{
+			RE::TESBoundObject* item = (*entryData)->object;
 			if (!IsPlayable(item))
 				continue;
 
-			RE::TESFullName *fullName = skyrim_cast<RE::TESFullName*, RE::TESForm>(item);
+			RE::TESFullName *fullName = item->As<RE::TESFullName>();
 			if (!fullName || fullName->GetFullNameLength() == 0)
 				continue;
 
-			int total(entryData->countDelta);
+			int total((*entryData)->countDelta);
 			if (total > 0)
 			{
 				const auto matched(lootableItems.find(item));
@@ -57,17 +58,17 @@ bool ContainerLister::GetOrCheckContainerForms(std::unordered_map<RE::TESForm*, 
 				lootableItems[item] = total;
 			}
 
-			if (!entryData->extraLists)
+			if (!(*entryData)->extraLists)
 				continue;
 			if (hasEnchItem && hasQuestObject)
 				continue;
 
 			// Check for exchantment or quest target
-			for (RE::ExtraDataList* extraList : *entryData->extraLists)
+			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 			{
-				if (extraList)
+				if (*extraList)
 				{
-					ExtraDataListHelper exListHelper(extraList);
+					ExtraDataListHelper exListHelper(*extraList);
     				if (!hasQuestObject)
 						hasQuestObject = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
 

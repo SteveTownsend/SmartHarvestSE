@@ -5,6 +5,7 @@
 #include "CommonLibSSE/include/RE/BSScript/NativeFunction.h"
 #include "papyrus.h"
 
+#include "IHasValueWeight.h"
 #include "TESFormHelper.h"
 #include "tasks.h"
 #include "iniSettings.h"
@@ -141,8 +142,32 @@ namespace papyrus
 		{
 			std::string key = GetObjectTypeName(index);
 			::ToLower(key);
-			float tmp_value = static_cast<float>(ini->GetSetting(first, second, key.c_str()));
-			nextValue = tmp_value;
+			// constrain INI values to sensible values
+			if (second == INIFile::SecondaryType::valueWeight)
+			{
+				float tmp_value = static_cast<float>(ini->GetSetting(first, second, key.c_str()));
+				if (tmp_value < 0.0f)
+				{
+					nextValue = 0.0f;
+				}
+				else if (tmp_value > IHasValueWeight::ValueWeightMaximum)
+				{
+					nextValue = IHasValueWeight::ValueWeightMaximum;
+				}
+			}
+			else
+			{
+				LootingType tmp_value = LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
+				// weightless objects and OreVeins are always looted unless explicitly disabled
+				if (ValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
+				{
+					nextValue = static_cast<float>(tmp_value == LootingType::LootIfValuableEnoughNotify ? LootingType::LootAlwaysNotify : LootingType::LootAlwaysSilent);
+				}
+				else
+				{
+					nextValue = static_cast<float>(tmp_value);
+				}
+			}
 			++index;
 		}
 	}
@@ -288,16 +313,13 @@ namespace papyrus
 		return BasketFile::GetSingleton()->LoadFile(BasketFile::USERLIST, "userlist.tsv");
 	}
 
-	void SyncExcludeList(RE::StaticFunctionTag* base)
+	void ClearExcludeList(RE::StaticFunctionTag* base)
 	{
 		SearchTask::ResetExcludedLocations();
-
-		// Add loaded locations to the list of exclusions
-		BasketFile::GetSingleton()->SyncList(BasketFile::EXCLUDELIST);
-		for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::EXCLUDELIST))
-		{
-			SearchTask::AddLocationToExcludeList(exclusion);
-		}
+	}
+	void MergeExcludeList(RE::StaticFunctionTag* base)
+	{
+		SearchTask::MergeExcludeList();
 	}
 	bool SaveExcludeList(RE::StaticFunctionTag* base)
 	{
@@ -357,9 +379,7 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	papyrus::RegisterFunction(a_vm, "UnlockPossiblePlayerHouse", AHSE_NAME, papyrus::UnlockPossiblePlayerHouse);
 	papyrus::RegisterFunction(a_vm, "BlockReference", AHSE_NAME, papyrus::BlockReference);
 	papyrus::RegisterFunction(a_vm, "UnblockEverything", AHSE_NAME, papyrus::UnblockEverything);
-#if 0
-	papyrus::RegisterFunction(a_vm, "PlayPickupSound", AHSE_NAME, papyrus::PlayPickupSound);
-#endif	
+
 	papyrus::RegisterFunction(a_vm, "GetSetting", AHSE_NAME, papyrus::GetSetting);
 	papyrus::RegisterFunction(a_vm, "GetSettingToObjectArray", AHSE_NAME, papyrus::GetSettingToObjectArray);
 	papyrus::RegisterFunction(a_vm, "PutSetting", AHSE_NAME, papyrus::PutSetting);
@@ -377,7 +397,8 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	papyrus::RegisterFunction(a_vm, "SaveUserList", AHSE_NAME, papyrus::SaveUserList);
 	papyrus::RegisterFunction(a_vm, "LoadUserList", AHSE_NAME, papyrus::LoadUserList);
 
-	papyrus::RegisterFunction(a_vm, "SyncExcludeListWithPlugin", AHSE_NAME, papyrus::SyncExcludeList);
+	papyrus::RegisterFunction(a_vm, "ClearPluginExcludeList", AHSE_NAME, papyrus::ClearExcludeList);
+	papyrus::RegisterFunction(a_vm, "MergePluginExcludeList", AHSE_NAME, papyrus::MergeExcludeList);
 	papyrus::RegisterFunction(a_vm, "SaveExcludeList", AHSE_NAME, papyrus::SaveExcludeList);
 	papyrus::RegisterFunction(a_vm, "LoadExcludeList", AHSE_NAME, papyrus::LoadExcludeList);
 

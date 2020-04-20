@@ -1,6 +1,5 @@
 #include "PrecompiledHeaders.h"
 
-#include "SKSE/Logger.h"
 #include "AlchemyItemHelper.h"
 
 UInt32 AlchemyItemHelper::GetGoldValue() const

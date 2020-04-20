@@ -3,7 +3,9 @@ Scriptname AutoHarvestSE_mcm extends SKI_ConfigBase
 Import AutoHarvestSE
 
 AutoHarvestSE_Events_Alias Property eventScript Auto
-GlobalVariable Property g_EnableLaunched Auto
+GlobalVariable Property g_LootingEnabled Auto
+
+bool initComplete = false
 
 int defaultRadius = 15
 float defaultInterval = 0.3
@@ -17,18 +19,25 @@ int type_Container = 3
 int type_Deadbody = 4
 int type_ValueWeight = 5
 int type_MaxItemCount = 6
-int objType_Septim = 4
-int objType_Key = 6
-int objType_LockPick = 11
-int objType_Ammo = 23
-int objType_Mine = 34
+
+; object types must be in sync with the native DLL
+int objType_Flora
+int objType_Critter
+int objType_Septim
+int objType_Key
+int objType_Soulgem
+int objType_LockPick
+int objType_Ammo
+int objType_Mine
 
 bool enableAutoHarvest
 bool enableLootContainer
 bool enableLootDeadbody
+bool lootBlockedActivators
 
 bool unencumberedInCombat
-bool unencumberedInPlayerHouse
+bool unencumberedInPlayerHome
+int infiniteWeight
 
 bool pushLocationToExcludelist
 bool pushCellToExcludelist
@@ -66,6 +75,7 @@ bool questObjectGlow
 bool lockedChestGlow
 bool bossChestGlow
 bool enchantItemGlow
+bool manualLootTargetNotify
 
 bool disableDuringCombat
 bool disableWhileWeaponIsDrawn
@@ -112,12 +122,13 @@ int Function CycleInt(int num, int max)
 	return result
 endFunction
 
-function Load_mcm()
+function SeedDefaults()
 	enableAutoHarvest = GetSetting(type_Common, type_Config, "enableAutoHarvest") as bool
 	enableLootContainer = GetSetting(type_Common, type_Config, "enableLootContainer") as bool
 	enableLootDeadbody = GetSetting(type_Common, type_Config, "enableLootDeadbody") as bool
+	lootBlockedActivators = GetSetting(type_Common, type_Config, "lootBlockedActivators") as bool
 	unencumberedInCombat = GetSetting(type_Common, type_Config, "unencumberedInCombat") as bool
-	unencumberedInPlayerHouse = GetSetting(type_Common, type_Config, "unencumberedInPlayerHouse") as bool
+	unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "unencumberedInPlayerHome") as bool
 	pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
 	userlistHotkeyCode = GetSetting(type_Common, type_Config, "userlistHotkeyCode") as int
 	excludelistHotkeyCode = GetSetting(type_Common, type_Config, "excludelistHotkeyCode") as int
@@ -139,14 +150,15 @@ function Load_mcm()
 	lockedChestGlow = GetSetting(type_AutoHarvest, type_Config, "lockedChestGlow") as bool
 	bossChestLoot = GetSetting(type_AutoHarvest, type_Config, "bossChestLoot") as bool
 	bossChestGlow = GetSetting(type_AutoHarvest, type_Config, "bossChestGlow") as bool
+	manualLootTargetNotify = GetSetting(type_AutoHarvest, type_Config, "manualLootTargetNotify") as bool
 
 	disableDuringCombat = GetSetting(type_AutoHarvest, type_Config, "disableDuringCombat") as bool
 	disableWhileWeaponIsDrawn = GetSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn") as bool
 	playContainerAnimation = GetSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation") as bool
 
 	valueWeightDefault = GetSetting(type_AutoHarvest, type_Config, "valueWeightDefault") as int
+	;DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
 	maxMiningItems = GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int
-	;DebugTrace("load_mcm: MaxMiningItems set to " + maxMiningItems)
 
 	GetSettingToObjectArray(type_AutoHarvest, type_ItemObject, objectSettingArray)
 	GetSettingToObjectArray(type_AutoHarvest, type_Container, containerSettingArray)
@@ -156,191 +168,11 @@ endFunction
 
 function init()
  	;DebugTrace("init start")
+    ; Seed defaults from the INI file
+    LoadIniFile()
+    SeedDefaults()
 
-	enableAutoHarvest = true
-	enableLootContainer = true
-	enableLootDeadbody = true
-
-	unencumberedInCombat = false
-	unencumberedInPlayerHouse = false
-
-	pauseHotkeyCode = 34
-	userlistHotkeyCode = 34
-	excludelistHotkeyCode = 34
-
-	radius = defaultRadius
-	interval = defaultInterval
-
-	questObjectScope = 0
-	crimeCheckNotSneaking = 2
-	crimeCheckSneaking = 1
-	playerBelongingsLoot = 1
-	playContainerAnimation = false
-
-	useSharedSettings = true
-
-	questObjectLoot = 0
-	questObjectGlow = 1
-	enchantItemGlow = 1
-
-	lockedChestLoot = 0
-	lockedChestGlow = 1
-	bossChestLoot = 0
-	bossChestGlow = 1
-
-	disableDuringCombat = false
-	disableWhileWeaponIsDrawn = false
-
-	objectSettingArray[1] = 1
-	objectSettingArray[2] = 1
-	objectSettingArray[3] = 1
-	objectSettingArray[4] = 1
-	objectSettingArray[5] = 1
-	objectSettingArray[6] = 2
-	objectSettingArray[7] = 1
-	objectSettingArray[8] = 0
-	objectSettingArray[9] = 1
-	objectSettingArray[10] = 1
-	objectSettingArray[11] = 2
-	objectSettingArray[12] = 0
-	objectSettingArray[13] = 0
-	objectSettingArray[14] = 0
-	objectSettingArray[15] = 1
-	objectSettingArray[16] = 2
-	objectSettingArray[17] = 2
-	objectSettingArray[18] = 2
-	objectSettingArray[19] = 0
-	objectSettingArray[20] = 0
-	objectSettingArray[21] = 0
-	objectSettingArray[22] = 1
-	objectSettingArray[23] = 1
-	objectSettingArray[24] = 0
-	objectSettingArray[25] = 2
-	objectSettingArray[26] = 0
-	objectSettingArray[27] = 2
-	objectSettingArray[28] = 1
-	objectSettingArray[29] = 2
-	objectSettingArray[30] = 1
-	objectSettingArray[31] = 1
-	objectSettingArray[32] = 0
-	objectSettingArray[33] = 1
-	objectSettingArray[34] = 1
-	objectSettingArray[35] = 2
-	
-	containerSettingArray[1] = 0
-	containerSettingArray[2] = 0
-	containerSettingArray[3] = 1
-	containerSettingArray[4] = 1
-	containerSettingArray[5] = 2
-	containerSettingArray[6] = 1
-	containerSettingArray[7] = 1
-	containerSettingArray[8] = 0
-	containerSettingArray[9] = 1
-	containerSettingArray[10] = 1
-	containerSettingArray[11] = 2
-	containerSettingArray[12] = 0
-	containerSettingArray[13] = 0
-	containerSettingArray[14] = 0
-	containerSettingArray[15] = 1
-	containerSettingArray[16] = 0
-	containerSettingArray[17] = 2
-	containerSettingArray[18] = 2
-	containerSettingArray[19] = 0
-	containerSettingArray[20] = 0
-	containerSettingArray[21] = 0
-	containerSettingArray[22] = 1
-	containerSettingArray[23] = 1
-	containerSettingArray[24] = 0
-	containerSettingArray[25] = 2
-	containerSettingArray[26] = 0
-	containerSettingArray[27] = 2
-	containerSettingArray[28] = 1
-	containerSettingArray[29] = 2
-	containerSettingArray[30] = 1
-	containerSettingArray[31] = 1
-	containerSettingArray[32] = 0
-	containerSettingArray[33] = 0
-	containerSettingArray[34] = 0
-	containerSettingArray[35] = 1
-
-	deadbodySettingArray[1] = 0
-	deadbodySettingArray[2] = 0
-	deadbodySettingArray[3] = 1
-	deadbodySettingArray[4] = 1
-	deadbodySettingArray[5] = 2
-	deadbodySettingArray[6] = 1
-	deadbodySettingArray[7] = 1
-	deadbodySettingArray[8] = 0
-	deadbodySettingArray[9] = 1
-	deadbodySettingArray[10] = 1
-	deadbodySettingArray[11] = 2
-	deadbodySettingArray[12] = 0
-	deadbodySettingArray[13] = 0
-	deadbodySettingArray[14] = 0
-	deadbodySettingArray[15] = 1
-	deadbodySettingArray[16] = 0
-	deadbodySettingArray[17] = 2
-	deadbodySettingArray[18] = 2
-	deadbodySettingArray[19] = 0
-	deadbodySettingArray[20] = 0
-	deadbodySettingArray[21] = 0
-	deadbodySettingArray[22] = 1
-	deadbodySettingArray[23] = 1
-	deadbodySettingArray[24] = 0
-	deadbodySettingArray[25] = 2
-	deadbodySettingArray[26] = 0
-	deadbodySettingArray[27] = 2
-	deadbodySettingArray[28] = 1
-	deadbodySettingArray[29] = 2
-	deadbodySettingArray[30] = 1
-	deadbodySettingArray[31] = 1
-	deadbodySettingArray[32] = 0
-	deadbodySettingArray[33] = 0
-	deadbodySettingArray[34] = 0
-	deadbodySettingArray[35] = 1
-
-    valueWeightDefault = 100
-    maxMiningItems = 10
-	;DebugTrace("init: MaxMiningItems set to " + maxMiningItems)
-
-	valueWeightSettingArray[1] = 0
-	valueWeightSettingArray[2] = 0
-	valueWeightSettingArray[3] = 0
-	valueWeightSettingArray[4] = 0
-	valueWeightSettingArray[5] = 0
-	valueWeightSettingArray[6] = 0
-	valueWeightSettingArray[7] = 0
-	valueWeightSettingArray[8] = 0
-	valueWeightSettingArray[9] = 0
-	valueWeightSettingArray[10] = 0
-	valueWeightSettingArray[11] = 0
-	valueWeightSettingArray[12] = 0
-	valueWeightSettingArray[13] = 0
-	valueWeightSettingArray[14] = 0
-	valueWeightSettingArray[15] = 0
-	valueWeightSettingArray[16] = 0
-	valueWeightSettingArray[17] = 0
-	valueWeightSettingArray[18] = 0
-	valueWeightSettingArray[19] = 0
-	valueWeightSettingArray[20] = 0
-	valueWeightSettingArray[21] = 0
-	valueWeightSettingArray[22] = 0
-	valueWeightSettingArray[23] = 0
-	valueWeightSettingArray[24] = 0
-	valueWeightSettingArray[25] = 0
-	valueWeightSettingArray[26] = 0
-	valueWeightSettingArray[27] = 0
-	valueWeightSettingArray[28] = 0
-	valueWeightSettingArray[29] = 0
-	valueWeightSettingArray[30] = 0
-	valueWeightSettingArray[31] = 0
-	valueWeightSettingArray[32] = 0
-	valueWeightSettingArray[33] = 0
-	valueWeightSettingArray[34] = 0
-	valueWeightSettingArray[35] = 0
-
-    int existingFlags = g_EnableLaunched.GetValue() as int
-	g_EnableLaunched.SetValue(existingFlags + 2)
+	initComplete= true
 	;DebugTrace("init finished")
 endFunction
 
@@ -351,9 +183,9 @@ Function ApplySetting()
 	PutSetting(type_Common, type_Config, "enableAutoHarvest", enableAutoHarvest as float)
 	PutSetting(type_Common, type_Config, "enableLootContainer", enableLootContainer as float)
 	PutSetting(type_Common, type_Config, "enableLootDeadbody", enableLootDeadbody as float)
-
+	PutSetting(type_Common, type_Config, "lootBlockedActivators", lootBlockedActivators as float)
 	PutSetting(type_Common, type_Config, "unencumberedInCombat", unencumberedInCombat as float)
-	PutSetting(type_Common, type_Config, "unencumberedInPlayerHouse", unencumberedInPlayerHouse as float)
+	PutSetting(type_Common, type_Config, "unencumberedInPlayerHome", unencumberedInPlayerHome as float)
 
 	PutSetting(type_Common, type_Config, "PauseHotkeyCode", pauseHotkeyCode as float)
 	PutSetting(type_Common, type_Config, "userlistHotkeyCode", userlistHotkeyCode as float)
@@ -377,6 +209,7 @@ Function ApplySetting()
 	PutSetting(type_AutoHarvest, type_Config, "lockedChestGlow", lockedChestGlow as float)
 	PutSetting(type_AutoHarvest, type_Config, "bossChestLoot", bossChestLoot as float)
 	PutSetting(type_AutoHarvest, type_Config, "bossChestGlow", bossChestGlow as float)
+	PutSetting(type_AutoHarvest, type_Config, "manualLootTargetNotify", manualLootTargetNotify as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "disableDuringCombat", disableDuringCombat as float)
 	PutSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
@@ -394,24 +227,50 @@ Function ApplySetting()
 	PutSetting(type_AutoHarvest, type_Config, "maxMiningItems", maxMiningItems as float)
 	PutSettingObjectArray(type_AutoHarvest, type_ValueWeight, valueWeightSettingArray)
 
-    ; seed looting enabled according to configured settings
-    bool isEnabled = enableAutoHarvest || enableLootContainer || enableLootDeadbody
-    int existingFlags = g_EnableLaunched.GetValue() as int
+    ; seed looting scan enabled according to configured settings
+    bool isEnabled = enableAutoHarvest || enableLootContainer || enableLootDeadbody || unencumberedInCombat || unencumberedInPlayerHome
+    ;DebugTrace("result " + isEnabled + "from flags:" + enableAutoHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome)
     if (isEnabled)
-        if (existingFlags >= 2)
-        	g_EnableLaunched.SetValue(3)
-        else
-        	g_EnableLaunched.SetValue(1)
-        endif
+       	g_LootingEnabled.SetValue(1)
 	else
-        if (existingFlags >= 2)
-        	g_EnableLaunched.SetValue(2)
-        else
-        	g_EnableLaunched.SetValue(0)
-        endif
+       	g_LootingEnabled.SetValue(0)
 	endif
 
+	; reset blocked lists to allow recheck vs revised settings
+	UnblockEverything()
+
+	; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
+	; Do this before plugin becomes aware of player home list
+    RemoveCarryWeightDelta()
+	eventScript.ApplySetting()
+
+    ; do this last so plugin state is in sync	
+	if (isEnabled)
+		Debug.Notification("$AHSE_ENABLE")
+		AllowSearch()
+	Else
+		Debug.Notification("$AHSE_DISABLE")
+		DisallowSearch()
+	EndIf
+
 ;	DebugTrace("  MCM ApplySetting finished")
+endFunction
+
+Function RemoveCarryWeightDelta()
+	Actor player = Game.GetPlayer()
+	int carryWeight = player.GetActorValue("CarryWeight") as int
+	;DebugTrace("Player carry weight initially " + carryWeight)
+
+	int weightDelta = 0
+	while (carryWeight > infiniteWeight)
+		weightDelta -= infiniteWeight
+		carryWeight -= infiniteWeight
+	endwhile
+
+	if (weightDelta != 0)
+		player.ModActorValue("CarryWeight", weightDelta as float)
+	endif
+	;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
 
 Event OnConfigInit()
@@ -421,8 +280,8 @@ Event OnConfigInit()
 	ModName = "$AHSE_MOD_NAME"
 
 	Pages = New String[6]
-	Pages[0] = "$AHSE_COMMON1_PAGENAME"
-	Pages[1] = "$AHSE_COMMON2_PAGENAME"
+	Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
+	Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
 	Pages[2] = "$AHSE_HARVEST_PAGENAME"
 	Pages[3] = "$AHSE_LOOT_CONTAINER_PAGENAME"
 	Pages[4] = "$AHSE_USERLIST_PAGENAME"
@@ -461,24 +320,26 @@ Event OnConfigInit()
 	s_behaviorToggleArray[0] = "$AHSE_DONT_PICK_UP"
 	s_behaviorToggleArray[1] = "$AHSE_PICK_UP"
 
-	s_behaviorArray = New String[3]
+	s_behaviorArray = New String[5]
 	s_behaviorArray[0] = "$AHSE_DONT_PICK_UP"
 	s_behaviorArray[1] = "$AHSE_PICK_UP_W/O_MSG"
 	s_behaviorArray[2] = "$AHSE_PICK_UP_W/MSG"
+	s_behaviorArray[3] = "$AHSE_PICK_UP_V/W_W/O_MSG"
+	s_behaviorArray[4] = "$AHSE_PICK_UP_V/W_W/MSG"
 
-	id_objectSettingArray = New Int[36]
-	objectSettingArray = New float[36]
+    id_objectSettingArray = New Int[34]
+	objectSettingArray = New float[34]
 
-	id_valueWeightArray = New Int[36]
-	valueWeightSettingArray = New float[36]
+	id_valueWeightArray = New Int[34]
+	valueWeightSettingArray = New float[34]
 
-	id_containerArray = New Int[36]
-	containerSettingArray = New float[36]
+	id_containerArray = New Int[34]
+	containerSettingArray = New float[34]
 
-	id_deadbodyArray = New Int[36]
-	deadbodySettingArray = New float[36]
+	id_deadbodyArray = New Int[34]
+	deadbodySettingArray = New float[34]
 
-	s_objectTypeNameArray = New String[36]
+	s_objectTypeNameArray = New String[34]
 	s_objectTypeNameArray[0]  = "$AHSE_UNKNOWN"
 	s_objectTypeNameArray[1]  = "$AHSE_FLORA"
 	s_objectTypeNameArray[2]  = "$AHSE_CRITTER"
@@ -492,29 +353,27 @@ Event OnConfigInit()
 	s_objectTypeNameArray[10] = "$AHSE_SOULGEM"
 	s_objectTypeNameArray[11] = "$AHSE_KEYS"
 	s_objectTypeNameArray[12] = "$AHSE_CLUTTER"
-	s_objectTypeNameArray[13] = "$AHSE_CLUTTER_DWEMER"
-	s_objectTypeNameArray[14] = "$AHSE_CLUTTER_BROKEN"
-	s_objectTypeNameArray[15] = "$AHSE_LIGHT"
-	s_objectTypeNameArray[16] = "$AHSE_BOOK"
-	s_objectTypeNameArray[17] = "$AHSE_SPELLBOOK"
-	s_objectTypeNameArray[18] = "$AHSE_SKILLBOOK"
-	s_objectTypeNameArray[19] = "$AHSE_BOOK_READ"
-	s_objectTypeNameArray[20] = "$AHSE_SPELLBOOK_READ"
-	s_objectTypeNameArray[21] = "$AHSE_SKILLBOOK_READ"
-	s_objectTypeNameArray[22] = "$AHSE_SCROLL"
-	s_objectTypeNameArray[23] = "$AHSE_AMMO"
-	s_objectTypeNameArray[24] = "$AHSE_WEAPON"
-	s_objectTypeNameArray[25] = "$AHSE_ENCHANTED_WEAPON"
-	s_objectTypeNameArray[26] = "$AHSE_ARMOR"
-	s_objectTypeNameArray[27] = "$AHSE_ENCHANTED_ARMOR"
-	s_objectTypeNameArray[28] = "$AHSE_JEWELRY"
-	s_objectTypeNameArray[29] = "$AHSE_ENCHANTED_JEWELRY"
-	s_objectTypeNameArray[30] = "$AHSE_POTION"
-	s_objectTypeNameArray[31] = "$AHSE_POISON"
-	s_objectTypeNameArray[32] = "$AHSE_FOOD"
-	s_objectTypeNameArray[33] = "$AHSE_DRINK"
-	s_objectTypeNameArray[34] = "$AHSE_OREVEIN"
-	s_objectTypeNameArray[35] = "$AHSE_USERLIST"
+	s_objectTypeNameArray[13] = "$AHSE_LIGHT"
+	s_objectTypeNameArray[14] = "$AHSE_BOOK"
+	s_objectTypeNameArray[15] = "$AHSE_SPELLBOOK"
+	s_objectTypeNameArray[16] = "$AHSE_SKILLBOOK"
+	s_objectTypeNameArray[17] = "$AHSE_BOOK_READ"
+	s_objectTypeNameArray[18] = "$AHSE_SPELLBOOK_READ"
+	s_objectTypeNameArray[19] = "$AHSE_SKILLBOOK_READ"
+	s_objectTypeNameArray[20] = "$AHSE_SCROLL"
+	s_objectTypeNameArray[21] = "$AHSE_AMMO"
+	s_objectTypeNameArray[22] = "$AHSE_WEAPON"
+	s_objectTypeNameArray[23] = "$AHSE_ENCHANTED_WEAPON"
+	s_objectTypeNameArray[24] = "$AHSE_ARMOR"
+	s_objectTypeNameArray[25] = "$AHSE_ENCHANTED_ARMOR"
+	s_objectTypeNameArray[26] = "$AHSE_JEWELRY"
+	s_objectTypeNameArray[27] = "$AHSE_ENCHANTED_JEWELRY"
+	s_objectTypeNameArray[28] = "$AHSE_POTION"
+	s_objectTypeNameArray[29] = "$AHSE_POISON"
+	s_objectTypeNameArray[30] = "$AHSE_FOOD"
+	s_objectTypeNameArray[31] = "$AHSE_DRINK"
+	s_objectTypeNameArray[32] = "$AHSE_OREVEIN"
+	s_objectTypeNameArray[33] = "$AHSE_USERLIST"
 
 	eventScript.userlist_form = Game.GetFormFromFile(0x0333C, "AutoHarvestSE.esp") as Formlist
 	eventScript.excludelist_form = Game.GetFormFromFile(0x0333D, "AutoHarvestSE.esp") as Formlist
@@ -526,7 +385,20 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-	return 8
+	; update script variables needing sync to native
+	objType_Flora = 1
+	objType_Critter = 2
+	objType_Septim = 4
+	objType_Key = 6
+	objType_Soulgem = 10
+	objType_LockPick = 11
+	objType_Ammo = 21
+	objType_Mine = 32
+	eventScript.SyncNativeObjectTypes()
+
+    ; Encumbrance quality of life delta for combat and player home
+	infiniteWeight = 100000
+	return 13
 endFunction
 
 Event OnVersionUpdate(int a_version)
@@ -540,9 +412,10 @@ Event OnVersionUpdate(int a_version)
 		type_ValueWeight = 5
 		type_MaxItemCount = 6
 	endif
-	if (a_version >= 8 && CurrentVersion < 8)
+	if (a_version >= 13 && CurrentVersion < 13)
 		; Major revision to reduce script dependence and autodetect lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
+
 		OnConfigInit()
 	endIf
 
@@ -551,19 +424,20 @@ endEvent
 
 Event OnGameReload()
 	parent.OnGameReload()
+    ;DebugTrace("OnGameReload - vw default " + valueWeightDefault)
 
 	if (gameReloadLock)
 		return
 	endif
 	gameReloadLock = true
 
-	;DebugTrace("* OnGameReload start * enabled: " + g_EnableLaunched.GetValue())
-	if ((g_EnableLaunched.GetValue() as int) < 2)
+    ;DebugTrace("OnGameReload - init-complete " + initComplete)
+	if (!initComplete)
+        ;DebugTrace("OnGameReload - init required")
 		init()
 	endif
 
 	ApplySetting()
-	eventScript.ApplySetting()
 	
 ;	DebugTrace("* OnGameReload finished *")
 	gameReloadLock = false
@@ -574,15 +448,15 @@ Event OnConfigOpen()
 
 	if (useSharedSettings)
 		Pages = New String[5]
-		Pages[0] = "$AHSE_COMMON1_PAGENAME"
-		Pages[1] = "$AHSE_COMMON2_PAGENAME"
+		Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
+		Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
 		Pages[2] = "$AHSE_SHARED_SETTINGS_PAGENAME"
 		Pages[3] = "$AHSE_USERLIST_PAGENAME"
 		Pages[4] = "$AHSE_EXCLUDELIST_PAGENAME"
 	else
 		Pages = New String[6]
-		Pages[0] = "$AHSE_COMMON1_PAGENAME"
-		Pages[1] = "$AHSE_COMMON2_PAGENAME"
+		Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
+		Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
 		Pages[2] = "$AHSE_HARVEST_PAGENAME"
 		Pages[3] = "$AHSE_LOOT_CONTAINER_PAGENAME"
 		Pages[4] = "$AHSE_USERLIST_PAGENAME"
@@ -663,31 +537,8 @@ Event OnConfigClose()
 
 	TidyListUp(eventScript.userlist_form, userlist_form_array, userlist_flag_array, "$AHSE_USERLIST_REMOVED")
 	TidyListUp(eventScript.excludelist_form, excludelist_form_array, excludelist_flag_array, "$AHSE_EXCLUDELIST_REMOVED")
-	
-	;--- INI File operation --------------------
-	if (iniSaveLoad == 1) ; load/restore
-		LoadIniFile()
-		Load_mcm()
-		Debug.Notification("$AHSE_PRESET_RESTORE_MSG")
-	elseif (iniSaveLoad == 2) ; save/store
-		SaveIniFile()
-		Debug.Notification("$AHSE_PRESET_STORE_MSG")
-	endif
+
 	iniSaveLoad = 0
-
-
-	;--- UserList File operation --------------------
-	if (userlistSaveLoad == 1) ; load/restore
-		bool result = LoadUserList()
-		if (result)
-			Debug.Notification("$AHSE_USERLIST_RESTORE_MSG")
-		endif
-	elseif (userlistSaveLoad == 2) ; save/store
-		bool result = SaveUserList()
-		if (result)
-			Debug.Notification("$AHSE_USERLIST_STORE_MSG")
-		endif
-	endif
 	eventScript.SyncUserList()
 	userlistSaveLoad = 0
 	
@@ -724,7 +575,6 @@ Event OnConfigClose()
 	endif
 
 	ApplySetting()
-	eventScript.ApplySetting()
 endEvent
 
 event OnPageReset(string currentPage)
@@ -742,18 +592,17 @@ event OnPageReset(string currentPage)
 ; 	======================== LEFT ========================
 		SetCursorFillMode(TOP_TO_BOTTOM)
 
-		AddHeaderOption("$AHSE_COMMON_HEADER")
+		AddHeaderOption("$AHSE_LOOTING_RULES_HEADER")
 		AddToggleOptionST("enableAutoHarvest", "$AHSE_ENABLE_AUTOHARVEST", enableAutoHarvest)
 		AddToggleOptionST("enableLootContainer", "$AHSE_ENABLE_LOOT_CONTAINER", enableLootContainer)
 		AddToggleOptionST("enableLootDeadbody", "$AHSE_ENABLE_LOOT_DEADBODY", enableLootDeadbody)
+		AddToggleOptionST("lootBlockedActivators", "$AHSE_LOOT_BLOCKED_ACTIVATORS", lootBlockedActivators)
 		AddKeyMapOptionST("pauseHotkeyCode", "$AHSE_PAUSE_KEY", pauseHotkeyCode)
 		AddToggleOptionST("disableDuringCombat", "$AHSE_DISABLE_DURING_COMBAT", disableDuringCombat)
 		AddToggleOptionST("disableWhileWeaponIsDrawn", "$AHSE_DISABLE_IF_WEAPON_DRAWN", disableWhileWeaponIsDrawn)
 		AddTextOptionST("crimeCheckNotSneaking", "$AHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
 		AddTextOptionST("crimeCheckSneaking", "$AHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
 		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_behaviorToggleArray[playerBelongingsLoot])
-		AddToggleOptionST("unencumberedInCombat", "$AHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
-		AddToggleOptionST("unencumberedInPlayerHouse", "$AHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHouse)
 
 ; 	======================== RIGHT ========================
 		SetCursorPosition(1)
@@ -763,6 +612,8 @@ event OnPageReset(string currentPage)
 		AddSliderOptionST("Radius", "$AHSE_RADIUS", radius, "$AHSE{0}UNIT")
 		AddSliderOptionST("Interval", "$AHSE_INTERVAL", interval, "$AHSE{1}SEC")
 	    AddSliderOptionST("MaxMiningItems", "$AHSE_MAX_MINING_ITEMS", maxMiningItems)
+		AddToggleOptionST("unencumberedInCombat", "$AHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
+		AddToggleOptionST("unencumberedInPlayerHome", "$AHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHome)
 		AddToggleOptionST("useSharedSettings", "$AHSE_USE_SHARED_SETTINGS", useSharedSettings)
 		AddMenuOptionST("iniSaveLoad", "$AHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
 		AddKeyMapOptionST("userlistHotkeyCode", "$AHSE_USERLIST_KEY", userlistHotkeyCode)
@@ -782,6 +633,7 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("bossChestLoot", "$AHSE_BOSSCHEST_LOOT", bossChestLoot)
 		AddToggleOptionST("bossChestGlow", "$AHSE_BOSSCHEST_GLOW", bossChestGlow)
 		AddToggleOptionST("enchantItemGlow", "$AHSE_ENCHANTITEM_GLOW", enchantItemGlow)
+		AddToggleOptionST("manualLootTargetNotify", "$AHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
 		AddToggleOptionST("playContainerAnimation", "$AHSE_PLAY_CONTAINER_ANIMATION", playContainerAnimation)
 
 ; 	======================== RIGHT ========================
@@ -1111,7 +963,7 @@ state pushLocationToExcludelist
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_LOCATION_TO_EXCLUDELIST")
+		SetInfoText(GetTranslation("$AHSE_DESC_LOCATION_TO_EXCLUDELIST"))
 	endEvent
 endState
 
@@ -1127,7 +979,7 @@ state pushCellToExcludelist
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_CELL_TO_EXCLUDELIST")
+		SetInfoText(GetTranslation("$AHSE_DESC_CELL_TO_EXCLUDELIST"))
 	endEvent
 endState
 
@@ -1152,7 +1004,7 @@ state enableAutoHarvest
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_ENABLE_AUTOHARVEST")
+		SetInfoText(GetTranslation("$AHSE_DESC_ENABLE_AUTOHARVEST"))
 	endEvent
 
 ;	event OnEndState()
@@ -1173,7 +1025,7 @@ state enableLootContainer
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_ENABLE_LOOT_CONTAINER")
+		SetInfoText(GetTranslation("$AHSE_DESC_ENABLE_LOOT_CONTAINER"))
 	endEvent
 endState
 
@@ -1189,7 +1041,23 @@ state enableLootDeadbody
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_ENABLE_LOOT_DEADBODY")
+		SetInfoText(GetTranslation("$AHSE_DESC_ENABLE_LOOT_DEADBODY"))
+	endEvent
+endState
+
+state lootBlockedActivators
+	event OnSelectST()
+		lootBlockedActivators = !(lootBlockedActivators as bool)
+		SetToggleOptionValueST(lootBlockedActivators)
+	endEvent
+
+	event OnDefaultST()
+		lootBlockedActivators = true
+		SetToggleOptionValueST(lootBlockedActivators)
+	endEvent
+
+	event OnHighlightST()
+		SetInfoText(GetTranslation("$AHSE_DESC_LOOT_BLOCKED_ACTIVATORS"))
 	endEvent
 endState
 
@@ -1205,23 +1073,23 @@ state unencumberedInCombat
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_UNENCUMBERED_COMBAT")
+		SetInfoText(GetTranslation("$AHSE_DESC_UNENCUMBERED_COMBAT"))
 	endEvent
 endState
 
-state unencumberedInPlayerHouse
+state unencumberedInPlayerHome
 	event OnSelectST()
-		unencumberedInPlayerHouse = !(unencumberedInPlayerHouse as bool)
-		SetToggleOptionValueST(unencumberedInPlayerHouse)
+		unencumberedInPlayerHome = !(unencumberedInPlayerHome as bool)
+		SetToggleOptionValueST(unencumberedInPlayerHome)
 	endEvent
 
 	event OnDefaultST()
-		unencumberedInPlayerHouse = false
-		SetToggleOptionValueST(unencumberedInPlayerHouse)
+		unencumberedInPlayerHome = false
+		SetToggleOptionValueST(unencumberedInPlayerHome)
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_UNENCUMBERED_PLAYER_HOME")
+		SetInfoText(GetTranslation("$AHSE_DESC_UNENCUMBERED_PLAYER_HOME"))
 	endEvent
 endState
 
@@ -1244,7 +1112,7 @@ state Radius
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_RADIUS")
+		SetInfoText(GetTranslation("$AHSE_DESC_RADIUS"))
 	endEvent
 endState
 
@@ -1267,7 +1135,7 @@ state Interval
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_INTERVAL")
+		SetInfoText(GetTranslation("$AHSE_DESC_INTERVAL"))
 	endEvent
 endState
 
@@ -1281,16 +1149,18 @@ state ValueWeightDefault
 
 	event OnSliderAcceptST(float value)
 		valueWeightDefault = value as int
+	    ;DebugTrace("OnSliderAcceptST - vw default " + valueWeightDefault)
 		SetSliderOptionValueST(valueWeightDefault)
 	endEvent
 
 	event OnDefaultST()
 		valueWeightDefault = valueWeightDefaultDefault
+	    ;DebugTrace("OnDefaultST - vw default " + valueWeightDefault)
 		SetSliderOptionValueST(valueWeightDefault)
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_VW_DEFAULT")
+		SetInfoText(GetTranslation("$AHSE_DESC_VW_DEFAULT"))
 	endEvent
 endState
 
@@ -1315,7 +1185,7 @@ state MaxMiningItems
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_MAX_MINING_ITEMS")
+		SetInfoText(GetTranslation("$AHSE_DESC_MAX_MINING_ITEMS"))
 	endEvent
 endState
 
@@ -1331,7 +1201,7 @@ state pauseHotkeyCode
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_PAUSE_KEY")
+		SetInfoText(GetTranslation("$AHSE_DESC_PAUSE_KEY"))
 	endEvent
 endState
 
@@ -1347,7 +1217,7 @@ state userlistHotkeyCode
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_USERLIST_KEY")
+		SetInfoText(GetTranslation("$AHSE_DESC_USERLIST_KEY"))
 	endEvent
 endState
 
@@ -1363,7 +1233,7 @@ state excludelistHotkeyCode
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_EXCLUDELIST_KEY")
+		SetInfoText(GetTranslation("$AHSE_DESC_EXCLUDELIST_KEY"))
 	endEvent
 endState
 
@@ -1385,8 +1255,16 @@ state iniSaveLoad
 		endif
 		bool continue = ShowMessage(list_warning, true, "$AHSE_OK", "$AHSE_CANCEL")
 		if (continue)
+		    SetMenuOptionValueST(s_iniSaveLoadArray[iniSaveLoad])
 			iniSaveLoad = index
-		SetMenuOptionValueST(s_iniSaveLoadArray[iniSaveLoad])
+			if (iniSaveLoad == 1) ; load/restore
+				LoadIniFile()
+				SeedDefaults()
+				Debug.Notification("$AHSE_PRESET_RESTORE_MSG")
+			elseif (iniSaveLoad == 2) ; save/store
+				SaveIniFile()
+				Debug.Notification("$AHSE_PRESET_STORE_MSG")
+			endif
 		endif
 	endEvent
 
@@ -1396,7 +1274,7 @@ state iniSaveLoad
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_FILE_OPERATION")
+		SetInfoText(GetTranslation("$AHSE_DESC_FILE_OPERATION"))
 	endEvent
 endState
 
@@ -1420,6 +1298,19 @@ state userlistSaveLoad
 		if (continue)
 			userlistSaveLoad = index
 			SetMenuOptionValueST(s_userlistSaveLoadArray[userlistSaveLoad])
+
+			;--- UserList File operation --------------------
+			if (userlistSaveLoad == 1) ; load/restore
+				bool result = LoadUserList()
+				if (result)
+					Debug.Notification("$AHSE_USERLIST_RESTORE_MSG")
+				endif
+			elseif (userlistSaveLoad == 2) ; save/store
+				bool result = SaveUserList()
+				if (result)
+					Debug.Notification("$AHSE_USERLIST_STORE_MSG")
+				endif
+			endif
 		endif
 	endEvent
 
@@ -1429,7 +1320,7 @@ state userlistSaveLoad
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_USERLIST_FILE_OPERATION")
+		SetInfoText(GetTranslation("$AHSE_DESC_USERLIST_FILE_OPERATION"))
 	endEvent
 endState
 
@@ -1464,7 +1355,7 @@ state excludelistSaveLoad
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_EXCLUDELIST_FILE_OPERATION")
+		SetInfoText(GetTranslation("$AHSE_DESC_EXCLUDELIST_FILE_OPERATION"))
 	endEvent
 endState
 
@@ -1486,7 +1377,7 @@ state useSharedSettings
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_SHARED_SETTINGS")
+		SetInfoText(GetTranslation("$AHSE_DESC_SHARED_SETTINGS"))
 	endEvent
 
 ;	event OnEndState()
@@ -1507,7 +1398,7 @@ state crimeCheckNotSneaking
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_CRIME_CHECK_NOT_SNEAKING")
+		SetInfoText(GetTranslation("$AHSE_DESC_CRIME_CHECK_NOT_SNEAKING"))
 	endEvent
 endState
 
@@ -1524,7 +1415,7 @@ state crimeCheckSneaking
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_CRIME_CHECK_SNEAKING")
+		SetInfoText(GetTranslation("$AHSE_DESC_CRIME_CHECK_SNEAKING"))
 	endEvent
 endState
 
@@ -1541,7 +1432,7 @@ state playerBelongingsLoot
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_PLAYER_BELONGINGS_LOOT")
+		SetInfoText(GetTranslation("$AHSE_DESC_PLAYER_BELONGINGS_LOOT"))
 	endEvent
 endState
 
@@ -1558,7 +1449,9 @@ state questObjectScope
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_QUESTOBJECT_SCOPE")
+		string trans = GetTranslation("$AHSE_DESC_QUESTOBJECT_SCOPE")
+		;DebugTrace("Quest object state helptext " + trans)
+		SetInfoText(trans)
 	endEvent
 endState
 
@@ -1574,7 +1467,7 @@ state questObjectLoot
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_QUESTOBJECT_LOOT")
+		SetInfoText(GetTranslation("$AHSE_DESC_QUESTOBJECT_LOOT"))
 	endEvent
 endState
 
@@ -1590,7 +1483,7 @@ state questObjectGlow
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_QUESTOBJECT_GLOW")
+		SetInfoText(GetTranslation("$AHSE_DESC_QUESTOBJECT_GLOW"))
 	endEvent
 endState
 
@@ -1606,7 +1499,7 @@ state enchantItemGlow
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_ENCHANTITEM_GLOW")
+		SetInfoText(GetTranslation("$AHSE_DESC_ENCHANTITEM_GLOW"))
 	endEvent
 endState
 
@@ -1622,7 +1515,7 @@ state lockedChestLoot
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_LOCKEDCHEST_LOOT")
+		SetInfoText(GetTranslation("$AHSE_DESC_LOCKEDCHEST_LOOT"))
 	endEvent
 endState
 
@@ -1638,7 +1531,7 @@ state lockedChestGlow
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_LOCKEDCHEST_GLOW")
+		SetInfoText(GetTranslation("$AHSE_DESC_LOCKEDCHEST_GLOW"))
 	endEvent
 endState
 
@@ -1654,7 +1547,7 @@ state bossChestLoot
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_BOSSCHEST_LOOT")
+		SetInfoText(GetTranslation("$AHSE_DESC_BOSSCHEST_LOOT"))
 	endEvent
 endState
 
@@ -1670,7 +1563,23 @@ state bossChestGlow
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_BOSSCHEST_GLOW")
+		SetInfoText(GetTranslation("$AHSE_DESC_BOSSCHEST_GLOW"))
+	endEvent
+endState
+
+state manualLootTargetNotify
+	event OnSelectST()
+		manualLootTargetNotify = !(manualLootTargetNotify as bool)
+		SetToggleOptionValueST(manualLootTargetNotify)
+	endEvent
+
+	event OnDefaultST()
+		manualLootTargetNotify = true
+		SetToggleOptionValueST(manualLootTargetNotify)
+	endEvent
+
+	event OnHighlightST()
+		SetInfoText(GetTranslation("$AHSE_DESC_MANUAL_LOOT_TARGET_NOTIFY"))
 	endEvent
 endState
 
@@ -1686,7 +1595,7 @@ state disableDuringCombat
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_DISABLE_INCOMBAT")
+		SetInfoText(GetTranslation("$AHSE_DESC_DISABLE_INCOMBAT"))
 	endEvent
 endState
 
@@ -1702,7 +1611,7 @@ state disableWhileWeaponIsDrawn
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_DISABLE_DRAWINGWEAPON")
+		SetInfoText(GetTranslation("$AHSE_DESC_DISABLE_DRAWINGWEAPON"))
 	endEvent
 endState
 
@@ -1718,6 +1627,6 @@ state playContainerAnimation
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText("$AHSE_DESC_CONTAINER_ANIMATION")
+		SetInfoText(GetTranslation("$AHSE_DESC_CONTAINER_ANIMATION"))
 	endEvent
 endState

@@ -23,7 +23,6 @@ namespace FileUtils
 
 namespace utils
 {
-	double GetDistance(RE::TESObjectREFR* refr);
 	void SetGoldValue(const RE::TESForm* pForm, UInt32 value);
 }
 

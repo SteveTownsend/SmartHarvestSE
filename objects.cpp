@@ -14,8 +14,6 @@
 
 #include "CommonLibSSE/include/RE/BGSProjectile.h"
 
-#include "skse64/GameReferences.h"
-
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
@@ -129,13 +127,13 @@ bool TESObjectREFRHelper::IsPlayerOwned()
 	{
 		if (owner->formType == RE::FormType::NPC)
 		{
-			RE::TESNPC* npc = skyrim_cast<RE::TESNPC*, RE::TESForm>(owner);
-			RE::TESNPC* playerBase = skyrim_cast<RE::TESNPC*, RE::TESForm>(RE::PlayerCharacter::GetSingleton()->data.objectReference);
+			const RE::TESNPC* npc = owner->As<RE::TESNPC>();
+			RE::TESNPC* playerBase = RE::PlayerCharacter::GetSingleton()->GetActorBase();
 			return (npc && npc == playerBase);
 		}
 		else if (owner->formType == RE::FormType::Faction)
 		{
-			RE::TESFaction* faction = skyrim_cast<RE::TESFaction*, RE::TESForm>(owner);
+			const RE::TESFaction* faction = owner->As<RE::TESFaction>();
 			if (faction)
 			{
 				return RE::PlayerCharacter::GetSingleton()->IsInFaction(faction);
@@ -206,19 +204,21 @@ RE::NiTimeController* TESObjectREFRHelper::GetTimeController()
 	return (node && node->GetControllers()) ? node->GetControllers() : nullptr;
 }
 
-inline bool ActorHelper::IsSneaking()
+bool ActorHelper::IsSneaking()
 {
 	return (m_actor && m_actor->IsSneaking());
 }
 
-bool ActorHelper::IsPlayerFollower()
+bool ActorHelper::IsPlayerAlly()
 {
 	if (!m_actor)
 		return false;
 	if (m_actor->IsPlayerTeammate())
+	{
 		return true;
-	static RE::TESFaction* faction = skyrim_cast<RE::TESFaction*, RE::TESForm>(RE::TESForm::LookupByID(CurrentFollowerFaction));
-	return (faction) ? m_actor->IsInFaction(faction) : false;
+	}
+	static const RE::TESFaction* followerFaction = RE::TESForm::LookupByID(CurrentFollowerFaction)->As<RE::TESFaction>();
+	return (followerFaction) ? m_actor->IsInFaction(followerFaction) : false;
 }
 
 bool ActorHelper::IsEssential()
@@ -364,7 +364,6 @@ std::string GetObjectTypeName(ObjectType type)
 	static const std::unordered_map<ObjectType, std::string> nameByType({
 		{ObjectType::unknown, "unknown"},
 		{ObjectType::flora, "flora"},
-		// {ObjectType::fieldCrops, "fieldCrops"},
 		{ObjectType::critter, "critter"},
 		{ObjectType::ingredients, "ingredients"},
 		{ObjectType::septims, "septims"},
@@ -376,8 +375,6 @@ std::string GetObjectTypeName(ObjectType type)
 		{ObjectType::soulgem, "soulgem"},
 		{ObjectType::keys, "keys"},
 		{ObjectType::clutter, "clutter"},
-		{ObjectType::clutterDwemer, "clutterDwemer"},
-		{ObjectType::clutterBroken, "clutterBroken"},
 		{ObjectType::light, "light"},
 		{ObjectType::books, "books"},
 		{ObjectType::spellbook, "spellbook"},
@@ -396,13 +393,13 @@ std::string GetObjectTypeName(ObjectType type)
 		{ObjectType::potion, "potion"},
 		{ObjectType::poison, "poison"},
 		{ObjectType::food, "food"},
-		// {ObjectType::foodIngredients, "foodIngredients"},
 		{ObjectType::drink, "drink"},
 		{ObjectType::oreVein, "oreVein"},
 		{ObjectType::userlist, "userlist"},
 		{ObjectType::container, "container"},
 		{ObjectType::actor, "actor"},
-		{ObjectType::ashPile, "ashPile"}
+		{ObjectType::ashPile, "ashPile"},
+		{ObjectType::manualLoot, "manualLoot"}
 		});
 	const auto result(nameByType.find(type));
 	if (result != nameByType.cend())
