@@ -60,7 +60,7 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		if (!refr->IsDead(true))
 		{
 #if _DEBUG
-			_DMESSAGE("skip living ActorCharacter 0x%08x/%s", formID, fullName->GetFullName());
+			_DMESSAGE("skip living ActorCharacter 0x%08x/%s", formID, refr->GetName());
 #endif
 			return false;
 		}
@@ -124,7 +124,7 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 
 void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 {
-	for (const RE::NiPointer<RE::TESObjectREFR>& refptr : cell->references)
+	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
 		/* SKSE logic for TESObjectCELL has 'ref' as TESObjectREFR instance, unk08 is a sentinel value:
 

@@ -12,7 +12,8 @@
 #include "basketfile.h"
 #include "objects.h"
 #include "dataCase.h"
-#include <list>
+
+#include <winver.h>
 
 namespace
 {
@@ -80,6 +81,46 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 		return ::GetPluginName(thisForm).c_str();
+	}
+
+	RE::BSFixedString GetPluginVersion(RE::StaticFunctionTag* base)
+	{
+		std::string moduleName = FileUtils::GetPluginFileName();
+		DWORD zero = 0;		// handle bizarro Win API
+		DWORD verInfoLen = 0;
+		BYTE* verInfo = NULL;
+		VS_FIXEDFILEINFO* fileInfo = NULL;
+		UINT len = 0;
+
+		/* Get the size of FileVersionInfo structure */
+		verInfoLen = GetFileVersionInfoSize(moduleName.c_str(), &zero);
+		if (verInfoLen == 0) {
+#if _DEBUG
+			_MESSAGE("GetFileVersionInfoSize() Failed");
+#endif
+			return "unknown";
+		}
+
+		/* Get FileVersionInfo structure */
+		verInfo = new BYTE[verInfoLen];
+		if (!GetFileVersionInfo(moduleName.c_str(), zero, verInfoLen, verInfo)) {
+#if _DEBUG
+			_MESSAGE("GetFileVersionInfo() Failed");
+#endif
+			return "unknown";
+		}
+
+		/* Query for File version details. */
+		if (!VerQueryValue(verInfo, "\\", (LPVOID*)&fileInfo, &len)) {
+#if _DEBUG
+			_MESSAGE("VerQueryValue() Failed");
+#endif
+			return "unknown";
+		}
+		std::ostringstream version;
+		version << HIWORD(fileInfo->dwFileVersionMS) << '.' << LOWORD(fileInfo->dwFileVersionMS) << '.' <<
+			HIWORD(fileInfo->dwFileVersionLS) << '.' << LOWORD(fileInfo->dwFileVersionLS);
+		return version.str().c_str();
 	}
 
 	RE::BSFixedString GetTextFormID(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -371,6 +412,7 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 {
 	papyrus::RegisterFunction(a_vm, "DebugTrace", AHSE_NAME, papyrus::DebugTrace);
 	papyrus::RegisterFunction(a_vm, "GetPluginName", AHSE_NAME, papyrus::GetPluginName);
+	papyrus::RegisterFunction(a_vm, "GetPluginVersion", AHSE_NAME, papyrus::GetPluginVersion);
 	papyrus::RegisterFunction(a_vm, "GetTextFormID", AHSE_NAME, papyrus::GetTextFormID);
 	papyrus::RegisterFunction(a_vm, "GetTextObjectType", AHSE_NAME, papyrus::GetTextObjectType);
 

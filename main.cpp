@@ -28,7 +28,7 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 		_MESSAGE("Game load starting, disable looting");
 #endif
 		scanOK = SearchTask::IsAllowed();
-		SearchTask::Disallow();
+		SearchTask::PrepareForReload();
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:

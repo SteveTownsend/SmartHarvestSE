@@ -178,13 +178,14 @@ function Pause()
        	g_LootingEnabled.SetValue(1)
 	endif
 		
-	string str = sif(priorState != 0, "$AHSE_ENABLE", "$AHSE_DISABLE")
 	;DebugTrace("Pause, looting-enabled = " + g_LootingEnabled.GetValue())
 	if (priorState == 0)
 		AllowSearch()
 	Else
 		DisallowSearch()
 	EndIf
+	string str = sif(priorState != 0, "$AHSE_ENABLE", "$AHSE_DISABLE")
+	str = Replace(GetTranslation(str), "{VERSION}", GetPluginVersion())
 	Debug.Notification(str)
 endFunction
 
@@ -265,7 +266,7 @@ int Function ShowMessage(Message m_msg, string m_trans, string m_target_text = "
 	return result
 endFunction
 
-Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, int silent, int ignoreBlock)
+Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool ignoreBlock)
 	;DebugTrace("OnAutoHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
 	;DebugTrace("item type: " + itemType + ", type-mine: " + objType_mine + ", do not notify: " + silent + ", ignore activation blocking: " + ignoreBlock) 
 	

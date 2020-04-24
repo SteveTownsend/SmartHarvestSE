@@ -51,10 +51,10 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 3,0,0,1
+ PRODUCTVERSION 3,0,0,1
  FILEFLAGSMASK 0x3fL
-#if _DEBUG
+#ifdef _DEBUG
  FILEFLAGS 0x1L
 #else
  FILEFLAGS 0x0L
@@ -67,14 +67,14 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName", "towawot"
+            VALUE "CompanyName", "towawot, SteveTownsend"
             VALUE "FileDescription", "Skyrim mod Auto Harvest SE, ported to CommonLibSSE"
-            VALUE "FileVersion", "1.0.0.1"
+            VALUE "FileVersion", "3.0.0.1"
             VALUE "InternalName", "AutoHarvestSE"
             VALUE "LegalCopyright", "Copyright (C) 2020"
             VALUE "OriginalFilename", "AutoHarvestSE.dll"
             VALUE "ProductName", "AutoHarvestSE"
-            VALUE "ProductVersion", "1.0.0.1"
+            VALUE "ProductVersion", "3.0.0.1"
         END
     END
     BLOCK "VarFileInfo"

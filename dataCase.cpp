@@ -15,17 +15,6 @@
 
 namespace
 {
-	std::string GetBaseName(RE::TESForm* thisForm)
-	{
-		std::string result;
-		if (thisForm)
-		{
-			RE::TESFullName* pFullName = thisForm->As<RE::TESFullName>();
-			if (pFullName)
-				result = pFullName->GetFullName();
-		}
-		return result;
-	}
 	bool IsFoundFile(const char* fileName)
 	{
 		std::ifstream ifs(fileName);
@@ -401,7 +390,7 @@ void DataCase::GetAmmoData()
 		}
 
 		std::string name;
-		name = ::GetBaseName(ammo);
+		name = PluginUtils::GetBaseName(ammo);
 		if (name.empty())
 		{
 #if _DEBUG
@@ -711,6 +700,10 @@ void DataCase::CategorizeLootables()
 #if 0
 	// NPC Death Items contain lootable objects
 	CategorizeNPCDeathItems();
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Identify Unique Objects");
+#endif
+	IdentifyUniqueObjects();
 #endif
 }
 
@@ -1033,5 +1026,70 @@ DataCase::NPCDeathItemCategorizer::NPCDeathItemCategorizer(
 
 void DataCase::NPCDeathItemCategorizer::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType)
 {
+}
+
+void DataCase::IdentifyUniqueObjects()
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+
+	std::unordered_map<RE::TESForm*, bool> possibleUniques;
+	// WorldSpace forms are listed at this point, but not CELL/REFR
+	for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::WorldSpace))
+	{
+		RE::TESWorldSpace* worldSpace(form->As<RE::TESWorldSpace>());
+		if (!worldSpace)
+			continue;
+		for (const auto idCell : worldSpace->cellMap)
+		{
+			RE::TESObjectCELL* cell(idCell.second);
+			if (!cell)
+				continue;
+			for (RE::TESObjectREFRPtr refPtr : cell->references)
+			{
+				RE::TESObjectREFR* refr(refPtr.get());
+				if (!refr)
+					continue;
+				if (refr->Is(RE::FormType::ActorCharacter) || refr->Is(RE::FormType::Container))
+					continue;
+				RE::TESForm* baseForm(refr->data.objectReference);
+				if (PluginUtils::GetBaseName(baseForm).empty())
+					continue;
+				if (possibleUniques.find(baseForm) == possibleUniques.cend())
+				{
+					//
+					first occurrence of baseForm - considered unique for now
+#if _DEBUG
+					_MESSAGE("%s/0x%08x REFR 0x%08x unique for now", baseForm->GetName(), baseForm->formID, refr->formID);
+#endif
+					possibleUniques.insert(std::make_pair(baseForm, true));
+				}
+				else
+				{
+					// no longer considered unique
+#if _DEBUG
+					_MESSAGE("%s/0x%08x REFR 0x%08x non-unique", baseForm->GetName(), baseForm->formID, refr->formID);
+#endif
+					possibleUniques[baseForm] = false;
+				}
+			}
+		}
+	}
+	std::for_each(possibleUniques.cbegin(), possibleUniques.cend(), [&](const auto possibleUnique) {
+		if (possibleUnique.second)
+		{
+#if _DEBUG
+			_MESSAGE("%s/0x%08x is unique REFR base", possibleUnique.first->GetName(), possibleUnique.first->formID);
+#endif
+			m_uniqueObjects.insert(possibleUnique.first);
+		}
+		else
+		{
+#if _DEBUG
+			_MESSAGE("%s/0x%08x is non-unique", possibleUnique.first->GetName(), possibleUnique.first->formID);
+#endif
+		}
+	});
 }
 #endif

@@ -52,10 +52,11 @@ namespace FileUtils
 		}
 		return s_dataDirectory;
 	}
-	std::string GetPluginPath()
+
+	std::string GetPluginFileName()
 	{
-		static std::string s_skseDirectory;
-		if (s_skseDirectory.empty())
+		static std::string s_pluginFileName;
+		if (s_pluginFileName.empty())
 		{
 			HMODULE hm = NULL;
 			char path[MAX_PATH];
@@ -77,10 +78,25 @@ namespace FileUtils
 			}
 			else
 			{
+				s_pluginFileName = path;
+			}
+		}
+		return s_pluginFileName;
+	}
+
+	std::string GetPluginPath()
+	{
+		static std::string s_skseDirectory;
+		if (s_skseDirectory.empty())
+		{
+			std::string pluginFileName(GetPluginFileName());
+			if (!pluginFileName.empty())
+			{
 			    char drive[MAX_PATH];
 			    char dir[MAX_PATH];
-				if (_splitpath_s(path, drive, MAX_PATH, dir, MAX_PATH, nullptr, 0, nullptr, 0) == 0)
+				if (_splitpath_s(pluginFileName.c_str(), drive, MAX_PATH, dir, MAX_PATH, nullptr, 0, nullptr, 0) == 0)
 				{
+					char path[MAX_PATH];
       			    if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
 					{
 					    s_skseDirectory = path;
@@ -209,18 +225,6 @@ namespace PluginUtils
 		if (dhnd && modIndex < 0xFF)
 			info = dhnd->LookupLoadedModByIndex(modIndex);
 		return (info) ? std::string(&info->fileName[0]) : unknown;
-	}
-
-	std::string GetBaseName(RE::TESForm* thisForm)
-	{
-		std::string result;
-		if (thisForm)
-		{
-			RE::TESFullName* pFullName = skyrim_cast<RE::TESFullName*, RE::TESForm>(thisForm);
-			if (pFullName)
-				result = pFullName->GetFullName();
-		}
-		return result;
 	}
 
 	void SetBaseName(RE::TESForm* pForm, const char* str)

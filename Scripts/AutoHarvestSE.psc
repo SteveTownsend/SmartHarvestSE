@@ -1,6 +1,7 @@
 scriptname AutoHarvestSE
 
 Function DebugTrace(string str) global native
+string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextFormID(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native

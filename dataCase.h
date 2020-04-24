@@ -430,7 +430,10 @@ private:
 	static constexpr RE::FormID Gold = 0x0F;
 
 	void CategorizeStatics();
-
+#if 0
+	std::unordered_set<RE::TESForm*> m_uniqueObjects;
+	void IdentifyUniqueObjects();
+#endif
 	DataCase(void);
 };
 

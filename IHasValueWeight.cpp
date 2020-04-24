@@ -32,14 +32,25 @@ bool IHasValueWeight::ValueWeightTooLowToLoot(INIFile* settings) const
 			return false;
 		}
 
-		if (worth <= 0. && weight <= 0.)
+		if (worth <= 0.)
 		{
-			// this may be a scripted activator without special-case handling - one example is Poison Bloom (xx007cda).
-			// Harvest if non v/w criteria say we should do so.
+			if (weight <= 0.)
+			{
+				// this may be a scripted activator without special-case handling - one example is Poison Bloom (xx007cda).
+				// Harvest if non v/w criteria say we should do so.
 #if _DEBUG
-			_MESSAGE("* %s(%08x) - cannot calculate v/w from weight %0.2f and worth %0.2f", GetName(), GetFormID(), weight, worth);
+				_MESSAGE("* %s(%08x) - cannot calculate v/w from weight %0.2f and worth %0.2f", GetName(), GetFormID(), weight, worth);
 #endif
-			return false;
+				return false;
+			}
+			else
+			{
+				// zero value object with strictly positive weight - do not auto-harvest
+#if _DEBUG
+				_MESSAGE("* %s(%08x) - has weight %0.2f, no value", GetName(), GetFormID(), weight);
+#endif
+				return false;
+			}
 		}
 
 		double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.0;

@@ -14,6 +14,7 @@ namespace FileUtils
 {
 	std::string GetGamePath(void);
 	std::string GetDataPath(void);
+	std::string GetPluginFileName(void);
 	std::string GetPluginPath(void);
 	bool IsFoundFile(const char* fileName);
 	bool WriteSectionKey(LPCTSTR section_name, LPCTSTR key_name, LPCTSTR key_data, LPCTSTR ini_file_path);
@@ -47,7 +48,10 @@ namespace WindowsUtils
 namespace PluginUtils
 {
 	std::string GetPluginName(RE::TESForm* thisForm);
-	std::string GetBaseName(RE::TESForm* thisForm);
+	inline std::string GetBaseName(RE::TESForm* thisForm)
+	{
+		return thisForm ? thisForm->GetName() : std::string();
+	}
 	void SetBaseName(RE::TESForm* pForm, const char* str);
 	std::string GetPluginName(UInt8 modIndex);
 	UInt8 GetModIndex(RE::TESForm* thisForm);

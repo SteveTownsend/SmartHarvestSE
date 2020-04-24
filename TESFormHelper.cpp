@@ -22,58 +22,7 @@ TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 
 RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
 {
-	RE::BGSKeywordForm* result = nullptr;
-
-	switch (m_form->formType)
-	{
-	case RE::FormType::MagicEffect:
-		result = KeywordFormCast<RE::EffectSetting>(m_form);
-		break;
-	case RE::FormType::NPC:
-		result = KeywordFormCast<RE::TESActorBase>(m_form);
-		break;
-	case RE::FormType::Race:
-		result = KeywordFormCast<RE::TESRace>(m_form);
-		break;
-	case RE::FormType::Armor:
-		result = KeywordFormCast<RE::TESObjectARMO>(m_form);
-		break;
-	case RE::FormType::Weapon:
-		result = KeywordFormCast<RE::TESObjectWEAP>(m_form);
-		break;
-	case RE::FormType::Location:
-		result = KeywordFormCast<RE::BGSLocation>(m_form);
-		break;
-	case RE::FormType::Activator:
-	case RE::FormType::TalkingActivator:
-	case RE::FormType::Flora:
-	case RE::FormType::Furniture:
-		result = KeywordFormCast<RE::TESObjectACTI>(m_form);
-		break;
-	case RE::FormType::Enchantment:
-	case RE::FormType::Spell:
-	case RE::FormType::Scroll:
-	case RE::FormType::Ingredient:
-	case RE::FormType::AlchemyItem:
-		result = KeywordFormCast<RE::AlchemyItem>(m_form);
-		break;
-	case RE::FormType::Misc:
-	case RE::FormType::Apparatus:
-	case RE::FormType::KeyMaster:
-	case RE::FormType::SoulGem:
-		result = KeywordFormCast<RE::TESObjectMISC>(m_form);
-		break;
-	case RE::FormType::Ammo:
-		result = KeywordFormCast<RE::TESAmmo>(m_form);
-		break;
-	case RE::FormType::Book:
-		result = KeywordFormCast<RE::TESObjectBOOK>(m_form);
-		break;
-	default:
-		result = skyrim_cast<RE::BGSKeywordForm*, RE::TESForm>(m_form);
-		break;
-	}
-	return result;
+	return dynamic_cast<RE::BGSKeywordForm*>(const_cast<RE::TESForm*>(m_form));
 }
 
 RE::EnchantmentItem* TESFormHelper::GetEnchantment()

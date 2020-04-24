@@ -1,7 +1,5 @@
 #pragma once
 
-//#include "skse64/PapyrusVM.h"
-
 #include "objects.h"
 #include "TESFormHelper.h"
 #include "iniSettings.h"
@@ -70,6 +68,7 @@ public:
 	static void DropLocationFromExcludeList(const RE::TESForm* location);
 
 	static void Start();
+	static void PrepareForReload();
 	static void Allow();
 	static void Disallow();
 	static bool IsAllowed();
@@ -99,9 +98,6 @@ public:
 	static std::unordered_set<const RE::TESObjectREFR*> m_autoHarvestLock;
 	static std::unordered_set<const RE::BGSLocation*> m_possiblePlayerHouse;
 
-#if 0
-	static VMClassRegistry* m_registry;
-#endif
 	static RecursiveLock m_searchLock;
 	static bool m_threadStarted;
 	static bool m_searchAllowed;
@@ -113,14 +109,13 @@ public:
 	static bool m_carryAdjustedForPlayerHome;
 	static int m_currentCarryWeightChange;
 
-#if 0
-	static const BSFixedString critterIngredientEvent;
-	static const BSFixedString carryWeightDeltaEvent;
-	static const BSFixedString autoHarvestEvent;
-	static const BSFixedString objectGlowEvent;
-	static const BSFixedString objectGlowStopEvent;
-	static const BSFixedString playerHouseCheckEvent;
-#endif
+	static const RE::BSFixedString critterIngredientEvent;
+	static const RE::BSFixedString carryWeightDeltaEvent;
+	static const RE::BSFixedString autoHarvestEvent;
+	static const RE::BSFixedString objectGlowEvent;
+	static const RE::BSFixedString objectGlowStopEvent;
+	static const RE::BSFixedString playerHouseCheckEvent;
+
 	RE::TESObjectREFR* m_refr;
 
 	static std::unordered_set<const RE::TESForm*> m_excludeLocations;

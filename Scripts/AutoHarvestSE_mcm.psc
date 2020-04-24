@@ -246,10 +246,10 @@ Function ApplySetting()
 
     ; do this last so plugin state is in sync	
 	if (isEnabled)
-		Debug.Notification("$AHSE_ENABLE")
+		Debug.Notification(Replace(GetTranslation("$AHSE_ENABLE"), "{VERSION}", GetPluginVersion()))
 		AllowSearch()
 	Else
-		Debug.Notification("$AHSE_DISABLE")
+		Debug.Notification(Replace(GetTranslation("$AHSE_DISABLE"), "{VERSION}", GetPluginVersion()))
 		DisallowSearch()
 	EndIf
 
@@ -398,6 +398,7 @@ int function GetVersion()
 
     ; Encumbrance quality of life delta for combat and player home
 	infiniteWeight = 100000
+	manualLootTargetNotify = true
 	return 13
 endFunction
 

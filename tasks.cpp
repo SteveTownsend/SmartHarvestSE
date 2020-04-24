@@ -1,6 +1,5 @@
 #include "PrecompiledHeaders.h"
 
-#include "events.h"
 #include "tasks.h"
 #include "TESFormHelper.h"
 #include "objects.h"
@@ -26,18 +25,12 @@ std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono
 
 bool SearchTask::GoodToGo()
 {
-#if 0
-	if (!m_registry)
-	{
-		m_registry = (*g_skyrimVM)->GetClassRegistry();
-	}
-#endif
 	if (!m_aliasHandle)
 	{
 		RE::TESQuest* quest = GetTargetQuest(MODNAME, QUEST_ID);
 		m_aliasHandle = (quest) ? TESQuestHelper(quest).GetAliasHandle(0) : 0;
 	}
-	return /* m_registry && */ m_aliasHandle;
+	return m_aliasHandle;
 }
 
 SearchTask::SearchTask(const std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>>& candidates)
@@ -45,20 +38,12 @@ SearchTask::SearchTask(const std::vector<std::pair<RE::TESObjectREFR*, INIFile::
 {
 }
 
-#if 0
-const BSFixedString SearchTask::critterIngredientEvent = "OnGetCritterIngredient";
-const BSFixedString SearchTask::carryWeightDeltaEvent = "OnCarryWeightDelta";
-const BSFixedString SearchTask::autoHarvestEvent = "OnAutoHarvest";
-const BSFixedString SearchTask::objectGlowEvent = "OnObjectGlow";
-const BSFixedString SearchTask::objectGlowStopEvent = "OnObjectGlowStop";
-const BSFixedString SearchTask::playerHouseCheckEvent = "OnPlayerHouseCheck";
-#endif
-const RE::BSFixedString REcritterIngredientEvent = "OnGetCritterIngredient";
-const RE::BSFixedString REcarryWeightDeltaEvent = "OnCarryWeightDelta";
-const RE::BSFixedString REautoHarvestEvent = "OnAutoHarvest";
-const RE::BSFixedString REobjectGlowEvent = "OnObjectGlow";
-const RE::BSFixedString REobjectGlowStopEvent = "OnObjectGlowStop";
-const RE::BSFixedString REplayerHouseCheckEvent = "OnPlayerHouseCheck";
+const RE::BSFixedString SearchTask::critterIngredientEvent = "OnGetCritterIngredient";
+const RE::BSFixedString SearchTask::carryWeightDeltaEvent = "OnCarryWeightDelta";
+const RE::BSFixedString SearchTask::autoHarvestEvent = "OnAutoHarvest";
+const RE::BSFixedString SearchTask::objectGlowEvent = "OnObjectGlow";
+const RE::BSFixedString SearchTask::objectGlowStopEvent = "OnObjectGlowStop";
+const RE::BSFixedString SearchTask::playerHouseCheckEvent = "OnPlayerHouseCheck";
 
 const int AutoHarvestSpamLimit = 10;
 
@@ -344,9 +329,6 @@ void SearchTask::Run()
 	}
 }
 
-#if 0
-VMClassRegistry* SearchTask::m_registry = nullptr;
-#endif
 RecursiveLock SearchTask::m_searchLock;
 bool SearchTask::m_threadStarted = false;
 bool SearchTask::m_searchAllowed = false;
@@ -481,6 +463,18 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 #endif
 			return 0;
 		}
+
+		// handle player death. Obviously we are not looting on their behalf until a game reload or other resurrection event.
+		// Assumes player non-essential: if player is in God mode a little extra carry weight or post-0death looting is not
+		// breaking immersion.
+		const bool RIPPlayer(player->IsDead(true));
+		if (RIPPlayer)
+		{
+			// Fire location change logic
+			m_playerLocation = nullptr;
+			m_playerCell = nullptr;
+		}
+
 		if (playerLocation != m_playerLocation)
 		{
 #if _DEBUG
@@ -498,13 +492,8 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 #endif
 					// lock this location until dialog has been handled
 					LockPossiblePlayerHouse(m_playerLocation);
-#if 1
 					RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-						m_aliasHandle, REplayerHouseCheckEvent, RE::MakeFunctionArguments(std::move(m_playerLocation)));
-#else
-					PlayerHouseCheckEventFunctor argHouseCheck(reinterpret_cast<TESForm*>(m_playerLocation));
-					m_registry->QueueEvent(m_aliasHandle, &playerHouseCheckEvent, &argHouseCheck);
-#endif
+						m_aliasHandle, playerHouseCheckEvent, RE::MakeFunctionArguments(std::move(m_playerLocation)));
 					return 0;
 				}
 			}
@@ -525,7 +514,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 #endif
 			}
 		}
-		bool playerInCombat(player->IsInCombat());
+		bool playerInCombat(player->IsInCombat() && !player->IsDead(true));
 		if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedInCombat") != 0.0)
 		{
 			// when state changes in/out of combat, adjust carry weight accordingly
@@ -547,6 +536,14 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			_MESSAGE("Adjusted carry weight by delta %d", requiredWeightDelta);
 #endif
 			TriggerCarryWeightDelta(requiredWeightDelta);
+		}
+
+		if (RIPPlayer)
+		{
+#if _DEBUG
+			_DMESSAGE("Player is dead");
+#endif
+			return 0;
 		}
 
 		if (IsLocationExcluded())
@@ -767,6 +764,20 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 	return result;
 }
 
+void SearchTask::PrepareForReload()
+{
+	// stop scanning
+	Disallow();
+
+	// reset carry weight adjustments - scripts will handle the Player Actor Value, our scan will reinstate as needed
+	m_currentCarryWeightChange = 0;
+	m_carryAdjustedForPlayerHome = false;
+	m_carryAdjustedForCombat = false;
+	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
+	m_playerCell = nullptr;
+	m_playerLocation = nullptr;
+}
+
 void SearchTask::Allow()
 {
 	RecursiveLockGuard guard(m_searchLock);
@@ -778,6 +789,7 @@ void SearchTask::Allow()
 		SearchTask::Start();
 	}
 }
+
 void SearchTask::Disallow()
 {
 	RecursiveLockGuard guard(m_searchLock);
@@ -791,24 +803,14 @@ bool SearchTask::IsAllowed()
 
 void SearchTask::TriggerGetCritterIngredient()
 {
-#if 1
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, REcritterIngredientEvent, RE::MakeFunctionArguments(std::move(m_refr)));
-#else
-	CritterIngredientEventFunctor args(reinterpret_cast<TESObjectREFR*>(m_refr));
-	m_registry->QueueEvent(m_aliasHandle, &critterIngredientEvent, &args);
-#endif
+		m_aliasHandle, critterIngredientEvent, RE::MakeFunctionArguments(std::move(m_refr)));
 }
 
 void SearchTask::TriggerCarryWeightDelta(const int delta)
 {
-#if 1
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, REcarryWeightDeltaEvent, RE::MakeFunctionArguments(std::move(delta)));
-#else
-	CarryWeightDeltaEventFunctor args(delta);
-	m_registry->QueueEvent(m_aliasHandle, &carryWeightDeltaEvent, &args);
-#endif
+		m_aliasHandle, carryWeightDeltaEvent, RE::MakeFunctionArguments(std::move(delta)));
 }
 
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_autoHarvestLock;
@@ -818,19 +820,16 @@ void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, con
     // Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 	if (!LockAutoHarvest(m_refr))
 		return;
-#if 1
 	SInt32 intType(static_cast<SInt32>(objType));
+#if 0
 	// hack to avoid bool/uint32 ambiguity
 	SInt32 intSilent(static_cast<SInt32>(isSilent));
 	// hack to avoid bool/uint32 ambiguity
 	SInt32 intIgnoreBlocking(static_cast<SInt32>(ignoreBlocking));
-	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, REautoHarvestEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(intType),
-			std::move(itemCount), std::move(intSilent), std::move(intIgnoreBlocking)));
-#else
-	LootEventFunctor args(reinterpret_cast<TESObjectREFR*>(m_refr), static_cast<SInt32>(objType), itemCount, isSilent, ignoreBlocking);
-	m_registry->QueueEvent(m_aliasHandle, &autoHarvestEvent, &args);
 #endif
+	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
+		m_aliasHandle, autoHarvestEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(intType),
+			std::move(itemCount), std::move(isSilent), std::move(ignoreBlocking)));
 }
 
 bool SearchTask::LockAutoHarvest(const RE::TESObjectREFR* refr)
@@ -900,13 +899,6 @@ void SearchTask::MergeExcludeList()
 	}
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
-	// reset carry weight adjustments - scripts will handle the Player Actor Value, our scan will reinstate as needed
-	m_currentCarryWeightChange = 0;
-	m_carryAdjustedForPlayerHome = false;
-	m_carryAdjustedForCombat = false;
-	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
-	m_playerCell = nullptr;
-	m_playerLocation = nullptr;
 }
 
 void SearchTask::ResetExcludedLocations()
@@ -998,7 +990,7 @@ void SearchTask::TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBo
 	}
 }
 
-const unsigned int ObjectGlowDuration = 15;
+const int ObjectGlowDuration = 15;
 
 void SearchTask::TriggerObjectGlow()
 {
@@ -1016,26 +1008,14 @@ void SearchTask::TriggerObjectGlow()
 #if _DEBUG
 	_DMESSAGE("Trigger glow for %s/0x%08x", m_refr->GetName(), m_refr->formID);
 #endif
-#if 1
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, REobjectGlowEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(ObjectGlowDuration)));
-#else
-	ObjectGlowEventFunctor argGlow(reinterpret_cast<TESObjectREFR*>(m_refr), ObjectGlowDuration);
-	m_registry->QueueEvent(m_aliasHandle, &objectGlowEvent, &argGlow);
-#endif
+		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(ObjectGlowDuration)));
 }
 
 void SearchTask::StopObjectGlow(const RE::TESObjectREFR* refr)
 {
-	// TODO get this to compile
-	// vm->SendEvent(m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(m_refr, subEvent_glowObject));
-#if 1
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, REobjectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(ObjectGlowDuration)));
-#else
-	ObjectGlowStopEventFunctor argGlow(reinterpret_cast<TESObjectREFR*>(const_cast<RE::TESObjectREFR*>(refr)));
-	m_registry->QueueEvent(m_aliasHandle, &objectGlowStopEvent, &argGlow);
-#endif
+		m_aliasHandle, objectGlowStopEvent, RE::MakeFunctionArguments(std::move(refr)));
 }
 
 void SearchTask::UnlockAll()

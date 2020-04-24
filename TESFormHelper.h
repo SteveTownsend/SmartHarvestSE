@@ -26,5 +26,5 @@ bool IsPlayable(const RE::TESForm* pForm);
 
 template <typename FORM> RE::BGSKeywordForm* KeywordFormCast(const RE::TESForm* form)
 {
-	return skyrim_cast<RE::BGSKeywordForm*, FORM>(skyrim_cast<FORM*, RE::TESForm>(form));
+	return skyrim_cast<RE::BGSKeywordForm*, FORM>(form->As<FORM>());
 }

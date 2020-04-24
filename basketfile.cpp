@@ -44,20 +44,6 @@ namespace
 		return modinfo ? modinfo->fileName : std::string();
 	}
 
-	std::string GetBaseName(const RE::TESForm* thisForm)
-	{
-		if (thisForm)
-		{
-			try {
-				RE::TESFullName* fullName(skyrim_cast<RE::TESFullName*, RE::TESForm>(thisForm));
-				return fullName->GetFullName();
-			}
-			catch (const std::bad_cast&) {
-			}
-		}
-		return std::string();
-	}
-
 	std::vector<std::string> split(const std::string &str, char delim)
 	{
 		std::vector<std::string> res;
@@ -108,10 +94,10 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 				UInt32 hexID = childForm->formID & 0x00FFFFFF;
 				
 				stringEx str;
-				str.Format("%s\t0x%06X\t%s\n", name.c_str(), hexID, GetBaseName(childForm).c_str());
+				str.Format("%s\t0x%06X\t%s\n", name.c_str(), hexID, PluginUtils::GetBaseName(childForm).c_str());
 				
 				#if _DEBUG
-				_MESSAGE("%s\t%08X\t%s", name.c_str(), hexID, GetBaseName(childForm).c_str());
+				_MESSAGE("%s\t%08X\t%s", name.c_str(), hexID, PluginUtils::GetBaseName(childForm).c_str());
 				#endif
 				
 				std::vector<char>buf(str.size() + 1);
