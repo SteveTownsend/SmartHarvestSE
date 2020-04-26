@@ -58,6 +58,8 @@ std::string GetObjectTypeName(const RE::TESObjectREFR* refr);
 std::string GetObjectTypeName(RE::TESForm* pForm);
 std::string GetObjectTypeName(const RE::TESForm* pForm);
 std::string GetObjectTypeName(ObjectType type);
+ObjectType GetObjectTypeByTypeName(const std::string& name);
+
 inline bool ValueWeightExempt(ObjectType objectType)
 {
 	return objectType == ObjectType::ammo ||

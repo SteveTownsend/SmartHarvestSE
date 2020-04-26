@@ -43,7 +43,6 @@ const RE::BSFixedString SearchTask::carryWeightDeltaEvent = "OnCarryWeightDelta"
 const RE::BSFixedString SearchTask::autoHarvestEvent = "OnAutoHarvest";
 const RE::BSFixedString SearchTask::objectGlowEvent = "OnObjectGlow";
 const RE::BSFixedString SearchTask::objectGlowStopEvent = "OnObjectGlowStop";
-const RE::BSFixedString SearchTask::playerHouseCheckEvent = "OnPlayerHouseCheck";
 
 const int AutoHarvestSpamLimit = 10;
 
@@ -155,7 +154,7 @@ void SearchTask::Run()
 
 			if (needsGlow)
 			{
-				TriggerObjectGlow();
+				TriggerObjectGlow(m_refr);
 			}
 			if (!skipLooting)
 			{
@@ -166,6 +165,14 @@ void SearchTask::Run()
 					_MESSAGE("Block REFR : LeaveBehind for 0x%08x", m_refr->data.objectReference->formID);
 #endif
 					data->BlockReference(m_refr);
+					skipLooting = true;
+				}
+				else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_refr->data.objectReference).ValueWeightTooLowToLoot(m_ini))
+				{
+#if _DEBUG
+					_DMESSAGE("block - v/w excludes harvest for 0x%08x", m_refr->data.objectReference->formID);
+#endif
+					data->BlockForm(m_refr->data.objectReference);
 					skipLooting = true;
 				}
 			}
@@ -246,7 +253,7 @@ void SearchTask::Run()
 			}
 			if (needsGlow)
 			{
-				TriggerObjectGlow();
+				TriggerObjectGlow(m_refr);
 			}
 			if (skipLooting)
 				continue;
@@ -335,7 +342,6 @@ bool SearchTask::m_searchAllowed = false;
 bool SearchTask::m_sneaking = false;
 RE::TESObjectCELL* SearchTask::m_playerCell = nullptr;
 RE::BGSLocation* SearchTask::m_playerLocation = nullptr;
-std::unordered_set<const RE::BGSLocation*> SearchTask::m_locationCheckedForPlayerHouse;
 RE::BGSKeyword* SearchTask::m_playerHouseKeyword(nullptr);
 bool SearchTask::m_carryAdjustedForCombat = false;
 bool SearchTask::m_carryAdjustedForPlayerHome = false;
@@ -423,6 +429,26 @@ bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
 	return false;
 }
 
+void SearchTask::ResetRestrictions(const bool gameReload)
+{
+	DataCase::GetInstance()->ListsClear(gameReload);
+#if _DEBUG
+	_MESSAGE("Unlock task-pending REFRs");
+#endif
+	RecursiveLockGuard guard(m_lock);
+	// unblock all blocked auto-harvest objects
+	m_autoHarvestLock.clear();
+	// unblock possible player house checks after game reload
+	if (gameReload)
+		m_playerHouses.clear();
+	// Stop objects glowing and clean up the list
+	for (auto glowingObject : m_glowExpiration)
+	{
+		StopObjectGlow(glowingObject.first);
+	}
+	m_glowExpiration.clear();
+}
+
 SInt32 SearchTask::StartSearch(SInt32 type1)
 {
 	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> candidates;
@@ -455,18 +481,21 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			return 0;
 		}
 
-		RE::BGSLocation* playerLocation(player->currentLocation);
-		if (IsPossiblePlayerHouse(playerLocation))
 		{
-#if _DEBUG
-			_MESSAGE("Player location %s waiting for scripts to sync, or pending user decision on exclusion", playerLocation ? playerLocation->GetName() : "unnamed");
-#endif
-			return 0;
+			RecursiveLockGuard guard(m_lock);
+			if (!m_pluginSynced)
+			{
+	#if _DEBUG
+				_DMESSAGE("Plugin sync still pending");
+	#endif
+				return 0;
+			}
 		}
 
 		// handle player death. Obviously we are not looting on their behalf until a game reload or other resurrection event.
 		// Assumes player non-essential: if player is in God mode a little extra carry weight or post-0death looting is not
 		// breaking immersion.
+		RE::BGSLocation* playerLocation(player->currentLocation);
 		const bool RIPPlayer(player->IsDead(true));
 		if (RIPPlayer)
 		{
@@ -481,26 +510,29 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			_MESSAGE("Player left old location, now at %s", playerLocation ? playerLocation->GetName() : "unnamed");
 #endif
 			m_playerLocation = playerLocation;
-			// Player changed location - check if it is a player house unless already excluded
-			if (m_playerLocation && !IsLocationExcluded() && m_locationCheckedForPlayerHouse.count(m_playerLocation) == 0)
+			// Player changed location - check if it is a player house
+			if (m_playerLocation && !IsPlayerHouse(m_playerLocation))
 			{
-				m_locationCheckedForPlayerHouse.insert(m_playerLocation);
 				if (m_playerLocation->HasKeyword(m_playerHouseKeyword))
 				{
+					// record as a player house and notify as it is a new one in this game load
+					AddPlayerHouse(m_playerLocation);
 #if _DEBUG
-					_MESSAGE("Player House %s requires user confirmation before looting", m_playerLocation->GetName());
+					_MESSAGE("Player House %s detected", m_playerLocation->GetName());
 #endif
-					// lock this location until dialog has been handled
-					LockPossiblePlayerHouse(m_playerLocation);
-					RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-						m_aliasHandle, playerHouseCheckEvent, RE::MakeFunctionArguments(std::move(m_playerLocation)));
-					return 0;
+					static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_HOUSE_CHECK")));
+					if (!playerHouseMsg.empty())
+					{
+						std::string notificationText(playerHouseMsg);
+						Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
+						RE::DebugNotification(notificationText.c_str());
+					}
 				}
 			}
 		}
 
 		// Respect encumbrance quality of life settings
-		bool playerInOwnHouse(m_playerLocation && m_playerLocation->HasKeyword(m_playerHouseKeyword));
+		bool playerInOwnHouse(IsPlayerHouse(m_playerLocation));
 		int carryWeightChange(m_currentCarryWeightChange);
 		if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedInPlayerHome") != 0.0)
 		{
@@ -533,7 +565,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			m_currentCarryWeightChange = carryWeightChange;
 			// handle carry weight update via a script event
 #if _DEBUG
-			_MESSAGE("Adjusted carry weight by delta %d", requiredWeightDelta);
+			_MESSAGE("Adjust carry weight by delta %d", requiredWeightDelta);
 #endif
 			TriggerCarryWeightDelta(requiredWeightDelta);
 		}
@@ -549,7 +581,15 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		if (IsLocationExcluded())
 		{
 #if _DEBUG
-			_DMESSAGE("Player location excluded");
+			_DMESSAGE("Player location is excluded");
+#endif
+			return 0;
+		}
+
+		if (playerInOwnHouse)
+		{
+#if _DEBUG
+			_DMESSAGE("Player House, skip");
 #endif
 			return 0;
 		}
@@ -639,7 +679,8 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		}
 		if (unblockAll)
 		{
-			papyrus::UnblockEverything(nullptr);
+			static const bool gameReload(false);
+			ResetRestrictions(gameReload);
 		}
 		if (!m_playerCell)
 		{
@@ -693,7 +734,9 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 				lootTargetType = INIFile::SecondaryType::deadbodies;
 			}
 			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableAutoHarvest") == 0.0)
+			{
 				continue;
+			}
 
 			bool ownership = false;
 			if (crimeCheck == 1)
@@ -769,6 +812,10 @@ void SearchTask::PrepareForReload()
 	// stop scanning
 	Disallow();
 
+#if _DEBUG
+	_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s", m_currentCarryWeightChange,
+		m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false");
+#endif
 	// reset carry weight adjustments - scripts will handle the Player Actor Value, our scan will reinstate as needed
 	m_currentCarryWeightChange = 0;
 	m_carryAdjustedForPlayerHome = false;
@@ -776,6 +823,9 @@ void SearchTask::PrepareForReload()
 	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
 	m_playerCell = nullptr;
 	m_playerLocation = nullptr;
+
+	// Do not scan again until we are in sync with the scripts
+	m_pluginSynced = false;
 }
 
 void SearchTask::Allow()
@@ -860,34 +910,34 @@ size_t SearchTask::PendingAutoHarvest()
 	return m_autoHarvestLock.size();
 }
 
-std::unordered_set<const RE::BGSLocation*> SearchTask::m_possiblePlayerHouse;
-bool SearchTask::LockPossiblePlayerHouse(const RE::BGSLocation* location)
+std::unordered_set<const RE::BGSLocation*> SearchTask::m_playerHouses;
+bool SearchTask::AddPlayerHouse(const RE::BGSLocation* location)
 {
 	if (!location)
 		return false;
 	RecursiveLockGuard guard(m_lock);
-	return (m_possiblePlayerHouse.insert(location)).second;
+	return (m_playerHouses.insert(location)).second;
 }
 
-bool SearchTask::UnlockPossiblePlayerHouse(const RE::BGSLocation* location)
+bool SearchTask::RemovePlayerHouse(const RE::BGSLocation* location)
 {
 	if (!location)
 		return false;
 	RecursiveLockGuard guard(m_lock);
-	return m_possiblePlayerHouse.erase(location) > 0;
+	return m_playerHouses.erase(location) > 0;
 }
 
-// Check indeterminate status of the location - possibly because a requested UI check is pending,
-// possibly because we are still waiting for the scripts to sync up the list
-bool SearchTask::IsPossiblePlayerHouse(const RE::BGSLocation* location)
+// Check indeterminate status of the location, because a requested UI check is pending
+bool SearchTask::IsPlayerHouse(const RE::BGSLocation* location)
 {
 	RecursiveLockGuard guard(m_lock);
-	return !m_pluginSynced || (location && m_possiblePlayerHouse.count(location));
+	return location && m_playerHouses.count(location);
 }
 
 std::unordered_set<const RE::TESForm*> SearchTask::m_excludeLocations;
 bool SearchTask::m_pluginSynced(false);
 
+// this is the last function called by the scripts when re-syncing state
 void SearchTask::MergeExcludeList()
 {
 	RecursiveLockGuard guard(m_lock);
@@ -897,6 +947,10 @@ void SearchTask::MergeExcludeList()
 	{
 		SearchTask::AddLocationToExcludeList(exclusion);
 	}
+	// reset blocked lists to allow recheck vs current state
+	static const bool gameReload(true);
+	ResetRestrictions(gameReload);
+
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
 }
@@ -992,48 +1046,30 @@ void SearchTask::TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBo
 
 const int ObjectGlowDuration = 15;
 
-void SearchTask::TriggerObjectGlow()
+void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr)
 {
 
 	// only send the glow event once per N seconds. This will retrigger on every pass but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
 	// never be so many in a cell that this is a problem.
 	RecursiveLockGuard guard(m_lock);
-	const auto existingGlow(m_glowExpiration.find(m_refr));
+	const auto existingGlow(m_glowExpiration.find(refr));
 	auto currentTime(std::chrono::high_resolution_clock::now());
 	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
 		return;
 	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(ObjectGlowDuration * 1000.0));
-	m_glowExpiration[m_refr] = expiry;
+	m_glowExpiration[refr] = expiry;
 #if _DEBUG
-	_DMESSAGE("Trigger glow for %s/0x%08x", m_refr->GetName(), m_refr->formID);
+	_DMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
 #endif
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(ObjectGlowDuration)));
+		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(ObjectGlowDuration)));
 }
 
 void SearchTask::StopObjectGlow(const RE::TESObjectREFR* refr)
 {
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
 		m_aliasHandle, objectGlowStopEvent, RE::MakeFunctionArguments(std::move(refr)));
-}
-
-void SearchTask::UnlockAll()
-{
-#if _DEBUG
-	_MESSAGE("Unlock task-pending REFRs");
-#endif
-	RecursiveLockGuard guard(m_lock);
-	// unblock all blocked auto-harvest objects
-	m_autoHarvestLock.clear();
-	// unblock possible player house checks
-	m_possiblePlayerHouse.clear();
-	// Stop objects glowing and clean up the list
-	for (auto glowingObject : m_glowExpiration)
-	{
-		StopObjectGlow(glowingObject.first);
-	}
-	m_glowExpiration.clear();
 }
 
 bool SearchTask::firstTime = true;
@@ -1046,6 +1082,7 @@ void SearchTask::Init()
 		DataCase::GetInstance()->CategorizeLootables();
 		firstTime = false;
 	}
-	papyrus::UnblockEverything(nullptr);
+	static const bool gameReload(true);
+	ResetRestrictions(gameReload);
 }
 

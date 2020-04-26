@@ -90,9 +90,9 @@ int[] id_deadbodyArray
 float[] deadbodySettingArray
 
 int valueWeightDefault
-int valueWeightDefaultDefault = 100
+int valueWeightDefaultDefault = 10
 int maxMiningItems
-int maxMiningItemsDefault = 10
+int maxMiningItemsDefault = 15
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -172,7 +172,7 @@ function init()
     LoadIniFile()
     SeedDefaults()
 
-	initComplete= true
+	initComplete = true
 	;DebugTrace("init finished")
 endFunction
 
@@ -236,9 +236,6 @@ Function ApplySetting()
        	g_LootingEnabled.SetValue(0)
 	endif
 
-	; reset blocked lists to allow recheck vs revised settings
-	UnblockEverything()
-
 	; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
 	; Do this before plugin becomes aware of player home list
     RemoveCarryWeightDelta()
@@ -259,18 +256,22 @@ endFunction
 Function RemoveCarryWeightDelta()
 	Actor player = Game.GetPlayer()
 	int carryWeight = player.GetActorValue("CarryWeight") as int
-	;DebugTrace("Player carry weight initially " + carryWeight)
+	DebugTrace("Player carry weight initially " + carryWeight)
 
 	int weightDelta = 0
 	while (carryWeight > infiniteWeight)
 		weightDelta -= infiniteWeight
 		carryWeight -= infiniteWeight
 	endwhile
+	while (carryWeight < 0)
+		weightDelta += infiniteWeight
+		carryWeight += infiniteWeight
+	endwhile
 
 	if (weightDelta != 0)
 		player.ModActorValue("CarryWeight", weightDelta as float)
 	endif
-	;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
+	DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
 
 Event OnConfigInit()
@@ -386,19 +387,23 @@ endEvent
 
 int function GetVersion()
 	; update script variables needing sync to native
-	objType_Flora = 1
-	objType_Critter = 2
-	objType_Septim = 4
-	objType_Key = 6
-	objType_Soulgem = 10
-	objType_LockPick = 11
-	objType_Ammo = 21
-	objType_Mine = 32
+	objType_Flora = GetObjectTypebyName("flora")
+	objType_Critter = GetObjectTypebyName("critter")
+	objType_Septim = GetObjectTypebyName("septims")
+	objType_LockPick = GetObjectTypebyName("lockpick")
+	objType_Soulgem = GetObjectTypebyName("soulgem")
+	objType_Key = GetObjectTypebyName("keys")
+	objType_Ammo = GetObjectTypebyName("ammo")
+	objType_Mine = GetObjectTypebyName("oreVein")
 	eventScript.SyncNativeObjectTypes()
 
-    ; Encumbrance quality of life delta for combat and player home
+    ; Defaults and constants
 	infiniteWeight = 100000
 	manualLootTargetNotify = true
+	defaultRadius = 15
+	defaultInterval = 0.3
+	valueWeightDefaultDefault = 10
+	maxMiningItemsDefault = 15
 	return 13
 endFunction
 
@@ -414,7 +419,7 @@ Event OnVersionUpdate(int a_version)
 		type_MaxItemCount = 6
 	endif
 	if (a_version >= 13 && CurrentVersion < 13)
-		; Major revision to reduce script dependence and autodetect lootables
+		; Major revision to reduce script dependence and auto-categorize lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 
 		OnConfigInit()
@@ -778,7 +783,7 @@ Event OnOptionSelect(int a_option)
 
 	index = id_objectSettingArray.find(a_option)
 	if (index >= 0)
-		string keyName = GetObjectKeyString(index)
+		string keyName = GetObjectTypeNameByType(index)
 		if (keyName != "unknown")
 			if (index != objType_Mine)
 				int size = s_behaviorArray.length
@@ -796,7 +801,7 @@ Event OnOptionSelect(int a_option)
 
 	index = id_containerArray.find(a_option)
 	if (index >= 0)
-		string keyName = GetObjectKeyString(index)
+		string keyName = GetObjectTypeNameByType(index)
 		if (keyName != "unknown")
 			int size = s_behaviorArray.length
 			containerSettingArray[index] = CycleInt(containerSettingArray[index] as int, size)
@@ -808,7 +813,7 @@ Event OnOptionSelect(int a_option)
 
 	index = id_deadbodyArray.find(a_option)
 	if (index >= 0)
-		string keyName = GetObjectKeyString(index)
+		string keyName = GetObjectTypeNameByType(index)
 		if (keyName != "unknown")
 			int size = s_behaviorArray.length
 			deadbodySettingArray[index] = CycleInt(deadbodySettingArray[index] as int, size)
@@ -857,7 +862,7 @@ event OnOptionSliderAccept(int a_option, float a_value)
 
 	index = id_valueWeightArray.find(a_option)
 	if (index > -1)
-		string keyName = GetObjectKeyString(index)
+		string keyName = GetObjectTypeNameByType(index)
 		if (keyName != "unknown")
 			valueWeightSettingArray[index] = a_value
 ;			PutSetting(type_AutoHarvest, type_ValueWeight, keyName, valueWeightSettingArray[index])

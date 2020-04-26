@@ -59,8 +59,9 @@ public:
 	static bool IsLockedForAutoHarvest(const RE::TESObjectREFR* refr);
 	static size_t PendingAutoHarvest();
 	static bool UnlockAutoHarvest(const RE::TESObjectREFR* refr);
-	static bool IsPossiblePlayerHouse(const RE::BGSLocation* location);
-	static bool UnlockPossiblePlayerHouse(const RE::BGSLocation* location);
+	static bool IsPlayerHouse(const RE::BGSLocation* location);
+	static bool AddPlayerHouse(const RE::BGSLocation* location);
+	static bool RemovePlayerHouse(const RE::BGSLocation* location);
 
 	static void MergeExcludeList();
 	static void ResetExcludedLocations();
@@ -72,6 +73,7 @@ public:
 	static void Allow();
 	static void Disallow();
 	static bool IsAllowed();
+	static void ResetRestrictions(const bool gameReload);
 	static SInt32 StartSearch(SInt32 type1);
 	static void SetPlayerHouseKeyword(RE::BGSKeyword* keyword);
 
@@ -81,10 +83,9 @@ public:
 	static void TriggerCarryWeightDelta(const int delta);
 	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking);
 	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
-	static bool LockPossiblePlayerHouse(const RE::BGSLocation* location);
 
 	void TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBoundObject*, int, bool>>& targets, const bool animate);
-	void TriggerObjectGlow();
+	static void TriggerObjectGlow(RE::TESObjectREFR* refr);
 	static void StopObjectGlow(const RE::TESObjectREFR* refr);
 
 	static bool IsLocationExcluded();
@@ -96,7 +97,7 @@ public:
 	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_candidates;
 
 	static std::unordered_set<const RE::TESObjectREFR*> m_autoHarvestLock;
-	static std::unordered_set<const RE::BGSLocation*> m_possiblePlayerHouse;
+	static std::unordered_set<const RE::BGSLocation*> m_playerHouses;
 
 	static RecursiveLock m_searchLock;
 	static bool m_threadStarted;

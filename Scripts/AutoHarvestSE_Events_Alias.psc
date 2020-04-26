@@ -25,7 +25,7 @@ int objType_Mine
 
 int getType_kFlora = 39
 
-float g_interval = 0.5
+float g_interval = 0.3
 float min_interval = 0.1
 
 Formlist Property userlist_form auto
@@ -114,11 +114,11 @@ function ManageExcludeList(Form itemForm)
 endFunction
 
 Function SyncNativeObjectTypes()
-	objType_Flora = 1
-	objType_Critter = 2
-	objType_Septim = 4
-	objType_Soulgem = 10
-	objType_Mine = 34
+	objType_Flora = GetObjectTypebyName("flora")
+	objType_Critter = GetObjectTypebyName("critter")
+	objType_Septim = GetObjectTypebyName("septims")
+	objType_Soulgem = GetObjectTypebyName("soulgem")
+	objType_Mine = GetObjectTypebyName("oreVein")
 endFunction
 
 Event OnInit()
@@ -238,20 +238,6 @@ Event OnKeyUp(Int keyCode, Float holdTime)
 	endif
 endEvent
 
-; C++ code ensures that this will only ever be invoked once for a given location, and not if
-; it is already excluded
-Event OnPlayerHouseCheck(Form currentLocation)
-	; if already excluded no need to check
-    int result = ShowMessage(house_check_message, "$AHSE_HOUSE_CHECK")
-    ;DebugTrace("player house showmessage " + result)
-    if (result == 0)
-   	    ;DebugTrace("player house added to excluded list")
-	    ManageExcludeList(currentLocation)
-    endif
-	;DebugTrace("player house request unlocked")
-	UnlockPossiblePlayerHouse(currentLocation)
-endEvent
-
 int Function ShowMessage(Message m_msg, string m_trans, string m_target_text = "", string m_replace_text = "")
 	if (!m_msg)
 		return -1
@@ -271,7 +257,6 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 	;DebugTrace("item type: " + itemType + ", type-mine: " + objType_mine + ", do not notify: " + silent + ", ignore activation blocking: " + ignoreBlock) 
 	
 	Actor akActivator = Game.GetPlayer()
-	form baseForm = akTarget.GetBaseObject()
 
 	if (IsBookObject(itemType))
 		akActivator.AddItem(akTarget, count, true)
@@ -283,29 +268,29 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 		MineOreScript oreScript = akTarget as MineOreScript
 		if (oreScript)
 			; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
-			int remaining = oreScript.ResourceCountCurrent
-			if (remaining == -1)
+			int available = oreScript.ResourceCountCurrent
+			if (available == -1)
        		    ;DebugTrace("Vein not yet initialized, start mining")
        		else
        		    ;DebugTrace("Vein has ore available: " + remaining)
        		endif
 
-			int harvested = 0
+			int remaining = available
 			; 'remaining' is set to -1 before the vein is initialized
-			while (remaining != 0 && harvested < count)
+			while (remaining != 0 && available - remaining < count)
    				;DebugTrace("Trigger harvesting")
 				oreScript.giveOre()
-				harvested = harvested + 1
 				remaining = oreScript.ResourceCountCurrent
 				;DebugTrace("Ore harvested, amount remaining: " + remaining)
 			endwhile
-			;DebugTrace("Done harvesting")
+			;DebugTrace("Done harvesting, retrieved " + available - remaining)
 		endif
 		; don't try to re-harvest excluded, depleted or malformed vein again until we revisit the cell
 		BlockReference(akTarget)
 
     ; Blocked activators may be looted according to a config setting
 	elseif (!akTarget.IsActivationBlocked() || ignoreBlock)
+    	form baseForm = akTarget.GetBaseObject()
 		if (akTarget.IsActivationBlocked())
 			;DebugTrace("Activator blocked " + akTarget.GetDisplayName())
 		endif
@@ -354,10 +339,10 @@ endEvent
 
 Event OnGetCritterIngredient(ObjectReference akTarget)
 	;DebugTrace("OnGetCritterIngredient " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
-	form baseForm = akTarget.GetBaseObject()
     Critter thisCritter = akTarget as Critter
 	if (thisCritter)
        	;DebugTrace("setting ingredient " + thisCritter.lootable.GetName() + " for critter " + baseForm.GetName())
+    	form baseForm = akTarget.GetBaseObject()
        	SetIngredientForCritter(baseForm, thisCritter.lootable)
     endif
 endEvent
@@ -382,7 +367,7 @@ endEvent
 Event OnCarryWeightDelta(int weightDelta)
 	Actor player = Game.GetPlayer()
 	player.ModActorValue("CarryWeight", weightDelta as float)
-	;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
+	DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
 EndEvent
 
 Event OnMenuOpen(String MenuName)

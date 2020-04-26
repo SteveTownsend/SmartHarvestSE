@@ -69,11 +69,10 @@ bool Replace(std::string& str, const std::string& target, const std::string& rep
 
 namespace papyrus
 {
+	// available in release build, but typically unused
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-#if _DEBUG
 		_MESSAGE("%s", str);
-#endif
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -144,7 +143,7 @@ namespace papyrus
 		return (!result.empty()) ? result.c_str() : nullptr;
 	}
 
-	RE::BSFixedString GetObjectKeyString(RE::StaticFunctionTag* base, SInt32 objectNumber)
+	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag* base, SInt32 objectNumber)
 	{
 		RE::BSFixedString result;
 		std::string str = GetObjectTypeName(objectNumber);
@@ -152,6 +151,11 @@ namespace papyrus
 			return result;
 		else
 			return str.c_str();
+	}
+
+	SInt32 GetObjectTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString objectTypeName)
+	{
+		return static_cast<SInt32>(GetObjectTypeByTypeName(objectTypeName.c_str()));
 	}
 
 	float GetSetting(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSFixedString key)
@@ -326,11 +330,6 @@ namespace papyrus
 		return SearchTask::UnlockAutoHarvest(refr);
 	}
 
-	bool UnlockPossiblePlayerHouse(RE::StaticFunctionTag* base, RE::TESForm* location)
-	{
-		return SearchTask::UnlockPossiblePlayerHouse(location->As<RE::BGSLocation>());
-	}
-
 	bool BlockReference(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
 		return DataCase::GetInstance()->BlockReference(refr);
@@ -338,8 +337,8 @@ namespace papyrus
 
 	void UnblockEverything(RE::StaticFunctionTag* base)
 	{
-		DataCase::GetInstance()->ListsClear();
-		SearchTask::UnlockAll();
+		static const bool gameReload(false);
+		SearchTask::ResetRestrictions(gameReload);
 	}
 	void SyncUserList(RE::StaticFunctionTag* base)
 	{
@@ -418,7 +417,6 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 
 	papyrus::RegisterFunction(a_vm, "GetCloseReferences", AHSE_NAME, papyrus::GetCloseReferences);
 	papyrus::RegisterFunction(a_vm, "UnlockAutoHarvest", AHSE_NAME, papyrus::UnlockAutoHarvest);
-	papyrus::RegisterFunction(a_vm, "UnlockPossiblePlayerHouse", AHSE_NAME, papyrus::UnlockPossiblePlayerHouse);
 	papyrus::RegisterFunction(a_vm, "BlockReference", AHSE_NAME, papyrus::BlockReference);
 	papyrus::RegisterFunction(a_vm, "UnblockEverything", AHSE_NAME, papyrus::UnblockEverything);
 
@@ -427,7 +425,8 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	papyrus::RegisterFunction(a_vm, "PutSetting", AHSE_NAME, papyrus::PutSetting);
 	papyrus::RegisterFunction(a_vm, "PutSettingObjectArray", AHSE_NAME, papyrus::PutSettingObjectArray);
 
-	papyrus::RegisterFunction(a_vm, "GetObjectKeyString", AHSE_NAME, papyrus::GetObjectKeyString);
+	papyrus::RegisterFunction(a_vm, "GetObjectTypeNameByType", AHSE_NAME, papyrus::GetObjectTypeNameByType);
+	papyrus::RegisterFunction(a_vm, "GetObjectTypeByName", AHSE_NAME, papyrus::GetObjectTypeByName);
 
 	papyrus::RegisterFunction(a_vm, "Reconfigure", AHSE_NAME, papyrus::Reconfigure);
 	papyrus::RegisterFunction(a_vm, "LoadIniFile", AHSE_NAME, papyrus::LoadIniFile);

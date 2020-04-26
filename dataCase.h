@@ -55,7 +55,7 @@ public:
 	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
-	void ListsClear(void);
+	void ListsClear(const bool gameReload);
 	bool CheckAmmoLootable(RE::TESObjectREFR* refr);
 
 	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);

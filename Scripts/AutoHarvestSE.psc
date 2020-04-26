@@ -8,13 +8,13 @@ string Function GetTextObjectType(Form thisForm) global native
 
 int Function GetCloseReferences(int type) global native
 bool Function UnlockAutoHarvest(ObjectReference refr) global native
-bool Function UnlockPossiblePlayerHouse(Form currentLocation) global native
 bool Function BlockReference(ObjectReference refr) global native
 Function UnblockEverything() global native
 Form Function GetNthLootableObject(ObjectReference refr, int index) global native
 Function ClearLootableObjects(ObjectReference refr) global native
 
-string Function GetObjectKeyString(int num) global native
+string Function GetObjectTypeNameByType(int num) global native
+int Function GetObjectTypebyName(string name) global native
 float Function GetSetting(int m_section_first, int m_section_second, string m_key) global native
 Function GetSettingToObjectArray(int m_section_first, int m_section_second, float[] m_values) global native
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native

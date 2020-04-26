@@ -49,7 +49,7 @@ bool IHasValueWeight::ValueWeightTooLowToLoot(INIFile* settings) const
 #if _DEBUG
 				_MESSAGE("* %s(%08x) - has weight %0.2f, no value", GetName(), GetFormID(), weight);
 #endif
-				return false;
+				return true;
 			}
 		}
 

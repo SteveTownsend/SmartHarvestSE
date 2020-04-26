@@ -359,51 +359,73 @@ std::string GetObjectTypeName(const RE::TESForm* pForm)
 	return GetObjectTypeName(objType);
 }
 
+const std::unordered_map<ObjectType, std::string> nameByType({
+	{ObjectType::unknown, "unknown"},
+	{ObjectType::flora, "flora"},
+	{ObjectType::critter, "critter"},
+	{ObjectType::ingredients, "ingredients"},
+	{ObjectType::septims, "septims"},
+	{ObjectType::gems, "gems"},
+	{ObjectType::lockpick, "lockpick"},
+	{ObjectType::animalHide, "animalhide"},
+	{ObjectType::animalParts, "animalparts"},
+	{ObjectType::oreIngot, "oreingot"},
+	{ObjectType::soulgem, "soulgem"},
+	{ObjectType::keys, "keys"},
+	{ObjectType::clutter, "clutter"},
+	{ObjectType::light, "light"},
+	{ObjectType::books, "books"},
+	{ObjectType::spellbook, "spellbook"},
+	{ObjectType::skillbook, "skillbook"},
+	{ObjectType::booksRead, "booksread"},
+	{ObjectType::spellbookRead, "spellbookread"},
+	{ObjectType::skillbookRead, "skillbookread"},
+	{ObjectType::scrolls, "scrolls"},
+	{ObjectType::ammo, "ammo"},
+	{ObjectType::weapon, "weapon"},
+	{ObjectType::enchantedWeapon, "enchantedweapon"},
+	{ObjectType::armor, "armor"},
+	{ObjectType::enchantedArmor, "enchantedarmor"},
+	{ObjectType::jewelry, "jewelry"},
+	{ObjectType::enchantedJewelry, "enchantedjewelry"},
+	{ObjectType::potion, "potion"},
+	{ObjectType::poison, "poison"},
+	{ObjectType::food, "food"},
+	{ObjectType::drink, "drink"},
+	{ObjectType::oreVein, "orevein"},
+	{ObjectType::userlist, "userlist"},
+	{ObjectType::container, "container"},
+	{ObjectType::actor, "actor"},
+	{ObjectType::ashPile, "ashpile"},
+	{ObjectType::manualLoot, "manualloot"}
+	});
+
 std::string GetObjectTypeName(ObjectType type)
 {
-	static const std::unordered_map<ObjectType, std::string> nameByType({
-		{ObjectType::unknown, "unknown"},
-		{ObjectType::flora, "flora"},
-		{ObjectType::critter, "critter"},
-		{ObjectType::ingredients, "ingredients"},
-		{ObjectType::septims, "septims"},
-		{ObjectType::gems, "gems"},
-		{ObjectType::lockpick, "lockpick"},
-		{ObjectType::animalHide, "animalHide"},
-		{ObjectType::animalParts, "animalParts"},
-		{ObjectType::oreIngot, "oreIngot"},
-		{ObjectType::soulgem, "soulgem"},
-		{ObjectType::keys, "keys"},
-		{ObjectType::clutter, "clutter"},
-		{ObjectType::light, "light"},
-		{ObjectType::books, "books"},
-		{ObjectType::spellbook, "spellbook"},
-		{ObjectType::skillbook, "skillbook"},
-		{ObjectType::booksRead, "booksRead"},
-		{ObjectType::spellbookRead, "spellbookRead"},
-		{ObjectType::skillbookRead, "skillbookRead"},
-		{ObjectType::scrolls, "scrolls"},
-		{ObjectType::ammo, "ammo"},
-		{ObjectType::weapon, "weapon"},
-		{ObjectType::enchantedWeapon, "enchantedWeapon"},
-		{ObjectType::armor, "armor"},
-		{ObjectType::enchantedArmor, "enchantedArmor"},
-		{ObjectType::jewelry, "jewelry"},
-		{ObjectType::enchantedJewelry, "enchantedJewelry"},
-		{ObjectType::potion, "potion"},
-		{ObjectType::poison, "poison"},
-		{ObjectType::food, "food"},
-		{ObjectType::drink, "drink"},
-		{ObjectType::oreVein, "oreVein"},
-		{ObjectType::userlist, "userlist"},
-		{ObjectType::container, "container"},
-		{ObjectType::actor, "actor"},
-		{ObjectType::ashPile, "ashPile"},
-		{ObjectType::manualLoot, "manualLoot"}
-		});
 	const auto result(nameByType.find(type));
 	if (result != nameByType.cend())
 		return result->second;
 	return "unknown";
+}
+
+ObjectType GetObjectTypeByTypeName(const std::string& name)
+{
+	// normalize from BSFixedString
+	std::string lcName;
+	std::transform(name.cbegin(), name.cend(), std::back_inserter(lcName), [](const char& c) { return std::tolower(c); });
+	for (const auto& nextPair : nameByType)
+	{
+		if (nextPair.second == lcName)
+		{
+#if _DEBUG
+			_DMESSAGE("Mapped name %s to ObjectType %d", name.c_str(), nextPair.first);
+#endif
+			return nextPair.first;
+		}
+	}
+#if _DEBUG
+	_DMESSAGE("Unmapped ObjectType name %s", name.c_str());
+#endif
+	return ObjectType::unknown;
 }
 

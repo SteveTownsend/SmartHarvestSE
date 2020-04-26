@@ -552,7 +552,7 @@ const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 	return form;
 }
 
-void DataCase::ListsClear()
+void DataCase::ListsClear(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
 #if _DEBUG
@@ -561,7 +561,8 @@ void DataCase::ListsClear()
 	arrowCheck.clear();
 
 	// forget about dead bodies we remembered for looting after game reload within current cell
-	ForgetDeadBodies();
+	if (gameReload)
+		ForgetDeadBodies();
 
 	// reset blocked forms to just the user's list
 #if _DEBUG
@@ -573,9 +574,7 @@ void DataCase::ListsClear()
 #if _DEBUG
 		_DMESSAGE("Restore block status for user form 0x%08x", formID);
 #endif
-		RE::TESForm* form(RE::TESForm::LookupByID(formID));
-		if (form)
-			blockForm.insert(form);
+		BlockForm(RE::TESForm::LookupByID(formID));
 	}
 	// reset blocked references, reseed with off-limits containers
 	ClearBlockedReferences();
