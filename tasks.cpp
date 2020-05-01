@@ -5,7 +5,6 @@
 #include "objects.h"
 #include "dataCase.h"
 #include "iniSettings.h"
-#include "containerLister.h"
 #include "basketfile.h"
 #include "debugs.h"
 #include "papyrus.h"
@@ -179,6 +178,15 @@ void SearchTask::Run()
 			if (skipLooting)
 				continue;
 
+			// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
+			if (objType == ObjectType::oreVein)
+			{
+#if _DEBUG
+				_DMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_refr->formID);
+#endif
+				data->BlockReference(m_refr);
+			}
+
 			bool isSilent = !LootingRequiresNotification(
 				LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str())));
 #if _DEBUG
@@ -194,14 +202,13 @@ void SearchTask::Run()
 			_DMESSAGE("scanning container/body %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 			DumpContainer(refrEx);
 #endif
-			std::unordered_map<RE::TESForm*, int> lootableItems;
-
 			bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0;
 
 			bool hasQuestObject = false;
 			bool hasEnchantItem = false;
 			ContainerLister fnOption(refrEx.m_ref, requireQuestItemAsTarget);
 
+			LootableItems lootableItems;
 			if (!fnOption.GetOrCheckContainerForms(lootableItems, hasQuestObject, hasEnchantItem))
 				continue;
 
@@ -269,12 +276,12 @@ void SearchTask::Run()
 				DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref->GetFormID());
 
 			// Build list of lootable targets with count and notification flag for each
-			std::vector<std::tuple<RE::TESBoundObject*, int, bool>> targets;
+			std::vector<std::pair<InventoryItem, bool>> targets;
 			targets.reserve(lootableItems.size());
 			int count(0);
-			for (auto targetSize : lootableItems)
+			for (auto& targetItemInfo : lootableItems)
 			{
-				RE::TESForm* target(targetSize.first);
+				RE::TESBoundObject* target(targetItemInfo.BoundObject());
 				if (!target)
 					continue;
 
@@ -310,13 +317,9 @@ void SearchTask::Run()
 					continue;
 				}
 
-				const RE::TESBoundObject* bound(target->As<RE::TESBoundObject>());
-				if (!bound)
-					continue;
-
-				targets.push_back({const_cast<RE::TESBoundObject*>(bound), targetSize.second, LootingRequiresNotification(lootingType)});
+				targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
 #if _DEBUG
-				_DMESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetSize.second,
+				_DMESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetItemInfo.Count(),
 					refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
 				++count;
@@ -493,7 +496,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		}
 
 		// handle player death. Obviously we are not looting on their behalf until a game reload or other resurrection event.
-		// Assumes player non-essential: if player is in God mode a little extra carry weight or post-0death looting is not
+		// Assumes player non-essential: if player is in God mode a little extra carry weight or post-death looting is not
 		// breaking immersion.
 		RE::BGSLocation* playerLocation(player->currentLocation);
 		const bool RIPPlayer(player->IsDead(true));
@@ -694,7 +697,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		int belongingsCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
 
 		std::vector<RE::TESObjectREFR*> refs;
-		PlayerCellHelper(m_playerCell, refs, m_ini->GetRadius(first)).GetReferences();
+		PlayerCellHelper::GetInstance().GetReferences(m_playerCell, &refs, m_ini->GetRadius(first));
 		result = static_cast<UInt32>(refs.size());
 		if (result == 0)
 			return 0;
@@ -867,7 +870,7 @@ std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_autoHarvestLock;
 
 void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking)
 {
-    // Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
+	// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 	if (!LockAutoHarvest(m_refr))
 		return;
 	SInt32 intType(static_cast<SInt32>(objType));
@@ -990,23 +993,16 @@ bool SearchTask::IsLocationExcluded()
 	return m_excludeLocations.count(m_playerLocation) > 0;
 }
 
-void SearchTask::TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBoundObject*, int, bool>>& targets, const bool animate)
+void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const bool animate)
 {
 	if (!m_refr)
 		return;
-	for (const auto target : targets)
+	for (auto& target : targets)
 	{
-		RE::ExtraDataList* xList(nullptr);
-		auto first(m_refr->extraList.cbegin());
-		if (first != m_refr->extraList.cend())
-		{
-			xList = &m_refr->extraList;
-		}
-		RE::TESBoundObject* boundObject(std::get<0>(target));
-		int count(std::get<1>(target));
-		bool notify(std::get<2>(target));
-		RE::ObjectRefHandle handle(m_refr->RemoveItem(boundObject, count, RE::ITEM_REMOVE_REASON::kRemove, xList, RE::PlayerCharacter::GetSingleton()));
-		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(boundObject, true, false);
+		InventoryItem& itemInfo(target.first);
+		int count(itemInfo.TakeAll(m_refr, RE::PlayerCharacter::GetSingleton()));
+		bool notify(target.second);
+		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
 		if (animate)
 		{
 			m_refr->PlayAnimation("Close", "Open");
@@ -1021,7 +1017,7 @@ void SearchTask::TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBo
 				if (!multiActivate.empty())
 				{
 					notificationText = multiActivate;
-					Replace(notificationText, "{ITEMNAME}", boundObject->GetName());
+					Replace(notificationText, "{ITEMNAME}", itemInfo.BoundObject()->GetName());
 					std::ostringstream intStr;
 					intStr << count;
 					Replace(notificationText, "{COUNT}", intStr.str());
@@ -1033,7 +1029,7 @@ void SearchTask::TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBo
 				if (!singleActivate.empty())
 				{
 					notificationText = singleActivate;
-					Replace(notificationText, "{ITEMNAME}", boundObject->GetName());
+					Replace(notificationText, "{ITEMNAME}", itemInfo.BoundObject()->GetName());
 				}
 			}
 			if (!notificationText.empty())

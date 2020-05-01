@@ -1,7 +1,7 @@
 #include "PrecompiledHeaders.h"
 
 #include "CommonLibSSE/include/RE/BSScript/TypeTraits.h"
-#include "CommonLibSSE/include/RE/BSScript/VMArray.h"
+#include "CommonLibSSE/include/RE/BSScript/Array.h"
 #include "CommonLibSSE/include/RE/BSScript/NativeFunction.h"
 #include "papyrus.h"
 
@@ -173,7 +173,7 @@ namespace papyrus
 		return static_cast<float>(ini->GetSetting(first, second, str.c_str()));
 	}
 
-	void GetSettingToObjectArray(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSScript::VMArray<float> value_arr)
+	void GetSettingToObjectArray(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, std::vector<float> value_arr)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -232,7 +232,7 @@ namespace papyrus
 		ini->PutSetting(first, second, str.c_str(), static_cast<double>(value));
 	}
 
-	void PutSettingObjectArray(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSScript::VMArray<float> value_arr)
+	void PutSettingObjectArray(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, std::vector<float> value_arr)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -242,7 +242,7 @@ namespace papyrus
 			return;
 
 		SInt32 index(0);
-		for (float tmp_value : value_arr)
+		for (auto tmp_value : value_arr)
 		{
 			std::string key = GetObjectTypeName(index);
 			::ToLower(key);
@@ -384,7 +384,7 @@ namespace papyrus
 		return (StringUtils::Replace(s_str, s_target, s_replacement)) ? s_str.c_str() : nullptr;
 	}
 
-	RE::BSFixedString ReplaceArray(RE::StaticFunctionTag* base, RE::BSFixedString str, RE::BSScript::VMArray<RE::BSFixedString> targets, RE::BSScript::VMArray<RE::BSFixedString> replacements)
+	RE::BSFixedString ReplaceArray(RE::StaticFunctionTag* base, RE::BSFixedString str, std::vector<RE::BSFixedString> targets, std::vector<RE::BSFixedString> replacements)
 	{
 		std::string result(str.c_str());
 		if (result.empty() || targets.size() != replacements.size())
@@ -392,8 +392,8 @@ namespace papyrus
 
 		RE::BSFixedString target;
 		RE::BSFixedString replacement;
-		using StringList = RE::BSScript::VMArray<RE::BSFixedString>;
-		for (StringList::iterator target = targets.begin(), replacement = replacements.begin(); target != targets.end(); ++target, ++replacement)
+		for (std::vector<RE::BSFixedString>::const_iterator target = targets.cbegin(), replacement = replacements.cbegin();
+			target != targets.cend(); ++target, ++replacement)
 		{
 			RE::BSFixedString oldStr(*target);
 			RE::BSFixedString newStr(*replacement);
@@ -409,49 +409,49 @@ namespace papyrus
 
 bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 {
-	papyrus::RegisterFunction(a_vm, "DebugTrace", AHSE_NAME, papyrus::DebugTrace);
-	papyrus::RegisterFunction(a_vm, "GetPluginName", AHSE_NAME, papyrus::GetPluginName);
-	papyrus::RegisterFunction(a_vm, "GetPluginVersion", AHSE_NAME, papyrus::GetPluginVersion);
-	papyrus::RegisterFunction(a_vm, "GetTextFormID", AHSE_NAME, papyrus::GetTextFormID);
-	papyrus::RegisterFunction(a_vm, "GetTextObjectType", AHSE_NAME, papyrus::GetTextObjectType);
+	a_vm->RegisterFunction("DebugTrace", AHSE_NAME, papyrus::DebugTrace);
+	a_vm->RegisterFunction("GetPluginName", AHSE_NAME, papyrus::GetPluginName);
+	a_vm->RegisterFunction("GetPluginVersion", AHSE_NAME, papyrus::GetPluginVersion);
+	a_vm->RegisterFunction("GetTextFormID", AHSE_NAME, papyrus::GetTextFormID);
+	a_vm->RegisterFunction("GetTextObjectType", AHSE_NAME, papyrus::GetTextObjectType);
 
-	papyrus::RegisterFunction(a_vm, "GetCloseReferences", AHSE_NAME, papyrus::GetCloseReferences);
-	papyrus::RegisterFunction(a_vm, "UnlockAutoHarvest", AHSE_NAME, papyrus::UnlockAutoHarvest);
-	papyrus::RegisterFunction(a_vm, "BlockReference", AHSE_NAME, papyrus::BlockReference);
-	papyrus::RegisterFunction(a_vm, "UnblockEverything", AHSE_NAME, papyrus::UnblockEverything);
+	a_vm->RegisterFunction("GetCloseReferences", AHSE_NAME, papyrus::GetCloseReferences);
+	a_vm->RegisterFunction("UnlockAutoHarvest", AHSE_NAME, papyrus::UnlockAutoHarvest);
+	a_vm->RegisterFunction("BlockReference", AHSE_NAME, papyrus::BlockReference);
+	a_vm->RegisterFunction("UnblockEverything", AHSE_NAME, papyrus::UnblockEverything);
 
-	papyrus::RegisterFunction(a_vm, "GetSetting", AHSE_NAME, papyrus::GetSetting);
-	papyrus::RegisterFunction(a_vm, "GetSettingToObjectArray", AHSE_NAME, papyrus::GetSettingToObjectArray);
-	papyrus::RegisterFunction(a_vm, "PutSetting", AHSE_NAME, papyrus::PutSetting);
-	papyrus::RegisterFunction(a_vm, "PutSettingObjectArray", AHSE_NAME, papyrus::PutSettingObjectArray);
+	a_vm->RegisterFunction("GetSetting", AHSE_NAME, papyrus::GetSetting);
+	a_vm->RegisterFunction("GetSettingToObjectArray", AHSE_NAME, papyrus::GetSettingToObjectArray);
+	a_vm->RegisterFunction("PutSetting", AHSE_NAME, papyrus::PutSetting);
+	a_vm->RegisterFunction("PutSettingObjectArray", AHSE_NAME, papyrus::PutSettingObjectArray);
 
-	papyrus::RegisterFunction(a_vm, "GetObjectTypeNameByType", AHSE_NAME, papyrus::GetObjectTypeNameByType);
-	papyrus::RegisterFunction(a_vm, "GetObjectTypeByName", AHSE_NAME, papyrus::GetObjectTypeByName);
+	a_vm->RegisterFunction("GetObjectTypeNameByType", AHSE_NAME, papyrus::GetObjectTypeNameByType);
+	a_vm->RegisterFunction("GetObjectTypeByName", AHSE_NAME, papyrus::GetObjectTypeByName);
 
-	papyrus::RegisterFunction(a_vm, "Reconfigure", AHSE_NAME, papyrus::Reconfigure);
-	papyrus::RegisterFunction(a_vm, "LoadIniFile", AHSE_NAME, papyrus::LoadIniFile);
-	papyrus::RegisterFunction(a_vm, "SaveIniFile", AHSE_NAME, papyrus::SaveIniFile);
+	a_vm->RegisterFunction("Reconfigure", AHSE_NAME, papyrus::Reconfigure);
+	a_vm->RegisterFunction("LoadIniFile", AHSE_NAME, papyrus::LoadIniFile);
+	a_vm->RegisterFunction("SaveIniFile", AHSE_NAME, papyrus::SaveIniFile);
 
-	papyrus::RegisterFunction(a_vm, "SetIngredientForCritter", AHSE_NAME, papyrus::SetIngredientForCritter);
+	a_vm->RegisterFunction("SetIngredientForCritter", AHSE_NAME, papyrus::SetIngredientForCritter);
 
-	papyrus::RegisterFunction(a_vm, "SyncUserListWithPlugin", AHSE_NAME, papyrus::SyncUserList);
-	papyrus::RegisterFunction(a_vm, "SaveUserList", AHSE_NAME, papyrus::SaveUserList);
-	papyrus::RegisterFunction(a_vm, "LoadUserList", AHSE_NAME, papyrus::LoadUserList);
+	a_vm->RegisterFunction("SyncUserListWithPlugin", AHSE_NAME, papyrus::SyncUserList);
+	a_vm->RegisterFunction("SaveUserList", AHSE_NAME, papyrus::SaveUserList);
+	a_vm->RegisterFunction("LoadUserList", AHSE_NAME, papyrus::LoadUserList);
 
-	papyrus::RegisterFunction(a_vm, "ClearPluginExcludeList", AHSE_NAME, papyrus::ClearExcludeList);
-	papyrus::RegisterFunction(a_vm, "MergePluginExcludeList", AHSE_NAME, papyrus::MergeExcludeList);
-	papyrus::RegisterFunction(a_vm, "SaveExcludeList", AHSE_NAME, papyrus::SaveExcludeList);
-	papyrus::RegisterFunction(a_vm, "LoadExcludeList", AHSE_NAME, papyrus::LoadExcludeList);
+	a_vm->RegisterFunction("ClearPluginExcludeList", AHSE_NAME, papyrus::ClearExcludeList);
+	a_vm->RegisterFunction("MergePluginExcludeList", AHSE_NAME, papyrus::MergeExcludeList);
+	a_vm->RegisterFunction("SaveExcludeList", AHSE_NAME, papyrus::SaveExcludeList);
+	a_vm->RegisterFunction("LoadExcludeList", AHSE_NAME, papyrus::LoadExcludeList);
 
-	papyrus::RegisterFunction(a_vm, "AllowSearch", AHSE_NAME, papyrus::AllowSearch);
-	papyrus::RegisterFunction(a_vm, "DisallowSearch", AHSE_NAME, papyrus::DisallowSearch);
-	papyrus::RegisterFunction(a_vm, "IsSearchAllowed", AHSE_NAME, papyrus::IsSearchAllowed);
-	papyrus::RegisterFunction(a_vm, "AddLocationToList", AHSE_NAME, papyrus::AddLocationToList);
-	papyrus::RegisterFunction(a_vm, "DropLocationFromList", AHSE_NAME, papyrus::DropLocationFromList);
+	a_vm->RegisterFunction("AllowSearch", AHSE_NAME, papyrus::AllowSearch);
+	a_vm->RegisterFunction("DisallowSearch", AHSE_NAME, papyrus::DisallowSearch);
+	a_vm->RegisterFunction("IsSearchAllowed", AHSE_NAME, papyrus::IsSearchAllowed);
+	a_vm->RegisterFunction("AddLocationToList", AHSE_NAME, papyrus::AddLocationToList);
+	a_vm->RegisterFunction("DropLocationFromList", AHSE_NAME, papyrus::DropLocationFromList);
 
-	papyrus::RegisterFunction(a_vm, "GetTranslation", AHSE_NAME, papyrus::GetTranslation);
-	papyrus::RegisterFunction(a_vm, "Replace", AHSE_NAME, papyrus::Replace);
-	papyrus::RegisterFunction(a_vm, "ReplaceArray", AHSE_NAME, papyrus::ReplaceArray);
+	a_vm->RegisterFunction("GetTranslation", AHSE_NAME, papyrus::GetTranslation);
+	a_vm->RegisterFunction("Replace", AHSE_NAME, papyrus::Replace);
+	a_vm->RegisterFunction("ReplaceArray", AHSE_NAME, papyrus::ReplaceArray);
 
 	return true;
 }

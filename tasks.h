@@ -3,6 +3,7 @@
 #include "objects.h"
 #include "TESFormHelper.h"
 #include "iniSettings.h"
+#include "containerLister.h"
 
 #include <unordered_set>
 #include <mutex>
@@ -84,7 +85,7 @@ public:
 	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking);
 	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
 
-	void TriggerContainerLootMany(const std::vector<std::tuple<RE::TESBoundObject*, int, bool>>& targets, const bool animate);
+	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const bool animate);
 	static void TriggerObjectGlow(RE::TESObjectREFR* refr);
 	static void StopObjectGlow(const RE::TESObjectREFR* refr);
 

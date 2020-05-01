@@ -5,84 +5,74 @@
 #include "ExtraDataListHelper.h"
 #include "containerLister.h"
 
-bool ContainerLister::GetOrCheckContainerForms(std::unordered_map<RE::TESForm*, int>& lootableItems, bool &hasQuestObject, bool &hasEnchItem)
+bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, bool &hasQuestObject, bool &hasEnchItem)
 {
 	if (!m_refr)
 		return false;
 
-	const RE::TESContainer *container = const_cast<RE::TESObjectREFR*>(m_refr)->GetContainer();
+	const RE::TESContainer* container = const_cast<RE::TESObjectREFR*>(m_refr)->GetContainer();
 	if (container)
 	{
-		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
-			RE::TESBoundObject* item = entry->obj;
+		// refactored following QuickLookRE
+		auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
+		for (auto& item : inv) {
+			auto& [count, entry] = item.second;
+			if (count <= 0)
+				continue;
+			RE::TESBoundObject* item = entry->GetObject();
 			if (item->formType == RE::FormType::LeveledItem)
-				return false;
-
-			if (entry->count <= 0)
-				return false;
+				continue;
 
 			if (!item->GetPlayable())
-				return false;
+				continue;
 
 			RE::TESFullName* fullName = item->As<RE::TESFullName>();
 			if (!fullName || fullName->GetFullNameLength() == 0)
-				return false;
-
-			lootableItems[item] = entry->count;
-			return true;
-		});
-	}
-
-	const RE::ExtraContainerChanges* exChanges = m_refr->extraList.GetByType<RE::ExtraContainerChanges>();
-	if (exChanges && exChanges->changes && exChanges->changes->entryList)
-	{
-		//for (const RE::InventoryEntryData* entryData : *exChanges->changes->entryList)
-		for (auto entryData = exChanges->changes->entryList->begin(); entryData != exChanges->changes->entryList->end(); ++entryData)
-			{
-			RE::TESBoundObject* item = (*entryData)->object;
-			if (!IsPlayable(item))
 				continue;
 
-			RE::TESFullName *fullName = item->As<RE::TESFullName>();
-			if (!fullName || fullName->GetFullNameLength() == 0)
-				continue;
+			lootableItems.emplace_back(std::move(entry), count);
+		}
 
-			int total((*entryData)->countDelta);
-			if (total > 0)
+		const RE::ExtraContainerChanges* exChanges = m_refr->extraList.GetByType<RE::ExtraContainerChanges>();
+		if (exChanges && exChanges->changes && exChanges->changes->entryList)
+		{
+			for (auto entryData = exChanges->changes->entryList->begin();
+				entryData != exChanges->changes->entryList->end() && (!hasQuestObject || !hasEnchItem); ++entryData)
 			{
-				const auto matched(lootableItems.find(item));
-				if (matched != lootableItems.cend())
+				RE::TESBoundObject* item = (*entryData)->object;
+				if (!IsPlayable(item))
+					continue;
+
+				RE::TESFullName* fullName = item->As<RE::TESFullName>();
+				if (!fullName || fullName->GetFullNameLength() == 0)
+					continue;
+
+				if ((*entryData)->countDelta <= 0)
+					continue;
+				if (!(*entryData)->extraLists)
+					continue;
+
+				// Check for exchantment or quest target
+				for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 				{
-					total += matched->second;
-				}
-				lootableItems[item] = total;
-			}
-
-			if (!(*entryData)->extraLists)
-				continue;
-			if (hasEnchItem && hasQuestObject)
-				continue;
-
-			// Check for exchantment or quest target
-			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
-			{
-				if (*extraList)
-				{
-					ExtraDataListHelper exListHelper(*extraList);
-    				if (!hasQuestObject)
-						hasQuestObject = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
-
-					if (!hasEnchItem)
-						hasEnchItem = exListHelper.GetEnchantment() != nullptr;
-
-					if (!hasEnchItem)
+					if (*extraList)
 					{
-						TESFormHelper itemEx(item);
-					    hasEnchItem = (itemEx.GetEnchantment()) ? true : false;;
+						ExtraDataListHelper exListHelper(*extraList);
+						if (!hasQuestObject)
+							hasQuestObject = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
+
+						if (!hasEnchItem)
+							hasEnchItem = exListHelper.GetEnchantment() != nullptr;
+
+						if (!hasEnchItem)
+						{
+							TESFormHelper itemEx(item);
+							hasEnchItem = (itemEx.GetEnchantment()) ? true : false;;
+						}
 					}
+					if (hasEnchItem && hasQuestObject)
+						break;
 				}
-				if (hasEnchItem && hasQuestObject)
-					break;
 			}
 		}
 	}

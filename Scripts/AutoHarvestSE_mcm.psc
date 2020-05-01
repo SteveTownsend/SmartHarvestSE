@@ -122,6 +122,11 @@ int Function CycleInt(int num, int max)
 	return result
 endFunction
 
+function updateMaxMiningItems(int maxItems)
+	maxMiningItems = maxItems
+	eventScript.updateMaxMiningItems(maxItems)
+endFunction
+
 function SeedDefaults()
 	enableAutoHarvest = GetSetting(type_Common, type_Config, "enableAutoHarvest") as bool
 	enableLootContainer = GetSetting(type_Common, type_Config, "enableLootContainer") as bool
@@ -158,7 +163,7 @@ function SeedDefaults()
 
 	valueWeightDefault = GetSetting(type_AutoHarvest, type_Config, "valueWeightDefault") as int
 	;DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
-	maxMiningItems = GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int
+	updateMaxMiningItems(GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int)
 
 	GetSettingToObjectArray(type_AutoHarvest, type_ItemObject, objectSettingArray)
 	GetSettingToObjectArray(type_AutoHarvest, type_Container, containerSettingArray)
@@ -256,7 +261,7 @@ endFunction
 Function RemoveCarryWeightDelta()
 	Actor player = Game.GetPlayer()
 	int carryWeight = player.GetActorValue("CarryWeight") as int
-	DebugTrace("Player carry weight initially " + carryWeight)
+	;DebugTrace("Player carry weight initially " + carryWeight)
 
 	int weightDelta = 0
 	while (carryWeight > infiniteWeight)
@@ -271,7 +276,7 @@ Function RemoveCarryWeightDelta()
 	if (weightDelta != 0)
 		player.ModActorValue("CarryWeight", weightDelta as float)
 	endif
-	DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
+	;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
 
 Event OnConfigInit()
@@ -404,6 +409,7 @@ int function GetVersion()
 	defaultInterval = 0.3
 	valueWeightDefaultDefault = 10
 	maxMiningItemsDefault = 15
+	eventScript.UpdateMaxMiningItems(maxMiningItems)
 	return 13
 endFunction
 
@@ -1179,13 +1185,13 @@ state MaxMiningItems
 	endEvent
 
 	event OnSliderAcceptST(float value)
-		maxMiningItems = value as int
+		updateMaxMiningItems(value as int)
     	;DebugTrace("OnSliderAcceptST: MaxMiningItems set to " + maxMiningItems)
 		SetSliderOptionValueST(maxMiningItems)
 	endEvent
 
 	event OnDefaultST()
-		maxMiningItems = maxMiningItemsDefault
+		updateMaxMiningItems(maxMiningItemsDefault)
     	;DebugTrace("OnDefaultST: MaxMiningItems set to " + maxMiningItems)
 		SetSliderOptionValueST(maxMiningItems)
 	endEvent

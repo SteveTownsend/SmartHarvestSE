@@ -8,7 +8,6 @@ string Function GetTextObjectType(Form thisForm) global native
 
 int Function GetCloseReferences(int type) global native
 bool Function UnlockAutoHarvest(ObjectReference refr) global native
-bool Function BlockReference(ObjectReference refr) global native
 Function UnblockEverything() global native
 Form Function GetNthLootableObject(ObjectReference refr, int index) global native
 Function ClearLootableObjects(ObjectReference refr) global native

@@ -32,6 +32,7 @@ Formlist Property userlist_form auto
 Formlist Property excludelist_form auto
 int location_type_user = 1
 int location_type_excluded = 2
+int maxMiningItems
 
 Function SyncUserList()
 	SyncUserListWithPlugin()
@@ -252,6 +253,11 @@ int Function ShowMessage(Message m_msg, string m_trans, string m_target_text = "
 	return result
 endFunction
 
+function updateMaxMiningItems(int maxItems)
+    ;DebugTrace("maxMiningItems -> " + maxItems)
+	maxMiningItems = maxItems
+endFunction
+
 Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool ignoreBlock)
 	;DebugTrace("OnAutoHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
 	;DebugTrace("item type: " + itemType + ", type-mine: " + objType_mine + ", do not notify: " + silent + ", ignore activation blocking: " + ignoreBlock) 
@@ -269,24 +275,24 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 		if (oreScript)
 			; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
 			int available = oreScript.ResourceCountCurrent
+			int mined = 0
 			if (available == -1)
        		    ;DebugTrace("Vein not yet initialized, start mining")
        		else
-       		    ;DebugTrace("Vein has ore available: " + remaining)
+       		    ;DebugTrace("Vein has ore available: " + available)
        		endif
 
-			int remaining = available
-			; 'remaining' is set to -1 before the vein is initialized
-			while (remaining != 0 && available - remaining < count)
+			; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+			; in ResourceCount and the remaining amount in ResourceCountCurrent 
+			while (available != 0 && mined < maxMiningItems)
    				;DebugTrace("Trigger harvesting")
 				oreScript.giveOre()
-				remaining = oreScript.ResourceCountCurrent
-				;DebugTrace("Ore harvested, amount remaining: " + remaining)
+				mined += oreScript.ResourceCount
+			    ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
+				available = oreScript.ResourceCountCurrent
 			endwhile
-			;DebugTrace("Done harvesting, retrieved " + available - remaining)
+			;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
 		endif
-		; don't try to re-harvest excluded, depleted or malformed vein again until we revisit the cell
-		BlockReference(akTarget)
 
     ; Blocked activators may be looted according to a config setting
 	elseif (!akTarget.IsActivationBlocked() || ignoreBlock)
@@ -306,28 +312,26 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 			ActivateEx(akTarget, akActivator, silent)
 		elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
 			ActivateEx(akTarget, akActivator, silent)
-		else
-			if (ActivateEx(akTarget, akActivator, false) && !silent)
-				string activateMsg = none
-				if (count >= 2)
-					string translation = GetTranslation("$AHSE_ACTIVATE(COUNT)_MSG")
-					
-					string[] targets = New String[2]
-					targets[0] = "{ITEMNAME}"
-					targets[1] = "{COUNT}"
+		elseif (ActivateEx(akTarget, akActivator, false) && !silent)
+			string activateMsg = none
+			if (count >= 2)
+				string translation = GetTranslation("$AHSE_ACTIVATE(COUNT)_MSG")
+				
+				string[] targets = New String[2]
+				targets[0] = "{ITEMNAME}"
+				targets[1] = "{COUNT}"
 
-					string[] replacements = New String[2]
-					replacements[0] = baseForm.GetName()
-					replacements[1] = count as string
-					
-					activateMsg = ReplaceArray(translation, targets, replacements)
-				else
-					string translation = GetTranslation("$AHSE_ACTIVATE_MSG")
-					activateMsg = Replace(translation, "{ITEMNAME}", baseForm.GetName())
-				endif
-				if (activateMsg)
-					Debug.Notification(activateMsg)
-				endif
+				string[] replacements = New String[2]
+				replacements[0] = baseForm.GetName()
+				replacements[1] = count as string
+				
+				activateMsg = ReplaceArray(translation, targets, replacements)
+			else
+				string translation = GetTranslation("$AHSE_ACTIVATE_MSG")
+				activateMsg = Replace(translation, "{ITEMNAME}", baseForm.GetName())
+			endif
+			if (activateMsg)
+				Debug.Notification(activateMsg)
 			endif
 		endif
 
@@ -367,7 +371,7 @@ endEvent
 Event OnCarryWeightDelta(int weightDelta)
 	Actor player = Game.GetPlayer()
 	player.ModActorValue("CarryWeight", weightDelta as float)
-	DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
+	;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
 EndEvent
 
 Event OnMenuOpen(String MenuName)

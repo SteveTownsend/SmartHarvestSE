@@ -5,6 +5,9 @@
 #include "tasks.h"
 #include "PlayerCellHelper.h"
 
+PlayerCellHelper PlayerCellHelper::m_instance;
+std::vector<RE::TESObjectCELL*> PlayerCellHelper::m_adjacentCells;
+
 bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
 {
 	RE::FormID formID(refr->formID);
@@ -124,6 +127,10 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 
 void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 {
+	// Do not scan reference list until cell is attached
+	if (!cell->IsAttached())
+		return;
+
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
 		/* SKSE logic for TESObjectCELL has 'ref' as TESObjectREFR instance, unk08 is a sentinel value:
@@ -144,28 +151,20 @@ void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 			if (!CanLoot(refr))
 				continue;
 
-			m_targets.emplace_back(refr);
+			m_targets->emplace_back(refr);
 			m_normalRefrs.insert(refr->GetFormID());
 		}
 	}
 }
 
-bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
+void PlayerCellHelper::GetAdjacentCells(RE::TESObjectCELL* cell)
 {
-	// XCLC data available since both are exterior cells, by construction
-	const auto checkCoordinates(cell->GetCoordinates());
-	const auto myCoordinates(m_cell->GetCoordinates());
-	return std::abs(myCoordinates->cellX - checkCoordinates->cellX) <= 1 &&
-		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
-}
-
-void PlayerCellHelper::GetReferences()
-{
-	WindowsUtils::ScopedTimer elapsed("PlayerCellHelper::GetReferences");
-	if (!m_cell || !m_cell->IsAttached())
+	if (m_cell == cell)
 		return;
 
-	GetCellReferences(m_cell);
+	m_cell = cell;
+	m_adjacentCells.clear();
+
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	if (!m_cell->IsInteriorCell())
 	{
@@ -189,14 +188,6 @@ void PlayerCellHelper::GetReferences()
 #endif
 					continue;
 				}
-				// sanity checks
-				if (!candidateCell || !candidateCell->IsAttached())
-				{
-#if _DEBUG
-					_DMESSAGE("Candidate cell null or unattached");
-#endif
-					continue;
-				}
 				// do not loot across interior/exterior boundary
 				if (candidateCell->IsInteriorCell())
 				{
@@ -213,11 +204,58 @@ void PlayerCellHelper::GetReferences()
 #endif
 					continue;
 				}
+				m_adjacentCells.push_back(candidateCell);
 #if _DEBUG
-				_MESSAGE("Check adjacent cell 0x%08x", candidateCell->GetFormID());
+				_MESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
 #endif
-				GetCellReferences(candidateCell);
 			}
+		}
+	}
+}
+
+bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
+{
+	// XCLC data available since both are exterior cells, by construction
+	const auto checkCoordinates(cell->GetCoordinates());
+	const auto myCoordinates(m_cell->GetCoordinates());
+	return std::abs(myCoordinates->cellX - checkCoordinates->cellX) <= 1 &&
+		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
+}
+
+void PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, std::vector<RE::TESObjectREFR*>* targets, const double radius)
+{
+	WindowsUtils::ScopedTimer elapsed("PlayerCellHelper::GetReferences");
+	if (!cell || !cell->IsAttached())
+		return;
+
+	m_targets = targets;
+	m_radius = radius;
+	m_normalRefrs.clear();
+
+	// find the adjacent cells, we only need to scan those and current player cell
+	GetAdjacentCells(cell);
+	GetCellReferences(m_cell);
+
+	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
+	if (!m_cell->IsInteriorCell())
+	{
+#if _DEBUG
+		_DMESSAGE("Scan cells adjacent to 0x%08x", m_cell->GetFormID());
+#endif
+		for (const auto& adjacentCell : m_adjacentCells)
+		{
+			// sanity checks
+			if (!adjacentCell || !adjacentCell->IsAttached())
+			{
+#if _DEBUG
+				_DMESSAGE("Adjacent cell null or unattached");
+#endif
+				continue;
+			}
+#if _DEBUG
+			_MESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
+#endif
+			GetCellReferences(adjacentCell);
 		}
 	}
 
@@ -233,7 +271,7 @@ void PlayerCellHelper::GetReferences()
 			if (!CanLoot(refr))
 				continue;
 
-			m_targets.emplace_back(refr);
+			m_targets->emplace_back(refr);
 		}
 	}
 }
