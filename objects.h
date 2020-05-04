@@ -21,8 +21,8 @@ public:
 	std::vector<RE::TESObjectREFR*> GetLinkedRefs(RE::BGSKeyword* keyword);
 	bool IsPlayerOwned(void);
 
-	const RE::TESForm* GetLootable() const;
-	void SetLootable(const RE::TESForm* lootable);
+	RE::TESForm* GetLootable() const;
+	void SetLootable(RE::TESForm* lootable);
 	virtual double GetWeight(void) const override;
 	virtual double GetWorth(void) const override;
 
@@ -33,7 +33,7 @@ protected:
 	virtual UInt32 GetFormID() const;
 
 private:
-	const RE::TESForm* m_lootable;
+	RE::TESForm* m_lootable;
 };
 
 class ActorHelper
@@ -52,11 +52,10 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsContainerLocked(const RE::TESObjectREFR * refr);
 ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreUserlist = false);
-ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreUserlist = false);
+ObjectType ClassifyType(RE::TESForm* baseForm, bool ignoreUserlist = false);
 std::string GetObjectTypeName(SInt32 num);
 std::string GetObjectTypeName(const RE::TESObjectREFR* refr);
 std::string GetObjectTypeName(RE::TESForm* pForm);
-std::string GetObjectTypeName(const RE::TESForm* pForm);
 std::string GetObjectTypeName(ObjectType type);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
 

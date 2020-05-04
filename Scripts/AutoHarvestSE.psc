@@ -15,7 +15,7 @@ Function ClearLootableObjects(ObjectReference refr) global native
 string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypebyName(string name) global native
 float Function GetSetting(int m_section_first, int m_section_second, string m_key) global native
-Function GetSettingToObjectArray(int m_section_first, int m_section_second, float[] m_values) global native
+float Function GetSettingToObjectArrayEntry(int m_section_first, int m_section_second, int index) global native
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native
 Function PutSettingObjectArray(int m_section_first, int m_section_second, float[] m_values) global native
 

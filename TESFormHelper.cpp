@@ -12,7 +12,7 @@
 
 #include "CommonLibSSE/include/RE/BGSProjectile.h"
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
+TESFormHelper::TESFormHelper(RE::TESForm* form) : m_form(form)
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
@@ -32,7 +32,7 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 
 	if (m_form->formType == RE::FormType::Weapon || m_form->formType == RE::FormType::Armor)
 	{
-		RE::TESEnchantableForm* enchanted(skyrim_cast<RE::TESEnchantableForm*, RE::TESForm>(m_form));
+		RE::TESEnchantableForm* enchanted(m_form->As<RE::TESEnchantableForm>());
 		if (enchanted)
    		    return enchanted->formEnchanting;
 	}

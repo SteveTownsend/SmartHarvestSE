@@ -7,7 +7,7 @@ UInt32 EnchantmentItemHelper::GetGoldValue()
 	if (!this)
 		return 0;
 
-	RE::TESValueForm* pValue = skyrim_cast<RE::TESValueForm*, RE::TESForm>(m_item);
+	RE::TESValueForm* pValue = m_item->As<RE::TESValueForm>();
 	if (!pValue)
 		return 0;
 

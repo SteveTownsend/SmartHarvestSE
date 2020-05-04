@@ -1,3 +1,3 @@
 #pragma once
 
-RE::BGSSoundDescriptorForm* GetPickUpSoundDescriptor(const RE::TESForm* baseForm);
+RE::BGSSoundDescriptorForm* GetPickUpSoundDescriptor(RE::TESForm* baseForm);

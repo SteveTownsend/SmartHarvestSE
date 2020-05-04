@@ -13,7 +13,7 @@ UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 	static RE::BSFixedString fEnchantmentEffectPointsMult = "fEnchantmentEffectPointsMult";
 	double fEEPM = GetGameSettingFloat(fEnchantmentEffectPointsMult);
 
-	RE::TESValueForm* pValue = skyrim_cast<RE::TESValueForm*, RE::TESForm>(m_weapon);
+	RE::TESValueForm* pValue = m_weapon->As<RE::TESValueForm>();
 	if (!pValue)
 		return 0;
 

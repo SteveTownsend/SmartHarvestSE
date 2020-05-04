@@ -8,7 +8,7 @@ RE::BGSSoundDescriptorForm* _GetSoundDescriptorForm(RE::FormID formId)
 	RE::BGSSoundDescriptorForm* result = nullptr;
 	RE::TESForm* pForm = RE::TESForm::LookupByID(formId);
 	if (pForm)
-		result = skyrim_cast<RE::BGSSoundDescriptorForm*, RE::TESForm>(pForm);
+		result = pForm->As<RE::BGSSoundDescriptorForm>();
 	return result;
 }
 
@@ -17,11 +17,11 @@ RE::TESSound* LookupSoundByID(RE::FormID formId)
 	RE::TESSound* result = nullptr;
 	RE::TESForm* pForm = RE::TESForm::LookupByID(formId);
 	if (pForm)
-    	result = skyrim_cast<RE::TESSound*, RE::TESForm>(pForm);
+    	result = pForm->As<RE::TESSound>();
 	return result;
 }
 
-RE::BGSSoundDescriptorForm* GetPickUpSoundDescriptor(const RE::TESForm* baseForm)
+RE::BGSSoundDescriptorForm* GetPickUpSoundDescriptor(RE::TESForm* baseForm)
 {
 	RE::BGSSoundDescriptorForm * result(nullptr);
 	const RE::BGSPickupPutdownSounds* pSounds(baseForm->As<RE::BGSPickupPutdownSounds>());
@@ -38,7 +38,7 @@ RE::BGSSoundDescriptorForm* GetPickUpSoundDescriptor(const RE::TESForm* baseForm
 	}
 	else if (baseForm->formType == RE::FormType::Armor)
 	{
-		RE::TESObjectARMO* item = skyrim_cast<RE::TESObjectARMO*, RE::TESForm>(baseForm);
+		RE::TESObjectARMO* item = baseForm->As<RE::TESObjectARMO>();
 		if (item)
 		{
 			RE::FormID formId = (item->HasKeyword(ClothKeyword)) ? 0x03C7BE : 0x03E609;

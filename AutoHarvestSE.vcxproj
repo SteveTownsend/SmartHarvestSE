@@ -131,6 +131,7 @@
     <ClCompile Include="debugs.cpp" />
     <ClCompile Include="EnchantmentItemHelper.cpp" />
     <ClCompile Include="IHasValueWeight.cpp" />
+    <ClCompile Include="InventoryItem.cpp" />
     <ClCompile Include="PlayerCellHelper.cpp" />
     <ClCompile Include="RecursiveLock.cpp" />
     <ClCompile Include="SimpleIni.cpp" />
@@ -159,6 +160,7 @@
     <ClInclude Include="debugs.h" />
     <ClInclude Include="EnchantmentItemHelper.h" />
     <ClInclude Include="IHasValueWeight.h" />
+    <ClInclude Include="InventoryItem.h" />
     <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h" />
     <ClInclude Include="PrecompiledHeaders.h" />

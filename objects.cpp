@@ -115,7 +115,7 @@ RE::TESContainer* TESObjectREFRHelper::GetContainer() const
 	RE::TESContainer *container = nullptr;
 	if (m_ref->data.objectReference->formType == RE::FormType::Container ||
 	    m_ref->data.objectReference->formType == RE::FormType::NPC)
-		container = skyrim_cast<RE::TESContainer*, RE::TESBoundObject>(m_ref->data.objectReference);
+		container = m_ref->data.objectReference->As<RE::TESContainer>();
 
 	return container;
 }
@@ -143,12 +143,12 @@ bool TESObjectREFRHelper::IsPlayerOwned()
 	return false;
 }
 
-const RE::TESForm* TESObjectREFRHelper::GetLootable() const
+RE::TESForm* TESObjectREFRHelper::GetLootable() const
 {
 	return m_lootable;
 }
 
-void TESObjectREFRHelper::SetLootable(const RE::TESForm* lootable)
+void TESObjectREFRHelper::SetLootable(RE::TESForm* lootable)
 {
 	m_lootable = lootable;
 }
@@ -225,7 +225,7 @@ bool ActorHelper::IsEssential()
 {
 	if (!m_actor)
 		return false;
-	RE::TESActorBaseData* baseData(skyrim_cast<RE::TESActorBaseData*, RE::Actor>(m_actor));
+	RE::TESActorBaseData* baseData(m_actor->As<RE::TESActorBaseData>());
 	if (!baseData)
 		return false;
 	return baseData->IsEssential();
@@ -235,7 +235,7 @@ bool ActorHelper::IsSummonable(void)
 {
 	if (!m_actor)
 		return false;
-	RE::TESActorBaseData* baseData(skyrim_cast<RE::TESActorBaseData*, RE::Actor>(m_actor));
+	RE::TESActorBaseData* baseData(m_actor->As<RE::TESActorBaseData>());
 	if (!baseData)
 		return false;
 	return baseData->IsSummonable();
@@ -266,7 +266,7 @@ ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreUserlist)
 	return ClassifyType(refr->data.objectReference, ignoreUserlist);
 }
 
-ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreUserlist)
+ObjectType ClassifyType(RE::TESForm* baseForm, bool ignoreUserlist)
 {
 	// Leveled items typically redirect to their contents
 	baseForm = DataCase::GetInstance()->ConvertIfLeveledItem(baseForm);
@@ -349,11 +349,6 @@ std::string GetObjectTypeName(const RE::TESObjectREFR* refr)
 }
 
 std::string GetObjectTypeName(RE::TESForm* pForm)
-{
-	return GetObjectTypeName(static_cast<const RE::TESForm*>(pForm));
-}
-
-std::string GetObjectTypeName(const RE::TESForm* pForm)
 {
 	ObjectType objType = ClassifyType(pForm);
 	return GetObjectTypeName(objType);

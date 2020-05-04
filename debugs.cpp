@@ -27,7 +27,7 @@ void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 #endif
 }
 
-void DumpKeyword(const RE::TESForm* pForm)
+void DumpKeyword(RE::TESForm* pForm)
 {
 #if _DEBUG
 	if (!pForm)
@@ -134,7 +134,7 @@ void DumpItemVW(const TESFormHelper& itemEx)
 void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 {
 #if _DEBUG
-	const RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.m_ref->data.objectReference);
+	RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.m_ref->data.objectReference);
 	_MESSAGE("0x%08x 0x%02x(%02d) [%s] - %s", target->formID, target->formType, target->formType, refr.m_ref->GetName(), typeName);
 
 	TESFormHelper itemEx(target);
@@ -172,7 +172,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 			else
 			{
 				bool bPlayable = IsPlayable(itemEx.m_form);
-				RE::TESFullName* name = skyrim_cast<RE::TESFullName*, RE::TESForm>(itemEx.m_form);
+				RE::TESFullName* name = itemEx.m_form->As<RE::TESFullName>();
 				std::string typeName = GetObjectTypeName(ClassifyType(itemEx.m_form));
 
 				_MESSAGE("%08x [%s] count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
@@ -197,7 +197,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 
 			bool bPlayable = IsPlayable(itemEx.m_form);
 			std::string typeName = GetObjectTypeName(ClassifyType(itemEx.m_form));
-			RE::TESFullName *name = skyrim_cast<RE::TESFullName*, RE::TESForm>(itemEx.m_form);
+			RE::TESFullName *name = itemEx.m_form->As<RE::TESFullName>();
 			_MESSAGE("- %08x [%s] %p count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());
 
 			DumpItemVW(itemEx);

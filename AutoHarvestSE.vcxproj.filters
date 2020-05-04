@@ -44,6 +44,7 @@
       <Filter>_FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="RecursiveLock.cpp" />
+    <ClCompile Include="InventoryItem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.h" />
@@ -96,6 +97,7 @@
       <Filter>_FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="RecursiveLock.h" />
+    <ClInclude Include="InventoryItem.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">

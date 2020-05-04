@@ -538,9 +538,9 @@ const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
 	return (proj && ammoList.find(proj) != ammoList.end()) ? ammoList[proj] : nullptr;
 }
 
-const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
+RE::TESForm* DataCase::ConvertIfLeveledItem(RE::TESForm* form) const
 {
-	const RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
+	RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
 	if (produceForm)
 	{
 		const auto matched(m_produceFormContents.find(produceForm));
@@ -864,7 +864,7 @@ bool DataCase::SetLootableForProducer(RE::TESForm* producer, RE::TESForm* lootab
 	}
 }
 
-const RE::TESForm* DataCase::GetLootableForProducer(RE::TESForm* producer) const
+RE::TESForm* DataCase::GetLootableForProducer(RE::TESForm* producer) const
 {
 	RecursiveLockGuard guard(m_producerIngredientLock);
 	const auto matched(m_producerLootable.find(producer));
@@ -959,7 +959,7 @@ void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevIt
 }
 
 DataCase::ProduceFormCategorizer::ProduceFormCategorizer(
-	const RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName) :
+	RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName) :
 	LeveledItemCategorizer(rootItem, targetName), m_produceForm(produceForm), m_contents(nullptr)
 {
 }

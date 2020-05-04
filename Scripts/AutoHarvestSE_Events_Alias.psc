@@ -292,6 +292,9 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 				available = oreScript.ResourceCountCurrent
 			endwhile
 			;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+		else
+			; could be CACO-scripted - notify of nearly lootable
+			DoObjectGlow(akTarget, 5)
 		endif
 
     ; Blocked activators may be looted according to a config setting
@@ -351,13 +354,17 @@ Event OnGetCritterIngredient(ObjectReference akTarget)
     endif
 endEvent
 
-Event OnObjectGlow(ObjectReference akTargetRef, int duration)
+Function DoObjectGlow(ObjectReference akTargetRef, int duration)
 	EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
 	if (effShader)
 		; play for requested duration - C++ code will tidy up when out of range
 	    ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
 		effShader.Play(akTargetRef, duration)
 	endif
+endFunction
+
+Event OnObjectGlow(ObjectReference akTargetRef, int duration)
+	DoObjectGlow(akTargetRef, duration)
 endEvent
 
 Event OnObjectGlowStop(ObjectReference akTargetRef)

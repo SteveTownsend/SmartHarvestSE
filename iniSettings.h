@@ -3,8 +3,6 @@
 #define INI_FILE "AutoHarvestSE.ini"
 #include "SimpleIni.h"
 
-#include <array>
-
 class INIFile : public SimpleIni
 {
 public:
@@ -28,12 +26,6 @@ public:
 		maxItemCount,
 		LAST2
 	};
-
-	typedef int SectionKey;
-	inline SectionKey MakeSectionKey(PrimaryType first, SecondaryType second)
-	{
-		return first + (second * LAST);
-	}
 
 	inline bool IsType(PrimaryType type) { return (type > PrimaryType::NONE && type < PrimaryType::LAST); }
 	inline bool IsType(SecondaryType type) { return (type > SecondaryType::NONE2 && type < SecondaryType::LAST2); }
@@ -95,8 +87,5 @@ private:
 	static INIFile* s_instance;
 	const std::string GetFileName(void);
 	std::string iniFilePath;
-	std::array<std::string, LAST * LAST2> m_sectionNames;
-	std::array<std::unordered_map<std::string, double>, LAST * LAST2> m_values;
-
 	INIFile(void);
 };

@@ -52,14 +52,14 @@ public:
 	const char* GetTranslation(const char* key) const;
 
 	const RE::TESAmmo* ProjToAmmo(const RE::BGSProjectile* proj);
-	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
+	RE::TESForm* ConvertIfLeveledItem(RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
 	void ListsClear(const bool gameReload);
 	bool CheckAmmoLootable(RE::TESObjectREFR* refr);
 
 	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
-	const RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
+	RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
 
 private:
 	std::unordered_map<std::string, std::string> translations;
@@ -74,11 +74,11 @@ private:
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
-	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
+	std::unordered_map<RE::TESProduceForm*, RE::TESForm*> m_produceFormContents;
 
 	mutable RecursiveLock m_producerIngredientLock;
 	mutable RecursiveLock m_blockListLock;
-	std::unordered_map<const RE::TESForm*, const RE::TESForm*> m_producerLootable;
+	std::unordered_map<RE::TESForm*, RE::TESForm*> m_producerLootable;
 
 	bool GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName);
 #if 0
@@ -115,13 +115,13 @@ private:
 	class ProduceFormCategorizer : public LeveledItemCategorizer
 	{
 	public:
-		ProduceFormCategorizer(const RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName);
+		ProduceFormCategorizer(RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName);
 
 	protected:
 		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
 
 	private:
-		const RE::TESProduceForm* m_produceForm;
+		RE::TESProduceForm* m_produceForm;
 		RE::TESForm* m_contents;
 	};
 

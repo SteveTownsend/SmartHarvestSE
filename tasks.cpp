@@ -22,6 +22,11 @@ UInt64 SearchTask::m_aliasHandle = 0;
 RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
+// special object glow - not too long, in case we loot or move away
+const int ObjectGlowDurationSpecial = 5;
+// looted container notification glow - relatively short
+const int ObjectGlowDurationNotify = 2;
+
 bool SearchTask::GoodToGo()
 {
 	if (!m_aliasHandle)
@@ -61,7 +66,7 @@ void SearchTask::Run()
 			ObjectType objType = refrEx.GetObjectType();
 			std::string typeName = refrEx.GetTypeName();
 			// Various form types contain an ingredient that is the final lootable item - resolve here
-			const RE::TESForm* lootable(DataCase::GetInstance()->GetLootableForProducer(m_refr->data.objectReference));
+			RE::TESForm* lootable(DataCase::GetInstance()->GetLootableForProducer(m_refr->data.objectReference));
 			if (lootable)
 			{
 #if _DEBUG
@@ -153,7 +158,7 @@ void SearchTask::Run()
 
 			if (needsGlow)
 			{
-				TriggerObjectGlow(m_refr);
+				TriggerObjectGlow(m_refr, ObjectGlowDurationSpecial);
 			}
 			if (!skipLooting)
 			{
@@ -203,17 +208,17 @@ void SearchTask::Run()
 			DumpContainer(refrEx);
 #endif
 			bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0;
-
-			bool hasQuestObject = false;
-			bool hasEnchantItem = false;
-			ContainerLister fnOption(refrEx.m_ref, requireQuestItemAsTarget);
-
+			bool hasQuestObject(false);
+			bool hasEnchantItem(false);
+			bool skipLooting(false);
 			LootableItems lootableItems;
-			if (!fnOption.GetOrCheckContainerForms(lootableItems, hasQuestObject, hasEnchantItem))
-				continue;
+			if (!ContainerLister(refrEx.m_ref, requireQuestItemAsTarget).GetOrCheckContainerForms(
+				lootableItems, hasQuestObject, hasEnchantItem))
+			{
+				skipLooting = true;
+			}
 
 			bool needsGlow(false);
-			bool skipLooting(false);
 			if (m_targetType == INIFile::SecondaryType::containers)
 			{
 				if (IsContainerLocked(m_refr))
@@ -260,7 +265,7 @@ void SearchTask::Run()
 			}
 			if (needsGlow)
 			{
-				TriggerObjectGlow(m_refr);
+				TriggerObjectGlow(m_refr, ObjectGlowDurationSpecial);
 			}
 			if (skipLooting)
 				continue;
@@ -327,13 +332,26 @@ void SearchTask::Run()
 
 			if (count > 0)
 			{
-				bool animate(false);
-				if (m_targetType == INIFile::SecondaryType::containers)
+				// check highlighting for dead NPC or container
+				int playContainerAnimation(static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "PlayContainerAnimation")));
+				if (playContainerAnimation > 0)
 				{
-					int playContainerAnimation = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "PlayContainerAnimation"));
-					animate = playContainerAnimation != 0 && refrEx.GetTimeController();
+					if (m_targetType == INIFile::SecondaryType::containers)
+					{
+						if (!refrEx.GetTimeController())
+						{
+							// no container animation feasible, highlight it instead
+							playContainerAnimation = 2;
+						}
+					}
+					else
+					{
+						// Dead NPCs cannot be animated, but highlighting requested
+						playContainerAnimation = 2;
+					}
 				}
-				TriggerContainerLootMany(targets, animate);
+
+				TriggerContainerLootMany(targets, playContainerAnimation);
 			}
 		}
 	}
@@ -348,6 +366,7 @@ RE::BGSLocation* SearchTask::m_playerLocation = nullptr;
 RE::BGSKeyword* SearchTask::m_playerHouseKeyword(nullptr);
 bool SearchTask::m_carryAdjustedForCombat = false;
 bool SearchTask::m_carryAdjustedForPlayerHome = false;
+bool SearchTask::m_carryAdjustedForDrawnWeapon = false;
 int SearchTask::m_currentCarryWeightChange = 0;
 
 void SearchTask::SetPlayerHouseKeyword(RE::BGSKeyword* keyword)
@@ -408,7 +427,7 @@ RE::TESForm* GetCellOwner(RE::TESObjectCELL* cell)
 
 bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
 {
-	const RE::TESForm* owner = GetCellOwner(cell);
+	RE::TESForm* owner = GetCellOwner(cell);
 	if (cell && owner)
 	{
 		if (owner->formType == RE::FormType::NPC)
@@ -419,7 +438,7 @@ bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
 		}
 		else if (owner->formType == RE::FormType::Faction)
 		{
-			RE::TESFaction* faction = skyrim_cast<RE::TESFaction*, RE::TESForm>(owner);
+			RE::TESFaction* faction = owner->As<RE::TESFaction>();
 			if (faction)
 			{
 				if (RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
@@ -443,11 +462,16 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 	m_autoHarvestLock.clear();
 	// unblock possible player house checks after game reload
 	if (gameReload)
-		m_playerHouses.clear();
-	// Stop objects glowing and clean up the list
-	for (auto glowingObject : m_glowExpiration)
 	{
-		StopObjectGlow(glowingObject.first);
+		m_playerHouses.clear();
+	}
+	// clean up the list of glowing objects, don't reset on game reload since context changes
+	else
+	{
+		for (auto glowingObject : m_glowExpiration)
+		{
+			StopObjectGlow(glowingObject.first);
+		}
 	}
 	m_glowExpiration.clear();
 }
@@ -559,6 +583,19 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 				m_carryAdjustedForCombat = playerInCombat;
 #if _DEBUG
 				_MESSAGE("Carry weight delta after in-combat adjustment %d", carryWeightChange);
+#endif
+			}
+		}
+		bool isWeaponDrawn(player->IsWeaponDrawn());
+		if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "UnencumberedIfWeaponDrawn") != 0.0)
+		{
+			// when state changes between drawn/sheathed, adjust carry weight accordingly
+			if (isWeaponDrawn != m_carryAdjustedForDrawnWeapon)
+			{
+				carryWeightChange += isWeaponDrawn ? InfiniteWeight : -InfiniteWeight;
+				m_carryAdjustedForDrawnWeapon = isWeaponDrawn;
+#if _DEBUG
+				_MESSAGE("Carry weight delta after drawn weapon adjustment %d", carryWeightChange);
 #endif
 			}
 		}
@@ -816,13 +853,14 @@ void SearchTask::PrepareForReload()
 	Disallow();
 
 #if _DEBUG
-	_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s", m_currentCarryWeightChange,
-		m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false");
+	_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
+		m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
 #endif
 	// reset carry weight adjustments - scripts will handle the Player Actor Value, our scan will reinstate as needed
 	m_currentCarryWeightChange = 0;
-	m_carryAdjustedForPlayerHome = false;
 	m_carryAdjustedForCombat = false;
+	m_carryAdjustedForPlayerHome = false;
+	m_carryAdjustedForDrawnWeapon = false;
 	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
 	m_playerCell = nullptr;
 	m_playerLocation = nullptr;
@@ -874,12 +912,6 @@ void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, con
 	if (!LockAutoHarvest(m_refr))
 		return;
 	SInt32 intType(static_cast<SInt32>(objType));
-#if 0
-	// hack to avoid bool/uint32 ambiguity
-	SInt32 intSilent(static_cast<SInt32>(isSilent));
-	// hack to avoid bool/uint32 ambiguity
-	SInt32 intIgnoreBlocking(static_cast<SInt32>(ignoreBlocking));
-#endif
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
 		m_aliasHandle, autoHarvestEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(intType),
 			std::move(itemCount), std::move(isSilent), std::move(ignoreBlocking)));
@@ -993,21 +1025,28 @@ bool SearchTask::IsLocationExcluded()
 	return m_excludeLocations.count(m_playerLocation) > 0;
 }
 
-void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const bool animate)
+void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType)
 {
 	if (!m_refr)
 		return;
+
+	// visual notification, if requested
+	if (animationType == 1)
+	{
+		m_refr->PlayAnimation("Close", "Open");
+	}
+	else if (animationType == 2)
+	{
+		// glow looted object for a few seconds after looting
+		TriggerObjectGlow(m_refr, ObjectGlowDurationNotify);
+	}
+
 	for (auto& target : targets)
 	{
 		InventoryItem& itemInfo(target.first);
 		int count(itemInfo.TakeAll(m_refr, RE::PlayerCharacter::GetSingleton()));
 		bool notify(target.second);
 		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
-		if (animate)
-		{
-			m_refr->PlayAnimation("Close", "Open");
-		}
-
 		if (notify)
 		{
 			std::string notificationText;
@@ -1040,12 +1079,10 @@ void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, b
 	}
 }
 
-const int ObjectGlowDuration = 15;
-
-void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr)
+void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration)
 {
 
-	// only send the glow event once per N seconds. This will retrigger on every pass but once we are out of
+	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
 	// never be so many in a cell that this is a problem.
 	RecursiveLockGuard guard(m_lock);
@@ -1053,13 +1090,13 @@ void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr)
 	auto currentTime(std::chrono::high_resolution_clock::now());
 	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
 		return;
-	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(ObjectGlowDuration * 1000.0));
+	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0));
 	m_glowExpiration[refr] = expiry;
 #if _DEBUG
 	_DMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
 #endif
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(ObjectGlowDuration)));
+		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(duration)));
 }
 
 void SearchTask::StopObjectGlow(const RE::TESObjectREFR* refr)

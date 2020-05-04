@@ -6,7 +6,7 @@
 class TESFormHelper : public IHasValueWeight
 {
 public:
-	TESFormHelper(const RE::TESForm* form);
+	TESFormHelper(RE::TESForm* form);
 
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
@@ -15,7 +15,7 @@ public:
 	virtual double GetWeight(void) const override;
 	virtual double GetWorth(void) const override;
 
-	const RE::TESForm* m_form;
+	RE::TESForm* m_form;
 
 protected:
 	virtual const char* GetName() const;
@@ -26,5 +26,8 @@ bool IsPlayable(const RE::TESForm* pForm);
 
 template <typename FORM> RE::BGSKeywordForm* KeywordFormCast(const RE::TESForm* form)
 {
-	return skyrim_cast<RE::BGSKeywordForm*, FORM>(form->As<FORM>());
+	FORM* waypoint(form->As<FORM>());
+	if (waypoint)
+		return waypoint->As<RE::BGSKeywordForm>();
+	return nullptr;
 }

@@ -37,6 +37,7 @@ bool lootBlockedActivators
 
 bool unencumberedInCombat
 bool unencumberedInPlayerHome
+bool unencumberedIfWeaponDrawn
 int infiniteWeight
 
 bool pushLocationToExcludelist
@@ -65,7 +66,8 @@ int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
 string[] s_behaviorToggleArray
-bool playContainerAnimation
+int playContainerAnimation
+string[] s_playContainerAnimationArray
 
 bool questObjectLoot
 bool lockedChestLoot
@@ -127,6 +129,17 @@ function updateMaxMiningItems(int maxItems)
 	eventScript.updateMaxMiningItems(maxItems)
 endFunction
 
+float[] function GetSettingToObjectArray(int section1, int section2)
+	int index = 0
+	float[] result = New float[34]
+	while (index < 34)
+		result[index] = GetSettingToObjectArrayEntry(section1, section2, index)
+		DebugTrace("Config setting " + section1 + "/" + section2 + "/" + index + " = " + result[index])
+		index += 1
+	endWhile
+	return result
+endFunction
+
 function SeedDefaults()
 	enableAutoHarvest = GetSetting(type_Common, type_Config, "enableAutoHarvest") as bool
 	enableLootContainer = GetSetting(type_Common, type_Config, "enableLootContainer") as bool
@@ -134,6 +147,8 @@ function SeedDefaults()
 	lootBlockedActivators = GetSetting(type_Common, type_Config, "lootBlockedActivators") as bool
 	unencumberedInCombat = GetSetting(type_Common, type_Config, "unencumberedInCombat") as bool
 	unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "unencumberedInPlayerHome") as bool
+	unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "unencumberedIfWeaponDrawn") as bool
+	DebugTrace("SeedDefaults - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
 	pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
 	userlistHotkeyCode = GetSetting(type_Common, type_Config, "userlistHotkeyCode") as int
 	excludelistHotkeyCode = GetSetting(type_Common, type_Config, "excludelistHotkeyCode") as int
@@ -159,16 +174,18 @@ function SeedDefaults()
 
 	disableDuringCombat = GetSetting(type_AutoHarvest, type_Config, "disableDuringCombat") as bool
 	disableWhileWeaponIsDrawn = GetSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn") as bool
-	playContainerAnimation = GetSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation") as bool
+	playContainerAnimation = GetSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation") as int
+	DebugTrace("SeedDefaults - playContainerAnimation " + playContainerAnimation)
 
 	valueWeightDefault = GetSetting(type_AutoHarvest, type_Config, "valueWeightDefault") as int
-	;DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
+	DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
 	updateMaxMiningItems(GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int)
 
-	GetSettingToObjectArray(type_AutoHarvest, type_ItemObject, objectSettingArray)
-	GetSettingToObjectArray(type_AutoHarvest, type_Container, containerSettingArray)
-	GetSettingToObjectArray(type_AutoHarvest, type_Deadbody, deadbodySettingArray)
-	GetSettingToObjectArray(type_AutoHarvest, type_ValueWeight, valueWeightSettingArray)
+	objectSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_ItemObject)
+	DebugTrace("shared settings " + objectSettingArray[0] + "," + objectSettingArray[1] + "," + objectSettingArray[2] + "," + objectSettingArray[3])
+	containerSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_Container)
+	deadbodySettingArray = GetSettingToObjectArray(type_AutoHarvest, type_Deadbody)
+	valueWeightSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_ValueWeight)
 endFunction
 
 function init()
@@ -191,6 +208,7 @@ Function ApplySetting()
 	PutSetting(type_Common, type_Config, "lootBlockedActivators", lootBlockedActivators as float)
 	PutSetting(type_Common, type_Config, "unencumberedInCombat", unencumberedInCombat as float)
 	PutSetting(type_Common, type_Config, "unencumberedInPlayerHome", unencumberedInPlayerHome as float)
+	PutSetting(type_Common, type_Config, "unencumberedIfWeaponDrawn", unencumberedIfWeaponDrawn as float)
 
 	PutSetting(type_Common, type_Config, "PauseHotkeyCode", pauseHotkeyCode as float)
 	PutSetting(type_Common, type_Config, "userlistHotkeyCode", userlistHotkeyCode as float)
@@ -233,8 +251,8 @@ Function ApplySetting()
 	PutSettingObjectArray(type_AutoHarvest, type_ValueWeight, valueWeightSettingArray)
 
     ; seed looting scan enabled according to configured settings
-    bool isEnabled = enableAutoHarvest || enableLootContainer || enableLootDeadbody || unencumberedInCombat || unencumberedInPlayerHome
-    ;DebugTrace("result " + isEnabled + "from flags:" + enableAutoHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome)
+    bool isEnabled = enableAutoHarvest || enableLootContainer || enableLootDeadbody || unencumberedInCombat || unencumberedInPlayerHome|| unencumberedIfWeaponDrawn 
+    ;DebugTrace("result " + isEnabled + "from flags:" + enableAutoHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
     if (isEnabled)
        	g_LootingEnabled.SetValue(1)
 	else
@@ -311,6 +329,11 @@ Event OnConfigInit()
 	s_questObjectScopeArray = New String[2]
 	s_questObjectScopeArray[0] = "$AHSE_QUEST_RELATED"
 	s_questObjectScopeArray[1] = "$AHSE_QUEST_FLAG_ONLY"
+
+	s_playContainerAnimationArray = New String[3]
+	s_playContainerAnimationArray[0] = "$AHSE_CONTAINER_NO_ACTION"
+	s_playContainerAnimationArray[1] = "$AHSE_CONTAINER_PLAY_ANIMATION"
+	s_playContainerAnimationArray[2] = "$AHSE_CONTAINER_GLOW_UNLOOTED"
 
 	s_crimeCheckNotSneakingArray = New String[3]
 	s_crimeCheckNotSneakingArray[0] = "$AHSE_ALLOW_CRIMES"
@@ -402,15 +425,16 @@ int function GetVersion()
 	objType_Mine = GetObjectTypebyName("oreVein")
 	eventScript.SyncNativeObjectTypes()
 
-    ; Defaults and constants
+    ; New or clarified defaults and constants
 	infiniteWeight = 100000
 	manualLootTargetNotify = true
 	defaultRadius = 15
 	defaultInterval = 0.3
 	valueWeightDefaultDefault = 10
 	maxMiningItemsDefault = 15
+	playContainerAnimation = 2
 	eventScript.UpdateMaxMiningItems(maxMiningItems)
-	return 13
+	return 14
 endFunction
 
 Event OnVersionUpdate(int a_version)
@@ -424,7 +448,7 @@ Event OnVersionUpdate(int a_version)
 		type_ValueWeight = 5
 		type_MaxItemCount = 6
 	endif
-	if (a_version >= 13 && CurrentVersion < 13)
+	if (a_version >= 14 && CurrentVersion < 14)
 		; Major revision to reduce script dependence and auto-categorize lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 
@@ -626,6 +650,7 @@ event OnPageReset(string currentPage)
 	    AddSliderOptionST("MaxMiningItems", "$AHSE_MAX_MINING_ITEMS", maxMiningItems)
 		AddToggleOptionST("unencumberedInCombat", "$AHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
 		AddToggleOptionST("unencumberedInPlayerHome", "$AHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHome)
+		AddToggleOptionST("unencumberedIfWeaponDrawn", "$AHSE_UNENCUMBERED_IF_WEAPON_DRAWN", unencumberedIfWeaponDrawn)
 		AddToggleOptionST("useSharedSettings", "$AHSE_USE_SHARED_SETTINGS", useSharedSettings)
 		AddMenuOptionST("iniSaveLoad", "$AHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
 		AddKeyMapOptionST("userlistHotkeyCode", "$AHSE_USERLIST_KEY", userlistHotkeyCode)
@@ -646,7 +671,7 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("bossChestGlow", "$AHSE_BOSSCHEST_GLOW", bossChestGlow)
 		AddToggleOptionST("enchantItemGlow", "$AHSE_ENCHANTITEM_GLOW", enchantItemGlow)
 		AddToggleOptionST("manualLootTargetNotify", "$AHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
-		AddToggleOptionST("playContainerAnimation", "$AHSE_PLAY_CONTAINER_ANIMATION", playContainerAnimation)
+		AddTextOptionST("playContainerAnimation", "$AHSE_PLAY_CONTAINER_ANIMATION", s_playContainerAnimationArray[playContainerAnimation])
 
 ; 	======================== RIGHT ========================
 		SetCursorPosition(1)
@@ -1105,6 +1130,22 @@ state unencumberedInPlayerHome
 	endEvent
 endState
 
+state unencumberedIfWeaponDrawn
+	event OnSelectST()
+		unencumberedIfWeaponDrawn = !(unencumberedIfWeaponDrawn as bool)
+		SetToggleOptionValueST(unencumberedIfWeaponDrawn)
+	endEvent
+
+	event OnDefaultST()
+		unencumberedIfWeaponDrawn = false
+		SetToggleOptionValueST(unencumberedIfWeaponDrawn)
+	endEvent
+
+	event OnHighlightST()
+		SetInfoText(GetTranslation("$AHSE_DESC_UNENCUMBERED_IF_WEAPON_DRAWN"))
+	endEvent
+endState
+
 state Radius
 	event OnSliderOpenST()
 		SetSliderDialogStartValue(radius)
@@ -1266,16 +1307,16 @@ state iniSaveLoad
 			return
 		endif
 		bool continue = ShowMessage(list_warning, true, "$AHSE_OK", "$AHSE_CANCEL")
+	    DebugTrace("response to msg= " + continue)
 		if (continue)
 		    SetMenuOptionValueST(s_iniSaveLoadArray[iniSaveLoad])
 			iniSaveLoad = index
 			if (iniSaveLoad == 1) ; load/restore
+			    DebugTrace("loading from file")
 				LoadIniFile()
 				SeedDefaults()
-				Debug.Notification("$AHSE_PRESET_RESTORE_MSG")
 			elseif (iniSaveLoad == 2) ; save/store
 				SaveIniFile()
-				Debug.Notification("$AHSE_PRESET_STORE_MSG")
 			endif
 		endif
 	endEvent
@@ -1629,16 +1670,18 @@ endState
 
 state playContainerAnimation
 	event OnSelectST()
-		playContainerAnimation = !playContainerAnimation
-		SetToggleOptionValueST(playContainerAnimation)
+		int size = s_playContainerAnimationArray.length
+		playContainerAnimation = CycleInt(playContainerAnimation, size)
+		SetTextOptionValueST(s_playContainerAnimationArray[playContainerAnimation])
 	endEvent
 
 	event OnDefaultST()
-		playContainerAnimation = false
-		SetToggleOptionValueST(playContainerAnimation)
+		playContainerAnimation = 2
+		SetTextOptionValueST(s_playContainerAnimationArray[playContainerAnimation])
 	endEvent
 
 	event OnHighlightST()
-		SetInfoText(GetTranslation("$AHSE_DESC_CONTAINER_ANIMATION"))
+		string trans = GetTranslation("$AHSE_DESC_CONTAINER_ANIMATION")
+		SetInfoText(trans)
 	endEvent
 endState

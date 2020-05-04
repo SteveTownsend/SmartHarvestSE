@@ -85,8 +85,8 @@ public:
 	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking);
 	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
 
-	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const bool animate);
-	static void TriggerObjectGlow(RE::TESObjectREFR* refr);
+	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
+	static void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
 	static void StopObjectGlow(const RE::TESObjectREFR* refr);
 
 	static bool IsLocationExcluded();
@@ -109,6 +109,7 @@ public:
 	static RE::BGSKeyword* m_playerHouseKeyword;
 	static bool m_carryAdjustedForCombat;
 	static bool m_carryAdjustedForPlayerHome;
+	static bool m_carryAdjustedForDrawnWeapon;
 	static int m_currentCarryWeightChange;
 
 	static const RE::BSFixedString critterIngredientEvent;

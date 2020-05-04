@@ -10,6 +10,7 @@ bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, boo
 	if (!m_refr)
 		return false;
 
+	bool hasExtraItems(false);
 	const RE::TESContainer* container = const_cast<RE::TESObjectREFR*>(m_refr)->GetContainer();
 	if (container)
 	{
@@ -53,6 +54,7 @@ bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, boo
 					continue;
 
 				// Check for exchantment or quest target
+				hasExtraItems = true;
 				for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 				{
 					if (*extraList)
@@ -76,5 +78,5 @@ bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, boo
 			}
 		}
 	}
-	return !lootableItems.empty();
+	return !lootableItems.empty() || hasExtraItems;
 }

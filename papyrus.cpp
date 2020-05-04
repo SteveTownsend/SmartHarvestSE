@@ -170,51 +170,55 @@ namespace papyrus
 		std::string str = key.c_str();
 		::ToLower(str);
 
-		return static_cast<float>(ini->GetSetting(first, second, str.c_str()));
+		float result(static_cast<float>(ini->GetSetting(first, second, str.c_str())));
+#if _DEBUG
+		_DMESSAGE("Config setting %d/%d/%s = %f", first, second, str.c_str(), result);
+#endif
+		return result;
 	}
 
-	void GetSettingToObjectArray(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, std::vector<float> value_arr)
+	float GetSettingToObjectArrayEntry(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, SInt32 index)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
 
 		INIFile* ini = INIFile::GetInstance()->GetInstance();
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
-			return;
+			return 0.0;
 
-		SInt32 index(0);
-		for (auto & nextValue : value_arr)
+		std::string key = GetObjectTypeName(index);
+		::ToLower(key);
+		// constrain INI values to sensible values
+		float value(0.0f);
+		if (second == INIFile::SecondaryType::valueWeight)
 		{
-			std::string key = GetObjectTypeName(index);
-			::ToLower(key);
-			// constrain INI values to sensible values
-			if (second == INIFile::SecondaryType::valueWeight)
+			float tmp_value = static_cast<float>(ini->GetSetting(first, second, key.c_str()));
+			if (tmp_value < 0.0f)
 			{
-				float tmp_value = static_cast<float>(ini->GetSetting(first, second, key.c_str()));
-				if (tmp_value < 0.0f)
-				{
-					nextValue = 0.0f;
-				}
-				else if (tmp_value > IHasValueWeight::ValueWeightMaximum)
-				{
-					nextValue = IHasValueWeight::ValueWeightMaximum;
-				}
+				value = 0.0f;
+			}
+			else if (tmp_value > IHasValueWeight::ValueWeightMaximum)
+			{
+				value = IHasValueWeight::ValueWeightMaximum;
+			}
+		}
+		else
+		{
+			LootingType tmp_value = LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
+			// weightless objects and OreVeins are always looted unless explicitly disabled
+			if (ValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
+			{
+				value = static_cast<float>(tmp_value == LootingType::LootIfValuableEnoughNotify ? LootingType::LootAlwaysNotify : LootingType::LootAlwaysSilent);
 			}
 			else
 			{
-				LootingType tmp_value = LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
-				// weightless objects and OreVeins are always looted unless explicitly disabled
-				if (ValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
-				{
-					nextValue = static_cast<float>(tmp_value == LootingType::LootIfValuableEnoughNotify ? LootingType::LootAlwaysNotify : LootingType::LootAlwaysSilent);
-				}
-				else
-				{
-					nextValue = static_cast<float>(tmp_value);
-				}
+				value = static_cast<float>(tmp_value);
 			}
-			++index;
 		}
+#if _DEBUG
+		_DMESSAGE("Config setting %d/%d/%s = %f", first, second, key.c_str(), value);
+#endif
+		return value;
 	}
 
 	void PutSetting(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSFixedString key, float value)
@@ -421,7 +425,7 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	a_vm->RegisterFunction("UnblockEverything", AHSE_NAME, papyrus::UnblockEverything);
 
 	a_vm->RegisterFunction("GetSetting", AHSE_NAME, papyrus::GetSetting);
-	a_vm->RegisterFunction("GetSettingToObjectArray", AHSE_NAME, papyrus::GetSettingToObjectArray);
+	a_vm->RegisterFunction("GetSettingToObjectArrayEntry", AHSE_NAME, papyrus::GetSettingToObjectArrayEntry);
 	a_vm->RegisterFunction("PutSetting", AHSE_NAME, papyrus::PutSetting);
 	a_vm->RegisterFunction("PutSettingObjectArray", AHSE_NAME, papyrus::PutSettingObjectArray);
 

@@ -166,11 +166,11 @@ namespace FileUtils
 
 namespace utils
 {
-	void SetGoldValue(const RE::TESForm* pForm, UInt32 value)
+	void SetGoldValue(RE::TESForm* pForm, UInt32 value)
 	{
 		if (!pForm)
 			return;
-		RE::TESValueForm* pValue = skyrim_cast<RE::TESValueForm*, RE::TESForm>(pForm);
+		RE::TESValueForm* pValue = pForm->As<RE::TESValueForm>();
 		if (pValue)
 			pValue->value = value;
 	}
@@ -231,7 +231,7 @@ namespace PluginUtils
 	{
 		if (!pForm)
 			return;
-		RE::TESFullName* pFullName = skyrim_cast<RE::TESFullName*, RE::TESForm>(pForm);
+		RE::TESFullName* pFullName = pForm->As<RE::TESFullName>();
 		if (pFullName)
 			pFullName->fullName = str;
 	}
