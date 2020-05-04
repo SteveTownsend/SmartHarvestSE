@@ -24,7 +24,7 @@ namespace FileUtils
 
 namespace utils
 {
-	void SetGoldValue(const RE::TESForm* pForm, UInt32 value);
+	void SetGoldValue(RE::TESForm* pForm, UInt32 value);
 }
 
 namespace WindowsUtils
