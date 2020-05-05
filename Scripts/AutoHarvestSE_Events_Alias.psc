@@ -258,10 +258,10 @@ function updateMaxMiningItems(int maxItems)
 	maxMiningItems = maxItems
 endFunction
 
-Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool ignoreBlock)
+Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool ignoreBlock, bool manualLootNotify)
 	;DebugTrace("OnAutoHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
 	;DebugTrace("item type: " + itemType + ", type-mine: " + objType_mine + ", do not notify: " + silent + ", ignore activation blocking: " + ignoreBlock) 
-	
+	;DebugTrace("notify for manual loot: " + manualLootNotify)
 	Actor akActivator = Game.GetPlayer()
 
 	if (IsBookObject(itemType))
@@ -292,8 +292,8 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 				available = oreScript.ResourceCountCurrent
 			endwhile
 			;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
-		else
-			; could be CACO-scripted - notify of nearly lootable
+		elseif (manualLootNotify)
+			; could be CACO-scripted 'Mine' target - glow as a 'nearby manual lootable' if configured to do so
 			DoObjectGlow(akTarget, 5)
 		endif
 
@@ -315,7 +315,7 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 			ActivateEx(akTarget, akActivator, silent)
 		elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
 			ActivateEx(akTarget, akActivator, silent)
-		elseif (ActivateEx(akTarget, akActivator, false) && !silent)
+		elseif (ActivateEx(akTarget, akActivator, true) && !silent)
 			string activateMsg = none
 			if (count >= 2)
 				string translation = GetTranslation("$AHSE_ACTIVATE(COUNT)_MSG")
@@ -365,14 +365,6 @@ endFunction
 
 Event OnObjectGlow(ObjectReference akTargetRef, int duration)
 	DoObjectGlow(akTargetRef, duration)
-endEvent
-
-Event OnObjectGlowStop(ObjectReference akTargetRef)
-	;DebugTrace("------------ Event OnObjectGlowStop " + akTargetRef.GetDisplayName())
-	EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
-	if (effShader)
-		effShader.Stop(akTargetRef)
-	endif
 endEvent
 
 Event OnCarryWeightDelta(int weightDelta)

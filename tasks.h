@@ -13,16 +13,16 @@
 
 enum class LootingType {
 	LeaveBehind = 0,
-	LootAlwaysNotify,
 	LootAlwaysSilent,
-	LootIfValuableEnoughNotify,
+	LootAlwaysNotify,
 	LootIfValuableEnoughSilent,
+	LootIfValuableEnoughNotify,
 	MAX
 };
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {
-	return lootingType == LootingType::LootIfValuableEnoughSilent || lootingType == LootingType::LootAlwaysSilent;
+	return lootingType == LootingType::LootIfValuableEnoughNotify || lootingType == LootingType::LootAlwaysNotify;
 }
 
 inline LootingType LootingTypeFromIniSetting(const double iniSetting)
@@ -82,12 +82,11 @@ public:
 
 	void TriggerGetCritterIngredient();
 	static void TriggerCarryWeightDelta(const int delta);
-	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking);
+	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking, const bool manualLootNotify);
 	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
 
 	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
 	static void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
-	static void StopObjectGlow(const RE::TESObjectREFR* refr);
 
 	static bool IsLocationExcluded();
 

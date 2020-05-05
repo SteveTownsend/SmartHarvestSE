@@ -103,8 +103,8 @@ void SearchTask::Run()
 				continue;
 			}
 
-			if (objType == ObjectType::manualLoot &&
-				m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "ManualLootTargetNotify") != 0)
+			bool manualLootNotify(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "ManualLootTargetNotify") != 0);
+			if (objType == ObjectType::manualLoot && manualLootNotify)
 			{
 				// notify about these, just once
 				std::string notificationText;
@@ -199,7 +199,7 @@ void SearchTask::Run()
 #endif
 			// don't let the backlog of messages get too large, it's about 1 per second
 			bool ignoreBlocking(m_ini->GetSetting(INIFile::common, INIFile::config, "LootBlockedActivators") != 0);
-			TriggerAutoHarvest(objType, refrEx.GetItemCount(), isSilent || PendingAutoHarvest() > AutoHarvestSpamLimit, ignoreBlocking);
+			TriggerAutoHarvest(objType, refrEx.GetItemCount(), isSilent || PendingAutoHarvest() > AutoHarvestSpamLimit, ignoreBlocking, manualLootNotify);
 		}
 		else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 		{
@@ -465,14 +465,7 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 	{
 		m_playerHouses.clear();
 	}
-	// clean up the list of glowing objects, don't reset on game reload since context changes
-	else
-	{
-		for (auto glowingObject : m_glowExpiration)
-		{
-			StopObjectGlow(glowingObject.first);
-		}
-	}
+	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
 	m_glowExpiration.clear();
 }
 
@@ -906,7 +899,7 @@ void SearchTask::TriggerCarryWeightDelta(const int delta)
 
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_autoHarvestLock;
 
-void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking)
+void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking, const bool manualLootNotify)
 {
 	// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 	if (!LockAutoHarvest(m_refr))
@@ -914,7 +907,7 @@ void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, con
 	SInt32 intType(static_cast<SInt32>(objType));
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
 		m_aliasHandle, autoHarvestEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(intType),
-			std::move(itemCount), std::move(isSilent), std::move(ignoreBlocking)));
+			std::move(itemCount), std::move(isSilent), std::move(ignoreBlocking), std::move(manualLootNotify)));
 }
 
 bool SearchTask::LockAutoHarvest(const RE::TESObjectREFR* refr)
@@ -1097,12 +1090,6 @@ void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration)
 #endif
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
 		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(duration)));
-}
-
-void SearchTask::StopObjectGlow(const RE::TESObjectREFR* refr)
-{
-	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, objectGlowStopEvent, RE::MakeFunctionArguments(std::move(refr)));
 }
 
 bool SearchTask::firstTime = true;
