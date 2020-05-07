@@ -50,10 +50,6 @@ int location_type_excluded = 2
 Formlist userlist_form
 Formlist excludelist_form
 
-bool Function IsBookObject(int type) global
-	return (type >= 17 && type <= 22)
-endFunction
-
 int Function GetConfig_Pausekey() global
 	int type1_Common = 1
 	int type2_Config = 1

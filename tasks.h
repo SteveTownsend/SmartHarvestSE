@@ -51,10 +51,10 @@ inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectTyp
 class SearchTask
 {
 public:
-	SearchTask(const std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>>& candidates);
+	SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType);
 
 	static void Init(void);
-	virtual void Run();
+	void Run();
 	static void UnlockAll();
 
 	static bool IsLockedForAutoHarvest(const RE::TESObjectREFR* refr);
@@ -89,12 +89,18 @@ public:
 	static void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
 
 	static bool IsLocationExcluded();
+	bool IsLootingForbidden() const;
+	bool IsBookGlowable() const;
 
 	static INIFile* m_ini;
 	static UInt64 m_aliasHandle;
 	static bool firstTime;
 
-	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_candidates;
+	RE::TESObjectREFR* m_candidate;
+	INIFile::SecondaryType m_targetType;
+
+	static int m_crimeCheck;
+	static int m_belongingsCheck;
 
 	static std::unordered_set<const RE::TESObjectREFR*> m_autoHarvestLock;
 	static std::unordered_set<const RE::BGSLocation*> m_playerHouses;
@@ -104,6 +110,7 @@ public:
 	static bool m_searchAllowed;
 	static bool m_sneaking;
 	static RE::TESObjectCELL* m_playerCell;
+	static bool m_playerCellSelfOwned;
 	static RE::BGSLocation* m_playerLocation;
 	static RE::BGSKeyword* m_playerHouseKeyword;
 	static bool m_carryAdjustedForCombat;
@@ -117,8 +124,6 @@ public:
 	static const RE::BSFixedString objectGlowEvent;
 	static const RE::BSFixedString objectGlowStopEvent;
 	static const RE::BSFixedString playerHouseCheckEvent;
-
-	RE::TESObjectREFR* m_refr;
 
 	static std::unordered_set<const RE::TESForm*> m_excludeLocations;
 	static bool m_pluginSynced;

@@ -22,6 +22,8 @@ int objType_Critter
 int objType_Septim
 int objType_Soulgem
 int objType_Mine
+int objType_Book
+int objType_skillBookRead
 
 int getType_kFlora = 39
 
@@ -120,6 +122,8 @@ Function SyncNativeObjectTypes()
 	objType_Septim = GetObjectTypebyName("septims")
 	objType_Soulgem = GetObjectTypebyName("soulgem")
 	objType_Mine = GetObjectTypebyName("oreVein")
+	objType_Book = GetObjectTypebyName("books")
+	objType_skillBookRead = GetObjectTypebyName("skillbookread")
 endFunction
 
 Event OnInit()
@@ -256,6 +260,10 @@ endFunction
 function updateMaxMiningItems(int maxItems)
     ;DebugTrace("maxMiningItems -> " + maxItems)
 	maxMiningItems = maxItems
+endFunction
+
+bool Function IsBookObject(int type)
+	return type >= objType_Book && type <= objType_skillBookRead
 endFunction
 
 Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool ignoreBlock, bool manualLootNotify)

@@ -17,7 +17,6 @@ private:
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
 
 	RE::TESObjectCELL* m_cell;
-	std::unordered_set<RE::FormID> m_normalRefrs;
 	std::vector<RE::TESObjectREFR*>* m_targets;
 	double m_radius;
 	static PlayerCellHelper m_instance;

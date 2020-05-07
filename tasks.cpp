@@ -37,9 +37,51 @@ bool SearchTask::GoodToGo()
 	return m_aliasHandle;
 }
 
-SearchTask::SearchTask(const std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>>& candidates)
-	: m_candidates(candidates), m_refr(nullptr)
+SearchTask::SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType)
+	: m_candidate(candidate), m_targetType(targetType)
 {
+}
+
+RE::TESForm* GetCellOwner(RE::TESObjectCELL* cell)
+{
+	for (RE::BSExtraData& extraData : cell->extraList)
+	{
+		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
+		{
+#if _DEBUG
+			_MESSAGE("GetCellOwner Hit %08x", reinterpret_cast<RE::ExtraOwnership&>(extraData).owner->formID);
+#endif
+			return reinterpret_cast<RE::ExtraOwnership&>(extraData).owner;
+		}
+	}
+	return nullptr;
+}
+
+bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
+{
+	if (!cell)
+		return false;
+	RE::TESForm* owner = GetCellOwner(cell);
+	if (!owner)
+		return false;
+	if (owner->formType == RE::FormType::NPC)
+	{
+		const RE::TESNPC* npc = owner->As<RE::TESNPC>();
+		RE::TESNPC* playerBase = RE::PlayerCharacter::GetSingleton()->GetActorBase();
+		return (npc && npc == playerBase);
+	}
+	else if (owner->formType == RE::FormType::Faction)
+	{
+		RE::TESFaction* faction = owner->As<RE::TESFaction>();
+		if (faction)
+		{
+			if (RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
+				return true;
+
+			return false;
+		}
+	}
+	return false;
 }
 
 const RE::BSFixedString SearchTask::critterIngredientEvent = "OnGetCritterIngredient";
@@ -50,309 +92,402 @@ const RE::BSFixedString SearchTask::objectGlowStopEvent = "OnObjectGlowStop";
 
 const int AutoHarvestSpamLimit = 10;
 
+bool SearchTask::IsLootingForbidden() const
+{
+	bool isForbidden(false);
+	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
+	// Ownership expires with the target, e.g. Francis the Horse from Interesting NPCs was killed by a wolf in Solitude
+	// and becomes lootable thereafter.
+	// For non-dead targets, check law-abiding settings vs criminality of target and player-ownership settings vs ownership
+	if (m_targetType != INIFile::SecondaryType::deadbodies)
+	{
+		// check up to three ownership conditions depending on config
+		bool playerOwned(TESObjectREFRHelper(m_candidate).IsPlayerOwned());
+		bool lootingIsCrime(m_candidate->IsOffLimits());
+		if (m_playerCellSelfOwned || playerOwned)
+		{
+			// can configure to not loot my own belongings even though it's always legal
+			if (m_belongingsCheck == 0)
+			{
+#if _DEBUG
+				_DMESSAGE("Player home or player-owned, looting belongings disallowed");
+#endif
+				isForbidden = true;
+			}
+		}
+		// if restricted to law-abiding citizenship, check if OK to loot
+		else if (m_crimeCheck > 0)
+		{
+			if (m_candidate->IsOffLimits())
+			{
+				// never commit a crime unless crimeCheck is 0
+#if _DEBUG
+				_DMESSAGE("Crime to loot REFR, cannot loot");
+#endif
+				isForbidden = true;
+			}
+			else if (m_crimeCheck == 2 && m_candidate->GetOwner() != nullptr)
+			{
+				// owner cannot be player by construction, disallow
+#if _DEBUG
+				_DMESSAGE("REFR is owned, cannot loot");
+#endif
+				isForbidden = true;
+			}
+		}
+
+		if (isForbidden)
+		{
+#if _DEBUG
+			_MESSAGE("Skip owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->data.objectReference->GetName(), m_candidate->data.objectReference->formID);
+#endif
+		}
+	}
+	return isForbidden;
+}
+
+bool SearchTask::IsBookGlowable() const
+{
+	RE::BGSKeywordForm* keywordForm(m_candidate->data.objectReference->As<RE::BGSKeywordForm>());
+	if (!keywordForm)
+		return false;
+	for (UInt32 index = 0; index < keywordForm->GetNumKeywords(); ++index)
+	{
+		std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
+		if (!keyword || !keyword.has_value())
+			continue;
+		if (DataCase::GetInstance()->IsBookGlowableKeyword(keyword.value()))
+			return true;
+	}
+	return false;
+}
+
 void SearchTask::Run()
 {
 	WindowsUtils::ScopedTimer elapsed("SearchTask::Run");
 	DataCase* data = DataCase::GetInstance();
 	RE::BSScript::Internal::VirtualMachine* vm(RE::BSScript::Internal::VirtualMachine::GetSingleton());
 
-	for (const auto& candidate : m_candidates)
+	TESObjectREFRHelper refrEx(m_candidate);
+	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
-		m_refr = candidate.first;
-		INIFile::SecondaryType m_targetType(candidate.second);
-		TESObjectREFRHelper refrEx(m_refr);
-		if (m_targetType == INIFile::SecondaryType::itemObjects)
+		ObjectType objType = refrEx.GetObjectType();
+		std::string typeName = refrEx.GetTypeName();
+		// Various form types contain an ingredient that is the final lootable item - resolve here
+		RE::TESForm* lootable(DataCase::GetInstance()->GetLootableForProducer(m_candidate->data.objectReference));
+		if (lootable)
 		{
-			ObjectType objType = refrEx.GetObjectType();
-			std::string typeName = refrEx.GetTypeName();
-			// Various form types contain an ingredient that is the final lootable item - resolve here
-			RE::TESForm* lootable(DataCase::GetInstance()->GetLootableForProducer(m_refr->data.objectReference));
-			if (lootable)
-			{
 #if _DEBUG
-				_DMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_refr->data.objectReference->GetName(), m_refr->data.objectReference->formID,
-					lootable->GetName(), lootable->formID);
+			_DMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_candidate->data.objectReference->GetName(), m_candidate->data.objectReference->formID,
+				lootable->GetName(), lootable->formID);
 #endif
-				refrEx.SetLootable(lootable);
-			}
-			else if (objType == ObjectType::critter)
-			{
-				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
-				// only trigger if not already pending
-#if _DEBUG
-				_DMESSAGE("resolve critter %s/0x%08x to ingredient", m_refr->data.objectReference->GetName(), m_refr->data.objectReference->formID);
-#endif
-				if (DataCase::GetInstance()->SetLootableForProducer(m_refr->data.objectReference, nullptr))
-				{
-					TriggerGetCritterIngredient();
-				}
-				continue;
-			}
-
-#if _DEBUG
-			_MESSAGE("typeName  %s", typeName.c_str());
-			DumpReference(refrEx, typeName.c_str());
-#endif
-
-			if (objType == ObjectType::unknown)
-			{
-#if _DEBUG
-				_DMESSAGE("block objType == ObjectType::unknown for 0x%08x", m_refr->data.objectReference->formID);
-#endif
-				data->BlockForm(m_refr->data.objectReference);
-				continue;
-			}
-
-			bool manualLootNotify(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "ManualLootTargetNotify") != 0);
-			if (objType == ObjectType::manualLoot && manualLootNotify)
-			{
-				// notify about these, just once
-				std::string notificationText;
-				static RE::BSFixedString manualLootText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_MANUAL_LOOT_MSG")));
-				if (!manualLootText.empty())
-				{
-					notificationText = manualLootText;
-					Replace(notificationText, "{ITEMNAME}", refrEx.m_ref->GetName());
-					if (!notificationText.empty())
-					{
-						RE::DebugNotification(notificationText.c_str());
-					}
-				}
-#if _DEBUG
-				_DMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_refr->data.objectReference->formID);
-#endif
-				data->BlockForm(m_refr->data.objectReference);
-				continue;
-			}
-
-			if (BasketFile::GetSingleton()->IsinList(BasketFile::EXCLUDELIST, m_refr->data.objectReference))
-			{
-#if _DEBUG
-				_DMESSAGE("block m_refr->data.objectReference >= 1 for 0x%08x", m_refr->data.objectReference->formID);
-#endif
-				data->BlockForm(m_refr->data.objectReference);
-				continue;
-			}
-
-			bool needsGlow(false);
-			bool skipLooting(false);
-
-			bool needsFullQuestFlags(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0);
-			if (refrEx.IsQuestItem(needsFullQuestFlags))
-			{
-				SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
-				if (questObjectGlow == 1)
-				{
-					needsGlow = true;
-				}
-
-				SInt32 questObjectLoot = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot"));
-				if (questObjectLoot == 0)
-					skipLooting = true;
-			}
-
-			if (objType == ObjectType::ammo)
-			{
-				skipLooting = skipLooting || data->CheckAmmoLootable(m_refr);
-			}
-
-			if (needsGlow)
-			{
-				TriggerObjectGlow(m_refr, ObjectGlowDurationSpecial);
-			}
-			if (!skipLooting)
-			{
-				LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
-				if (lootingType == LootingType::LeaveBehind)
-				{
-#if _DEBUG
-					_MESSAGE("Block REFR : LeaveBehind for 0x%08x", m_refr->data.objectReference->formID);
-#endif
-					data->BlockReference(m_refr);
-					skipLooting = true;
-				}
-				else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_refr->data.objectReference).ValueWeightTooLowToLoot(m_ini))
-				{
-#if _DEBUG
-					_DMESSAGE("block - v/w excludes harvest for 0x%08x", m_refr->data.objectReference->formID);
-#endif
-					data->BlockForm(m_refr->data.objectReference);
-					skipLooting = true;
-				}
-			}
-			if (skipLooting)
-				continue;
-
-			// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
-			if (objType == ObjectType::oreVein)
-			{
-#if _DEBUG
-				_DMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_refr->formID);
-#endif
-				data->BlockReference(m_refr);
-			}
-
-			bool isSilent = !LootingRequiresNotification(
-				LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str())));
-#if _DEBUG
-			_MESSAGE("Enqueue AutoHarvest event");
-#endif
-			// don't let the backlog of messages get too large, it's about 1 per second
-			bool ignoreBlocking(m_ini->GetSetting(INIFile::common, INIFile::config, "LootBlockedActivators") != 0);
-			TriggerAutoHarvest(objType, refrEx.GetItemCount(), isSilent || PendingAutoHarvest() > AutoHarvestSpamLimit, ignoreBlocking, manualLootNotify);
+			refrEx.SetLootable(lootable);
 		}
-		else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
+		else if (objType == ObjectType::critter)
+		{
+			// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
+			// only trigger if not already pending
+#if _DEBUG
+			_DMESSAGE("resolve critter %s/0x%08x to ingredient", m_candidate->data.objectReference->GetName(), m_candidate->data.objectReference->formID);
+#endif
+			if (DataCase::GetInstance()->SetLootableForProducer(m_candidate->data.objectReference, nullptr))
+			{
+				TriggerGetCritterIngredient();
+			}
+			return;
+		}
+
+#if _DEBUG
+		_MESSAGE("typeName  %s", typeName.c_str());
+		DumpReference(refrEx, typeName.c_str());
+#endif
+
+		if (objType == ObjectType::unknown)
 		{
 #if _DEBUG
-			_DMESSAGE("scanning container/body %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
-			DumpContainer(refrEx);
+			_DMESSAGE("block objType == ObjectType::unknown for 0x%08x", m_candidate->data.objectReference->formID);
 #endif
-			bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0;
-			bool hasQuestObject(false);
-			bool hasEnchantItem(false);
-			bool skipLooting(false);
-			LootableItems lootableItems;
-			if (!ContainerLister(refrEx.m_ref, requireQuestItemAsTarget).GetOrCheckContainerForms(
-				lootableItems, hasQuestObject, hasEnchantItem))
+			data->BlockForm(m_candidate->data.objectReference);
+			return;
+		}
+
+		bool manualLootNotify(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "ManualLootTargetNotify") != 0);
+		if (objType == ObjectType::manualLoot && manualLootNotify)
+		{
+			// notify about these, just once
+			std::string notificationText;
+			static RE::BSFixedString manualLootText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_MANUAL_LOOT_MSG")));
+			if (!manualLootText.empty())
 			{
+				notificationText = manualLootText;
+				Replace(notificationText, "{ITEMNAME}", refrEx.m_ref->GetName());
+				if (!notificationText.empty())
+				{
+					RE::DebugNotification(notificationText.c_str());
+				}
+			}
+#if _DEBUG
+			_DMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->data.objectReference->formID);
+#endif
+			data->BlockForm(m_candidate->data.objectReference);
+			return;
+		}
+
+		if (BasketFile::GetSingleton()->IsinList(BasketFile::EXCLUDELIST, m_candidate->data.objectReference))
+		{
+#if _DEBUG
+			_DMESSAGE("block m_refr->data.objectReference >= 1 for 0x%08x", m_candidate->data.objectReference->formID);
+#endif
+			data->BlockForm(m_candidate->data.objectReference);
+			return;
+		}
+
+		bool needsGlow(false);
+		bool skipLooting(false);
+
+		bool needsFullQuestFlags(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0);
+		SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
+		if (refrEx.IsQuestItem(needsFullQuestFlags))
+		{
+#if _DEBUG
+			_DMESSAGE("Quest Item 0x%08x", m_candidate->data.objectReference->formID);
+#endif
+			if (questObjectGlow != 0)
+			{
+				needsGlow = true;
+			}
+
+			SInt32 questObjectLoot = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot"));
+			if (questObjectLoot == 0)
+				skipLooting = true;
+		}
+		// glow unread notes as they are often quest-related
+		else if (questObjectGlow != 0 && objType == ObjectType::books && IsBookGlowable())
+		{
+#if _DEBUG
+			_DMESSAGE("Glowable book 0x%08x", m_candidate->data.objectReference->formID);
+#endif
+			needsGlow = true;
+		}
+
+		if (needsGlow)
+		{
+			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
+		}
+
+		if (objType == ObjectType::ammo)
+		{
+			skipLooting = skipLooting || data->SkipAmmoLooting(m_candidate);
+		}
+
+		skipLooting = skipLooting || IsLootingForbidden();
+
+		if (!skipLooting)
+		{
+			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
+			if (lootingType == LootingType::LeaveBehind)
+			{
+#if _DEBUG
+				_MESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->data.objectReference->formID);
+#endif
+				data->BlockReference(m_candidate);
 				skipLooting = true;
 			}
-
-			bool needsGlow(false);
-			if (m_targetType == INIFile::SecondaryType::containers)
+			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_candidate->data.objectReference).ValueWeightTooLowToLoot(m_ini))
 			{
-				if (IsContainerLocked(m_refr))
-				{
-					SInt32 lockedChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestGlow"));
-					if (lockedChestGlow == 1)
-					{
-						needsGlow = true;
-					}
-
-					skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestLoot")) == 0);
-				}
-
-				if (IsBossContainer(m_refr))
-				{
-					SInt32 bossChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestGlow"));
-					if (bossChestGlow == 1)
-					{
-						needsGlow = true;
-					}
-
-					skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestLoot")) == 0);
-				}
+#if _DEBUG
+				_DMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->data.objectReference->formID);
+#endif
+				data->BlockForm(m_candidate->data.objectReference);
+				skipLooting = true;
 			}
+		}
+		if (skipLooting)
+			return;
 
-			if (hasQuestObject)
+		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
+		if (objType == ObjectType::oreVein)
+		{
+#if _DEBUG
+			_DMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_candidate->formID);
+#endif
+			data->BlockReference(m_candidate);
+		}
+
+		bool isSilent = !LootingRequiresNotification(
+			LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str())));
+#if _DEBUG
+		_MESSAGE("Enqueue AutoHarvest event");
+#endif
+		// don't let the backlog of messages get too large, it's about 1 per second
+		bool ignoreBlocking(m_ini->GetSetting(INIFile::common, INIFile::config, "LootBlockedActivators") != 0);
+		TriggerAutoHarvest(objType, refrEx.GetItemCount(), isSilent || PendingAutoHarvest() > AutoHarvestSpamLimit, ignoreBlocking, manualLootNotify);
+	}
+	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
+	{
+#if _DEBUG
+		_DMESSAGE("scanning container/body %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+		DumpContainer(refrEx);
+#endif
+		bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0;
+		bool hasQuestObject(false);
+		bool hasEnchantItem(false);
+		bool skipLooting(false);
+		LootableItems lootableItems;
+		if (!ContainerLister(refrEx.m_ref, requireQuestItemAsTarget).GetOrCheckContainerForms(
+			lootableItems, hasQuestObject, hasEnchantItem))
+		{
+			skipLooting = true;
+		}
+
+		bool needsGlow(false);
+		if (m_targetType == INIFile::SecondaryType::containers)
+		{
+			if (data->IsReferenceLockedContainer(m_candidate))
 			{
-				SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
-				if (questObjectGlow == 1)
+				SInt32 lockedChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestGlow"));
+				if (lockedChestGlow == 1)
 				{
 					needsGlow = true;
 				}
 
-				skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot")) == 0);
+				if (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestLoot")) == 0)
+				{
+					// Remember locked container, to avoid indeterminate disallowed auto-loot if player unlocks it
+					// via the Unlock UI or some other means.
+					// We don't want to block the reference, or we will only glow this once. This is a way of persisting the
+					// initial locked state, making Locked Container flow of control more like Boss Container.
+					if (data->RememberLockedContainer(refrEx.m_ref->GetFormID()))
+					{
+#if _DEBUG
+						_DMESSAGE("recorded locked container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
+					}
+					skipLooting = true;
+				}
 			}
 
-			if (hasEnchantItem)
+			if (IsBossContainer(m_candidate))
 			{
-				SInt32 enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "enchantItemGlow"));
-				if (enchantItemGlow == 1)
+				SInt32 bossChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestGlow"));
+				if (bossChestGlow == 1)
 				{
 					needsGlow = true;
 				}
+
+				skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestLoot")) == 0);
 			}
-			if (needsGlow)
+		}
+
+		if (hasQuestObject)
+		{
+			SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
+			if (questObjectGlow == 1)
 			{
-				TriggerObjectGlow(m_refr, ObjectGlowDurationSpecial);
+				needsGlow = true;
 			}
-			if (skipLooting)
+
+			skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot")) == 0);
+		}
+
+		if (hasEnchantItem)
+		{
+			SInt32 enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "enchantItemGlow"));
+			if (enchantItemGlow == 1)
+			{
+				needsGlow = true;
+			}
+		}
+		if (needsGlow)
+		{
+			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
+		}
+		if (skipLooting || IsLootingForbidden())
+			return;
+
+		// when we get to the point where looting is confirmed, block the reference to
+		// avoid re-looting without a player cell or config change
+#if _DEBUG
+		_DMESSAGE("block looted container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
+		data->BlockReference(refrEx.m_ref);
+#if 0
+		// for dead bodies, the REFR is not iterable after a reload, so save those until cell exited
+		if (m_targetType == INIFile::SecondaryType::deadbodies)
+			DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref->GetFormID());
+#endif
+		// Build list of lootable targets with count and notification flag for each
+		std::vector<std::pair<InventoryItem, bool>> targets;
+		targets.reserve(lootableItems.size());
+		int count(0);
+		for (auto& targetItemInfo : lootableItems)
+		{
+			RE::TESBoundObject* target(targetItemInfo.BoundObject());
+			if (!target)
 				continue;
 
-			// when we get to the point where looting is confirmed, block the reference to
-			// avoid re-looting without a player cell or config change
-#if _DEBUG
-			_DMESSAGE("block looted container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
-#endif
-			data->BlockReference(refrEx.m_ref);
-			// for dead bodies, the REFR is not iterable after a reload, so save those until cell exited
-			if (m_targetType == INIFile::SecondaryType::deadbodies)
-				DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref->GetFormID());
+			TESFormHelper itemEx(target);
 
-			// Build list of lootable targets with count and notification flag for each
-			std::vector<std::pair<InventoryItem, bool>> targets;
-			targets.reserve(lootableItems.size());
-			int count(0);
-			for (auto& targetItemInfo : lootableItems)
+			if (BasketFile::GetSingleton()->IsinList(BasketFile::EXCLUDELIST, target))
 			{
-				RE::TESBoundObject* target(targetItemInfo.BoundObject());
-				if (!target)
-					continue;
-
-				TESFormHelper itemEx(target);
-
-				if (BasketFile::GetSingleton()->IsinList(BasketFile::EXCLUDELIST, target))
-				{
 #if _DEBUG
-					_DMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
+				_DMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
 #endif
-					data->BlockForm(target);
-					continue;
-				}
-
-				ObjectType objType = ClassifyType(itemEx.m_form);
-				std::string typeName = GetObjectTypeName(objType);
-
-				LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
-				if (lootingType == LootingType::LeaveBehind)
-				{
-#if _DEBUG
-					_DMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
-#endif
-					data->BlockForm(target);
-					continue;
-				}
-				if (LootingDependsOnValueWeight(lootingType, objType) && itemEx.ValueWeightTooLowToLoot(m_ini))
-				{
-#if _DEBUG
-					_DMESSAGE("block - v/w excludes for 0x%08x", target->formID);
-#endif
-					data->BlockForm(target);
-					continue;
-				}
-
-				targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
-#if _DEBUG
-				_DMESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetItemInfo.Count(),
-					refrEx.m_ref->GetName(), refrEx.m_ref->formID);
-#endif
-				++count;
+				data->BlockForm(target);
+				continue;
 			}
 
-			if (count > 0)
+			ObjectType objType = ClassifyType(itemEx.m_form);
+			std::string typeName = GetObjectTypeName(objType);
+
+			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
+			if (lootingType == LootingType::LeaveBehind)
 			{
-				// check highlighting for dead NPC or container
-				int playContainerAnimation(static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "PlayContainerAnimation")));
-				if (playContainerAnimation > 0)
+#if _DEBUG
+				_DMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
+#endif
+				data->BlockForm(target);
+				continue;
+			}
+			if (LootingDependsOnValueWeight(lootingType, objType) && itemEx.ValueWeightTooLowToLoot(m_ini))
+			{
+#if _DEBUG
+				_DMESSAGE("block - v/w excludes for 0x%08x", target->formID);
+#endif
+				data->BlockForm(target);
+				continue;
+			}
+
+			targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
+#if _DEBUG
+			_DMESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetItemInfo.Count(),
+				refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
+			++count;
+		}
+
+		if (count > 0)
+		{
+			// check highlighting for dead NPC or container
+			int playContainerAnimation(static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "PlayContainerAnimation")));
+			if (playContainerAnimation > 0)
+			{
+				if (m_targetType == INIFile::SecondaryType::containers)
 				{
-					if (m_targetType == INIFile::SecondaryType::containers)
+					if (!refrEx.GetTimeController())
 					{
-						if (!refrEx.GetTimeController())
-						{
-							// no container animation feasible, highlight it instead
-							playContainerAnimation = 2;
-						}
-					}
-					else
-					{
-						// Dead NPCs cannot be animated, but highlighting requested
+						// no container animation feasible, highlight it instead
 						playContainerAnimation = 2;
 					}
 				}
-
-				TriggerContainerLootMany(targets, playContainerAnimation);
+				else
+				{
+					// Dead NPCs cannot be animated, but highlighting requested
+					playContainerAnimation = 2;
+				}
 			}
+
+			TriggerContainerLootMany(targets, playContainerAnimation);
 		}
 	}
 }
@@ -362,12 +497,15 @@ bool SearchTask::m_threadStarted = false;
 bool SearchTask::m_searchAllowed = false;
 bool SearchTask::m_sneaking = false;
 RE::TESObjectCELL* SearchTask::m_playerCell = nullptr;
+bool SearchTask::m_playerCellSelfOwned = false;
 RE::BGSLocation* SearchTask::m_playerLocation = nullptr;
 RE::BGSKeyword* SearchTask::m_playerHouseKeyword(nullptr);
 bool SearchTask::m_carryAdjustedForCombat = false;
 bool SearchTask::m_carryAdjustedForPlayerHome = false;
 bool SearchTask::m_carryAdjustedForDrawnWeapon = false;
 int SearchTask::m_currentCarryWeightChange = 0;
+int SearchTask::m_crimeCheck = 0;
+int SearchTask::m_belongingsCheck = 0;
 
 void SearchTask::SetPlayerHouseKeyword(RE::BGSKeyword* keyword)
 {
@@ -410,50 +548,9 @@ void SearchTask::Start()
 
 int InfiniteWeight = 100000;
 
-RE::TESForm* GetCellOwner(RE::TESObjectCELL* cell)
-{
-	for (RE::BSExtraData& extraData : cell->extraList)
-	{
-		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
-		{
-#if _DEBUG
-			_MESSAGE("TESObjectCELLEx::GetOwner Hit %08x", reinterpret_cast<RE::ExtraOwnership&>(extraData).owner->formID);
-#endif
-			return reinterpret_cast<RE::ExtraOwnership&>(extraData).owner;
-		}
-	}
-	return nullptr;
-}
-
-bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
-{
-	RE::TESForm* owner = GetCellOwner(cell);
-	if (cell && owner)
-	{
-		if (owner->formType == RE::FormType::NPC)
-		{
-			const RE::TESNPC* npc = owner->As<RE::TESNPC>();
-			RE::TESNPC* playerBase = RE::PlayerCharacter::GetSingleton()->GetActorBase();
-			return (npc && npc == playerBase);
-		}
-		else if (owner->formType == RE::FormType::Faction)
-		{
-			RE::TESFaction* faction = owner->As<RE::TESFaction>();
-			if (faction)
-			{
-				if (RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
-					return true;
-
-				return false;
-			}
-		}
-	}
-	return false;
-}
-
 void SearchTask::ResetRestrictions(const bool gameReload)
 {
-	DataCase::GetInstance()->ListsClear(gameReload);
+	DataCase::GetInstance()->ListsClear();
 #if _DEBUG
 	_MESSAGE("Unlock task-pending REFRs");
 #endif
@@ -471,7 +568,6 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 
 SInt32 SearchTask::StartSearch(SInt32 type1)
 {
-	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> candidates;
 	UInt32 result(0);
 	{
 		WindowsUtils::ScopedTimer elapsed("SearchTask::StartSearch");
@@ -522,6 +618,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			// Fire location change logic
 			m_playerLocation = nullptr;
 			m_playerCell = nullptr;
+			m_playerCellSelfOwned = false;
 		}
 
 		if (playerLocation != m_playerLocation)
@@ -699,6 +796,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		{
 			unblockAll = true;
 			m_playerCell = playerCell;
+			m_playerCellSelfOwned = IsCellPlayerOwned(m_playerCell);
 #if _DEBUG
 			if (m_playerCell)
 			{
@@ -723,8 +821,9 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			return 0;
 		}
 
-		int crimeCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, (sneaking) ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
-		int belongingsCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
+		// Retrieve these settings only once
+		m_crimeCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, (sneaking) ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
+		m_belongingsCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
 
 		std::vector<RE::TESObjectREFR*> refs;
 		PlayerCellHelper::GetInstance().GetReferences(m_playerCell, &refs, m_ini->GetRadius(first));
@@ -732,33 +831,36 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		if (result == 0)
 			return 0;
 
-		candidates.reserve(refs.size());
 		for (RE::TESObjectREFR* refr : refs)
 		{
 			if (!refr)
 				continue;
 			INIFile::SecondaryType lootTargetType = INIFile::SecondaryType::itemObjects;
 			RE::TESObjectREFR* ashPileRefr(nullptr);
-			if (refr->data.objectReference->As<RE::TESContainer>())
-			{
-				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "EnableLootContainer") == 0.0)
-					continue;
-				lootTargetType = INIFile::SecondaryType::containers;
-			}
-			else if (refr->data.objectReference->As<RE::Actor>())
+			if (refr->data.objectReference->As<RE::Actor>() || refr->data.objectReference->As<RE::TESNPC>())
 			{
 				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0 || !refr->IsDead(true))
 					continue;
 
-				ActorHelper actorEx(refr->data.objectReference->As<RE::Actor>());
-				bool allied(actorEx.IsPlayerAlly());
-				if (allied || actorEx.IsEssential() || !actorEx.IsSummonable())
+				RE::Actor* actor(refr->data.objectReference->As<RE::Actor>());
+				if (actor)
 				{
-					data->BlockReference(refr);
-					continue;
+					ActorHelper actorEx(actor);
+					bool allied(actorEx.IsPlayerAlly());
+					if (allied || actorEx.IsEssential() || !actorEx.IsSummonable())
+					{
+						data->BlockReference(refr);
+						continue;
+					}
 				}
 
 				lootTargetType = INIFile::SecondaryType::deadbodies;
+			}
+			else if (refr->data.objectReference->As<RE::TESContainer>())
+			{
+				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "EnableLootContainer") == 0.0)
+					continue;
+				lootTargetType = INIFile::SecondaryType::containers;
 			}
 			else if (refr->data.objectReference->As<RE::TESObjectACTI>() && (ashPileRefr = GetAshPile(refr)))
 			{
@@ -771,72 +873,13 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 				continue;
 			}
 
-			bool ownership = false;
-			if (crimeCheck == 1)
-			{
-				ownership = refr->IsOffLimits();
-
-#if _DEBUG
-				const char* str = ownership ? "true" : "false";
-				_MESSAGE("***1 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-
-			}
-			else if (crimeCheck == 2)
-			{
-				ownership = refr->IsOffLimits();
-
-#if _DEBUG
-				const char* str = ownership ? "true" : "false";
-				_MESSAGE("***2 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-
-
-				if (!ownership)
-				{
-					TESObjectREFRHelper refrEx(refr);
-					ownership = refrEx.IsPlayerOwned();
-#if _DEBUG
-					const char* str = ownership ? "true" : "false";
-					_MESSAGE("***2-1 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-				}
-
-				if (!ownership)
-				{
-					ownership = IsCellPlayerOwned(m_playerCell);
-#if _DEBUG
-					const char* str = ownership ? "true" : "false";
-					_MESSAGE("***2-2 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-				}
-			}
-
-			if (!ownership && belongingsCheck == 0)
-			{
-				TESObjectREFRHelper refrEx(refr);
-				ownership = refrEx.IsPlayerOwned();
-
-#if _DEBUG
-				const char* str = ownership ? "true" : "false";
-				_MESSAGE("***3 crimeCheck: %d ownership: %s", crimeCheck, str);
-#endif
-			}
-
-			if (ownership)
-			{
-				data->BlockReference(refr);
-				continue;
-			}
-
 			if (ashPileRefr)
 			{
 				refr = ashPileRefr;
 			}
-			candidates.push_back(std::make_pair(refr, lootTargetType));
+			SearchTask(refr, lootTargetType).Run();
 		}
 	}
-	SearchTask(candidates).Run();
 	return result;
 }
 
@@ -856,6 +899,7 @@ void SearchTask::PrepareForReload()
 	m_carryAdjustedForDrawnWeapon = false;
 	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
 	m_playerCell = nullptr;
+	m_playerCellSelfOwned = false;
 	m_playerLocation = nullptr;
 
 	// Do not scan again until we are in sync with the scripts
@@ -888,7 +932,7 @@ bool SearchTask::IsAllowed()
 void SearchTask::TriggerGetCritterIngredient()
 {
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, critterIngredientEvent, RE::MakeFunctionArguments(std::move(m_refr)));
+		m_aliasHandle, critterIngredientEvent, RE::MakeFunctionArguments(std::move(m_candidate)));
 }
 
 void SearchTask::TriggerCarryWeightDelta(const int delta)
@@ -902,11 +946,11 @@ std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_autoHarvestLock;
 void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking, const bool manualLootNotify)
 {
 	// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
-	if (!LockAutoHarvest(m_refr))
+	if (!LockAutoHarvest(m_candidate))
 		return;
 	SInt32 intType(static_cast<SInt32>(objType));
 	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, autoHarvestEvent, RE::MakeFunctionArguments(std::move(m_refr), std::move(intType),
+		m_aliasHandle, autoHarvestEvent, RE::MakeFunctionArguments(std::move(m_candidate), std::move(intType),
 			std::move(itemCount), std::move(isSilent), std::move(ignoreBlocking), std::move(manualLootNotify)));
 }
 
@@ -1020,24 +1064,24 @@ bool SearchTask::IsLocationExcluded()
 
 void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType)
 {
-	if (!m_refr)
+	if (!m_candidate)
 		return;
 
 	// visual notification, if requested
 	if (animationType == 1)
 	{
-		m_refr->PlayAnimation("Close", "Open");
+		m_candidate->PlayAnimation("Close", "Open");
 	}
 	else if (animationType == 2)
 	{
 		// glow looted object for a few seconds after looting
-		TriggerObjectGlow(m_refr, ObjectGlowDurationNotify);
+		TriggerObjectGlow(m_candidate, ObjectGlowDurationNotify);
 	}
 
 	for (auto& target : targets)
 	{
 		InventoryItem& itemInfo(target.first);
-		int count(itemInfo.TakeAll(m_refr, RE::PlayerCharacter::GetSingleton()));
+		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton()));
 		bool notify(target.second);
 		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
 		if (notify)

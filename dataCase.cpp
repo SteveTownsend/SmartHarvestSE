@@ -177,8 +177,8 @@ ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activati
 	else
 	{
 		m_unhandledActivationVerbs.insert(verb);
+		return ObjectType::unknown;
 	}
-	return ObjectType::unknown;
 }
 void DataCase::CategorizeByActivationVerb()
 {
@@ -450,34 +450,29 @@ void DataCase::ClearBlockedReferences()
 	blockRefr.clear();
 }
 
-bool DataCase::RememberDeadBody(RE::FormID refrID)
+bool DataCase::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 {
+	if (!refr)
+		return false;
+	if (refr->IsLocked())
+		return true;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (rememberedDeadBodies.insert(refrID)).second;
+	return m_lockedContainers.count(refr->GetFormID()) > 0;
 }
 
-void DataCase::ForgetDeadBodies()
+bool DataCase::RememberLockedContainer(RE::FormID refrID)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	return (m_lockedContainers.insert(refrID)).second;
+}
+
+void DataCase::ForgetLockedContainers()
 {
 #if _DEBUG
-	_DMESSAGE("Clear saved dead bodies from last cell");
+	_DMESSAGE("Clear locked containers from last cell");
 #endif
 	RecursiveLockGuard guard(m_blockListLock);
-	rememberedDeadBodies.clear();
-}
-
-std::vector<RE::FormID> DataCase::RememberedDeadBodies() const
-{
-	RecursiveLockGuard guard(m_blockListLock);
-	std::vector<RE::FormID> stillDead;
-	stillDead.reserve(rememberedDeadBodies.size());
-	for (auto deadBody : rememberedDeadBodies)
-	{
-		RE::TESForm* form(RE::TESForm::LookupByID(deadBody));
-		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
-		if (refr && refr->IsDead())
-			stillDead.push_back(deadBody);
-	}
-	return stillDead;
+	m_lockedContainers.clear();
 }
 
 bool DataCase::BlockForm(const RE::TESForm* form)
@@ -552,17 +547,13 @@ RE::TESForm* DataCase::ConvertIfLeveledItem(RE::TESForm* form) const
 	return form;
 }
 
-void DataCase::ListsClear(const bool gameReload)
+void DataCase::ListsClear()
 {
 	RecursiveLockGuard guard(m_blockListLock);
 #if _DEBUG
 	_DMESSAGE("Clear arrow history");
 #endif
 	arrowCheck.clear();
-
-	// forget about dead bodies we remembered for looting after game reload within current cell
-	if (gameReload)
-		ForgetDeadBodies();
 
 	// reset blocked forms to just the user's list
 #if _DEBUG
@@ -579,9 +570,10 @@ void DataCase::ListsClear(const bool gameReload)
 	// reset blocked references, reseed with off-limits containers
 	ClearBlockedReferences();
 	BlockOffLimitsContainers();
+	ForgetLockedContainers();
 }
 
-bool DataCase::CheckAmmoLootable(RE::TESObjectREFR* refr)
+bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 {
 	bool skip(false);
 	RE::NiPoint3 pos = refr->GetPosition();
@@ -713,7 +705,7 @@ void DataCase::SetObjectTypeByKeywords()
 	if (!dhnd)
 		return;
 
-	static std::unordered_map<std::string, ObjectType> typeByKeyword =
+	std::unordered_map<std::string, ObjectType> typeByKeyword =
 	{
 		// Skyrim core
 		{"ArmorLight", ObjectType::armor},
@@ -744,13 +736,18 @@ void DataCase::SetObjectTypeByKeywords()
 		{"VendorItemNote", ObjectType::books},
 		{"VendorItemFateCards", ObjectType::clutter}
 	};
-	static std::vector<std::pair<std::string, ObjectType>> typeByVendorItemSubstring =
+	std::vector<std::pair<std::string, ObjectType>> typeByVendorItemSubstring =
 	{
 		// All appear in Skyrim core, extended in mods e.g. CACO, SkyREM EVE
 		// Order is important, we scan linearly during mod/data load
 		{"Drink", ObjectType::drink},
 		{"VendorItemFood", ObjectType::food},
 		{"VendorItemDrink", ObjectType::drink}
+	};
+	std::unordered_set<std::string> glowableBooks = {
+		// Legacy of the Dragonborn
+		"VendorItemJournal",
+		"VendorItemNote"
 	};
 
 	for (RE::TESForm* form : dhnd->GetFormArray(RE::BGSKeyword::FORMTYPE))
@@ -770,6 +767,10 @@ void DataCase::SetObjectTypeByKeywords()
 		{
 			SearchTask::SetPlayerHouseKeyword(keywordDef);
 			continue;
+		}
+		if (glowableBooks.find(keywordName) != glowableBooks.cend())
+		{
+			m_glowableBookKeywords.insert(keywordDef->GetFormID());
 		}
 
 		ObjectType objectType(ObjectType::unknown);

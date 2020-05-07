@@ -26,9 +26,9 @@ public:
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
 	void ClearBlockedReferences();
 
-	bool RememberDeadBody(RE::FormID refrID);
-	void ForgetDeadBodies();
-	std::vector<RE::FormID> RememberedDeadBodies() const;
+	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
+	bool RememberLockedContainer(RE::FormID refrID);
+	void ForgetLockedContainers();
 
 	bool BlockForm(const RE::TESForm* form);
 	bool UnblockForm(const RE::TESForm* form);
@@ -55,11 +55,16 @@ public:
 	RE::TESForm* ConvertIfLeveledItem(RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
-	void ListsClear(const bool gameReload);
-	bool CheckAmmoLootable(RE::TESObjectREFR* refr);
+	void ListsClear();
+	bool SkipAmmoLooting(RE::TESObjectREFR* refr);
 
 	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
 	RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
+
+	inline bool IsBookGlowableKeyword(RE::BGSKeyword* keyword) const
+	{
+		return keyword && m_glowableBookKeywords.find(keyword->GetFormID()) != m_glowableBookKeywords.cend();
+	}
 
 private:
 	std::unordered_map<std::string, std::string> translations;
@@ -70,11 +75,12 @@ private:
 	std::unordered_set<RE::FormID> userBlockedForm;
 	std::unordered_set<const RE::TESForm*> blockForm;
 	std::unordered_set<RE::FormID> blockRefr;
-	std::unordered_set<RE::FormID> rememberedDeadBodies;
+	std::unordered_set<RE::FormID> m_lockedContainers;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
 	std::unordered_map<RE::TESProduceForm*, RE::TESForm*> m_produceFormContents;
+	std::unordered_set<RE::FormID> m_glowableBookKeywords;
 
 	mutable RecursiveLock m_producerIngredientLock;
 	mutable RecursiveLock m_blockListLock;

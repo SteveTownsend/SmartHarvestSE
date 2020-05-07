@@ -133,18 +133,6 @@ void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
-		/* SKSE logic for TESObjectCELL has 'ref' as TESObjectREFR instance, unk08 is a sentinel value:
-
-		  TESObjectREFR* refr = nullptr;
-		  for (UInt32 index = 0; index < refData.maxSize; index++) {
-			refr = refData.refArray[index].ref;
-			if (refr && refData.refArray[index].unk08)
-			...
-		  }
-		  The array member is GameForms.h->TESObjectCELL::ReferenceData::Reference.
-		  In CommonLibSSE the 'refArray' member is BSTHashMap.h->BSTSet<>::
-		  BSTScatterTableEntry.
-		*/
 		RE::TESObjectREFR* refr(refptr.get());
 		if (refr)
 		{
@@ -152,7 +140,6 @@ void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 				continue;
 
 			m_targets->emplace_back(refr);
-			m_normalRefrs.insert(refr->GetFormID());
 		}
 	}
 }
@@ -230,7 +217,6 @@ void PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, std::vector<RE::TE
 
 	m_targets = targets;
 	m_radius = radius;
-	m_normalRefrs.clear();
 
 	// find the adjacent cells, we only need to scan those and current player cell
 	GetAdjacentCells(cell);
@@ -256,22 +242,6 @@ void PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, std::vector<RE::TE
 			_MESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
 #endif
 			GetCellReferences(adjacentCell);
-		}
-	}
-
-	// REFR iteration in cell misses "deadbodies" REFR looted prior to a reload.
-	// List resets when player changes cell, so don't check in adjacent cells.
-	std::vector<RE::FormID> deadBodies(DataCase::GetInstance()->RememberedDeadBodies());
-	for (RE::FormID refrID : deadBodies)
-	{
-		if (m_normalRefrs.count(refrID) == 0)
-		{
-			RE::TESForm* form(RE::TESForm::LookupByID(refrID));
-			RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
-			if (!CanLoot(refr))
-				continue;
-
-			m_targets->emplace_back(refr);
 		}
 	}
 }
