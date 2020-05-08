@@ -21,6 +21,7 @@ namespace RE {
 #include "CommonLibSSE/include/SKSE/API.h"
 #include "CommonLibSSE/include/SKSE/Interfaces.h"
 #include "CommonLibSSE/include/SKSE/Logger.h"
+#include "CommonLibSSE/include/SKSE/RegistrationSet.h"
 
 #include "CommonLibSSE/include/RE/Skyrim.h"
 

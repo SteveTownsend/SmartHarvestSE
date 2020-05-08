@@ -7,9 +7,6 @@
 constexpr RE::FormID ClothKeyword = 0x06BBE8;
 constexpr RE::FormID CurrentFollowerFaction = 0x0005C84E;
 
-// Pseudo Form ID used in TESQuestHelper - such IDs from SKSE/GameForms.h->FormType are not in CommonLibSSE
-constexpr RE::VMTypeID RefAliasID = static_cast<RE::VMTypeID>(RE::FormType::Max) + 2;
-
 namespace FileUtils
 {
 	std::string GetGamePath(void);

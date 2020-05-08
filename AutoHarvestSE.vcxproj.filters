@@ -33,9 +33,6 @@
     <ClCompile Include="TESObjectWEAPHelper.cpp">
       <Filter>_FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="TESQuestHelper.cpp">
-      <Filter>_FormHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="SimpleIni.cpp" />
     <ClCompile Include="IHasValueWeight.cpp">
       <Filter>_FormHelpers</Filter>
@@ -83,9 +80,6 @@
       <Filter>_FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="TESObjectWEAPHelper.h">
-      <Filter>_FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="TESQuestHelper.h">
       <Filter>_FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="SimpleIni.h" />

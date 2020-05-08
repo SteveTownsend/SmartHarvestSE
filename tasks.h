@@ -71,6 +71,7 @@ public:
 
 	static void Start();
 	static void PrepareForReload();
+	static void ResetCarryWeight();
 	static void Allow();
 	static void Disallow();
 	static bool IsAllowed();
@@ -82,6 +83,7 @@ public:
 
 	void TriggerGetCritterIngredient();
 	static void TriggerCarryWeightDelta(const int delta);
+	static void TriggerResetCarryWeight();
 	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking, const bool manualLootNotify);
 	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
 
@@ -93,7 +95,7 @@ public:
 	bool IsBookGlowable() const;
 
 	static INIFile* m_ini;
-	static UInt64 m_aliasHandle;
+	static RE::BGSRefAlias* m_eventTarget;
 	static bool firstTime;
 
 	RE::TESObjectREFR* m_candidate;
@@ -117,13 +119,6 @@ public:
 	static bool m_carryAdjustedForPlayerHome;
 	static bool m_carryAdjustedForDrawnWeapon;
 	static int m_currentCarryWeightChange;
-
-	static const RE::BSFixedString critterIngredientEvent;
-	static const RE::BSFixedString carryWeightDeltaEvent;
-	static const RE::BSFixedString autoHarvestEvent;
-	static const RE::BSFixedString objectGlowEvent;
-	static const RE::BSFixedString objectGlowStopEvent;
-	static const RE::BSFixedString playerHouseCheckEvent;
 
 	static std::unordered_set<const RE::TESForm*> m_excludeLocations;
 	static bool m_pluginSynced;

@@ -38,7 +38,6 @@ bool lootBlockedActivators
 bool unencumberedInCombat
 bool unencumberedInPlayerHome
 bool unencumberedIfWeaponDrawn
-int infiniteWeight
 
 bool pushLocationToExcludelist
 bool pushCellToExcludelist
@@ -134,7 +133,7 @@ float[] function GetSettingToObjectArray(int section1, int section2)
 	float[] result = New float[34]
 	while (index < 34)
 		result[index] = GetSettingToObjectArrayEntry(section1, section2, index)
-		DebugTrace("Config setting " + section1 + "/" + section2 + "/" + index + " = " + result[index])
+		;DebugTrace("Config setting " + section1 + "/" + section2 + "/" + index + " = " + result[index])
 		index += 1
 	endWhile
 	return result
@@ -148,7 +147,7 @@ function SeedDefaults()
 	unencumberedInCombat = GetSetting(type_Common, type_Config, "unencumberedInCombat") as bool
 	unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "unencumberedInPlayerHome") as bool
 	unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "unencumberedIfWeaponDrawn") as bool
-	DebugTrace("SeedDefaults - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
+	;DebugTrace("SeedDefaults - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
 	pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
 	userlistHotkeyCode = GetSetting(type_Common, type_Config, "userlistHotkeyCode") as int
 	excludelistHotkeyCode = GetSetting(type_Common, type_Config, "excludelistHotkeyCode") as int
@@ -175,14 +174,14 @@ function SeedDefaults()
 	disableDuringCombat = GetSetting(type_AutoHarvest, type_Config, "disableDuringCombat") as bool
 	disableWhileWeaponIsDrawn = GetSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn") as bool
 	playContainerAnimation = GetSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation") as int
-	DebugTrace("SeedDefaults - playContainerAnimation " + playContainerAnimation)
+	;DebugTrace("SeedDefaults - playContainerAnimation " + playContainerAnimation)
 
 	valueWeightDefault = GetSetting(type_AutoHarvest, type_Config, "valueWeightDefault") as int
-	DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
+	;DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
 	updateMaxMiningItems(GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int)
 
 	objectSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_ItemObject)
-	DebugTrace("shared settings " + objectSettingArray[0] + "," + objectSettingArray[1] + "," + objectSettingArray[2] + "," + objectSettingArray[3])
+	;DebugTrace("shared settings " + objectSettingArray[0] + "," + objectSettingArray[1] + "," + objectSettingArray[2] + "," + objectSettingArray[3])
 	containerSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_Container)
 	deadbodySettingArray = GetSettingToObjectArray(type_AutoHarvest, type_Deadbody)
 	valueWeightSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_ValueWeight)
@@ -261,7 +260,7 @@ Function ApplySetting()
 
 	; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
 	; Do this before plugin becomes aware of player home list
-    RemoveCarryWeightDelta()
+    eventScript.RemoveCarryWeightDelta()
 	eventScript.ApplySetting()
 
     ; do this last so plugin state is in sync	
@@ -274,27 +273,6 @@ Function ApplySetting()
 	EndIf
 
 ;	DebugTrace("  MCM ApplySetting finished")
-endFunction
-
-Function RemoveCarryWeightDelta()
-	Actor player = Game.GetPlayer()
-	int carryWeight = player.GetActorValue("CarryWeight") as int
-	;DebugTrace("Player carry weight initially " + carryWeight)
-
-	int weightDelta = 0
-	while (carryWeight > infiniteWeight)
-		weightDelta -= infiniteWeight
-		carryWeight -= infiniteWeight
-	endwhile
-	while (carryWeight < 0)
-		weightDelta += infiniteWeight
-		carryWeight += infiniteWeight
-	endwhile
-
-	if (weightDelta != 0)
-		player.ModActorValue("CarryWeight", weightDelta as float)
-	endif
-	;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
 
 Event OnConfigInit()
@@ -426,7 +404,6 @@ int function GetVersion()
 	eventScript.SyncNativeObjectTypes()
 
     ; New or clarified defaults and constants
-	infiniteWeight = 100000
 	manualLootTargetNotify = true
 	defaultRadius = 15
 	defaultInterval = 0.3
@@ -1307,12 +1284,12 @@ state iniSaveLoad
 			return
 		endif
 		bool continue = ShowMessage(list_warning, true, "$AHSE_OK", "$AHSE_CANCEL")
-	    DebugTrace("response to msg= " + continue)
+	    ;DebugTrace("response to msg= " + continue)
 		if (continue)
 		    SetMenuOptionValueST(s_iniSaveLoadArray[iniSaveLoad])
 			iniSaveLoad = index
 			if (iniSaveLoad == 1) ; load/restore
-			    DebugTrace("loading from file")
+			    ;DebugTrace("loading from file")
 				LoadIniFile()
 				SeedDefaults()
 			elseif (iniSaveLoad == 2) ; save/store

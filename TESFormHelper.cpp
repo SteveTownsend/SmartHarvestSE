@@ -8,7 +8,6 @@
 #include "TESFormHelper.h"
 #include "TESObjectARMOHelper.h"
 #include "TESObjectWEAPHelper.h"
-#include "TESQuestHelper.h"
 
 #include "CommonLibSSE/include/RE/BGSProjectile.h"
 

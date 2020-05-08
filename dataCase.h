@@ -87,9 +87,7 @@ private:
 	std::unordered_map<RE::TESForm*, RE::TESForm*> m_producerLootable;
 
 	bool GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName);
-#if 0
-	void CategorizeNPCDeathItems(void);
-#endif
+
 	void BlockOffLimitsContainers(void);
 	void GetAmmoData(void);
 
@@ -131,20 +129,6 @@ private:
 		RE::TESForm* m_contents;
 	};
 
-#if 0
-	class NPCDeathItemCategorizer : public LeveledItemCategorizer
-	{
-	public:
-		NPCDeathItemCategorizer(const RE::TESNPC* npc, const RE::TESLevItem* rootItem, const std::string& targetName);
-
-	protected:
-		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
-
-	private:
-		const RE::TESNPC* m_npc;
-	};
-
-#endif
 	template <typename T>
 	void CategorizeByIngredient()
 	{
@@ -396,8 +380,9 @@ private:
 			}
 
 			// fail-safe is to check if the form has value and store as clutter if so
+			// Also, check model path for - you guessed it - clutter. Some base game MISC objects lack keywords.
 			RE::TESValueForm* valueForm(form->As<RE::TESValueForm>());
-			if (valueForm && valueForm->value > 0)
+			if ((valueForm && valueForm->value > 0) || CheckObjectModelPath(form, "clutter"))
 			{
 				if (SetObjectTypeForForm(form->formID, ObjectType::clutter))
 				{
@@ -411,13 +396,11 @@ private:
 					_MESSAGE("%s/0x%08x (defaulting as clutter) already stored, check data", formName, form->formID);
 #endif
 				}
+				continue;
 			}
-			else
-			{
 #if _DEBUG
-				_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
+			_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
 #endif
-			}
 		}
 	}
 
@@ -436,10 +419,6 @@ private:
 	static constexpr RE::FormID Gold = 0x0F;
 
 	void CategorizeStatics();
-#if 0
-	std::unordered_set<RE::TESForm*> m_uniqueObjects;
-	void IdentifyUniqueObjects();
-#endif
 	DataCase(void);
 };
 

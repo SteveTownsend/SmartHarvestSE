@@ -148,7 +148,6 @@
     <ClCompile Include="objects.cpp" />
     <ClCompile Include="papyrus.cpp" />
     <ClCompile Include="TESObjectARMOHelper.cpp" />
-    <ClCompile Include="TESQuestHelper.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="TESObjectWEAPHelper.cpp" />
   </ItemGroup>
@@ -176,7 +175,6 @@
     <ClInclude Include="objects.h" />
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="TESObjectARMOHelper.h" />
-    <ClInclude Include="TESQuestHelper.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="TESObjectWEAPHelper.h" />
     <ClInclude Include="version.h" />

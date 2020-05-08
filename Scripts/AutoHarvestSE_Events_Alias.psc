@@ -35,6 +35,7 @@ Formlist Property excludelist_form auto
 int location_type_user = 1
 int location_type_excluded = 2
 int maxMiningItems
+int infiniteWeight = 100000
 
 Function SyncUserList()
 	SyncUserListWithPlugin()
@@ -379,6 +380,32 @@ Event OnCarryWeightDelta(int weightDelta)
 	Actor player = Game.GetPlayer()
 	player.ModActorValue("CarryWeight", weightDelta as float)
 	;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
+EndEvent
+
+Function RemoveCarryWeightDelta()
+	Actor player = Game.GetPlayer()
+	int carryWeight = player.GetActorValue("CarryWeight") as int
+	;DebugTrace("Player carry weight initially " + carryWeight)
+
+	int weightDelta = 0
+	while (carryWeight > infiniteWeight)
+		weightDelta -= infiniteWeight
+		carryWeight -= infiniteWeight
+	endwhile
+	while (carryWeight < 0)
+		weightDelta += infiniteWeight
+		carryWeight += infiniteWeight
+	endwhile
+
+	if (weightDelta != 0)
+		player.ModActorValue("CarryWeight", weightDelta as float)
+	endif
+	;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
+endFunction
+
+Event OnResetCarryWeight()
+	;DebugTrace("Player carry weight reset request")
+	RemoveCarryWeightDelta()
 EndEvent
 
 Event OnMenuOpen(String MenuName)

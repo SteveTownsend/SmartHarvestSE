@@ -292,26 +292,6 @@ enum FactionFlags
 	kFlag_Vender = 1 << 14,		//  4000
 };
 
-#if 0
-void DataCase::CategorizeNPCDeathItems(void)
-{
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	if (dhnd)
-	{
-		for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::NPC))
-		{
-			if (!form)
-				continue;
-
-			RE::TESNPC* npc(form->As<RE::TESNPC>());
-			if (!npc || !npc->deathItem)
-				continue;
-
-		}
-	}
-}
-#endif
-
 void DataCase::BlockOffLimitsContainers()
 {
 #if _DEBUG
@@ -688,14 +668,6 @@ void DataCase::CategorizeLootables()
 		_MESSAGE("Activation verb %s unhandled at present", unhandledVerb.c_str());
 	}
 #endif
-#if 0
-	// NPC Death Items contain lootable objects
-	CategorizeNPCDeathItems();
-#if _DEBUG
-	_MESSAGE("*** LOAD *** Identify Unique Objects");
-#endif
-	IdentifyUniqueObjects();
-#endif
 }
 
 // Classify items by their keywords
@@ -1017,79 +989,3 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 	}
 }
 
-#if 0
-DataCase::NPCDeathItemCategorizer::NPCDeathItemCategorizer(
-	const RE::TESNPC* npc, const RE::TESLevItem* rootItem, const std::string& targetName) :
-	LeveledItemCategorizer(rootItem, targetName), m_npc(npc)
-{
-}
-
-void DataCase::NPCDeathItemCategorizer::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType)
-{
-}
-
-void DataCase::IdentifyUniqueObjects()
-{
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	if (!dhnd)
-		return;
-
-	std::unordered_map<RE::TESForm*, bool> possibleUniques;
-	// WorldSpace forms are listed at this point, but not CELL/REFR
-	for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::WorldSpace))
-	{
-		RE::TESWorldSpace* worldSpace(form->As<RE::TESWorldSpace>());
-		if (!worldSpace)
-			continue;
-		for (const auto idCell : worldSpace->cellMap)
-		{
-			RE::TESObjectCELL* cell(idCell.second);
-			if (!cell)
-				continue;
-			for (RE::TESObjectREFRPtr refPtr : cell->references)
-			{
-				RE::TESObjectREFR* refr(refPtr.get());
-				if (!refr)
-					continue;
-				if (refr->Is(RE::FormType::ActorCharacter) || refr->Is(RE::FormType::Container))
-					continue;
-				RE::TESForm* baseForm(refr->data.objectReference);
-				if (PluginUtils::GetBaseName(baseForm).empty())
-					continue;
-				if (possibleUniques.find(baseForm) == possibleUniques.cend())
-				{
-					//
-					first occurrence of baseForm - considered unique for now
-#if _DEBUG
-					_MESSAGE("%s/0x%08x REFR 0x%08x unique for now", baseForm->GetName(), baseForm->formID, refr->formID);
-#endif
-					possibleUniques.insert(std::make_pair(baseForm, true));
-				}
-				else
-				{
-					// no longer considered unique
-#if _DEBUG
-					_MESSAGE("%s/0x%08x REFR 0x%08x non-unique", baseForm->GetName(), baseForm->formID, refr->formID);
-#endif
-					possibleUniques[baseForm] = false;
-				}
-			}
-		}
-	}
-	std::for_each(possibleUniques.cbegin(), possibleUniques.cend(), [&](const auto possibleUnique) {
-		if (possibleUnique.second)
-		{
-#if _DEBUG
-			_MESSAGE("%s/0x%08x is unique REFR base", possibleUnique.first->GetName(), possibleUnique.first->formID);
-#endif
-			m_uniqueObjects.insert(possibleUnique.first);
-		}
-		else
-		{
-#if _DEBUG
-			_MESSAGE("%s/0x%08x is non-unique", possibleUnique.first->GetName(), possibleUnique.first->formID);
-#endif
-		}
-	});
-}
-#endif

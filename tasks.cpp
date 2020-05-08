@@ -10,14 +10,13 @@
 #include "papyrus.h"
 #include "PlayerCellHelper.h"
 
-#include "TESQuestHelper.h"
 #include "RE/SkyrimScript/RemoveItemFunctor.h"
 
 #include <chrono>
 #include <thread>
 
 INIFile* SearchTask::m_ini = nullptr;
-UInt64 SearchTask::m_aliasHandle = 0;
+RE::BGSRefAlias* SearchTask::m_eventTarget = nullptr;
 
 RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
@@ -27,14 +26,97 @@ const int ObjectGlowDurationSpecial = 5;
 // looted container notification glow - relatively short
 const int ObjectGlowDurationNotify = 2;
 
+SKSE::RegistrationSet<RE::TESObjectREFR*> onGetCritterIngredient("OnGetCritterIngredient");
+SKSE::RegistrationSet<int> onCarryWeightDelta("OnCarryWeightDelta");
+SKSE::RegistrationSet<> onResetCarryWeight("OnResetCarryWeight");
+SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool, bool> onAutoHarvest("OnAutoHarvest");
+SKSE::RegistrationSet<RE::TESObjectREFR*, int> onObjectGlow("OnObjectGlow");
+
+RE::BGSRefAlias* GetScriptTarget(const char* espName, UInt32 questID)
+{
+	static RE::TESQuest* quest = nullptr;
+	static RE::BGSRefAlias* alias = nullptr;
+#if _DEBUG
+	static bool listed(false);
+#endif
+	if (!quest)
+	{
+		UInt32 formID = 0;
+		std::optional<UInt8> idx = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(espName);
+		if (idx.has_value())
+		{
+			formID = (idx.value() << 24) | questID;
+#if _DEBUG
+			_DMESSAGE("Got formID for questID %08.2x", questID);
+#endif
+		}
+#if _DEBUG
+		else if (!listed)
+		{
+			for (const auto& nextFile : RE::TESDataHandler::GetSingleton()->compiledFileCollection.files)
+			{
+				_DMESSAGE("Mod loaded %s", &nextFile->fileName);
+			}
+			listed = true;
+		}
+#endif
+		if (formID != 0)
+		{
+			RE::TESForm* questForm = RE::TESForm::LookupByID(formID);
+#if _DEBUG
+			_DMESSAGE("Got Base Form %s", questForm ? questForm->GetFormEditorID() : "nullptr");
+#endif
+			quest = questForm ? questForm->As<RE::TESQuest>() : nullptr;
+#if _DEBUG
+			_DMESSAGE("Got Quest Form %s", questForm->As<RE::TESQuest>() ? questForm->GetFormEditorID() : "nullptr");
+#endif
+		}
+	}
+	if (quest && quest->IsRunning())
+	{
+#if _DEBUG
+		_DMESSAGE("Quest %s is running", quest->GetFormEditorID());
+#endif
+		RE::BGSBaseAlias* baseAlias(quest->aliases[0]);
+		if (!baseAlias)
+		{
+#if _DEBUG
+			_DMESSAGE("Quest has no alias at index 0");
+#endif
+			return nullptr;
+		}
+
+		alias = static_cast<RE::BGSRefAlias*>(baseAlias);
+		if (!alias)
+		{
+#if _DEBUG
+			_DMESSAGE("Quest is not type BGSRefAlias");
+#endif
+			return nullptr;
+		}
+#if _DEBUG
+		_MESSAGE("Got BGSRefAlias for Mod's Quest");
+#endif
+	}
+	return alias;
+}
+
 bool SearchTask::GoodToGo()
 {
-	if (!m_aliasHandle)
+	if (!m_eventTarget)
 	{
-		RE::TESQuest* quest = GetTargetQuest(MODNAME, QUEST_ID);
-		m_aliasHandle = (quest) ? TESQuestHelper(quest).GetAliasHandle(0) : 0;
+		m_eventTarget = GetScriptTarget(MODNAME, QUEST_ID);
+		// register the events
+		if (m_eventTarget)
+		{
+			onGetCritterIngredient.Register(m_eventTarget);
+			onCarryWeightDelta.Register(m_eventTarget);
+			onResetCarryWeight.Register(m_eventTarget);
+			onObjectGlow.Register(m_eventTarget);
+			onAutoHarvest.Register(m_eventTarget);
+		}
 	}
-	return m_aliasHandle;
+	return m_eventTarget != nullptr;
 }
 
 SearchTask::SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType)
@@ -83,12 +165,6 @@ bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
 	}
 	return false;
 }
-
-const RE::BSFixedString SearchTask::critterIngredientEvent = "OnGetCritterIngredient";
-const RE::BSFixedString SearchTask::carryWeightDeltaEvent = "OnCarryWeightDelta";
-const RE::BSFixedString SearchTask::autoHarvestEvent = "OnAutoHarvest";
-const RE::BSFixedString SearchTask::objectGlowEvent = "OnObjectGlow";
-const RE::BSFixedString SearchTask::objectGlowStopEvent = "OnObjectGlowStop";
 
 const int AutoHarvestSpamLimit = 10;
 
@@ -411,11 +487,6 @@ void SearchTask::Run()
 		_DMESSAGE("block looted container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
 		data->BlockReference(refrEx.m_ref);
-#if 0
-		// for dead bodies, the REFR is not iterable after a reload, so save those until cell exited
-		if (m_targetType == INIFile::SecondaryType::deadbodies)
-			DataCase::GetInstance()->RememberDeadBody(refrEx.m_ref->GetFormID());
-#endif
 		// Build list of lootable targets with count and notification flag for each
 		std::vector<std::pair<InventoryItem, bool>> targets;
 		targets.reserve(lootableItems.size());
@@ -732,8 +803,8 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			return 0;
 		}
 
-		// By inspection, the stack has steady state size of 1. Opening application/inventory adds 1 each,
-		// opening console adds 2. So this appars to be a catch-all for those conditions.
+		// By inspection, UI menu stack has steady state size of 1. Opening application and/or inventory adds 1 each,
+		// opening console adds 2. So this appears to be a catch-all for those conditions.
 		if (!RE::UI::GetSingleton())
 		{
 #if _DEBUG
@@ -747,6 +818,8 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 #if _DEBUG
 			_DMESSAGE("console and/or menu(s) active, delta to menu-stack size = %d", count);
 #endif
+			// reset carry weight - will reinstate correct value if/when scan resumes
+			ResetCarryWeight();
 			return 0;
 		}
 
@@ -883,20 +956,28 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 	return result;
 }
 
+// reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
+void SearchTask::ResetCarryWeight()
+{
+	if (m_currentCarryWeightChange != 0)
+	{
+#if _DEBUG
+		_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
+			m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
+#endif
+		m_currentCarryWeightChange = 0;
+		m_carryAdjustedForCombat = false;
+		m_carryAdjustedForPlayerHome = false;
+		m_carryAdjustedForDrawnWeapon = false;
+		TriggerResetCarryWeight();
+	}
+}
+
 void SearchTask::PrepareForReload()
 {
 	// stop scanning
 	Disallow();
-
-#if _DEBUG
-	_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
-		m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
-#endif
-	// reset carry weight adjustments - scripts will handle the Player Actor Value, our scan will reinstate as needed
-	m_currentCarryWeightChange = 0;
-	m_carryAdjustedForCombat = false;
-	m_carryAdjustedForPlayerHome = false;
-	m_carryAdjustedForDrawnWeapon = false;
+	ResetCarryWeight();
 	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
 	m_playerCell = nullptr;
 	m_playerCellSelfOwned = false;
@@ -931,14 +1012,17 @@ bool SearchTask::IsAllowed()
 
 void SearchTask::TriggerGetCritterIngredient()
 {
-	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, critterIngredientEvent, RE::MakeFunctionArguments(std::move(m_candidate)));
+	onGetCritterIngredient.SendEvent(m_candidate);
 }
 
 void SearchTask::TriggerCarryWeightDelta(const int delta)
 {
-	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, carryWeightDeltaEvent, RE::MakeFunctionArguments(std::move(delta)));
+	onCarryWeightDelta.SendEvent(delta);
+}
+
+void SearchTask::TriggerResetCarryWeight()
+{
+	onResetCarryWeight.SendEvent();
 }
 
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_autoHarvestLock;
@@ -948,10 +1032,7 @@ void SearchTask::TriggerAutoHarvest(const ObjectType objType, int itemCount, con
 	// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 	if (!LockAutoHarvest(m_candidate))
 		return;
-	SInt32 intType(static_cast<SInt32>(objType));
-	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, autoHarvestEvent, RE::MakeFunctionArguments(std::move(m_candidate), std::move(intType),
-			std::move(itemCount), std::move(isSilent), std::move(ignoreBlocking), std::move(manualLootNotify)));
+	onAutoHarvest.SendEvent(m_candidate, static_cast<int>(objType), itemCount, isSilent, ignoreBlocking, manualLootNotify);
 }
 
 bool SearchTask::LockAutoHarvest(const RE::TESObjectREFR* refr)
@@ -1132,8 +1213,7 @@ void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration)
 #if _DEBUG
 	_DMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
 #endif
-	RE::BSScript::Internal::VirtualMachine::GetSingleton()->SendEvent(
-		m_aliasHandle, objectGlowEvent, RE::MakeFunctionArguments(std::move(refr), std::move(duration)));
+	onObjectGlow.SendEvent(refr, duration);
 }
 
 bool SearchTask::firstTime = true;
