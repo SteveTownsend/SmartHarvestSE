@@ -22,7 +22,7 @@ RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
 // special object glow - not too long, in case we loot or move away
-const int ObjectGlowDurationSpecial = 5;
+const int SearchTask::ObjectGlowDurationSpecial = 5;
 // looted container notification glow - relatively short
 const int ObjectGlowDurationNotify = 2;
 
@@ -168,7 +168,7 @@ bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
 
 const int AutoHarvestSpamLimit = 10;
 
-bool SearchTask::IsLootingForbidden() const
+bool SearchTask::IsLootingForbidden(bool& needsGlow) const
 {
 	bool isForbidden(false);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
@@ -183,12 +183,15 @@ bool SearchTask::IsLootingForbidden() const
 		if (m_playerCellSelfOwned || playerOwned)
 		{
 			// can configure to not loot my own belongings even though it's always legal
-			if (m_belongingsCheck == 0)
+			if (m_belongingsCheck != 1)
 			{
 #if _DEBUG
 				_DMESSAGE("Player home or player-owned, looting belongings disallowed");
 #endif
 				isForbidden = true;
+				// Glow if configured
+				if (m_belongingsCheck == 2)
+					needsGlow = true;
 			}
 		}
 		// if restricted to law-abiding citizenship, check if OK to loot
@@ -330,6 +333,9 @@ void SearchTask::Run()
 #endif
 			if (questObjectGlow != 0)
 			{
+#if _DEBUG
+				_DMESSAGE("glow quest object %s/0x%08x", m_candidate->data.objectReference->GetName(), m_candidate->data.objectReference->formID);
+#endif
 				needsGlow = true;
 			}
 
@@ -346,17 +352,17 @@ void SearchTask::Run()
 			needsGlow = true;
 		}
 
-		if (needsGlow)
-		{
-			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
-		}
-
 		if (objType == ObjectType::ammo)
 		{
 			skipLooting = skipLooting || data->SkipAmmoLooting(m_candidate);
 		}
 
-		skipLooting = skipLooting || IsLootingForbidden();
+		skipLooting = skipLooting || IsLootingForbidden(needsGlow);
+
+		if (needsGlow)
+		{
+			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
+		}
 
 		if (!skipLooting)
 		{
@@ -424,21 +430,14 @@ void SearchTask::Run()
 				SInt32 lockedChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestGlow"));
 				if (lockedChestGlow == 1)
 				{
+#if _DEBUG
+					_DMESSAGE("glow locked container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
 					needsGlow = true;
 				}
 
 				if (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestLoot")) == 0)
 				{
-					// Remember locked container, to avoid indeterminate disallowed auto-loot if player unlocks it
-					// via the Unlock UI or some other means.
-					// We don't want to block the reference, or we will only glow this once. This is a way of persisting the
-					// initial locked state, making Locked Container flow of control more like Boss Container.
-					if (data->RememberLockedContainer(refrEx.m_ref->GetFormID()))
-					{
-#if _DEBUG
-						_DMESSAGE("recorded locked container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
-#endif
-					}
 					skipLooting = true;
 				}
 			}
@@ -448,6 +447,9 @@ void SearchTask::Run()
 				SInt32 bossChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestGlow"));
 				if (bossChestGlow == 1)
 				{
+#if _DEBUG
+					_DMESSAGE("glow boss container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
 					needsGlow = true;
 				}
 
@@ -460,6 +462,9 @@ void SearchTask::Run()
 			SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
 			if (questObjectGlow == 1)
 			{
+#if _DEBUG
+				_DMESSAGE("glow container with quest object %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
 				needsGlow = true;
 			}
 
@@ -471,14 +476,18 @@ void SearchTask::Run()
 			SInt32 enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "enchantItemGlow"));
 			if (enchantItemGlow == 1)
 			{
+#if _DEBUG
+				_DMESSAGE("glow container with enchanted object %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
 				needsGlow = true;
 			}
 		}
+		skipLooting == IsLootingForbidden(needsGlow) || skipLooting;
 		if (needsGlow)
 		{
 			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
 		}
-		if (skipLooting || IsLootingForbidden())
+		if (skipLooting)
 			return;
 
 		// when we get to the point where looting is confirmed, block the reference to
@@ -803,6 +812,10 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			return 0;
 		}
 
+		DataCase* data = DataCase::GetInstance();
+		if (!data)
+			return 0;
+
 		// By inspection, UI menu stack has steady state size of 1. Opening application and/or inventory adds 1 each,
 		// opening console adds 2. So this appears to be a catch-all for those conditions.
 		if (!RE::UI::GetSingleton())
@@ -820,6 +833,8 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 #endif
 			// reset carry weight - will reinstate correct value if/when scan resumes
 			ResetCarryWeight();
+			// Update Locked Container last-accessed time
+			data->UpdateLockedContainers();
 			return 0;
 		}
 
@@ -828,10 +843,6 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 		elseif (Game.GetPlayer().HasMagicEffectWithKeyword(CastKwd)); for spell(wip)
 			s_updateDelay = true
 #endif
-
-		DataCase* data = DataCase::GetInstance();
-		if (!data)
-			return 0;
 
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(type1);
 		if (!m_ini->IsType(first))

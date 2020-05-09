@@ -91,7 +91,7 @@ public:
 	static void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
 
 	static bool IsLocationExcluded();
-	bool IsLootingForbidden() const;
+	bool IsLootingForbidden(bool& needsGlow) const;
 	bool IsBookGlowable() const;
 
 	static INIFile* m_ini;
@@ -100,6 +100,7 @@ public:
 
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
+	std::chrono::system_clock::time_point m_runtime;
 
 	static int m_crimeCheck;
 	static int m_belongingsCheck;
@@ -126,4 +127,6 @@ public:
 	static std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
 	static std::unordered_map<const RE::TESObjectREFR*, std::vector<RE::TESForm*>> m_lootTargetByREFR;
 	static std::unordered_set<const RE::BGSLocation*> m_locationCheckedForPlayerHouse;
+
+	static const int ObjectGlowDurationSpecial;
 };

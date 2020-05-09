@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <mutex>
+#include <chrono>
 
 #include "objects.h"
 
@@ -27,8 +28,8 @@ public:
 	void ClearBlockedReferences();
 
 	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
-	bool RememberLockedContainer(RE::FormID refrID);
 	void ForgetLockedContainers();
+	void UpdateLockedContainers();
 
 	bool BlockForm(const RE::TESForm* form);
 	bool UnblockForm(const RE::TESForm* form);
@@ -75,7 +76,7 @@ private:
 	std::unordered_set<RE::FormID> userBlockedForm;
 	std::unordered_set<const RE::TESForm*> blockForm;
 	std::unordered_set<RE::FormID> blockRefr;
-	std::unordered_set<RE::FormID> m_lockedContainers;
+	std::unordered_map<RE::FormID, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lockedContainers;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;

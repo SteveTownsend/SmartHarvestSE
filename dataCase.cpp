@@ -8,6 +8,7 @@
 #include "papyrus.h"
 #include "tasks.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -430,20 +431,51 @@ void DataCase::ClearBlockedReferences()
 	blockRefr.clear();
 }
 
+// Remember locked containers so we do not indiscriminately auto-loot them after a player unlock, if config forbids
 bool DataCase::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
-	if (refr->IsLocked())
+	RecursiveLockGuard guard(m_blockListLock);
+	auto lockedMatch(m_lockedContainers.find(refr->GetFormID()));
+	if (!IsContainerLocked(refr))
+	{
+		if (lockedMatch != m_lockedContainers.end())
+		{
+			// If container is not locked, but previously was stored as locked, see if it remains unlocked for long enough
+			// to safely erase our record of it
+			// We take this approach in case unlock has script lag and we auto-loot before manually seeing the container
+			// For locked container. We want the player to have the enjoyment of manually looting after unlocking. If 
+			// they don't want this, just configure 'Loot locked container'.
+			const auto recordedTime(lockedMatch->second);
+			if (std::chrono::high_resolution_clock::now() - recordedTime > std::chrono::milliseconds(SearchTask::ObjectGlowDurationSpecial * 1000))
+			{
+#if _DEBUG
+				_DMESSAGE("Forget previously-locked container %s/0x%08x", refr->GetName(), refr->GetFormID());
+#endif
+				m_lockedContainers.erase(lockedMatch);
+				return false;
+			}
+			return true;
+		}
+		return false;
+	}
+	else
+	{
+		// container is locked - save current time, update if already stored
+		if (lockedMatch == m_lockedContainers.end())
+		{
+			m_lockedContainers.insert(std::make_pair(refr->GetFormID(), std::chrono::high_resolution_clock::now()));
+#if _DEBUG
+			_DMESSAGE("Remember locked container %s/0x%08x", refr->GetName(), refr->GetFormID());
+#endif
+		}
+		else
+		{
+			lockedMatch->second = std::chrono::high_resolution_clock::now();
+		}
 		return true;
-	RecursiveLockGuard guard(m_blockListLock);
-	return m_lockedContainers.count(refr->GetFormID()) > 0;
-}
-
-bool DataCase::RememberLockedContainer(RE::FormID refrID)
-{
-	RecursiveLockGuard guard(m_blockListLock);
-	return (m_lockedContainers.insert(refrID)).second;
+	}
 }
 
 void DataCase::ForgetLockedContainers()
@@ -455,6 +487,18 @@ void DataCase::ForgetLockedContainers()
 	m_lockedContainers.clear();
 }
 
+void DataCase::UpdateLockedContainers()
+{
+	RecursiveLockGuard guard(m_blockListLock);
+#if _DEBUG
+	_DMESSAGE("Update last checked time on %d locked containers", m_lockedContainers.size());
+#endif
+	auto currentTime(std::chrono::high_resolution_clock::now());
+	for (auto& lockedContainer : m_lockedContainers)
+	{
+		lockedContainer.second = currentTime;
+	}
+}
 bool DataCase::BlockForm(const RE::TESForm* form)
 {
 	if (!form)

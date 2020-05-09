@@ -180,17 +180,14 @@ function Pause()
 	int priorState = g_LootingEnabled.GetValue() as int
     if (priorState != 0)
        	g_LootingEnabled.SetValue(0)
+		DisallowSearch()
 	else
        	g_LootingEnabled.SetValue(1)
+		AllowSearch()
 	endif
 		
-	;DebugTrace("Pause, looting-enabled = " + g_LootingEnabled.GetValue())
-	if (priorState == 0)
-		AllowSearch()
-	Else
-		DisallowSearch()
-	EndIf
-	string str = sif(priorState != 0, "$AHSE_ENABLE", "$AHSE_DISABLE")
+	;DebugTrace("Pause, looting-enabled toggled to = " + g_LootingEnabled.GetValue())
+	string str = sif(priorState == 0, "$AHSE_ENABLE", "$AHSE_DISABLE")
 	str = Replace(GetTranslation(str), "{VERSION}", GetPluginVersion())
 	Debug.Notification(str)
 endFunction

@@ -28,6 +28,7 @@ bool IsBossContainer(const RE::TESObjectREFR* refr)
 	return exLocRefType && exLocRefType->locRefType->formID == 0x0130F8;
 }
 
+// this logic is essential - TESObjectREFR::IsLocked() is not reliable
 bool IsContainerLocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)

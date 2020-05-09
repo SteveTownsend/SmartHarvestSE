@@ -64,6 +64,7 @@ string[] s_crimeCheckNotSneakingArray
 int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
+string[] s_playerBelongingsArray
 string[] s_behaviorToggleArray
 int playContainerAnimation
 string[] s_playContainerAnimationArray
@@ -323,6 +324,11 @@ Event OnConfigInit()
 	s_crimeCheckSneakingArray[1] = "$AHSE_PREVENT_CRIMES"
 	s_crimeCheckSneakingArray[2] = "$AHSE_OWNERLESS_ONLY"
 
+	s_playerBelongingsArray = New String[3]
+	s_playerBelongingsArray[0] = "$AHSE_DONT_PICK_UP"
+	s_playerBelongingsArray[1] = "$AHSE_PICK_UP"
+	s_playerBelongingsArray[2] = "$AHSE_CONTAINER_GLOW_UNLOOTED"
+
 	s_behaviorToggleArray = New String[2]
 	s_behaviorToggleArray[0] = "$AHSE_DONT_PICK_UP"
 	s_behaviorToggleArray[1] = "$AHSE_PICK_UP"
@@ -411,7 +417,7 @@ int function GetVersion()
 	maxMiningItemsDefault = 15
 	playContainerAnimation = 2
 	eventScript.UpdateMaxMiningItems(maxMiningItems)
-	return 14
+	return 15
 endFunction
 
 Event OnVersionUpdate(int a_version)
@@ -425,7 +431,7 @@ Event OnVersionUpdate(int a_version)
 		type_ValueWeight = 5
 		type_MaxItemCount = 6
 	endif
-	if (a_version >= 14 && CurrentVersion < 14)
+	if (a_version >= 15 && CurrentVersion < 15)
 		; Major revision to reduce script dependence and auto-categorize lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 
@@ -615,7 +621,7 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("disableWhileWeaponIsDrawn", "$AHSE_DISABLE_IF_WEAPON_DRAWN", disableWhileWeaponIsDrawn)
 		AddTextOptionST("crimeCheckNotSneaking", "$AHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
 		AddTextOptionST("crimeCheckSneaking", "$AHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
-		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_behaviorToggleArray[playerBelongingsLoot])
+		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_playerBelongingsArray[playerBelongingsLoot])
 
 ; 	======================== RIGHT ========================
 		SetCursorPosition(1)
@@ -1451,14 +1457,14 @@ endState
 
 state playerBelongingsLoot
 	event OnSelectST()
-		int size = s_behaviorToggleArray.length
+		int size = s_playerBelongingsArray.length
 		playerBelongingsLoot = CycleInt(playerBelongingsLoot, size)
-		SetTextOptionValueST(s_behaviorToggleArray[playerBelongingsLoot])
+		SetTextOptionValueST(s_playerBelongingsArray[playerBelongingsLoot])
 	endEvent
 
 	event OnDefaultST()
-		playerBelongingsLoot = 1
-		SetTextOptionValueST(s_behaviorToggleArray[playerBelongingsLoot])
+		playerBelongingsLoot = 2
+		SetTextOptionValueST(s_playerBelongingsArray[playerBelongingsLoot])
 	endEvent
 
 	event OnHighlightST()
