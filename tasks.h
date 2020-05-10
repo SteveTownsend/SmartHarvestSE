@@ -20,6 +20,24 @@ enum class LootingType {
 	MAX
 };
 
+enum class SpecialObjectHandling {
+	DoNotLoot = 0,
+	DoLoot,
+	GlowTarget,
+	MAX
+};
+
+// object glow reasons, in descending order of precedence
+enum class GlowReason {
+	BossContainer = 1,
+	QuestObject,
+	EnchantedItem,
+	LockedContainer,
+	PlayerProperty,
+	SimpleTarget,
+	None
+};
+
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {
 	return lootingType == LootingType::LootIfValuableEnoughNotify || lootingType == LootingType::LootAlwaysNotify;
@@ -33,6 +51,21 @@ inline LootingType LootingTypeFromIniSetting(const double iniSetting)
 		return LootingType::LeaveBehind;
 	}
 	return static_cast<LootingType>(intSetting);
+}
+
+inline bool IsSpecialObjectLootable(const SpecialObjectHandling specialObjectHandling)
+{
+	return specialObjectHandling == SpecialObjectHandling::DoLoot;
+}
+
+inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double iniSetting)
+{
+	UInt32 intSetting(static_cast<UInt32>(iniSetting));
+	if (intSetting >= static_cast<SInt32>(SpecialObjectHandling::MAX))
+	{
+		return SpecialObjectHandling::DoNotLoot;
+	}
+	return static_cast<SpecialObjectHandling>(intSetting);
 }
 
 inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
@@ -88,10 +121,10 @@ public:
 	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
 
 	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
-	static void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
+	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
 
 	static bool IsLocationExcluded();
-	bool IsLootingForbidden(bool& needsGlow) const;
+	bool IsLootingForbidden();
 	bool IsBookGlowable() const;
 
 	static INIFile* m_ini;
@@ -103,7 +136,7 @@ public:
 	std::chrono::system_clock::time_point m_runtime;
 
 	static int m_crimeCheck;
-	static int m_belongingsCheck;
+	static SpecialObjectHandling m_belongingsCheck;
 
 	static std::unordered_set<const RE::TESObjectREFR*> m_autoHarvestLock;
 	static std::unordered_set<const RE::BGSLocation*> m_playerHouses;
@@ -129,4 +162,13 @@ public:
 	static std::unordered_set<const RE::BGSLocation*> m_locationCheckedForPlayerHouse;
 
 	static const int ObjectGlowDurationSpecial;
+	static const int ObjectGlowDurationLooted;
+private:
+	GlowReason m_glowReason;
+	inline void UpdateGlowReason(const GlowReason glowReason)
+	{
+		if (glowReason < m_glowReason)
+			m_glowReason = glowReason;
+	}
+	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 };

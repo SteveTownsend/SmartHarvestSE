@@ -64,18 +64,15 @@ string[] s_crimeCheckNotSneakingArray
 int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
-string[] s_playerBelongingsArray
+string[] s_specialObjectHandlingArray
 string[] s_behaviorToggleArray
 int playContainerAnimation
 string[] s_playContainerAnimationArray
 
-bool questObjectLoot
-bool lockedChestLoot
-bool bossChestLoot
+int questObjectLoot
+int lockedChestLoot
+int bossChestLoot
 
-bool questObjectGlow
-bool lockedChestGlow
-bool bossChestGlow
 bool enchantItemGlow
 bool manualLootTargetNotify
 
@@ -160,16 +157,12 @@ function SeedDefaults()
 	questObjectScope = GetSetting(type_AutoHarvest, type_Config, "questObjectScope") as int
 	crimeCheckNotSneaking = GetSetting(type_AutoHarvest, type_Config, "crimeCheckNotSneaking") as int
 	crimeCheckSneaking = GetSetting(type_AutoHarvest, type_Config, "crimeCheckSneaking") as int
+
 	playerBelongingsLoot = GetSetting(type_AutoHarvest, type_Config, "playerBelongingsLoot") as int
-
-	questObjectLoot = GetSetting(type_AutoHarvest, type_Config, "questObjectLoot") as bool
-	questObjectGlow = GetSetting(type_AutoHarvest, type_Config, "questObjectGlow") as bool
+	questObjectLoot = GetSetting(type_AutoHarvest, type_Config, "questObjectLoot") as int
 	enchantItemGlow = GetSetting(type_AutoHarvest, type_Config, "enchantItemGlow") as bool
-
-	lockedChestLoot = GetSetting(type_AutoHarvest, type_Config, "lockedChestLoot") as bool
-	lockedChestGlow = GetSetting(type_AutoHarvest, type_Config, "lockedChestGlow") as bool
-	bossChestLoot = GetSetting(type_AutoHarvest, type_Config, "bossChestLoot") as bool
-	bossChestGlow = GetSetting(type_AutoHarvest, type_Config, "bossChestGlow") as bool
+	lockedChestLoot = GetSetting(type_AutoHarvest, type_Config, "lockedChestLoot") as int
+	bossChestLoot = GetSetting(type_AutoHarvest, type_Config, "bossChestLoot") as int
 	manualLootTargetNotify = GetSetting(type_AutoHarvest, type_Config, "manualLootTargetNotify") as bool
 
 	disableDuringCombat = GetSetting(type_AutoHarvest, type_Config, "disableDuringCombat") as bool
@@ -225,13 +218,10 @@ Function ApplySetting()
 	PutSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation", playContainerAnimation as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "questObjectLoot", questObjectLoot as float)
-	PutSetting(type_AutoHarvest, type_Config, "questObjectGlow", questObjectGlow as float)
 	PutSetting(type_AutoHarvest, type_Config, "enchantItemGlow", enchantItemGlow as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "lockedChestLoot", lockedChestLoot as float)
-	PutSetting(type_AutoHarvest, type_Config, "lockedChestGlow", lockedChestGlow as float)
 	PutSetting(type_AutoHarvest, type_Config, "bossChestLoot", bossChestLoot as float)
-	PutSetting(type_AutoHarvest, type_Config, "bossChestGlow", bossChestGlow as float)
 	PutSetting(type_AutoHarvest, type_Config, "manualLootTargetNotify", manualLootTargetNotify as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "disableDuringCombat", disableDuringCombat as float)
@@ -312,7 +302,7 @@ Event OnConfigInit()
 	s_playContainerAnimationArray = New String[3]
 	s_playContainerAnimationArray[0] = "$AHSE_CONTAINER_NO_ACTION"
 	s_playContainerAnimationArray[1] = "$AHSE_CONTAINER_PLAY_ANIMATION"
-	s_playContainerAnimationArray[2] = "$AHSE_CONTAINER_GLOW_UNLOOTED"
+	s_playContainerAnimationArray[2] = "$AHSE_CONTAINER_GLOW_TRANSIENT"
 
 	s_crimeCheckNotSneakingArray = New String[3]
 	s_crimeCheckNotSneakingArray[0] = "$AHSE_ALLOW_CRIMES"
@@ -324,10 +314,10 @@ Event OnConfigInit()
 	s_crimeCheckSneakingArray[1] = "$AHSE_PREVENT_CRIMES"
 	s_crimeCheckSneakingArray[2] = "$AHSE_OWNERLESS_ONLY"
 
-	s_playerBelongingsArray = New String[3]
-	s_playerBelongingsArray[0] = "$AHSE_DONT_PICK_UP"
-	s_playerBelongingsArray[1] = "$AHSE_PICK_UP"
-	s_playerBelongingsArray[2] = "$AHSE_CONTAINER_GLOW_UNLOOTED"
+	s_specialObjectHandlingArray = New String[3]
+	s_specialObjectHandlingArray[0] = "$AHSE_DONT_PICK_UP"
+	s_specialObjectHandlingArray[1] = "$AHSE_PICK_UP"
+	s_specialObjectHandlingArray[2] = "$AHSE_CONTAINER_GLOW_PERSISTENT"
 
 	s_behaviorToggleArray = New String[2]
 	s_behaviorToggleArray[0] = "$AHSE_DONT_PICK_UP"
@@ -407,7 +397,7 @@ int function GetVersion()
 	objType_Key = GetObjectTypebyName("keys")
 	objType_Ammo = GetObjectTypebyName("ammo")
 	objType_Mine = GetObjectTypebyName("oreVein")
-	eventScript.SyncNativeObjectTypes()
+	eventScript.SyncNativeDataTypes()
 
     ; New or clarified defaults and constants
 	manualLootTargetNotify = true
@@ -417,7 +407,7 @@ int function GetVersion()
 	maxMiningItemsDefault = 15
 	playContainerAnimation = 2
 	eventScript.UpdateMaxMiningItems(maxMiningItems)
-	return 15
+	return 17
 endFunction
 
 Event OnVersionUpdate(int a_version)
@@ -431,7 +421,7 @@ Event OnVersionUpdate(int a_version)
 		type_ValueWeight = 5
 		type_MaxItemCount = 6
 	endif
-	if (a_version >= 15 && CurrentVersion < 15)
+	if (a_version >= 17 && CurrentVersion < 17)
 		; Major revision to reduce script dependence and auto-categorize lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 
@@ -621,7 +611,6 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("disableWhileWeaponIsDrawn", "$AHSE_DISABLE_IF_WEAPON_DRAWN", disableWhileWeaponIsDrawn)
 		AddTextOptionST("crimeCheckNotSneaking", "$AHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
 		AddTextOptionST("crimeCheckSneaking", "$AHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
-		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_playerBelongingsArray[playerBelongingsLoot])
 
 ; 	======================== RIGHT ========================
 		SetCursorPosition(1)
@@ -645,13 +634,11 @@ event OnPageReset(string currentPage)
 		SetCursorFillMode(TOP_TO_BOTTOM)
 
 		AddHeaderOption("$AHSE_SPECIAL_OBJECT_BEHAVIOR_HEADER")
-		AddToggleOptionST("questObjectLoot", "$AHSE_QUESTOBJECT_LOOT", questObjectLoot)
+		AddTextOptionST("questObjectLoot", "$AHSE_QUESTOBJECT_LOOT", s_specialObjectHandlingArray[questObjectLoot])
 		AddTextOptionST("questObjectScope", "$AHSE_QUESTOBJECT_SCOPE", s_questObjectScopeArray[questObjectScope])
-		AddToggleOptionST("questObjectGlow", "$AHSE_QUESTOBJECT_GLOW", questObjectGlow)
-		AddToggleOptionST("lockedChestLoot", "$AHSE_LOCKEDCHEST_LOOT", lockedChestLoot)
-		AddToggleOptionST("lockedChestGlow", "$AHSE_LOCKEDCHEST_GLOW", lockedChestGlow)
-		AddToggleOptionST("bossChestLoot", "$AHSE_BOSSCHEST_LOOT", bossChestLoot)
-		AddToggleOptionST("bossChestGlow", "$AHSE_BOSSCHEST_GLOW", bossChestGlow)
+		AddTextOptionST("lockedChestLoot", "$AHSE_LOCKEDCHEST_LOOT", s_specialObjectHandlingArray[lockedChestLoot])
+		AddTextOptionST("bossChestLoot", "$AHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
+		AddTextOptionST("playerBelongingsLoot", "$AHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
 		AddToggleOptionST("enchantItemGlow", "$AHSE_ENCHANTITEM_GLOW", enchantItemGlow)
 		AddToggleOptionST("manualLootTargetNotify", "$AHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
 		AddTextOptionST("playContainerAnimation", "$AHSE_PLAY_CONTAINER_ANIMATION", s_playContainerAnimationArray[playContainerAnimation])
@@ -1457,14 +1444,14 @@ endState
 
 state playerBelongingsLoot
 	event OnSelectST()
-		int size = s_playerBelongingsArray.length
+		int size = s_specialObjectHandlingArray.length
 		playerBelongingsLoot = CycleInt(playerBelongingsLoot, size)
-		SetTextOptionValueST(s_playerBelongingsArray[playerBelongingsLoot])
+		SetTextOptionValueST(s_specialObjectHandlingArray[playerBelongingsLoot])
 	endEvent
 
 	event OnDefaultST()
 		playerBelongingsLoot = 2
-		SetTextOptionValueST(s_playerBelongingsArray[playerBelongingsLoot])
+		SetTextOptionValueST(s_specialObjectHandlingArray[playerBelongingsLoot])
 	endEvent
 
 	event OnHighlightST()
@@ -1493,33 +1480,18 @@ endState
 
 state questObjectLoot
 	event OnSelectST()
-		questObjectLoot = !(questObjectLoot as bool)
-		SetToggleOptionValueST(questObjectLoot)
+		int size = s_specialObjectHandlingArray.length
+		questObjectLoot = CycleInt(questObjectLoot, size)
+		SetTextOptionValueST(s_specialObjectHandlingArray[questObjectLoot])
 	endEvent
 
 	event OnDefaultST()
-		questObjectLoot = false
-		SetToggleOptionValueST(questObjectLoot)
+		questObjectLoot = 2
+		SetTextOptionValueST(s_specialObjectHandlingArray[questObjectLoot])
 	endEvent
 
 	event OnHighlightST()
 		SetInfoText(GetTranslation("$AHSE_DESC_QUESTOBJECT_LOOT"))
-	endEvent
-endState
-
-state questObjectGlow
-	event OnSelectST()
-		questObjectGlow = !(questObjectGlow as bool)
-		SetToggleOptionValueST(questObjectGlow)
-	endEvent
-
-	event OnDefaultST()
-		questObjectGlow = true
-		SetToggleOptionValueST(questObjectGlow)
-	endEvent
-
-	event OnHighlightST()
-		SetInfoText(GetTranslation("$AHSE_DESC_QUESTOBJECT_GLOW"))
 	endEvent
 endState
 
@@ -1541,13 +1513,14 @@ endState
 
 state lockedChestLoot
 	event OnSelectST()
-		lockedChestLoot = !(lockedChestLoot as bool)
-		SetToggleOptionValueST(lockedChestLoot)
+		int size = s_specialObjectHandlingArray.length
+		lockedChestLoot = CycleInt(lockedChestLoot, size)
+		SetTextOptionValueST(s_specialObjectHandlingArray[lockedChestLoot])
 	endEvent
 
 	event OnDefaultST()
-		lockedChestLoot = false
-		SetToggleOptionValueST(lockedChestLoot)
+		lockedChestLoot = 2
+		SetTextOptionValueST(s_specialObjectHandlingArray[lockedChestLoot])
 	endEvent
 
 	event OnHighlightST()
@@ -1555,51 +1528,20 @@ state lockedChestLoot
 	endEvent
 endState
 
-state lockedChestGlow
-	event OnSelectST()
-		lockedChestGlow = !(lockedChestGlow as bool)
-		SetToggleOptionValueST(lockedChestGlow)
-	endEvent
-
-	event OnDefaultST()
-		lockedChestGlow = true
-		SetToggleOptionValueST(lockedChestGlow)
-	endEvent
-
-	event OnHighlightST()
-		SetInfoText(GetTranslation("$AHSE_DESC_LOCKEDCHEST_GLOW"))
-	endEvent
-endState
-
 state bossChestLoot
 	event OnSelectST()
-		bossChestLoot = !(bossChestLoot as bool)
-		SetToggleOptionValueST(bossChestLoot)
+		int size = s_specialObjectHandlingArray.length
+		bossChestLoot = CycleInt(bossChestLoot, size)
+		SetTextOptionValueST(s_specialObjectHandlingArray[bossChestLoot])
 	endEvent
 
 	event OnDefaultST()
-		bossChestLoot = false
-		SetToggleOptionValueST(bossChestLoot)
+		bossChestLoot = 2
+		SetTextOptionValueST(s_specialObjectHandlingArray[bossChestLoot])
 	endEvent
 
 	event OnHighlightST()
 		SetInfoText(GetTranslation("$AHSE_DESC_BOSSCHEST_LOOT"))
-	endEvent
-endState
-
-state bossChestGlow
-	event OnSelectST()
-		bossChestGlow = !(bossChestGlow as bool)
-		SetToggleOptionValueST(bossChestGlow)
-	endEvent
-
-	event OnDefaultST()
-		bossChestGlow = true
-		SetToggleOptionValueST(bossChestGlow)
-	endEvent
-
-	event OnHighlightST()
-		SetInfoText(GetTranslation("$AHSE_DESC_BOSSCHEST_GLOW"))
 	endEvent
 endState
 

@@ -5,12 +5,12 @@
 #include "ExtraDataListHelper.h"
 #include "containerLister.h"
 
-bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, bool &hasQuestObject, bool &hasEnchItem)
+LootableItems ContainerLister::GetOrCheckContainerForms(bool &hasQuestObject, bool &hasEnchItem)
 {
+	LootableItems lootableItems;
 	if (!m_refr)
-		return false;
+		return lootableItems;
 
-	bool hasExtraItems(false);
 	const RE::TESContainer* container = const_cast<RE::TESObjectREFR*>(m_refr)->GetContainer();
 	if (container)
 	{
@@ -53,8 +53,7 @@ bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, boo
 				if (!(*entryData)->extraLists)
 					continue;
 
-				// Check for exchantment or quest target
-				hasExtraItems = true;
+				// Check for enchantment or quest target
 				for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 				{
 					if (*extraList)
@@ -69,7 +68,7 @@ bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, boo
 						if (!hasEnchItem)
 						{
 							TESFormHelper itemEx(item);
-							hasEnchItem = (itemEx.GetEnchantment()) ? true : false;;
+							hasEnchItem = itemEx.GetEnchantment() != nullptr;
 						}
 					}
 					if (hasEnchItem && hasQuestObject)
@@ -78,5 +77,5 @@ bool ContainerLister::GetOrCheckContainerForms(LootableItems& lootableItems, boo
 			}
 		}
 	}
-	return !lootableItems.empty() || hasExtraItems;
+	return lootableItems;
 }

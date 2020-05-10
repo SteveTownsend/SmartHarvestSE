@@ -25,6 +25,13 @@ int objType_Mine
 int objType_Book
 int objType_skillBookRead
 
+EffectShader lootedShader		; white
+EffectShader bossShader	; green
+EffectShader lockedShader		; red
+EffectShader questShader		; purple
+EffectShader enchantedShader	; blue
+EffectShader ownedShader	; blue
+
 int getType_kFlora = 39
 
 float g_interval = 0.3
@@ -36,6 +43,13 @@ int location_type_user = 1
 int location_type_excluded = 2
 int maxMiningItems
 int infiniteWeight = 100000
+
+int glowReasonBossContainer
+int glowReasonQuestObject
+int glowReasonLockedContainer
+int glowReasonEnchantedItem
+int glowReasonPlayerProperty
+int glowReasonSimpleTarget
 
 Function SyncUserList()
 	SyncUserListWithPlugin()
@@ -117,7 +131,8 @@ function ManageExcludeList(Form itemForm)
 	ManageList(excludelist_form, itemForm, location_type_excluded, "$AHSE_EXCLUDELIST_ADDED", "$AHSE_EXCLUDELIST_REMOVED")
 endFunction
 
-Function SyncNativeObjectTypes()
+; must line up with enumerations from C++
+Function SyncNativeDataTypes()
 	objType_Flora = GetObjectTypebyName("flora")
 	objType_Critter = GetObjectTypebyName("critter")
 	objType_Septim = GetObjectTypebyName("septims")
@@ -125,6 +140,21 @@ Function SyncNativeObjectTypes()
 	objType_Mine = GetObjectTypebyName("oreVein")
 	objType_Book = GetObjectTypebyName("books")
 	objType_skillBookRead = GetObjectTypebyName("skillbookread")
+
+	glowReasonBossContainer = 1
+	glowReasonQuestObject = 2
+	glowReasonEnchantedItem = 3
+	glowReasonLockedContainer = 4
+	glowReasonPlayerProperty = 5
+	glowReasonSimpleTarget = 6
+
+	; must line up with shaders defined in ESP/ESM file
+	lootedShader = Game.GetFormFromFile(0xa9e1, "AutoHarvestSE.esp") as EffectShader	; white
+	enchantedShader = Game.GetFormFromFile(0xa9dc, "AutoHarvestSE.esp") as EffectShader	; blue
+	lockedShader = Game.GetFormFromFile(0xa9df, "AutoHarvestSE.esp") as EffectShader	; red
+	bossShader = Game.GetFormFromFile(0xa9e2, "AutoHarvestSE.esp") as EffectShader		; gold
+	questShader = Game.GetFormFromFile(0xa9de, "AutoHarvestSE.esp") as EffectShader		; purple
+	ownedShader = Game.GetFormFromFile(0xa9dd, "AutoHarvestSE.esp") as EffectShader		; green
 endFunction
 
 Event OnInit()
@@ -300,7 +330,7 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 			;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
 		elseif (manualLootNotify)
 			; could be CACO-scripted 'Mine' target - glow as a 'nearby manual lootable' if configured to do so
-			DoObjectGlow(akTarget, 5)
+			DoObjectGlow(akTarget, 5, glowReasonSimpleTarget)
 		endif
 
     ; Blocked activators may be looted according to a config setting
@@ -360,8 +390,22 @@ Event OnGetCritterIngredient(ObjectReference akTarget)
     endif
 endEvent
 
-Function DoObjectGlow(ObjectReference akTargetRef, int duration)
-	EffectShader effShader = Game.GetFormFromFile(0x04000, "AutoHarvestSE.esp") as EffectShader
+Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
+	EffectShader effShader
+	if (reason == glowReasonBossContainer)
+		effShader = bossShader
+	elseif (reason == glowReasonQuestObject)
+		effShader = questShader
+	elseif (reason == glowReasonEnchantedItem)
+		effShader = enchantedShader
+	elseif (reason == glowReasonLockedContainer)
+		effShader = lockedShader
+	elseif (reason == glowReasonPlayerProperty)
+		effShader = ownedShader
+	else
+		effShader = lootedShader
+	endif
+
 	if (effShader)
 		; play for requested duration - C++ code will tidy up when out of range
 	    ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
@@ -369,8 +413,8 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration)
 	endif
 endFunction
 
-Event OnObjectGlow(ObjectReference akTargetRef, int duration)
-	DoObjectGlow(akTargetRef, duration)
+Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
+	DoObjectGlow(akTargetRef, duration, reason)
 endEvent
 
 Event OnCarryWeightDelta(int weightDelta)

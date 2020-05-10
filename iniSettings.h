@@ -11,7 +11,6 @@ public:
 		NONE = 0,
 		common,
 		autoharvest,
-		spell,
 		LAST
 	};
 
@@ -37,8 +36,6 @@ public:
 			result += "common"; break;
 		case autoharvest:
 			result += "autoharvest"; break;
-		case spell:
-			result += "spell"; break;
 		default:
 			return false;
 		}

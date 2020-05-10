@@ -22,15 +22,14 @@ RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
 // special object glow - not too long, in case we loot or move away
-const int SearchTask::ObjectGlowDurationSpecial = 5;
-// looted container notification glow - relatively short
-const int ObjectGlowDurationNotify = 2;
+const int SearchTask::ObjectGlowDurationLooted = 2;
+const int SearchTask::ObjectGlowDurationSpecial = 10;
 
 SKSE::RegistrationSet<RE::TESObjectREFR*> onGetCritterIngredient("OnGetCritterIngredient");
 SKSE::RegistrationSet<int> onCarryWeightDelta("OnCarryWeightDelta");
 SKSE::RegistrationSet<> onResetCarryWeight("OnResetCarryWeight");
 SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool, bool> onAutoHarvest("OnAutoHarvest");
-SKSE::RegistrationSet<RE::TESObjectREFR*, int> onObjectGlow("OnObjectGlow");
+SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> onObjectGlow("OnObjectGlow");
 
 RE::BGSRefAlias* GetScriptTarget(const char* espName, UInt32 questID)
 {
@@ -168,7 +167,7 @@ bool IsCellPlayerOwned(RE::TESObjectCELL* cell)
 
 const int AutoHarvestSpamLimit = 10;
 
-bool SearchTask::IsLootingForbidden(bool& needsGlow) const
+bool SearchTask::IsLootingForbidden()
 {
 	bool isForbidden(false);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
@@ -183,15 +182,16 @@ bool SearchTask::IsLootingForbidden(bool& needsGlow) const
 		if (m_playerCellSelfOwned || playerOwned)
 		{
 			// can configure to not loot my own belongings even though it's always legal
-			if (m_belongingsCheck != 1)
+			if (!IsSpecialObjectLootable(m_belongingsCheck))
 			{
 #if _DEBUG
-				_DMESSAGE("Player home or player-owned, looting belongings disallowed");
+				_DMESSAGE("Player home or player-owned, looting belongings disallowed: %s/0x%08x",
+					m_candidate->data.objectReference->GetName(), m_candidate->data.objectReference->formID);
 #endif
 				isForbidden = true;
 				// Glow if configured
-				if (m_belongingsCheck == 2)
-					needsGlow = true;
+				if (m_belongingsCheck == SpecialObjectHandling::GlowTarget)
+					UpdateGlowReason(GlowReason::PlayerProperty);
 			}
 		}
 		// if restricted to law-abiding citizenship, check if OK to loot
@@ -321,35 +321,35 @@ void SearchTask::Run()
 			return;
 		}
 
-		bool needsGlow(false);
+		// initially no glow - use synthetic value with highest precedence
+		m_glowReason = GlowReason::None;
 		bool skipLooting(false);
 
 		bool needsFullQuestFlags(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectScope") != 0);
-		SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
+		SpecialObjectHandling questObjectLoot =
+			SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot"));
 		if (refrEx.IsQuestItem(needsFullQuestFlags))
 		{
 #if _DEBUG
 			_DMESSAGE("Quest Item 0x%08x", m_candidate->data.objectReference->formID);
 #endif
-			if (questObjectGlow != 0)
+			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
 #if _DEBUG
 				_DMESSAGE("glow quest object %s/0x%08x", m_candidate->data.objectReference->GetName(), m_candidate->data.objectReference->formID);
 #endif
-				needsGlow = true;
+				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			SInt32 questObjectLoot = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot"));
-			if (questObjectLoot == 0)
-				skipLooting = true;
+			skipLooting = skipLooting || !IsSpecialObjectLootable(questObjectLoot);
 		}
 		// glow unread notes as they are often quest-related
-		else if (questObjectGlow != 0 && objType == ObjectType::books && IsBookGlowable())
+		else if (questObjectLoot == SpecialObjectHandling::GlowTarget && objType == ObjectType::books && IsBookGlowable())
 		{
 #if _DEBUG
 			_DMESSAGE("Glowable book 0x%08x", m_candidate->data.objectReference->formID);
 #endif
-			needsGlow = true;
+			UpdateGlowReason(GlowReason::SimpleTarget);
 		}
 
 		if (objType == ObjectType::ammo)
@@ -357,9 +357,10 @@ void SearchTask::Run()
 			skipLooting = skipLooting || data->SkipAmmoLooting(m_candidate);
 		}
 
-		skipLooting = skipLooting || IsLootingForbidden(needsGlow);
+		// order is important to ensure we glow even if blocked
+		skipLooting = IsLootingForbidden() || skipLooting;
 
-		if (needsGlow)
+		if (m_glowReason != GlowReason::None)
 		{
 			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
 		}
@@ -415,60 +416,64 @@ void SearchTask::Run()
 		bool hasQuestObject(false);
 		bool hasEnchantItem(false);
 		bool skipLooting(false);
-		LootableItems lootableItems;
-		if (!ContainerLister(refrEx.m_ref, requireQuestItemAsTarget).GetOrCheckContainerForms(
-			lootableItems, hasQuestObject, hasEnchantItem))
+		LootableItems lootableItems(
+			ContainerLister(refrEx.m_ref, requireQuestItemAsTarget).GetOrCheckContainerForms(hasQuestObject, hasEnchantItem));
+		if (lootableItems.empty())
 		{
-			skipLooting = true;
+#if _DEBUG
+			_DMESSAGE("container %s/0x%08x is empty", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
+#endif
+			return;
 		}
 
-		bool needsGlow(false);
+		// initially no glow - use synthetic value with highest precedence
+		m_glowReason = GlowReason::None;
 		if (m_targetType == INIFile::SecondaryType::containers)
 		{
 			if (data->IsReferenceLockedContainer(m_candidate))
 			{
-				SInt32 lockedChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestGlow"));
-				if (lockedChestGlow == 1)
+				SpecialObjectHandling lockedChestLoot =
+					SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestLoot"));
+				if (lockedChestLoot == SpecialObjectHandling::GlowTarget)
 				{
 #if _DEBUG
 					_DMESSAGE("glow locked container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
-					needsGlow = true;
+					UpdateGlowReason(GlowReason::LockedContainer);
 				}
 
-				if (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "lockedChestLoot")) == 0)
-				{
-					skipLooting = true;
-				}
+				skipLooting = skipLooting || !IsSpecialObjectLootable(lockedChestLoot);
 			}
 
 			if (IsBossContainer(m_candidate))
 			{
-				SInt32 bossChestGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestGlow"));
-				if (bossChestGlow == 1)
+				SpecialObjectHandling bossChestLoot = 
+					SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestLoot"));
+				if (bossChestLoot == SpecialObjectHandling::GlowTarget)
 				{
 #if _DEBUG
 					_DMESSAGE("glow boss container %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
-					needsGlow = true;
+					UpdateGlowReason(GlowReason::BossContainer);
 				}
 
-				skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "bossChestLoot")) == 0);
+				skipLooting = skipLooting || !IsSpecialObjectLootable(bossChestLoot);
 			}
 		}
 
 		if (hasQuestObject)
 		{
-			SInt32 questObjectGlow = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectGlow"));
-			if (questObjectGlow == 1)
+			SpecialObjectHandling questObjectLoot =
+				SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot"));
+			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
 #if _DEBUG
 				_DMESSAGE("glow container with quest object %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
-				needsGlow = true;
+				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			skipLooting = skipLooting || (static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "questObjectLoot")) == 0);
+			skipLooting = skipLooting || !IsSpecialObjectLootable(questObjectLoot);
 		}
 
 		if (hasEnchantItem)
@@ -479,11 +484,12 @@ void SearchTask::Run()
 #if _DEBUG
 				_DMESSAGE("glow container with enchanted object %s/0x%08x", refrEx.m_ref->GetName(), refrEx.m_ref->formID);
 #endif
-				needsGlow = true;
+				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
 		}
-		skipLooting == IsLootingForbidden(needsGlow) || skipLooting;
-		if (needsGlow)
+		// order is important to ensure we glow even if blocked
+		skipLooting = IsLootingForbidden() || skipLooting;
+		if (m_glowReason != GlowReason::None)
 		{
 			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecial);
 		}
@@ -585,7 +591,7 @@ bool SearchTask::m_carryAdjustedForPlayerHome = false;
 bool SearchTask::m_carryAdjustedForDrawnWeapon = false;
 int SearchTask::m_currentCarryWeightChange = 0;
 int SearchTask::m_crimeCheck = 0;
-int SearchTask::m_belongingsCheck = 0;
+SpecialObjectHandling SearchTask::m_belongingsCheck = SpecialObjectHandling::GlowTarget;
 
 void SearchTask::SetPlayerHouseKeyword(RE::BGSKeyword* keyword)
 {
@@ -838,12 +844,6 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 			return 0;
 		}
 
-#if 0
-		// Spell for harvesting, WIP
-		elseif (Game.GetPlayer().HasMagicEffectWithKeyword(CastKwd)); for spell(wip)
-			s_updateDelay = true
-#endif
-
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(type1);
 		if (!m_ini->IsType(first))
 			return 0;
@@ -907,7 +907,7 @@ SInt32 SearchTask::StartSearch(SInt32 type1)
 
 		// Retrieve these settings only once
 		m_crimeCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, (sneaking) ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
-		m_belongingsCheck = static_cast<int>(m_ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
+		m_belongingsCheck = SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(first, INIFile::config, "playerBelongingsLoot"));
 
 		std::vector<RE::TESObjectREFR*> refs;
 		PlayerCellHelper::GetInstance().GetReferences(m_playerCell, &refs, m_ini->GetRadius(first));
@@ -1166,8 +1166,8 @@ void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, b
 	}
 	else if (animationType == 2)
 	{
-		// glow looted object for a few seconds after looting
-		TriggerObjectGlow(m_candidate, ObjectGlowDurationNotify);
+		// glow looted object briefly after looting
+		TriggerObjectGlow(m_candidate, ObjectGlowDurationLooted, GlowReason::SimpleTarget);
 	}
 
 	for (auto& target : targets)
@@ -1210,6 +1210,11 @@ void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, b
 
 void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration)
 {
+	TriggerObjectGlow(refr, duration, m_glowReason);
+}
+
+void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
+{
 
 	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
@@ -1224,7 +1229,7 @@ void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration)
 #if _DEBUG
 	_DMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
 #endif
-	onObjectGlow.SendEvent(refr, duration);
+	onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
 }
 
 bool SearchTask::firstTime = true;
