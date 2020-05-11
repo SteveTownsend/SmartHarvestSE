@@ -3,6 +3,7 @@ Scriptname AutoHarvestSE_Events_Alias extends ReferenceAlias
 import AutoHarvestSE
 import AutoHarvestSE_mcm
 GlobalVariable Property g_LootingEnabled Auto
+GlobalVariable Property g_CACOModIndex Auto
 
 Keyword property CastKwd auto
 
@@ -196,6 +197,10 @@ Function ApplySetting()
 		EndIf
   	endIf
 
+  	;update CACO index in load order, to handle custom ore mining
+    g_CACOModIndex.SetValue(Game.GetModByName("Complete Alchemy & Cooking Overhaul.esp"))
+	;DebugTrace("eventScript ApplySetting start")
+
 	SyncUserList()
 	SyncExcludeList()
 	
@@ -307,6 +312,7 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 
 	elseif (itemType == objType_Mine)
 		;DebugTrace("Harvesting Ore")
+		bool miningDone = false
 		MineOreScript oreScript = akTarget as MineOreScript
 		if (oreScript)
 			; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
@@ -328,7 +334,36 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 				available = oreScript.ResourceCountCurrent
 			endwhile
 			;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
-		elseif (manualLootNotify)
+			miningDone = true
+		; CACO provides its own mining script, unfortunately not derived from baseline though largely identical
+		elseif ((g_CACOModIndex.GetValue() as int) != 255)
+			CACO_MineOreScript cacoMinable = akTarget as CACO_MineOreScript
+			if (cacoMinable)
+				DebugTrace("Detected CACO ore vein")
+				; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
+				int available = cacoMinable.ResourceCountCurrent
+				int mined = 0
+				if (available == -1)
+	       		    DebugTrace("CACO ore vein not yet initialized, start mining")
+	       		else
+	       		    DebugTrace("CACO ore vein has ore available: " + available)
+	       		endif
+
+				; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+				; in ResourceCount and the remaining amount in ResourceCountCurrent 
+				while (available != 0 && mined < maxMiningItems)
+	   				DebugTrace("Trigger CACO ore harvesting")
+					cacoMinable.giveOre()
+					mined += cacoMinable.ResourceCount
+				    DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
+					available = cacoMinable.ResourceCountCurrent
+				endwhile
+				DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+				miningDone = true
+			endif
+		endif
+
+		if (!miningDone && manualLootNotify)
 			; could be CACO-scripted 'Mine' target - glow as a 'nearby manual lootable' if configured to do so
 			DoObjectGlow(akTarget, 5, glowReasonSimpleTarget)
 		endif
