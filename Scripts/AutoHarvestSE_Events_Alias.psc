@@ -339,32 +339,32 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 		elseif ((g_CACOModIndex.GetValue() as int) != 255)
 			CACO_MineOreScript cacoMinable = akTarget as CACO_MineOreScript
 			if (cacoMinable)
-				DebugTrace("Detected CACO ore vein")
+				;DebugTrace("Detected CACO ore vein")
 				; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
 				int available = cacoMinable.ResourceCountCurrent
 				int mined = 0
 				if (available == -1)
-	       		    DebugTrace("CACO ore vein not yet initialized, start mining")
+	       		    ;DebugTrace("CACO ore vein not yet initialized, start mining")
 	       		else
-	       		    DebugTrace("CACO ore vein has ore available: " + available)
+	       		    ;DebugTrace("CACO ore vein has ore available: " + available)
 	       		endif
 
 				; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
 				; in ResourceCount and the remaining amount in ResourceCountCurrent 
 				while (available != 0 && mined < maxMiningItems)
-	   				DebugTrace("Trigger CACO ore harvesting")
+	   				;DebugTrace("Trigger CACO ore harvesting")
 					cacoMinable.giveOre()
 					mined += cacoMinable.ResourceCount
-				    DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
+				    ;DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
 					available = cacoMinable.ResourceCountCurrent
 				endwhile
-				DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+				;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
 				miningDone = true
 			endif
 		endif
 
 		if (!miningDone && manualLootNotify)
-			; could be CACO-scripted 'Mine' target - glow as a 'nearby manual lootable' if configured to do so
+			; could be custom-scripted 'Mine' target - glow as a 'nearby manual lootable' if configured to do so
 			DoObjectGlow(akTarget, 5, glowReasonSimpleTarget)
 		endif
 
@@ -413,6 +413,18 @@ Event OnAutoHarvest(ObjectReference akTarget, int itemType, int count, bool sile
 	endif
 	
 	UnlockAutoHarvest(akTarget)
+endEvent
+
+; NPC looting appears to have thread safety issues requiring script to perform
+Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count)
+	;DebugTrace("OnLootFromNPC: " + akContainerRef.GetDisplayName() + " " + akForm.GetName() + "(" + count + ")")
+	if (!akContainerRef)
+		return
+	elseif (!akForm)
+		return
+	endif
+
+	akContainerRef.RemoveItem(akForm, count, true, Game.GetPlayer())
 endEvent
 
 Event OnGetCritterIngredient(ObjectReference akTarget)

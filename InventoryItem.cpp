@@ -1,8 +1,11 @@
 #include "PrecompiledHeaders.h"
 #include "InventoryItem.h"
+#include "tasks.h"
 
-InventoryItem::InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : m_entry(std::move(a_entry)), m_count(a_count) {}
-InventoryItem::InventoryItem(const InventoryItem& rhs) : m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count) {}
+InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
+	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count) {}
+InventoryItem::InventoryItem(const InventoryItem& rhs) :
+	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count) {}
 
 // returns number of objects added
 int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target)
@@ -12,17 +15,16 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		return 0;
 	}
 #if _DEBUG
-	_DMESSAGE("get %s/0x%08x (%d)", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), toRemove);
+	_DMESSAGE("get %s/0x%08x (%d)", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
 #endif
 
 	std::vector<std::pair<RE::ExtraDataList*, std::ptrdiff_t>> queued;
-	auto object = m_entry->GetObject();
 	if (m_entry->extraLists) {
 		for (auto& xList : *m_entry->extraLists) {
 			if (xList) {
 				auto xCount = std::min<std::ptrdiff_t>(xList->GetCount(), toRemove);
 #if _DEBUG
-				_DMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(object), xCount);
+				_DMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(BoundObject()), xCount);
 #endif
 				toRemove -= xCount;
 				queued.push_back(std::make_pair(xList, xCount));
@@ -34,19 +36,64 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		}
 	}
 
+	// Removing items from NPCs here seems to be impossible to make stable, possibly because of thread safety issues with
+	// the game's unequip-item handling. Give up trying, and script this.
+	// RemoveItem inline soon after Actor death is problematic, I speculate that the game is sorting out the equipment state.
+	// In any case these RemoveItem calls can cause a crash during or after the death of an NPC during my play-testing.
+	// We wait briefly before looting bodies so we don't glow them during a kill animation, and script the inventory
+	// shuffling.
+	/*
+		Possible relevant objects (15)
+		{
+		  [   1]    NiNode(Name: `WEAPON`)
+		  [   1]    NiNode(Name: `WeaponDagger`)
+		  [  37]    TESNPC(Name: `Bandit Hidden`, FormId: 5A000969, File: `know_your_armor_patch.esp <- OBIS SE.esp`)
+		  [  37]    Character(FormId: FF001DEF, BaseForm: TESNPC(Name: `Bandit Hidden`, FormId: 5A000969, File: `know_your_armor_patch.esp <- OBIS SE.esp`))
+		  [  45]    BSFadeNode(Name: `Weapon  (4A00953A)`)
+		  [  60]    BSFlattenedBoneTree(Name: `NPC Root [Root]`)
+		  [  64]    TESObjectWEAP(Name: `Cyrodiilic Silver Dagger`, FormId: 4A00953A, File: `Audio Weather and Misc Merged.esp <- Lore Weapon Expansion.esp`)
+		  [  93]    BSFadeNode(Name: `skeletonbeast.nif`)
+		  [ 164]    TESNPC(Name: `Aerlyn`, FormId: 00000007, File: `know_your_armor_patch.esp <- Skyrim.esm`)
+		  [ 164]    PlayerCharacter(FormId: 00000014, BaseForm: TESNPC(Name: `Aerlyn`, FormId: 00000007, File: `know_your_armor_patch.esp <- Skyrim.esm`))
+		  [ 172]    BGSEquipSlot(FormId: 00013F42, File: `Skyrim.esm`)
+		  [ 185]    BGSEquipSlot(FormId: 00013F43, File: `Skyrim.esm`)
+		  [ 406]    TESObjectMISC(Name: `Septims`, FormId: 0000000F, File: `Immersive Jewelry.esp <- Weapons Armor Clothing & Clutter Fixes.esp <- Skyrim.esm`)
+		  [ 417]    TESObjectARMO(Name: `Leather Boots`, FormId: 00013920, File: `CACO CCOR Omega and Qwinn Merged.esp <- Weapons Armor Clothing & Clutter Fixes.esp <- Skyrim.esm`)
+		  [ 422]    TESObjectARMO(Name: `Ranger Bracers`, FormId: 41005A70, File: `CACO CCOR Omega and Qwinn Merged.esp <- MLU - Immersive Armors.esp <- Hothtrooper44_ArmorCompilation.esp`)
+		}
+
+		[28]  0x7FF7A1476BC1     (SkyrimSE.exe + 106BC1)          BSExtraDataList::unk_106B50 + 71
+		[29]  0x7FF7A147755A     (SkyrimSE.exe + 10755A)          BSExtraDataList::GetExtraDataWithoutLocking_107480 + DA
+		[30]  0x7FF7A1483E66     (SkyrimSE.exe + 113E66)          BSExtraDataList::GetContainerChanges_113E20 + 46
+		[31]  0x7FF7A15FDAAA     (SkyrimSE.exe + 28DAAA)          TESObjectREFR::RemoveItem_28D9E0 + CA
+		[32]  0x7FF7A196F7B9     (SkyrimSE.exe + 5FF7B9)          Actor::RemoveItem_5FF750 + 69
+		[33]  0x17AC0056C3A      (AutoHarvestSE.dll + 6C3A)
+	*/
 	for (auto& elem : queued) {
 #if _DEBUG
-		_DMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(object), elem.second);
+		_DMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
 #endif
-		//target->AddObjectToContainer(object, elem.first, static_cast<SInt32>(elem.second), container);
-		container->RemoveItem(object, static_cast<SInt32>(elem.second), RE::ITEM_REMOVE_REASON::kRemove, elem.first, target);
+		Remove(container, target, elem.first, elem.second);
 	}
 	if (toRemove > 0) {
 #if _DEBUG
-		_DMESSAGE("Move item %s (%d)", object->GetName(), toRemove);
+		_DMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
 #endif
-		//target->AddObjectToContainer(object, nullptr, static_cast<SInt32>(toRemove), container);
-		container->RemoveItem(object, static_cast<SInt32>(toRemove), RE::ITEM_REMOVE_REASON::kRemove, nullptr, target);
+		Remove(container, target, nullptr, toRemove);
 	}
 	return static_cast<int>(toRemove + queued.size());
+}
+
+void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count)
+{
+	if (m_targetType == INIFile::containers)
+	{
+		// safe to handle here
+		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
+	}
+	else
+	{
+		// apparent thread safety issues for NPC item transfer - use Script event dispatch
+		SearchTask::TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count));
+	}
 }

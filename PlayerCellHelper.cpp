@@ -34,7 +34,7 @@ bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
 	return distance <= m_radius;
 }
 
-bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
+bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 {
 	// prioritize checks that do not require obtaining a lock
 	if (!refr)
@@ -54,7 +54,7 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 	if (!refr->Is3DLoaded())
 	{
 #if _DEBUG
-		_DMESSAGE("skip REFR, 3D not loaded 0x%08x", formID);
+		_DMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
 #endif
 		return false;
 	}
@@ -63,14 +63,14 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		if (!refr->IsDead(true))
 		{
 #if _DEBUG
-			_DMESSAGE("skip living ActorCharacter 0x%08x/%s", formID, refr->GetName());
+			_DMESSAGE("skip living ActorCharacter %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
 #endif
 			return false;
 		}
 		if (refr == RE::PlayerCharacter::GetSingleton())
 		{
 #if _DEBUG
-			_DMESSAGE("skip PlayerCharacter 0x%08x", formID);
+			_DMESSAGE("skip PlayerCharacter %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
 #endif
 			return false;
 		}
@@ -80,7 +80,7 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
 #if _DEBUG
-		_DMESSAGE("skip harvested Flora 0x%08x", formID);
+		_DMESSAGE("skip harvested Flora%s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
 #endif
 		return false;
 	}
@@ -88,7 +88,14 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 	if (SearchTask::IsLockedForAutoHarvest(refr))
 	{
 #if _DEBUG
-		_DMESSAGE("skip REFR, harvest pending 0x%08x", formID);
+		_DMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+#endif
+		return false;
+	}
+	if (SearchTask::IsLootedContainer(refr))
+	{
+#if _DEBUG
+		_DMESSAGE("skip looted container %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
 #endif
 		return false;
 	}
@@ -139,13 +146,14 @@ void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 			if (!CanLoot(refr))
 				continue;
 
-			m_targets->emplace_back(refr);
+			m_targets.push_back(refr);
 		}
 	}
 }
 
 void PlayerCellHelper::GetAdjacentCells(RE::TESObjectCELL* cell)
 {
+	// if this is the same cell we last checked, the list of adjacent cells does not need rebuilding
 	if (m_cell == cell)
 		return;
 
@@ -209,13 +217,12 @@ bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
 		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
 }
 
-void PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, std::vector<RE::TESObjectREFR*>* targets, const double radius)
+std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, const double radius)
 {
-	WindowsUtils::ScopedTimer elapsed("PlayerCellHelper::GetReferences");
+	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
 	if (!cell || !cell->IsAttached())
-		return;
+		return std::vector<RE::TESObjectREFR*>();
 
-	m_targets = targets;
 	m_radius = radius;
 
 	// find the adjacent cells, we only need to scan those and current player cell
@@ -244,4 +251,8 @@ void PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, std::vector<RE::TE
 			GetCellReferences(adjacentCell);
 		}
 	}
+	// set up return value and clear accumulator
+	std::vector<RE::TESObjectREFR*> result;
+	result.swap(m_targets);
+	return result;
 }

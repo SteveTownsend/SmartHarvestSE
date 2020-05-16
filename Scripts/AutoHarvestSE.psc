@@ -6,7 +6,6 @@ string Function GetPluginName(Form thisForm) global native
 string Function GetTextFormID(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
-int Function GetCloseReferences(int type) global native
 bool Function UnlockAutoHarvest(ObjectReference refr) global native
 Function UnblockEverything() global native
 Form Function GetNthLootableObject(ObjectReference refr, int index) global native

@@ -2,6 +2,7 @@
 
 #include "papyrus.h"
 #include "tasks.h"
+#include "PlayerCellHelper.h"
 #include "version.h"
 
 #include <shlobj.h>
@@ -64,12 +65,12 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	SKSE::Logger::UseThreadId(true);
 
 #if _DEBUG
-	_MESSAGE("%s v%s", AHSE_NAME, AHSE_VERSION_VERSTRING);
+	_MESSAGE("%s v%s", AHSE_NAME, VersionInfo::Instance().GetPluginVersionString());
 #endif
 
 	a_info->infoVersion = SKSE::PluginInfo::kVersion;
 	a_info->name = AHSE_NAME;
-	a_info->version = AHSE_VERSION_MAJOR;
+	a_info->version = VersionInfo::Instance().GetVersionMajor();
 
 	if (a_skse->IsEditor()) {
 		_FATALERROR("Loaded in editor, marking as incompatible!\n");
@@ -81,6 +82,11 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 		_FATALERROR("Unsupported runtime version %08X!\n", runtimeVer);
 		return false;
 	}
+
+	// print loaded addresses of key functions for debugging
+	utils::LogFunctionAddress(&SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
+	utils::LogFunctionAddress(&SearchTask::Run, "SearchTask::Run");
+	utils::LogFunctionAddress(&PlayerCellHelper::GetReferences, "PlayerCellHelper::GetReferences");
 
 	return true;
 }

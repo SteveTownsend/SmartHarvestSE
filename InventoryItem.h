@@ -3,7 +3,7 @@
 class InventoryItem
 {
 public:
-	InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count);
+	InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count);
 	InventoryItem(const InventoryItem& rhs);
 
 	// returns number of objects added
@@ -13,6 +13,9 @@ public:
 	inline std::ptrdiff_t Count() const { return m_count; }
 
 private:
+	void Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count);
+
+	const INIFile::SecondaryType m_targetType;
 	mutable std::unique_ptr<RE::InventoryEntryData> m_entry;
-	std::ptrdiff_t m_count;
+	const std::ptrdiff_t m_count;
 };

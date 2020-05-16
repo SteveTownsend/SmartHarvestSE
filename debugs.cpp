@@ -134,15 +134,15 @@ void DumpItemVW(const TESFormHelper& itemEx)
 void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 {
 #if _DEBUG
-	RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.m_ref->data.objectReference);
-	_MESSAGE("0x%08x 0x%02x(%02d) [%s] - %s", target->formID, target->formType, target->formType, refr.m_ref->GetName(), typeName);
+	RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.GetReference()->data.objectReference);
+	_MESSAGE("0x%08x 0x%02x(%02d) [%s] - %s", target->formID, target->formType, target->formType, refr.GetReference()->GetName(), typeName);
 
 	TESFormHelper itemEx(target);
 	DumpItemVW(itemEx);
 
-	DumpKeyword(refr.m_ref->data.objectReference);
+	DumpKeyword(refr.GetReference()->data.objectReference);
 
-	const RE::ExtraDataList *extraData = &refr.m_ref->extraList;
+	const RE::ExtraDataList *extraData = &refr.GetReference()->extraList;
 	DumpExtraData(extraData);
 
 	_MESSAGE("--------------------");
@@ -152,12 +152,12 @@ void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 void DumpContainer(const TESObjectREFRHelper& refr)
 {
 #if _DEBUG
-	_MESSAGE("%08x %02x(%02d) [%s]", refr.m_ref->data.objectReference->formID, refr.m_ref->data.objectReference->formType,
-		refr.m_ref->data.objectReference->formType, refr.m_ref->GetName());
+	_MESSAGE("%08x %02x(%02d) [%s]", refr.GetReference()->data.objectReference->formID, refr.GetReference()->data.objectReference->formType,
+		refr.GetReference()->data.objectReference->formType, refr.GetReference()->GetName());
 
 	_MESSAGE("RE::TESContainer--");
 
-	RE::TESContainer *container = const_cast<RE::TESObjectREFR*>(refr.m_ref)->GetContainer();
+	RE::TESContainer *container = const_cast<RE::TESObjectREFR*>(refr.GetReference())->GetContainer();
 	if (container)
 	{
 		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
@@ -177,7 +177,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 
 				_MESSAGE("%08x [%s] count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
 
-				TESFormHelper refHelper(refr.m_ref->data.objectReference);
+				TESFormHelper refHelper(refr.GetReference()->data.objectReference);
 				DumpItemVW(refHelper);
 
 				DumpKeyword(refHelper.m_form);
@@ -188,7 +188,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 
 	_MESSAGE("ExtraContainerChanges--");
 
-	const RE::ExtraContainerChanges* exChanges = refr.m_ref->extraList.GetByType<RE::ExtraContainerChanges>();
+	const RE::ExtraContainerChanges* exChanges = refr.GetReference()->extraList.GetByType<RE::ExtraContainerChanges>();
 	if (exChanges && exChanges->changes->entryList)
 	{
 		for (const RE::InventoryEntryData* entryData : *exChanges->changes->entryList)
@@ -223,7 +223,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 
 	_MESSAGE("ExtraDatas--");
 
-	const RE::ExtraDataList *extraData = &refr.m_ref->extraList;
+	const RE::ExtraDataList *extraData = &refr.GetReference()->extraList;
     DumpExtraData(extraData);
 	_MESSAGE("--------------------");
 #endif

@@ -7,6 +7,7 @@
 
 #include <unordered_set>
 #include <mutex>
+#include <deque>
 
 #define QUEST_ID	0x01D8C
 #define NGEF_ID		0x00D64
@@ -109,7 +110,7 @@ public:
 	static void Disallow();
 	static bool IsAllowed();
 	static void ResetRestrictions(const bool gameReload);
-	static SInt32 StartSearch(SInt32 type1);
+	static void DoPeriodicSearch();
 	static void SetPlayerHouseKeyword(RE::BGSKeyword* keyword);
 
 	static bool GoodToGo();
@@ -122,10 +123,18 @@ public:
 
 	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
+	static void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount);
 
 	static bool IsLocationExcluded();
 	bool IsLootingForbidden();
 	bool IsBookGlowable() const;
+
+	static void MarkContainerLooted(RE::TESObjectREFR* refr);
+	static bool IsLootedContainer(RE::TESObjectREFR* refr);
+	static void ResetLootedContainers();
+
+	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
+	static void ReleaseReliablyDeadActors();
 
 	static INIFile* m_ini;
 	static RE::BGSRefAlias* m_eventTarget;
@@ -153,17 +162,30 @@ public:
 	static bool m_carryAdjustedForPlayerHome;
 	static bool m_carryAdjustedForDrawnWeapon;
 	static int m_currentCarryWeightChange;
+	static bool m_menuOpen;
 
 	static std::unordered_set<const RE::TESForm*> m_excludeLocations;
 	static bool m_pluginSynced;
 	static RecursiveLock m_lock;
 	static std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
-	static std::unordered_map<const RE::TESObjectREFR*, std::vector<RE::TESForm*>> m_lootTargetByREFR;
+
+	// Dead bodies pending looting, in order of our encountering them, with the time of registration.
+	// Used to delay looting bodies until the game has sorted out their state for unlocked introspection using GetContainer().
+	// This may not be the actual time of death if this body has been dead for some time before we arrive to loot it,
+	// which would be safe. Contrast this with looting during combat, where we could try to loot _very soon_ (microseconds,
+	// potentially) after game registers the Actor's demise.
+	static std::deque<std::pair<RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>>> m_actorApparentTimeOfDeath;
+	// Record looted containers to avoid re-scan of empty or looted chest and dead body. Resets on game reload or MCM settings update.
+	static std::unordered_set<RE::TESObjectREFR*> m_lootedContainers;
+
 	static std::unordered_set<const RE::BGSLocation*> m_locationCheckedForPlayerHouse;
 
-	static const int ObjectGlowDurationSpecial;
-	static const int ObjectGlowDurationLooted;
+	static const int ObjectGlowDurationSpecialSeconds;
+	static const int ObjectGlowDurationLootedSeconds;
+	static const int ActorReallyDeadWaitIntervalSeconds;
 private:
+	static std::vector<RE::TESObjectREFR*> m_refs;
+
 	GlowReason m_glowReason;
 	inline void UpdateGlowReason(const GlowReason glowReason)
 	{

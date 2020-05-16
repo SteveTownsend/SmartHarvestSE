@@ -445,10 +445,10 @@ bool DataCase::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 			// If container is not locked, but previously was stored as locked, see if it remains unlocked for long enough
 			// to safely erase our record of it
 			// We take this approach in case unlock has script lag and we auto-loot before manually seeing the container
-			// For locked container. We want the player to have the enjoyment of manually looting after unlocking. If 
+			// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If 
 			// they don't want this, just configure 'Loot locked container'.
 			const auto recordedTime(lockedMatch->second);
-			if (std::chrono::high_resolution_clock::now() - recordedTime > std::chrono::milliseconds(SearchTask::ObjectGlowDurationSpecial * 1000))
+			if (std::chrono::high_resolution_clock::now() - recordedTime > std::chrono::milliseconds(SearchTask::ObjectGlowDurationSpecialSeconds * 1000))
 			{
 #if _DEBUG
 				_DMESSAGE("Forget previously-locked container %s/0x%08x", refr->GetName(), refr->GetFormID());

@@ -150,6 +150,7 @@
     <ClCompile Include="TESObjectARMOHelper.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="TESObjectWEAPHelper.cpp" />
+    <ClCompile Include="version.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AlchemyItemHelper.h" />

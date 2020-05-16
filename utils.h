@@ -22,6 +22,11 @@ namespace FileUtils
 namespace utils
 {
 	void SetGoldValue(RE::TESForm* pForm, UInt32 value);
+	template <typename T> void LogFunctionAddress(T func, const char * name)
+	{
+		decltype(func) func1(func);
+		_MESSAGE("%p %s", func1, name);
+	}
 }
 
 namespace WindowsUtils
@@ -31,6 +36,7 @@ namespace WindowsUtils
 	class ScopedTimer {
 	public:
 		ScopedTimer(const std::string& context);
+		ScopedTimer(const std::string& context, RE::TESObjectREFR* refr);
 		~ScopedTimer();
 	private:
 		ScopedTimer();
@@ -38,7 +44,7 @@ namespace WindowsUtils
 		ScopedTimer& operator=(ScopedTimer&);
 
 		long long m_startTime;
-		const std::string m_context;
+		std::string m_context;
 	};
 }
 

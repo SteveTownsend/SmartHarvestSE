@@ -84,42 +84,7 @@ namespace papyrus
 
 	RE::BSFixedString GetPluginVersion(RE::StaticFunctionTag* base)
 	{
-		std::string moduleName = FileUtils::GetPluginFileName();
-		DWORD zero = 0;		// handle bizarro Win API
-		DWORD verInfoLen = 0;
-		BYTE* verInfo = NULL;
-		VS_FIXEDFILEINFO* fileInfo = NULL;
-		UINT len = 0;
-
-		/* Get the size of FileVersionInfo structure */
-		verInfoLen = GetFileVersionInfoSize(moduleName.c_str(), &zero);
-		if (verInfoLen == 0) {
-#if _DEBUG
-			_MESSAGE("GetFileVersionInfoSize() Failed");
-#endif
-			return "unknown";
-		}
-
-		/* Get FileVersionInfo structure */
-		verInfo = new BYTE[verInfoLen];
-		if (!GetFileVersionInfo(moduleName.c_str(), zero, verInfoLen, verInfo)) {
-#if _DEBUG
-			_MESSAGE("GetFileVersionInfo() Failed");
-#endif
-			return "unknown";
-		}
-
-		/* Query for File version details. */
-		if (!VerQueryValue(verInfo, "\\", (LPVOID*)&fileInfo, &len)) {
-#if _DEBUG
-			_MESSAGE("VerQueryValue() Failed");
-#endif
-			return "unknown";
-		}
-		std::ostringstream version;
-		version << HIWORD(fileInfo->dwFileVersionMS) << '.' << LOWORD(fileInfo->dwFileVersionMS) << '.' <<
-			HIWORD(fileInfo->dwFileVersionLS) << '.' << LOWORD(fileInfo->dwFileVersionLS);
-		return version.str().c_str();
+		return RE::BSFixedString(VersionInfo::Instance().GetPluginVersionString());
 	}
 
 	RE::BSFixedString GetTextFormID(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -287,11 +252,6 @@ namespace papyrus
 		DataCase::GetInstance()->SetLootableForProducer(critter, ingredient);
 	}
 
-	SInt32 GetCloseReferences(RE::StaticFunctionTag* base, SInt32 type1)
-	{
-		return SearchTask::StartSearch(type1);
-	}
-
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
 #if _DEBUG
@@ -419,7 +379,6 @@ bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	a_vm->RegisterFunction("GetTextFormID", AHSE_NAME, papyrus::GetTextFormID);
 	a_vm->RegisterFunction("GetTextObjectType", AHSE_NAME, papyrus::GetTextObjectType);
 
-	a_vm->RegisterFunction("GetCloseReferences", AHSE_NAME, papyrus::GetCloseReferences);
 	a_vm->RegisterFunction("UnlockAutoHarvest", AHSE_NAME, papyrus::UnlockAutoHarvest);
 	a_vm->RegisterFunction("BlockReference", AHSE_NAME, papyrus::BlockReference);
 	a_vm->RegisterFunction("UnblockEverything", AHSE_NAME, papyrus::UnblockEverything);

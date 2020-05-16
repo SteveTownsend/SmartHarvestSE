@@ -13,7 +13,6 @@ namespace RE {
 	};
 }
 
-#include "version.h"
 #include "RecursiveLock.h"
 
 #include "CommonLibSSE/include/ForceInclude.h"
@@ -25,6 +24,7 @@ namespace RE {
 
 #include "CommonLibSSE/include/RE/Skyrim.h"
 
+#include "version.h"
 #include "ObjectType.h"
 #include "iniSettings.h"
 #include "IHasValueWeight.h"

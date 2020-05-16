@@ -25,14 +25,14 @@ public:
 	void SetLootable(RE::TESForm* lootable);
 	virtual double GetWeight(void) const override;
 	virtual double GetWorth(void) const override;
-
-	const RE::TESObjectREFR* m_ref;
+	inline const RE::TESObjectREFR* GetReference() const { return m_ref; }
 
 protected:
 	virtual const char* GetName() const;
 	virtual UInt32 GetFormID() const;
 
 private:
+	const RE::TESObjectREFR* m_ref;
 	RE::TESForm* m_lootable;
 };
 

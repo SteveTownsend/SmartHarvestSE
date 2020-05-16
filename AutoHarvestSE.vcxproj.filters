@@ -42,6 +42,9 @@
     </ClCompile>
     <ClCompile Include="RecursiveLock.cpp" />
     <ClCompile Include="InventoryItem.cpp" />
+    <ClCompile Include="version.cpp">
+      <Filter>_Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.h" />

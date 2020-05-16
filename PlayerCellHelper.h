@@ -6,18 +6,18 @@ class PlayerCellHelper
 {
 public:
 	static PlayerCellHelper& GetInstance() { return m_instance; }
-	void GetReferences(RE::TESObjectCELL* cell, std::vector<RE::TESObjectREFR*>* targets, const double radius);
-	PlayerCellHelper() : m_cell(nullptr), m_radius(0.), m_targets(nullptr) {}
+	std::vector<RE::TESObjectREFR*> GetReferences(RE::TESObjectCELL* cell, const double radius);
+	PlayerCellHelper() : m_cell(nullptr), m_radius(0.) {}
 
 private:
-	bool CanLoot(const RE::TESObjectREFR* refr) const;
+	bool CanLoot(RE::TESObjectREFR* refr) const;
 	bool WithinLootingRange(const RE::TESObjectREFR* refr) const;
 	void GetCellReferences(const RE::TESObjectCELL* cell);
 	void GetAdjacentCells(RE::TESObjectCELL* cell);
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
 
 	RE::TESObjectCELL* m_cell;
-	std::vector<RE::TESObjectREFR*>* m_targets;
+	std::vector<RE::TESObjectREFR*> m_targets;
 	double m_radius;
 	static PlayerCellHelper m_instance;
 	static std::vector<RE::TESObjectCELL*> m_adjacentCells;
