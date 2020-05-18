@@ -132,6 +132,10 @@
     <ClCompile Include="EnchantmentItemHelper.cpp" />
     <ClCompile Include="IHasValueWeight.cpp" />
     <ClCompile Include="InventoryItem.cpp" />
+    <ClCompile Include="LogStackWalker.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="PlayerCellHelper.cpp" />
     <ClCompile Include="RecursiveLock.cpp" />
     <ClCompile Include="SimpleIni.cpp" />
@@ -139,6 +143,10 @@
     <ClCompile Include="PrecompiledHeaders.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="StackWalker.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="tasks.cpp" />
     <ClCompile Include="TESFormHelper.cpp" />
@@ -161,6 +169,7 @@
     <ClInclude Include="EnchantmentItemHelper.h" />
     <ClInclude Include="IHasValueWeight.h" />
     <ClInclude Include="InventoryItem.h" />
+    <ClInclude Include="LogStackWalker.h" />
     <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h" />
     <ClInclude Include="PrecompiledHeaders.h" />
@@ -168,6 +177,7 @@
     <ClInclude Include="resource1.h" />
     <ClInclude Include="SimpleIni.h" />
     <ClInclude Include="sound.h" />
+    <ClInclude Include="StackWalker.h" />
     <ClInclude Include="strConv.h" />
     <ClInclude Include="tasks.h" />
     <ClInclude Include="TESFormHelper.h" />

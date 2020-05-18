@@ -193,4 +193,5 @@ private:
 			m_glowReason = glowReason;
 	}
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
+	static void ScanThread();
 };

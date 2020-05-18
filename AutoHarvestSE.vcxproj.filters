@@ -45,6 +45,12 @@
     <ClCompile Include="version.cpp">
       <Filter>_Utils</Filter>
     </ClCompile>
+    <ClCompile Include="StackWalker.cpp">
+      <Filter>_Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="LogStackWalker.cpp">
+      <Filter>_Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utils.h" />
@@ -95,6 +101,12 @@
     </ClInclude>
     <ClInclude Include="RecursiveLock.h" />
     <ClInclude Include="InventoryItem.h" />
+    <ClInclude Include="StackWalker.h">
+      <Filter>_Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="LogStackWalker.h">
+      <Filter>_Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">

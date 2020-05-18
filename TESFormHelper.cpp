@@ -103,7 +103,10 @@ double TESFormHelper::GetWorth() const
 		{
 			const RE::TESAmmo* ammo(DataCase::GetInstance()->ProjToAmmo(proj));
 #if _DEBUG
-			_MESSAGE("Projectile %0.2f", ammo->data.damage);
+			if (ammo)
+			{
+				_MESSAGE("Projectile %0.2f", ammo->data.damage);
+			}
 #endif
 			return ammo ? static_cast<int>(ammo->data.damage) : 0;
 		}

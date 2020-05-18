@@ -67,7 +67,3 @@ void VersionInfo::GetPluginVersionInfo()
 	m_majorVersion = HIWORD(fileInfo->dwFileVersionMS);
 	m_versionString = version.str().c_str();
 }
-
-UInt32 GetVersionMajor()
-{
-}

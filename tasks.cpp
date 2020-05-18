@@ -9,6 +9,7 @@
 #include "debugs.h"
 #include "papyrus.h"
 #include "PlayerCellHelper.h"
+#include "LogStackWalker.h"
 
 #include <chrono>
 #include <thread>
@@ -274,7 +275,7 @@ void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 	// record looting so we don't rescan
 	MarkContainerLooted(refr);
 #if _DEBUG
-	_DMESSAGE("Enqueued dead body to loot later %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+	_DMESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
 #endif
 }
 
@@ -291,7 +292,7 @@ void SearchTask::ReleaseReliablyDeadActors()
 		RE::TESObjectREFR* refr(m_actorApparentTimeOfDeath.front().first);
 		m_refs.push_back(refr);
 #if _DEBUG
-		_DMESSAGE("Process enqueued dead body %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
 #endif
 		m_actorApparentTimeOfDeath.pop_front();
 	}
@@ -656,34 +657,46 @@ void SearchTask::SetPlayerHouseKeyword(RE::BGSKeyword* keyword)
 
 double MinDelay = 0.1;
 
+void SearchTask::ScanThread()
+{
+#if _DEBUG
+	_DMESSAGE("starting thread");
+#endif
+	m_ini = INIFile::GetInstance();
+	while (true)
+	{
+		double delay(m_ini->GetSetting(INIFile::PrimaryType::autoharvest,
+			INIFile::SecondaryType::config, "IntervalSeconds"));
+		delay = std::max(MinDelay, delay);
+		if (!IsAllowed())
+		{
+#if _DEBUG
+			_DMESSAGE("search disallowed, game loading or menus open");
+#endif
+		}
+		else
+		{
+			DoPeriodicSearch();
+		}
+#if _DEBUG
+		_DMESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
+#endif
+		auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
+		std::this_thread::sleep_until(nextRunTime);
+	}
+}
+
 void SearchTask::Start()
 {
 	std::thread([]()
 	{
-#if _DEBUG
-		_DMESSAGE("starting thread");
-#endif
-		m_ini = INIFile::GetInstance();
-		while (true)
+		// use structured exception handling to get stack walk on windows exceptions
+		__try
 		{
-			double delay(m_ini->GetSetting(INIFile::PrimaryType::autoharvest,
-				INIFile::SecondaryType::config, "IntervalSeconds"));
-			delay = std::max(MinDelay, delay);
-			if (!IsAllowed())
-			{
-#if _DEBUG
-				_DMESSAGE("search disallowed, game loading or menus open");
-#endif
-			}
-			else
-			{
-				DoPeriodicSearch();
-			}
-#if _DEBUG
-			_DMESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
-#endif
-			auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
-			std::this_thread::sleep_until(nextRunTime);
+			ScanThread();
+		}
+		__except (LogStackWalker::LogStack(GetExceptionInformation()))
+		{
 		}
 	}).detach();
 }
@@ -988,6 +1001,32 @@ void SearchTask::DoPeriodicSearch()
 
 	for (RE::TESObjectREFR* refr : m_refs)
 	{
+		// Filter out borked REFRs. PROJ repro observed in logs as below:
+		/*
+			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\AutoHarvestSE.Port\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54419 micros
+			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\AutoHarvestSE.Port\tasks.cpp(1037): [MESSAGE] Process REFR 0x00000000 with base object Iron Arrow/0x0003be11
+			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\AutoHarvestSE.Port\utils.cpp(211): [MESSAGE] TIME(Process Auto-loot Candidate Iron Arrow/0x0003be11)=35 micros
+
+			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\AutoHarvestSE.Port\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54195 micros
+			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\AutoHarvestSE.Port\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
+		*/
+
+		if (!refr->data.objectReference)
+		{
+#if _DEBUG
+			_MESSAGE("REFR 0x%08x has no Base Object", refr->GetFormID());
+#endif
+			continue;
+		}
+		else
+		{
+#if _DEBUG
+			_MESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
+				refr->data.objectReference->GetName(), refr->data.objectReference->GetFormID());
+#endif
+		}
+		WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
+
 		INIFile::SecondaryType lootTargetType = INIFile::SecondaryType::itemObjects;
 		{
 			WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
