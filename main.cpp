@@ -64,9 +64,7 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	SKSE::Logger::UseTimeStamp(true, true, true);
 	SKSE::Logger::UseThreadId(true);
 
-#if _DEBUG
-	_MESSAGE("%s v%s", AHSE_NAME, VersionInfo::Instance().GetPluginVersionString());
-#endif
+	_MESSAGE("%s v%s", AHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
 
 	a_info->infoVersion = SKSE::PluginInfo::kVersion;
 	a_info->name = AHSE_NAME;
@@ -84,9 +82,11 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	}
 
 	// print loaded addresses of key functions for debugging
+	_MESSAGE("*** Function addresses START");
 	utils::LogFunctionAddress(&SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
 	utils::LogFunctionAddress(&SearchTask::Run, "SearchTask::Run");
 	utils::LogFunctionAddress(&PlayerCellHelper::GetReferences, "PlayerCellHelper::GetReferences");
+	_MESSAGE("*** Function addresses END");
 
 	return true;
 }

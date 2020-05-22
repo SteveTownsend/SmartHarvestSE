@@ -6,7 +6,6 @@
 #include "dataCase.h"
 #include "basketfile.h"
 #include "containerLister.h"
-#include "TESFormHelper.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -42,6 +41,20 @@ bool IsContainerLocked(const RE::TESObjectREFR* refr)
 	return exLock && (exLock->lock->flags & RE::REFR_LOCK::Flag::kLocked) == RE::REFR_LOCK::Flag::kLocked;
 }
 
+// This appears safe to call during combat - does not introspect an in-flux ExtraDataList, just a bitfield
+bool HasAshPile(const RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+
+	const RE::ExtraDataList* extraList = &refr->extraList;
+	if (!extraList)
+		return false;
+
+	return extraList->HasType(RE::ExtraDataType::kAshPileRef);
+}
+
+// This is unsafe to call during combat - used only during deferred looting of Dead Bodies
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
@@ -176,11 +189,6 @@ UInt32 TESObjectREFRHelper::GetFormID() const
 	return m_ref->data.objectReference->formID;
 }
 
-RE::TESObjectREFR* TESObjectREFRHelper::GetAshPileRefr()
-{
-	return GetAshPile(m_ref);
-}
-
 SInt16 TESObjectREFRHelper::GetItemCount()
 {
 	if (!m_ref)
@@ -251,7 +259,7 @@ ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreUserlist)
 	{
 		return ObjectType::actor;
 	}
-	else if (GetAshPile(refr) && refr->data.objectReference->formType == RE::FormType::Activator)
+	else if (refr->data.objectReference->formType == RE::FormType::Activator && HasAshPile(refr))
 	{
 		return ObjectType::unknown;
 	}

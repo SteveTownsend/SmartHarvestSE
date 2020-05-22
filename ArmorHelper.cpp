@@ -1,5 +1,5 @@
 #include "PrecompiledHeaders.h"
-#include "TESObjectARMOHelper.h"
+#include "ArmorHelper.h"
 
 UInt32 TESObjectARMOHelper::GetGoldValue() const
 {

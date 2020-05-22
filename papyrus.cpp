@@ -6,7 +6,6 @@
 #include "papyrus.h"
 
 #include "IHasValueWeight.h"
-#include "TESFormHelper.h"
 #include "tasks.h"
 #include "iniSettings.h"
 #include "basketfile.h"

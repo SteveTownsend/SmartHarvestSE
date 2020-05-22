@@ -5,9 +5,9 @@
 #include "objects.h"
 
 #include "AlchemyItemHelper.h"
-#include "TESFormHelper.h"
-#include "TESObjectARMOHelper.h"
-#include "TESObjectWEAPHelper.h"
+#include "FormHelper.h"
+#include "ArmorHelper.h"
+#include "WeaponHelper.h"
 
 #include "CommonLibSSE/include/RE/BGSProjectile.h"
 

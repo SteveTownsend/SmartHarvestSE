@@ -45,6 +45,18 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
+	DataCase* data = DataCase::GetInstance();
+
+	// check blacklist early - this may be a malformed REFR e.g. data.objectReference blank, 0x00000000 FormID
+	// as observed in play testing
+	if (data->IsReferenceOnBlacklist(refr))
+	{
+#if _DEBUG
+		_DMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
+#endif
+		return false;
+	}
+
 	// anything out of looting range is skipped - best way to narrow the list of candidates for looting
 	if (!WithinLootingRange(refr))
 		return false;
@@ -100,7 +112,6 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	DataCase* data = DataCase::GetInstance();
 	if (data->IsReferenceBlocked(refr))
 	{
 #if _DEBUG
@@ -119,9 +130,9 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	RE::TESFullName* fullName = refr->data.objectReference->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
-		data->BlockForm(refr->data.objectReference);
+		data->BlacklistReference(refr);
 #if _DEBUG
-		_DMESSAGE("block REFR with blank name 0x%08x", formID);
+		_DMESSAGE("blacklist REFR with blank name 0x%08x", formID);
 #endif
 		return false;
 	}

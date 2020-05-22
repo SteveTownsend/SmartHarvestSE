@@ -28,5 +28,5 @@ namespace RE {
 #include "ObjectType.h"
 #include "iniSettings.h"
 #include "IHasValueWeight.h"
-#include "TESFormHelper.h"
+#include "FormHelper.h"
 #include "utils.h"

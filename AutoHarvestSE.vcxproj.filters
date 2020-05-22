@@ -15,9 +15,6 @@
     <ClCompile Include="sound.cpp" />
     <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="PrecompiledHeaders.cpp" />
-    <ClCompile Include="TESFormHelper.cpp">
-      <Filter>_FormHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="AlchemyItemHelper.cpp">
       <Filter>_FormHelpers</Filter>
     </ClCompile>
@@ -25,12 +22,6 @@
       <Filter>_FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="EnchantmentItemHelper.cpp">
-      <Filter>_FormHelpers</Filter>
-    </ClCompile>
-    <ClCompile Include="TESObjectARMOHelper.cpp">
-      <Filter>_FormHelpers</Filter>
-    </ClCompile>
-    <ClCompile Include="TESObjectWEAPHelper.cpp">
       <Filter>_FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="SimpleIni.cpp" />
@@ -50,6 +41,15 @@
     </ClCompile>
     <ClCompile Include="LogStackWalker.cpp">
       <Filter>_Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="ArmorHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="WeaponHelper.cpp">
+      <Filter>_FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="FormHelper.cpp">
+      <Filter>_FormHelpers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,9 +73,6 @@
     <ClInclude Include="version.h">
       <Filter>_Utils</Filter>
     </ClInclude>
-    <ClInclude Include="TESFormHelper.h">
-      <Filter>_FormHelpers</Filter>
-    </ClInclude>
     <ClInclude Include="AlchemyItemHelper.h">
       <Filter>_FormHelpers</Filter>
     </ClInclude>
@@ -83,12 +80,6 @@
       <Filter>_FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="EnchantmentItemHelper.h">
-      <Filter>_FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="TESObjectARMOHelper.h">
-      <Filter>_FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="TESObjectWEAPHelper.h">
       <Filter>_FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="SimpleIni.h" />
@@ -106,6 +97,15 @@
     </ClInclude>
     <ClInclude Include="LogStackWalker.h">
       <Filter>_Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ArmorHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="WeaponHelper.h">
+      <Filter>_FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="FormHelper.h">
+      <Filter>_FormHelpers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

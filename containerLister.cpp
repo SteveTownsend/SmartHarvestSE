@@ -1,7 +1,6 @@
 #include "PrecompiledHeaders.h"
 
 #include "objects.h"
-#include "TESFormHelper.h"
 #include "ExtraDataListHelper.h"
 #include "containerLister.h"
 

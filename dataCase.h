@@ -23,17 +23,21 @@ public:
 	typedef std::unordered_set<const RE::TESForm*> FormCategory;
 
 	bool BlockReference(const RE::TESObjectREFR* refr);
-	bool UnblockReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
 	void ClearBlockedReferences();
+
+	// permanent REFR blacklist, reset on game reload
+	bool BlacklistReference(const RE::TESObjectREFR* refr);
+	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr);
+	void ClearReferenceBlacklist();
 
 	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
 	void ForgetLockedContainers();
 	void UpdateLockedContainers();
 
 	bool BlockForm(const RE::TESForm* form);
-	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
+	void ResetBlockedForms();
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
@@ -56,7 +60,7 @@ public:
 	RE::TESForm* ConvertIfLeveledItem(RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
-	void ListsClear();
+	void ListsClear(const bool gameReload);
 	bool SkipAmmoLooting(RE::TESObjectREFR* refr);
 
 	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
@@ -76,6 +80,7 @@ private:
 	std::unordered_set<RE::FormID> userBlockedForm;
 	std::unordered_set<const RE::TESForm*> blockForm;
 	std::unordered_set<RE::FormID> blockRefr;
+	std::unordered_set<RE::FormID> blacklistRefr;
 	std::unordered_map<RE::FormID, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lockedContainers;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;

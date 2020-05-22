@@ -6,7 +6,6 @@
 #include "utils.h"
 #include "objects.h"
 #include "dataCase.h"
-#include "TESFormHelper.h"
 
 #include "debugs.h"
 
@@ -140,7 +139,7 @@ void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 	TESFormHelper itemEx(target);
 	DumpItemVW(itemEx);
 
-	DumpKeyword(refr.GetReference()->data.objectReference);
+	DumpKeyword(target);
 
 	const RE::ExtraDataList *extraData = &refr.GetReference()->extraList;
 	DumpExtraData(extraData);

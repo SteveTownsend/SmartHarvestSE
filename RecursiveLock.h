@@ -2,6 +2,7 @@
 
 #include <synchapi.h>
 
+// Lightweight Windows-only recursive lock via Critical Section
 class RecursiveLock
 {
 public:

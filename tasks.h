@@ -1,7 +1,6 @@
 #pragma once
 
 #include "objects.h"
-#include "TESFormHelper.h"
 #include "iniSettings.h"
 #include "containerLister.h"
 

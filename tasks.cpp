@@ -1,7 +1,6 @@
 #include "PrecompiledHeaders.h"
 
 #include "tasks.h"
-#include "TESFormHelper.h"
 #include "objects.h"
 #include "dataCase.h"
 #include "iniSettings.h"
@@ -288,12 +287,21 @@ void SearchTask::ReleaseReliablyDeadActors()
 	const auto cutoffPoint(std::chrono::high_resolution_clock::now() - std::chrono::milliseconds(static_cast<long long>(ActorReallyDeadWaitIntervalSeconds * 1000.0)));
 	while (!m_actorApparentTimeOfDeath.empty() && m_actorApparentTimeOfDeath.front().second <= cutoffPoint)
 	{
-		// this actor died long enough ago that we trust actor->GetContainer not to crash
+		// this actor died long enough ago that we trust actor->GetContainer not to crash, provided the ID is still usable
 		RE::TESObjectREFR* refr(m_actorApparentTimeOfDeath.front().first);
-		m_refs.push_back(refr);
+		if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID()))
+		{
 #if _DEBUG
-		_DMESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
+			_DMESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
 #endif
+		}
+		else
+		{
+#if _DEBUG
+			_DMESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
+#endif
+		}
+		m_refs.push_back(refr);
 		m_actorApparentTimeOfDeath.pop_front();
 	}
 }
@@ -331,17 +339,12 @@ void SearchTask::Run()
 			return;
 		}
 
-#if _DEBUG
-		_MESSAGE("typeName  %s", typeName.c_str());
-		DumpReference(refrEx, typeName.c_str());
-#endif
-
 		if (objType == ObjectType::unknown)
 		{
 #if _DEBUG
-			_DMESSAGE("block objType == ObjectType::unknown for 0x%08x", m_candidate->data.objectReference->formID);
+			_DMESSAGE("blacklist objType == ObjectType::unknown for 0x%08x", m_candidate->GetFormID());
 #endif
-			data->BlockForm(m_candidate->data.objectReference);
+			data->BlacklistReference(m_candidate);
 			return;
 		}
 
@@ -361,20 +364,25 @@ void SearchTask::Run()
 				}
 			}
 #if _DEBUG
-			_DMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->data.objectReference->formID);
+			_DMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
 #endif
-			data->BlockForm(m_candidate->data.objectReference);
+			data->BlockReference(m_candidate);
 			return;
 		}
 
 		if (BasketFile::GetSingleton()->IsinList(BasketFile::EXCLUDELIST, m_candidate->data.objectReference))
 		{
 #if _DEBUG
-			_DMESSAGE("block m_refr->data.objectReference >= 1 for 0x%08x", m_candidate->data.objectReference->formID);
+			_DMESSAGE("blacklist form in exclude list for 0x%08x", m_candidate->data.objectReference->GetFormID());
 #endif
 			data->BlockForm(m_candidate->data.objectReference);
 			return;
 		}
+
+#if _DEBUG
+		_MESSAGE("typeName  %s", typeName.c_str());
+		DumpReference(refrEx, typeName.c_str());
+#endif
 
 		// initially no glow - use synthetic value with highest precedence
 		m_glowReason = GlowReason::None;
@@ -705,7 +713,7 @@ int InfiniteWeight = 100000;
 
 void SearchTask::ResetRestrictions(const bool gameReload)
 {
-	DataCase::GetInstance()->ListsClear();
+	DataCase::GetInstance()->ListsClear(gameReload);
 #if _DEBUG
 	_MESSAGE("Unlock task-pending REFRs");
 #endif
@@ -1016,6 +1024,7 @@ void SearchTask::DoPeriodicSearch()
 #if _DEBUG
 			_MESSAGE("REFR 0x%08x has no Base Object", refr->GetFormID());
 #endif
+			data->BlacklistReference(refr);
 			continue;
 		}
 		else
@@ -1025,14 +1034,12 @@ void SearchTask::DoPeriodicSearch()
 				refr->data.objectReference->GetName(), refr->data.objectReference->GetFormID());
 #endif
 		}
-		WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
 
 		INIFile::SecondaryType lootTargetType = INIFile::SecondaryType::itemObjects;
 		{
 			WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
 			if (!refr)
 				continue;
-			RE::TESObjectREFR* ashPileRefr(nullptr);
 			if (refr->data.objectReference->As<RE::Actor>() || refr->data.objectReference->As<RE::TESNPC>())
 			{
 				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0 || !refr->IsDead(true))
@@ -1065,7 +1072,7 @@ void SearchTask::DoPeriodicSearch()
 					continue;
 				lootTargetType = INIFile::SecondaryType::containers;
 			}
-			else if (refr->data.objectReference->As<RE::TESObjectACTI>() && (ashPileRefr = GetAshPile(refr)))
+			else if (refr->data.objectReference->As<RE::TESObjectACTI>() && HasAshPile(refr))
 			{
 				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0)
 					continue;
@@ -1077,15 +1084,18 @@ void SearchTask::DoPeriodicSearch()
 					RegisterActorTimeOfDeath(refr);
 					continue;
 				}
+				// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
+#if _DEBUG
+				RE::TESObjectREFR* originalRefr(refr);
+#endif
+				refr = GetAshPile(refr);
+#if _DEBUG
+				_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), originalRefr->GetFormID());
+#endif
 			}
 			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableAutoHarvest") == 0.0)
 			{
 				continue;
-			}
-
-			if (ashPileRefr)
-			{
-				refr = ashPileRefr;
 			}
 		}
 		SearchTask(refr, lootTargetType).Run();

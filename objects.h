@@ -12,7 +12,6 @@ class TESObjectREFRHelper : public IHasValueWeight
 public:
 	explicit TESObjectREFRHelper(const RE::TESObjectREFR* ref);
 
-	RE::TESObjectREFR* GetAshPileRefr(void);
 	SInt16 GetItemCount();
 	RE::NiTimeController* GetTimeController(void);
 	bool IsQuestItem(const bool requireFullQuestFlags);
@@ -48,6 +47,7 @@ private:
 	RE::Actor* m_actor;
 };
 
+bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsContainerLocked(const RE::TESObjectREFR * refr);

@@ -406,14 +406,6 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 	return (blockRefr.insert(refr->GetFormID())).second;
 }
 
-bool DataCase::UnblockReference(const RE::TESObjectREFR* refr)
-{
-	if (!refr)
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return blockRefr.erase(refr->GetFormID()) > 0;
-}
-
 bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
@@ -429,6 +421,31 @@ void DataCase::ClearBlockedReferences()
 #endif
 	RecursiveLockGuard guard(m_blockListLock);
 	blockRefr.clear();
+}
+
+bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	return (blacklistRefr.insert(refr->GetFormID())).second;
+}
+
+bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	return blacklistRefr.count(refr->GetFormID()) > 0;
+}
+
+void DataCase::ClearReferenceBlacklist()
+{
+#if _DEBUG
+	_DMESSAGE("Reset blacklisted REFRs");
+#endif
+	RecursiveLockGuard guard(m_blockListLock);
+	blacklistRefr.clear();
 }
 
 // Remember locked containers so we do not indiscriminately auto-loot them after a player unlock, if config forbids
@@ -499,6 +516,7 @@ void DataCase::UpdateLockedContainers()
 		lockedContainer.second = currentTime;
 	}
 }
+
 bool DataCase::BlockForm(const RE::TESForm* form)
 {
 	if (!form)
@@ -507,20 +525,29 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	return (blockForm.insert(form)).second;
 }
 
-bool DataCase::UnblockForm(const RE::TESForm* form)
-{
-	if (!form)
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return blockForm.erase(form) > 0;
-}
-
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
 {
 	if (!form)
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return blockForm.count(form) > 0;
+}
+
+void DataCase::ResetBlockedForms()
+{
+	// reset blocked forms to just the user's list
+#if _DEBUG
+	_DMESSAGE("Reset Blocked Forms");
+#endif
+	RecursiveLockGuard guard(m_blockListLock);
+	blockForm.clear();
+	for (RE::FormID formID : userBlockedForm)
+	{
+#if _DEBUG
+		_DMESSAGE("Restore block status for user form 0x%08x", formID);
+#endif
+		BlockForm(RE::TESForm::LookupByID(formID));
+	}
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
@@ -571,7 +598,7 @@ RE::TESForm* DataCase::ConvertIfLeveledItem(RE::TESForm* form) const
 	return form;
 }
 
-void DataCase::ListsClear()
+void DataCase::ListsClear(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
 #if _DEBUG
@@ -579,17 +606,10 @@ void DataCase::ListsClear()
 #endif
 	arrowCheck.clear();
 
-	// reset blocked forms to just the user's list
-#if _DEBUG
-	_DMESSAGE("Clear blocked forms");
-#endif
-	blockForm.clear();
-	for (RE::FormID formID : userBlockedForm)
+	// only clear blacklist on game reload
+	if (gameReload)
 	{
-#if _DEBUG
-		_DMESSAGE("Restore block status for user form 0x%08x", formID);
-#endif
-		BlockForm(RE::TESForm::LookupByID(formID));
+		ClearReferenceBlacklist();
 	}
 	// reset blocked references, reseed with off-limits containers
 	ClearBlockedReferences();
@@ -643,10 +663,16 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 
 void DataCase::CategorizeLootables()
 {
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Load User blocked forms");
+#endif
 	if (!GetTSV(&userBlockedForm, "blocklist.tsv"))
 		GetTSV(&userBlockedForm, "default\\blocklist.tsv");
 
 	// used to taxonomize ACTIvators
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Load Text Translation");
+#endif
 	GetTranslationData();
 #if _DEBUG
 	_MESSAGE("*** LOAD *** Store Activation Verbs");

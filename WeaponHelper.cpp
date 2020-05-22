@@ -1,7 +1,7 @@
 #include "PrecompiledHeaders.h"
 
 #include "CommonLibSSE/include/RE/GameSettingCollection.h"
-#include "TESObjectWEAPHelper.h"
+#include "WeaponHelper.h"
 
 UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 {
