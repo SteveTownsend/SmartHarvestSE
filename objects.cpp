@@ -207,18 +207,18 @@ SInt16 TESObjectREFRHelper::GetItemCount()
 	return (exCount) ? exCount->count : 1;
 }
 
-RE::NiTimeController* TESObjectREFRHelper::GetTimeController()
+RE::NiTimeController* TESObjectREFRHelper::GetTimeController() const
 {
 	const RE::NiAVObject* node = m_ref->Get3D2();
 	return (node && node->GetControllers()) ? node->GetControllers() : nullptr;
 }
 
-bool ActorHelper::IsSneaking()
+bool ActorHelper::IsSneaking() const
 {
 	return (m_actor && m_actor->IsSneaking());
 }
 
-bool ActorHelper::IsPlayerAlly()
+bool ActorHelper::IsPlayerAlly() const
 {
 	if (!m_actor)
 		return false;
@@ -230,7 +230,7 @@ bool ActorHelper::IsPlayerAlly()
 	return (followerFaction) ? m_actor->IsInFaction(followerFaction) : false;
 }
 
-bool ActorHelper::IsEssential()
+bool ActorHelper::IsEssential() const 
 {
 	if (!m_actor)
 		return false;
@@ -240,14 +240,9 @@ bool ActorHelper::IsEssential()
 	return baseData->IsEssential();
 }
 
-bool ActorHelper::IsSummonable(void)
+bool ActorHelper::IsSummoned(void) const
 {
-	if (!m_actor)
-		return false;
-	RE::TESActorBaseData* baseData(m_actor->As<RE::TESActorBaseData>());
-	if (!baseData)
-		return false;
-	return baseData->IsSummonable();
+	return m_actor ? m_actor->IsSummoned() : false;
 }
 
 ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreUserlist)

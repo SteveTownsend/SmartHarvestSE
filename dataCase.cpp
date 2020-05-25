@@ -402,6 +402,9 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (refr->IsDynamicForm())
+		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return (blockRefr.insert(refr->GetFormID())).second;
 }
@@ -409,6 +412,9 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return blockRefr.count(refr->GetFormID()) > 0;
@@ -427,6 +433,9 @@ bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (refr->IsDynamicForm())
+		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return (blacklistRefr.insert(refr->GetFormID())).second;
 }
@@ -434,6 +443,9 @@ bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return blacklistRefr.count(refr->GetFormID()) > 0;
@@ -521,6 +533,9 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 {
 	if (!form)
 		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (form->IsDynamicForm())
+		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return (blockForm.insert(form)).second;
 }
@@ -528,6 +543,9 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
 {
 	if (!form)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return blockForm.count(form) > 0;

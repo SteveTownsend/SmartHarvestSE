@@ -3,6 +3,8 @@
 #include "dataCase.h"
 #include "objects.h"
 #include "tasks.h"
+#include "iniSettings.h"
+#include "papyrus.h"
 #include "PlayerCellHelper.h"
 
 PlayerCellHelper PlayerCellHelper::m_instance;
@@ -19,6 +21,7 @@ bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
 	if (dx > m_radius || dy > m_radius || dz > m_radius)
 	{
 #if _DEBUG
+		// very verbose
 		_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
 			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionX(),
@@ -34,6 +37,38 @@ bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
 	return distance <= m_radius;
 }
 
+/*
+Lootability can be subjective and/or time-sensitive. Dynamic forms (FormID 0xffnnnnnn) may be deleted from under our feet.
+Current hypothesis is that this is safe so long as the base object is not itself dynamic.
+Example from play-testing CTD logs where we crashed getting FormID for a pending-loot dead body.
+
+Line 3732034: 0x8e70 (2020 - 05 - 23 07:24 : 16.910) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
+Line 3735016 : 0x8e70 (2020 - 05 - 23 07:24 : 17.800) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
+Line 3737998 : 0x8e70 (2020 - 05 - 23 07:24 : 18.700) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
+Line 3785563 : 0x8e70 (2020 - 05 - 23 07:24 : 36.095) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024eb with base object Restless Skeleton / 0xff0024ed
+Line 3785564 : 0x8e70 (2020-05-23 07:24:36.095) J:\GitHub\AutoHarvestSE.Port\tasks.cpp(277): [DEBUG] Enqueued dead body to loot later 0xff0024eb
+Line 3785565 : 0x8e70 (2020-05-23 07:24:36.095) J:\GitHub\AutoHarvestSE.Port\utils.cpp(211): [MESSAGE] TIME(Process Auto-loot Candidate Restless Skeleton/0xff0024ed)=114 micros
+
+When we come to process this dead body a little later, we get CTD. The FormID has morphed, meaning the REFR was junked.
+
+Line 3797443 : 0x8e70 (2020-05-23 07:24:39.705) J:\GitHub\AutoHarvestSE.Port\tasks.cpp(295): [DEBUG] Process enqueued dead body 0x10000000
+Line 3797443 : 0x8e70 (2020-05-23 07:24:40.707) J:\GitHub\AutoHarvestSE.Port\LogStackWalker.cpp(7): [MESSAGE] Callstack dump :
+...snip...
+J:\GitHub\CommonLibSSE\src\RE\TESForm.cpp (110): RE::TESForm::GetFormID
+J:\GitHub\AutoHarvestSE.Port\tasks.cpp (1033): SearchTask::DoPeriodicSearch
+J:\GitHub\AutoHarvestSE.Port\tasks.cpp (690): SearchTask::ScanThread
+J:\GitHub\AutoHarvestSE.Port\tasks.cpp (705): `SearchTask::Start'::`2'::<lambda_1>::operator()
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.25.28610\include\type_traits (1610): std::_Invoker_functor::_Call<`SearchTask::Start'::`2'::<lambda_1> >
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.25.28610\include\type_traits (1610): std::invoke<`SearchTask::Start'::`2'::<lambda_1> >
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.25.28610\include\thread (44): std::thread::_Invoke<std::tuple<`SearchTask::Start'::`2'::<lambda_1> >,0>
+
+The failing REFR is a dynamic form referencing a dynamic base form. Earlier REFRs dynamic -> non-dynamic worked OK.
+
+Dynamic forms may be deleted by script. This means we must be especially wary in handling them. 
+For now, choose to flat-out ignore any REFR to a Dynamic Base - manual looting is still possible if REFR is not deleted. Filtering also includes
+never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR FormIDs are recycled.
+*/
+
 bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 {
 	// prioritize checks that do not require obtaining a lock
@@ -45,7 +80,22 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
+	if (!refr->GetBaseObject())
+	{
+#if _DEBUG
+		_DMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
+#endif
+		return false;
+	}
+
 	DataCase* data = DataCase::GetInstance();
+	if (data->IsReferenceBlocked(refr))
+	{
+#if _DEBUG
+		_DMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
+#endif
+		return false;
+	}
 
 	// check blacklist early - this may be a malformed REFR e.g. data.objectReference blank, 0x00000000 FormID
 	// as observed in play testing
@@ -57,11 +107,6 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// anything out of looting range is skipped - best way to narrow the list of candidates for looting
-	if (!WithinLootingRange(refr))
-		return false;
-
-	RE::FormID formID(refr->formID);
 	// if 3D not loaded do not measure
 	if (!refr->Is3DLoaded())
 	{
@@ -70,6 +115,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 #endif
 		return false;
 	}
+
 	if (refr->formType == RE::FormType::ActorCharacter)
 	{
 		if (!refr->IsDead(true))
@@ -92,10 +138,24 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
 #if _DEBUG
-		_DMESSAGE("skip harvested Flora%s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("skip harvested Flora %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
 #endif
 		return false;
 	}
+
+	if (refr->data.objectReference->formType == RE::FormType::Furniture ||
+		refr->data.objectReference->formType == RE::FormType::Hazard ||
+		refr->data.objectReference->formType == RE::FormType::Door)
+	{
+#if _DEBUG
+		_DMESSAGE("skip ineligible Form Type %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+#endif
+		return false;
+	}
+
+	// anything out of looting range is skipped
+	if (!WithinLootingRange(refr))
+		return false;
 
 	if (SearchTask::IsLockedForAutoHarvest(refr))
 	{
@@ -111,18 +171,19 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 #endif
 		return false;
 	}
-
-	if (data->IsReferenceBlocked(refr))
+	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
+	RE::FormID dynamicForm(SearchTask::IsLootedDynamicContainer(refr));
+	if (dynamicForm != 0)
 	{
 #if _DEBUG
-		_DMESSAGE("skip blocked REFR for object/container 0x%08x", formID);
+		_DMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
 #endif
 		return false;
 	}
 	if (data->IsFormBlocked(refr->data.objectReference))
 	{
 #if _DEBUG
-		_DMESSAGE("skip blocked REFR base form 0x%08x", formID);
+		_DMESSAGE("skip blocked REFR base form 0x%08x", refr->formID);
 #endif
 		return false;
 	}
@@ -132,13 +193,13 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	{
 		data->BlacklistReference(refr);
 #if _DEBUG
-		_DMESSAGE("blacklist REFR with blank name 0x%08x", formID);
+		_DMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
 #endif
 		return false;
 	}
 
 #if _DEBUG
-	_DMESSAGE("lootable candidate 0x%08x", formID);
+	_DMESSAGE("lootable candidate 0x%08x", refr->formID);
 #endif
 	return true;
 }
@@ -155,7 +216,10 @@ void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 		if (refr)
 		{
 			if (!CanLoot(refr))
+			{
+				++m_eliminated;
 				continue;
+			}
 
 			m_targets.push_back(refr);
 		}
@@ -235,6 +299,7 @@ std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCEL
 		return std::vector<RE::TESObjectREFR*>();
 
 	m_radius = radius;
+	m_eliminated = 0;
 
 	// find the adjacent cells, we only need to scan those and current player cell
 	GetAdjacentCells(cell);
@@ -262,6 +327,10 @@ std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCEL
 			GetCellReferences(adjacentCell);
 		}
 	}
+#if _DEBUG
+	// Summary of unlootable REFRs
+	_MESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, m_cell->GetFormID());
+#endif
 	// set up return value and clear accumulator
 	std::vector<RE::TESObjectREFR*> result;
 	result.swap(m_targets);

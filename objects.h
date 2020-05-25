@@ -13,7 +13,7 @@ public:
 	explicit TESObjectREFRHelper(const RE::TESObjectREFR* ref);
 
 	SInt16 GetItemCount();
-	RE::NiTimeController* GetTimeController(void);
+	RE::NiTimeController* GetTimeController(void) const;
 	bool IsQuestItem(const bool requireFullQuestFlags);
 	double GetPosValue(void);
 	RE::TESContainer * GetContainer() const;
@@ -39,10 +39,10 @@ class ActorHelper
 {
 public:
 	ActorHelper(RE::Actor* actor) : m_actor(actor) {}
-	bool IsSneaking(void);
-	bool IsPlayerAlly(void);
-	bool IsEssential(void);
-	bool IsSummonable(void);
+	bool IsSneaking(void) const;
+	bool IsPlayerAlly(void) const;
+	bool IsEssential(void) const;
+	bool IsSummoned(void) const;
 private:
 	RE::Actor* m_actor;
 };

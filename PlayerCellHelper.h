@@ -19,6 +19,7 @@ private:
 	RE::TESObjectCELL* m_cell;
 	std::vector<RE::TESObjectREFR*> m_targets;
 	double m_radius;
+	unsigned int m_eliminated;
 	static PlayerCellHelper m_instance;
 	static std::vector<RE::TESObjectCELL*> m_adjacentCells;
 };

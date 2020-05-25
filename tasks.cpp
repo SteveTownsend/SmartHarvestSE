@@ -241,6 +241,52 @@ bool SearchTask::IsBookGlowable() const
 	return false;
 }
 
+// Dynamic REFR looting is not delayed - the visuals may be less appealing, but delaying risks CTD as REFRs can
+// be recycled very quickly.
+bool SearchTask::HasDynamicData(RE::TESObjectREFR* refr)
+{
+	// do not reregister known REFR
+	if (IsLootedDynamicContainer(refr))
+		return true;
+
+	// risk exists if REFR or its concrete object is dynamic
+	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
+	{
+		_DMESSAGE("dynamic REFR 0x%08x or base 0x%08x for %s", refr->GetFormID(),
+			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
+		// record looting so we don't rescan
+		MarkDynamicContainerLooted(refr);
+		return true;
+	}
+	return false;
+}
+
+std::unordered_map<RE::TESObjectREFR*, RE::FormID> SearchTask::m_lootedDynamicContainers;
+void SearchTask::MarkDynamicContainerLooted(RE::TESObjectREFR* refr)
+{
+	RecursiveLockGuard guard(m_lock);
+	// record looting so we don't rescan
+	m_lootedDynamicContainers.insert(std::make_pair(refr, refr->GetFormID()));
+}
+
+RE::FormID SearchTask::IsLootedDynamicContainer(RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+	RecursiveLockGuard guard(m_lock);
+	if (m_lootedDynamicContainers.count(refr) > 0)
+		return m_lootedDynamicContainers[refr];
+	return RE::FormID(0);
+}
+
+// forget about dynamic containers we looted when cell changes. This is more aggressive than static container looting
+// as this list contains recycled FormIDs, and hypothetically may grow unbounded.
+void SearchTask::ResetLootedDynamicContainers()
+{
+	RecursiveLockGuard guard(m_lock);
+	m_lootedDynamicContainers.clear();
+}
+
 std::unordered_set<RE::TESObjectREFR*> SearchTask::m_lootedContainers;
 void SearchTask::MarkContainerLooted(RE::TESObjectREFR* refr)
 {
@@ -720,9 +766,11 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 	RecursiveLockGuard guard(m_lock);
 	// unblock all blocked auto-harvest objects
 	m_autoHarvestLock.clear();
-	// unblock possible player house checks after game reload
+	// Dynamic containers that we looted reset on cell change
+	ResetLootedDynamicContainers();
 	if (gameReload)
 	{
+		// unblock possible player house checks after game reload
 		m_playerHouses.clear();
 		// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
 		ResetLootedContainers();
@@ -1040,17 +1088,16 @@ void SearchTask::DoPeriodicSearch()
 			WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
 			if (!refr)
 				continue;
-			if (refr->data.objectReference->As<RE::Actor>() || refr->data.objectReference->As<RE::TESNPC>())
+			RE::Actor* actor(nullptr);
+			if ((actor = refr->data.objectReference->As<RE::Actor>()) || refr->data.objectReference->As<RE::TESNPC>())
 			{
 				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::config, "enableLootDeadbody") == 0.0 || !refr->IsDead(true))
 					continue;
 
-				RE::Actor* actor(refr->data.objectReference->As<RE::Actor>());
 				if (actor)
 				{
 					ActorHelper actorEx(actor);
-					bool allied(actorEx.IsPlayerAlly());
-					if (allied || actorEx.IsEssential() || !actorEx.IsSummonable())
+					if (actorEx.IsPlayerAlly() || actorEx.IsEssential() || actorEx.IsSummoned())
 					{
 						data->BlockReference(refr);
 						continue;
@@ -1059,7 +1106,7 @@ void SearchTask::DoPeriodicSearch()
 
 				lootTargetType = INIFile::SecondaryType::deadbodies;
 				// Delay looting exactly once. We only return here after required time since death has expired.
-				if (!IsLootedContainer(refr))
+				if (!HasDynamicData(refr) && !IsLootedContainer(refr))
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);
@@ -1078,7 +1125,7 @@ void SearchTask::DoPeriodicSearch()
 					continue;
 				lootTargetType = INIFile::SecondaryType::deadbodies;
 				// Delay looting exactly once. We only return here after required time since death has expired.
-				if (!IsLootedContainer(refr))
+				if (!HasDynamicData(refr) && !IsLootedContainer(refr))
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);

@@ -128,10 +128,15 @@ public:
 	bool IsLootingForbidden();
 	bool IsBookGlowable() const;
 
+	static void MarkDynamicContainerLooted(RE::TESObjectREFR* refr);
+	static RE::FormID IsLootedDynamicContainer(RE::TESObjectREFR* refr);
+	static void ResetLootedDynamicContainers();
+
 	static void MarkContainerLooted(RE::TESObjectREFR* refr);
 	static bool IsLootedContainer(RE::TESObjectREFR* refr);
 	static void ResetLootedContainers();
 
+	static bool HasDynamicData(RE::TESObjectREFR* refr);
 	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
 	static void ReleaseReliablyDeadActors();
 
@@ -175,6 +180,7 @@ public:
 	// potentially) after game registers the Actor's demise.
 	static std::deque<std::pair<RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>>> m_actorApparentTimeOfDeath;
 	// Record looted containers to avoid re-scan of empty or looted chest and dead body. Resets on game reload or MCM settings update.
+	static std::unordered_map<RE::TESObjectREFR*, RE::FormID> m_lootedDynamicContainers;
 	static std::unordered_set<RE::TESObjectREFR*> m_lootedContainers;
 
 	static std::unordered_set<const RE::BGSLocation*> m_locationCheckedForPlayerHouse;
