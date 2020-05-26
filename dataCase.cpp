@@ -293,14 +293,29 @@ enum FactionFlags
 	kFlag_Vender = 1 << 14,		//  4000
 };
 
+void DataCase::ExcludeImmersiveArmorsGodChest()
+{
+	static std::string espName("Hothtrooper44_ArmorCompilation.esp");
+	static RE::FormID godChestFormName(0x4b352);
+	RE::TESForm* godChestForm(RE::TESDataHandler::GetSingleton()->LookupForm(godChestFormName, espName));
+	if (godChestForm)
+	{
+#if _DEBUG
+		_DMESSAGE("Block Immersive Armors 'all the loot' chest %s(0x%08X)", godChestForm->GetName(), godChestForm->GetFormID());
+#endif
+		m_offLimitsForms.insert(godChestForm);
+	}
+}
+
 void DataCase::BlockOffLimitsContainers()
 {
-#if _DEBUG
-	_DMESSAGE("Pre-emptively block all off-limits containers");
-#endif
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	if (dhnd)
+	// on first pass, detect off limits containers to avoid rescan on game reload
+	if (dhnd && m_offLimitsContainers.empty())
 	{
+#if _DEBUG
+		_DMESSAGE("Pre-emptively block all off-limits containers");
+#endif
 		for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::Faction))
 		{
 			if (!form)
@@ -319,7 +334,7 @@ void DataCase::BlockOffLimitsContainers()
 #if _DEBUG
 					_MESSAGE("Blocked vendor container : %s(%08X)", containerRef->GetName(), containerRef->formID);
 #endif
-					BlockReference(containerRef);
+					m_offLimitsContainers.insert(containerRef);
 				}
 			}
 
@@ -329,7 +344,7 @@ void DataCase::BlockOffLimitsContainers()
 #if _DEBUG
 				_MESSAGE("Blocked stolenGoodsContainer : %s(%08X)", containerRef->GetName(), containerRef->formID);
 #endif
-				BlockReference(containerRef);
+				m_offLimitsContainers.insert(containerRef);
 			}
 
 			containerRef = faction->crimeData.factionPlayerInventoryContainer;
@@ -338,9 +353,19 @@ void DataCase::BlockOffLimitsContainers()
 #if _DEBUG
 				_MESSAGE("Blocked playerInventoryContainer : %s(%08X)", containerRef->GetName(), containerRef->formID);
 #endif
-				BlockReference(containerRef);
+				m_offLimitsContainers.insert(containerRef);
 			}
 		}
+		ExcludeImmersiveArmorsGodChest();
+	}
+	// block all the known off-limits containers - list is invariant during gaming session
+	for (const auto refr : m_offLimitsContainers)
+	{
+		BlockReference(refr);
+	}
+	for (const auto form : m_offLimitsForms)
+	{
+		BlockForm(form);
 	}
 }
 

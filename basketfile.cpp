@@ -3,7 +3,6 @@
 // still required from SKSE Common
 #include "common/IFileStream.h"
 
-#include "Util.h"
 #include "utils.h"
 #include <vector>
 #include <string>

@@ -781,6 +781,26 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 
 std::vector<RE::TESObjectREFR*> SearchTask::m_refs;
 
+// used for PlayerCharacter
+bool SearchTask::IsConcealed(RE::MagicTarget* target)
+{
+	if (target->HasEffectWithArchetype(RE::EffectArchetypes::ArchetypeID::kInvisibility))
+	{
+#if _DEBUG
+		_DMESSAGE("player invisible");
+#endif
+		return true;
+	}
+	if (target->HasEffectWithArchetype(RE::EffectArchetypes::ArchetypeID::kEtherealize))
+	{
+#if _DEBUG
+		_DMESSAGE("player ethereal");
+#endif
+		return true;
+	}
+	return false;
+}
+
 void SearchTask::DoPeriodicSearch()
 {
 	DataCase* data = DataCase::GetInstance();
@@ -1003,6 +1023,15 @@ void SearchTask::DoPeriodicSearch()
 		{
 #if _DEBUG
 			_MESSAGE("disableWhileWeaponIsDrawn %d", disableWhileWeaponIsDrawn);
+#endif
+			return;
+		}
+
+		const int disableWhileConcealed = static_cast<int>(m_ini->GetSetting(INIFile::autoharvest, INIFile::config, "DisableWhileConcealed"));
+		if (disableWhileConcealed != 0 && IsConcealed(player))
+		{
+#if _DEBUG
+			_MESSAGE("disableWhileConcealed %d", disableWhileConcealed);
 #endif
 			return;
 		}

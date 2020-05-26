@@ -199,4 +199,5 @@ private:
 	}
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	static void ScanThread();
+	static bool IsConcealed(RE::MagicTarget* target);
 };

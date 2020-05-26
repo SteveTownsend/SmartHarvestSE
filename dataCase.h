@@ -77,6 +77,8 @@ private:
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
 	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
 
+	std::unordered_set<RE::TESObjectREFR*> m_offLimitsContainers;
+	std::unordered_set<RE::TESForm*> m_offLimitsForms;
 	std::unordered_set<RE::FormID> userBlockedForm;
 	std::unordered_set<const RE::TESForm*> blockForm;
 	std::unordered_set<RE::FormID> blockRefr;
@@ -425,6 +427,7 @@ private:
 	static constexpr RE::FormID Gold = 0x0F;
 
 	void CategorizeStatics();
+	void ExcludeImmersiveArmorsGodChest();
 	DataCase(void);
 };
 

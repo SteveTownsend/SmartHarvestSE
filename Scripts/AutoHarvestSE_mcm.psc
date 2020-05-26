@@ -78,6 +78,7 @@ bool manualLootTargetNotify
 
 bool disableDuringCombat
 bool disableWhileWeaponIsDrawn
+bool disableWhileConcealed
 
 int[] id_objectSettingArray
 float[] objectSettingArray
@@ -167,6 +168,8 @@ function SeedDefaults()
 
 	disableDuringCombat = GetSetting(type_AutoHarvest, type_Config, "disableDuringCombat") as bool
 	disableWhileWeaponIsDrawn = GetSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn") as bool
+	disableWhileConcealed = GetSetting(type_AutoHarvest, type_Config, "disableWhileConcealed") as bool
+
 	playContainerAnimation = GetSetting(type_AutoHarvest, type_Config, "PlayContainerAnimation") as int
 	;DebugTrace("SeedDefaults - playContainerAnimation " + playContainerAnimation)
 
@@ -226,6 +229,7 @@ Function ApplySetting()
 
 	PutSetting(type_AutoHarvest, type_Config, "disableDuringCombat", disableDuringCombat as float)
 	PutSetting(type_AutoHarvest, type_Config, "disableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
+	PutSetting(type_AutoHarvest, type_Config, "disableWhileConcealed", disableWhileConcealed as float)
 
 	PutSettingObjectArray(type_AutoHarvest, type_ItemObject, objectSettingArray)
 	if (useSharedSettings)
@@ -407,7 +411,7 @@ int function GetVersion()
 	maxMiningItemsDefault = 15
 	playContainerAnimation = 2
 	eventScript.UpdateMaxMiningItems(maxMiningItems)
-	return 17
+	return 18
 endFunction
 
 Event OnVersionUpdate(int a_version)
@@ -421,7 +425,7 @@ Event OnVersionUpdate(int a_version)
 		type_ValueWeight = 5
 		type_MaxItemCount = 6
 	endif
-	if (a_version >= 17 && CurrentVersion < 17)
+	if (a_version >= 18 && CurrentVersion < 18)
 		; Major revision to reduce script dependence and auto-categorize lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 
@@ -609,6 +613,7 @@ event OnPageReset(string currentPage)
 		AddKeyMapOptionST("pauseHotkeyCode", "$AHSE_PAUSE_KEY", pauseHotkeyCode)
 		AddToggleOptionST("disableDuringCombat", "$AHSE_DISABLE_DURING_COMBAT", disableDuringCombat)
 		AddToggleOptionST("disableWhileWeaponIsDrawn", "$AHSE_DISABLE_IF_WEAPON_DRAWN", disableWhileWeaponIsDrawn)
+		AddToggleOptionST("disableWhileConcealed", "$AHSE_DISABLE_IF_CONCEALED", disableWhileConcealed)
 		AddTextOptionST("crimeCheckNotSneaking", "$AHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
 		AddTextOptionST("crimeCheckSneaking", "$AHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
 
@@ -1590,6 +1595,22 @@ state disableWhileWeaponIsDrawn
 
 	event OnHighlightST()
 		SetInfoText(GetTranslation("$AHSE_DESC_DISABLE_DRAWINGWEAPON"))
+	endEvent
+endState
+
+state disableWhileConcealed
+	event OnSelectST()
+		disableWhileConcealed = !disableWhileConcealed
+		SetToggleOptionValueST(disableWhileConcealed)
+	endEvent
+
+	event OnDefaultST()
+		disableWhileConcealed = false
+		SetToggleOptionValueST(disableWhileConcealed)
+	endEvent
+
+	event OnHighlightST()
+		SetInfoText(GetTranslation("$AHSE_DESC_DISABLE_IF_CONCEALED"))
 	endEvent
 endState
 
