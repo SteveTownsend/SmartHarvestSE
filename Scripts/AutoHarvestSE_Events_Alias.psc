@@ -15,7 +15,6 @@ Perk Property greenThumbPerk auto
 
 int type_Common = 1
 int type_AutoHarvest = 2
-int type_Spell = 3
 
 ; object types must be in sync with the native DLL
 int objType_Flora

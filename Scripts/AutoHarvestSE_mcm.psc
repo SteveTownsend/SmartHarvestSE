@@ -12,13 +12,11 @@ float defaultInterval = 0.3
 
 int type_Common = 1
 int type_AutoHarvest = 2
-int type_Spell = 3
 int type_Config = 1
 int type_ItemObject = 2
 int type_Container = 3
 int type_Deadbody = 4
 int type_ValueWeight = 5
-int type_MaxItemCount = 6
 
 ; object types must be in sync with the native DLL
 int objType_Flora
@@ -45,8 +43,8 @@ bool pushCellToExcludelist
 int pauseHotkeyCode
 int userlistHotkeyCode
 int excludelistHotkeyCode
-
-bool useSharedSettings
+int preventPopulationCenterLooting
+string[] s_populationCenterArray
 
 float radius
 float interval
@@ -83,12 +81,6 @@ bool disableWhileConcealed
 int[] id_objectSettingArray
 float[] objectSettingArray
 
-int[] id_containerArray
-float[] containerSettingArray
-
-int[] id_deadbodyArray
-float[] deadbodySettingArray
-
 int valueWeightDefault
 int valueWeightDefaultDefault = 10
 int maxMiningItems
@@ -110,9 +102,6 @@ String[] excludelist_name_array
 bool[] excludelist_flag_array
 
 bool gameReloadLock = false
-
-; message flag
-bool objpage_read_once = true
 
 int Function CycleInt(int num, int max)
 	int result = num + 1
@@ -150,7 +139,7 @@ function SeedDefaults()
 	pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
 	userlistHotkeyCode = GetSetting(type_Common, type_Config, "userlistHotkeyCode") as int
 	excludelistHotkeyCode = GetSetting(type_Common, type_Config, "excludelistHotkeyCode") as int
-	useSharedSettings = GetSetting(type_Common, type_Config, "useSharedSettings") as bool
+	preventPopulationCenterLooting = GetSetting(type_Common, type_Config, "preventPopulationCenterLooting") as int
 
 	radius = GetSetting(type_AutoHarvest, type_Config, "RadiusFeet") as float
 	interval = GetSetting(type_AutoHarvest, type_Config, "IntervalSeconds") as float
@@ -178,9 +167,6 @@ function SeedDefaults()
 	updateMaxMiningItems(GetSetting(type_AutoHarvest, type_Config, "maxMiningItems") as int)
 
 	objectSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_ItemObject)
-	;DebugTrace("shared settings " + objectSettingArray[0] + "," + objectSettingArray[1] + "," + objectSettingArray[2] + "," + objectSettingArray[3])
-	containerSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_Container)
-	deadbodySettingArray = GetSettingToObjectArray(type_AutoHarvest, type_Deadbody)
 	valueWeightSettingArray = GetSettingToObjectArray(type_AutoHarvest, type_ValueWeight)
 endFunction
 
@@ -209,7 +195,7 @@ Function ApplySetting()
 	PutSetting(type_Common, type_Config, "PauseHotkeyCode", pauseHotkeyCode as float)
 	PutSetting(type_Common, type_Config, "userlistHotkeyCode", userlistHotkeyCode as float)
 	PutSetting(type_Common, type_Config, "excludelistHotkeyCode", excludelistHotkeyCode as float)
-	PutSetting(type_Common, type_Config, "useSharedSettings", useSharedSettings as float)
+	PutSetting(type_Common, type_Config, "preventPopulationCenterLooting", preventPopulationCenterLooting as float)
 
 	PutSetting(type_AutoHarvest, type_Config, "RadiusFeet", radius)
 	PutSetting(type_AutoHarvest, type_Config, "IntervalSeconds", interval)
@@ -232,13 +218,6 @@ Function ApplySetting()
 	PutSetting(type_AutoHarvest, type_Config, "disableWhileConcealed", disableWhileConcealed as float)
 
 	PutSettingObjectArray(type_AutoHarvest, type_ItemObject, objectSettingArray)
-	if (useSharedSettings)
-		PutSettingObjectArray(type_AutoHarvest, type_Container, objectSettingArray)
-		PutSettingObjectArray(type_AutoHarvest, type_Deadbody, objectSettingArray)
-	else
-		PutSettingObjectArray(type_AutoHarvest, type_Container, containerSettingArray)
-		PutSettingObjectArray(type_AutoHarvest, type_Deadbody, deadbodySettingArray)
-	endif
 
 	PutSetting(type_AutoHarvest, type_Config, "valueWeightDefault", valueWeightDefault as float)
 	PutSetting(type_AutoHarvest, type_Config, "maxMiningItems", maxMiningItems as float)
@@ -279,10 +258,9 @@ Event OnConfigInit()
 	Pages = New String[6]
 	Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
 	Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
-	Pages[2] = "$AHSE_HARVEST_PAGENAME"
-	Pages[3] = "$AHSE_LOOT_CONTAINER_PAGENAME"
-	Pages[4] = "$AHSE_USERLIST_PAGENAME"
-	Pages[5] = "$AHSE_EXCLUDELIST_PAGENAME"
+	Pages[2] = "$AHSE_SHARED_SETTINGS_PAGENAME"
+	Pages[3] = "$AHSE_USERLIST_PAGENAME"
+	Pages[4] = "$AHSE_EXCLUDELIST_PAGENAME"
 
 	s_iniSaveLoadArray = New String[3]
 	s_iniSaveLoadArray[0] = "$AHSE_PRESET_DO_NOTHING"
@@ -298,6 +276,12 @@ Event OnConfigInit()
 	s_excludelistSaveLoadArray[0] = "$AHSE_PRESET_DO_NOTHING"
 	s_excludelistSaveLoadArray[1] = "$AHSE_EXCLUDELIST_RESTORE"
 	s_excludelistSaveLoadArray[2] = "$AHSE_EXCLUDELIST_STORE"
+
+	s_populationCenterArray = New String[4]
+	s_populationCenterArray[0] = "$AHSE_POPULATION_ALLOW_IN_ALL"
+	s_populationCenterArray[1] = "$AHSE_POPULATION_DISALLOW_IN_SETTLEMENTS"
+	s_populationCenterArray[2] = "$AHSE_POPULATION_DISALLOW_IN_TOWNS"
+	s_populationCenterArray[3] = "$AHSE_POPULATION_DISALLOW_IN_CITIES"
 
 	s_questObjectScopeArray = New String[2]
 	s_questObjectScopeArray[0] = "$AHSE_QUEST_RELATED"
@@ -339,12 +323,6 @@ Event OnConfigInit()
 
 	id_valueWeightArray = New Int[34]
 	valueWeightSettingArray = New float[34]
-
-	id_containerArray = New Int[34]
-	containerSettingArray = New float[34]
-
-	id_deadbodyArray = New Int[34]
-	deadbodySettingArray = New float[34]
 
 	s_objectTypeNameArray = New String[34]
 	s_objectTypeNameArray[0]  = "$AHSE_UNKNOWN"
@@ -411,7 +389,7 @@ int function GetVersion()
 	maxMiningItemsDefault = 15
 	playContainerAnimation = 2
 	eventScript.UpdateMaxMiningItems(maxMiningItems)
-	return 18
+	return 19
 endFunction
 
 Event OnVersionUpdate(int a_version)
@@ -423,9 +401,8 @@ Event OnVersionUpdate(int a_version)
 		type_Container = 3
 		type_Deadbody = 4
 		type_ValueWeight = 5
-		type_MaxItemCount = 6
 	endif
-	if (a_version >= 18 && CurrentVersion < 18)
+	if (a_version >= 19 && CurrentVersion < 19)
 		; Major revision to reduce script dependence and auto-categorize lootables
 		Debug.Trace(self + ": Updating script to version " + a_version)
 
@@ -459,22 +436,12 @@ endEvent
 Event OnConfigOpen()
 ;	DebugTrace("OnConfigOpen")
 
-	if (useSharedSettings)
-		Pages = New String[5]
-		Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
-		Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
-		Pages[2] = "$AHSE_SHARED_SETTINGS_PAGENAME"
-		Pages[3] = "$AHSE_USERLIST_PAGENAME"
-		Pages[4] = "$AHSE_EXCLUDELIST_PAGENAME"
-	else
-		Pages = New String[6]
-		Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
-		Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
-		Pages[2] = "$AHSE_HARVEST_PAGENAME"
-		Pages[3] = "$AHSE_LOOT_CONTAINER_PAGENAME"
-		Pages[4] = "$AHSE_USERLIST_PAGENAME"
-		Pages[5] = "$AHSE_EXCLUDELIST_PAGENAME"
-	endif
+	Pages = New String[5]
+	Pages[0] = "$AHSE_RULES_DEFAULTS_PAGENAME"
+	Pages[1] = "$AHSE_SPECIALS_EXCLUDELIST_PAGENAME"
+	Pages[2] = "$AHSE_SHARED_SETTINGS_PAGENAME"
+	Pages[3] = "$AHSE_USERLIST_PAGENAME"
+	Pages[4] = "$AHSE_EXCLUDELIST_PAGENAME"
 	
 	int index = 0
 	int max_size = 0
@@ -628,7 +595,6 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("unencumberedInCombat", "$AHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
 		AddToggleOptionST("unencumberedInPlayerHome", "$AHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHome)
 		AddToggleOptionST("unencumberedIfWeaponDrawn", "$AHSE_UNENCUMBERED_IF_WEAPON_DRAWN", unencumberedIfWeaponDrawn)
-		AddToggleOptionST("useSharedSettings", "$AHSE_USE_SHARED_SETTINGS", useSharedSettings)
 		AddMenuOptionST("iniSaveLoad", "$AHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
 		AddKeyMapOptionST("userlistHotkeyCode", "$AHSE_USERLIST_KEY", userlistHotkeyCode)
 		AddMenuOptionST("userlistSaveLoad", "$AHSE_USERLIST_FILE_OPERATION", s_userlistSaveLoadArray[userlistSaveLoad])
@@ -669,6 +635,7 @@ event OnPageReset(string currentPage)
 		AddToggleOptionST("pushCellToExcludelist", "$AHSE_CELL_TO_EXCLUDELIST", pushCellToExcludelist, flagCell)
 		AddKeyMapOptionST("excludelistHotkeyCode", "$AHSE_EXCLUDELIST_KEY", excludelistHotkeyCode)
 		AddMenuOptionST("excludelistSaveLoad", "$AHSE_EXCLUDELIST_FILE_OPERATION", s_excludelistSaveLoadArray[excludelistSaveLoad])
+		AddTextOptionST("preventPopulationCenterLooting", "$AHSE_POPULATION_CENTER_PREVENTION", s_populationCenterArray[preventPopulationCenterLooting])
 		
 	elseif (currentPage == Pages[2]) ; object harvester
 		
@@ -703,50 +670,7 @@ event OnPageReset(string currentPage)
 			index += 1
 		endWhile
 		
-		if (objpage_read_once && useSharedSettings)
-			ShowMessage("$AHSE_SHARED_SETTINGS_ANNOUNCE_MSG", "$AHSE_OK")
-			objpage_read_once = false
-		endif
-		
-	elseif (!useSharedSettings && currentPage == Pages[3]) ; container/deadbody
-
-		int flag_option = OPTION_FLAG_NONE
-		if (useSharedSettings)
-			flag_option = OPTION_FLAG_DISABLED
-		endif
-
-; 	======================== LEFT ========================
-		SetCursorFillMode(TOP_TO_BOTTOM)
-
-		AddHeaderOption("$AHSE_CONTAINER_HEADER")
-
-        ; skip activators, which cannot be found in a container
-		int index = 3
-		while (index <= (s_objectTypeNameArray.length - 1))
-			if (index == objType_Mine)
-				; no-op
-			else
-				id_containerArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorArray[(containerSettingArray[index] as int)], flag_option)
-			endif
-			index += 1
-		endWhile
-
-; 	======================== RIGHT ========================
-		SetCursorPosition(1)
-
-		AddHeaderOption("$AHSE_DEADBODY_HEADER")
-
-        ; skip activators, which cannot be found in a container
-		index = 3
-		while (index <= (s_objectTypeNameArray.length - 1))
-			if (index == objType_Mine)
-				; no-op
-			else
-				id_deadbodyArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorArray[(deadbodySettingArray[index] as int)], flag_option)
-			endif
-			index += 1
-		endWhile
-	elseif ((!useSharedSettings && currentPage == Pages[4]) || (useSharedSettings && currentPage == Pages[3])) ; userlist
+	elseif (currentPage == Pages[3]) ; userlist
 
 		int size = eventScript.userlist_form.GetSize()
 		if (size == 0)
@@ -764,7 +688,7 @@ event OnPageReset(string currentPage)
 			endif
 			index += 1
 		endWhile
-	elseif ((!useSharedSettings && currentPage == Pages[5]) || (useSharedSettings && currentPage == Pages[4])) ; exclude list
+	elseif (currentPage == Pages[4]) ; exclude list
 		int size = eventScript.excludelist_form.GetSize()
 		if (size == 0)
 			return
@@ -801,30 +725,6 @@ Event OnOptionSelect(int a_option)
 				SetTextOptionValue(a_option, s_behaviorToggleArray[(objectSettingArray[index] as int)])
 			endif
 ;			PutSetting(type_AutoHarvest, type_ItemObject, keyName, objectSettingArray[index])
-		endif
-		return
-	endif
-
-	index = id_containerArray.find(a_option)
-	if (index >= 0)
-		string keyName = GetObjectTypeNameByType(index)
-		if (keyName != "unknown")
-			int size = s_behaviorArray.length
-			containerSettingArray[index] = CycleInt(containerSettingArray[index] as int, size)
-;			PutSetting(type_AutoHarvest, type_Container, keyName, containerSettingArray[index])
-			SetTextOptionValue(a_option, s_behaviorArray[(containerSettingArray[index] as int)])
-		endif
-		return
-	endif
-
-	index = id_deadbodyArray.find(a_option)
-	if (index >= 0)
-		string keyName = GetObjectTypeNameByType(index)
-		if (keyName != "unknown")
-			int size = s_behaviorArray.length
-			deadbodySettingArray[index] = CycleInt(deadbodySettingArray[index] as int, size)
-;			PutSetting(type_AutoHarvest, type_Deadbody, keyName, deadbodySettingArray[index])
-			SetTextOptionValue(a_option, s_behaviorArray[(deadbodySettingArray[index] as int)])
 		endif
 		return
 	endif
@@ -882,18 +782,6 @@ event OnOptionHighlight(int a_option)
 	int index = -1
 	
 	index = id_objectSettingArray.find(a_option)
-	if (index > -1)
-		SetInfoText(s_objectTypeNameArray[index])
-		return
-	endif
-
-	index = id_containerArray.find(a_option)
-	if (index > -1)
-		SetInfoText(s_objectTypeNameArray[index])
-		return
-	endif
-
-	index = id_deadbodyArray.find(a_option)
 	if (index > -1)
 		SetInfoText(s_objectTypeNameArray[index])
 		return
@@ -1387,32 +1275,6 @@ state excludelistSaveLoad
 	endEvent
 endState
 
-state useSharedSettings
-;	Event OnBeginState()
-;		int result = GetStateOptionIndex(self.GetState())
-;		DebugTrace("Entered the running state! " + result)
-;	EndEvent
-
-	event OnSelectST()
-		useSharedSettings = !(useSharedSettings as bool)
-		SetToggleOptionValueST(useSharedSettings)
-		ShowMessage("$AHSE_REOPEN_MSG", false, "$AHSE_OK")
-	endEvent
-
-	event OnDefaultST()
-		useSharedSettings = true
-		SetToggleOptionValueST(useSharedSettings)
-	endEvent
-
-	event OnHighlightST()
-		SetInfoText(GetTranslation("$AHSE_DESC_SHARED_SETTINGS"))
-	endEvent
-
-;	event OnEndState()
-;		DebugTrace("Leaving the running state!")
-;	endEvent
-endState
-
 state crimeCheckNotSneaking
 	event OnSelectST()
 		int size = s_crimeCheckNotSneakingArray.length
@@ -1628,6 +1490,24 @@ state playContainerAnimation
 
 	event OnHighlightST()
 		string trans = GetTranslation("$AHSE_DESC_CONTAINER_ANIMATION")
+		SetInfoText(trans)
+	endEvent
+endState
+
+state preventPopulationCenterLooting
+	event OnSelectST()
+		int size = s_populationCenterArray.length
+		preventPopulationCenterLooting = CycleInt(preventPopulationCenterLooting, size)
+		SetTextOptionValueST(s_populationCenterArray[preventPopulationCenterLooting])
+	endEvent
+
+	event OnDefaultST()
+		preventPopulationCenterLooting = 0
+		SetTextOptionValueST(s_populationCenterArray[preventPopulationCenterLooting])
+	endEvent
+
+	event OnHighlightST()
+		string trans = GetTranslation("$AHSE_DESC_POPULATION_CENTER_PREVENTION")
 		SetInfoText(trans)
 	endEvent
 endState

@@ -165,6 +165,10 @@ namespace papyrus
 			{
 				value = IHasValueWeight::ValueWeightMaximum;
 			}
+			else
+			{
+				value = tmp_value;
+			}
 		}
 		else
 		{

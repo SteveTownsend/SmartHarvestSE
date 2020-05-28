@@ -22,7 +22,6 @@ public:
 		containers,
 		deadbodies,
 		valueWeight,
-		maxItemCount,
 		LAST2
 	};
 
@@ -56,8 +55,6 @@ public:
 			result += "deadbodies"; break;
 		case valueWeight:
 			result += "valueWeight"; break;
-		case maxItemCount:
-			result += "maxItemCount"; break;
 		default:
 			return false;
 		}

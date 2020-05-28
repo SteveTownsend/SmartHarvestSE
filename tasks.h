@@ -38,6 +38,16 @@ enum class GlowReason {
 	None
 };
 
+// Population Center Looting Size, overloaded to check Looting Permissions
+enum class PopulationCenterSize {
+	None = 0,
+	Settlements,
+	Towns,		// implies Settlements
+	Cities,		// implies Towns and Settlements
+	MAX
+};
+
+
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {
 	return lootingType == LootingType::LootIfValuableEnoughNotify || lootingType == LootingType::LootAlwaysNotify;
@@ -81,6 +91,16 @@ inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectTyp
 	return true;
 }
 
+inline PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniSetting)
+{
+	UInt32 intSetting(static_cast<UInt32>(iniSetting));
+	if (intSetting >= static_cast<SInt32>(PopulationCenterSize::MAX))
+	{
+		return PopulationCenterSize::Cities;
+	}
+	return static_cast<PopulationCenterSize>(intSetting);
+}
+
 class SearchTask
 {
 public:
@@ -111,6 +131,7 @@ public:
 	static void ResetRestrictions(const bool gameReload);
 	static void DoPeriodicSearch();
 	static void SetPlayerHouseKeyword(RE::BGSKeyword* keyword);
+	static void CategorizePopulationCenters();
 
 	static bool GoodToGo();
 
@@ -168,6 +189,7 @@ public:
 	static int m_currentCarryWeightChange;
 	static bool m_menuOpen;
 
+	static std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> m_populationCenters;
 	static std::unordered_set<const RE::TESForm*> m_excludeLocations;
 	static bool m_pluginSynced;
 	static RecursiveLock m_lock;
@@ -200,4 +222,5 @@ private:
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	static void ScanThread();
 	static bool IsConcealed(RE::MagicTarget* target);
+	static bool IsPopulationCenterExcluded();
 };

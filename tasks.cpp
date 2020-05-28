@@ -474,7 +474,23 @@ void SearchTask::Run()
 			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecialSeconds);
 		}
 
-		LootingType lootingType(LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str())));
+		if (IsLocationExcluded())
+		{
+#if _DEBUG
+			_DMESSAGE("Player location is excluded");
+#endif
+			skipLooting = true;
+		}
+
+		if (IsPopulationCenterExcluded())
+		{
+#if _DEBUG
+			_DMESSAGE("Player location is excluded as unpermitted population center");
+#endif
+			skipLooting = true;
+		}
+
+		LootingType lootingType(LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, INIFile::itemObjects, typeName.c_str())));
 		if (!skipLooting)
 		{
 			if (lootingType == LootingType::LeaveBehind)
@@ -494,6 +510,7 @@ void SearchTask::Run()
 				skipLooting = true;
 			}
 		}
+
 		if (skipLooting)
 			return;
 
@@ -600,6 +617,23 @@ void SearchTask::Run()
 		}
 		// order is important to ensure we glow correctly even if blocked
 		skipLooting = IsLootingForbidden() || skipLooting;
+
+		if (IsLocationExcluded())
+		{
+#if _DEBUG
+			_DMESSAGE("Player location is excluded");
+#endif
+			skipLooting = true;
+		}
+
+		if (IsPopulationCenterExcluded())
+		{
+#if _DEBUG
+			_DMESSAGE("Player location is excluded as unpermitted population center");
+#endif
+			skipLooting = true;
+		}
+
 		if (m_glowReason != GlowReason::None)
 		{
 			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecialSeconds);
@@ -636,7 +670,7 @@ void SearchTask::Run()
 			ObjectType objType = ClassifyType(itemEx.m_form);
 			std::string typeName = GetObjectTypeName(objType);
 
-			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, m_targetType, typeName.c_str()));
+			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::autoharvest, INIFile::itemObjects, typeName.c_str()));
 			if (lootingType == LootingType::LeaveBehind)
 			{
 #if _DEBUG
@@ -866,21 +900,39 @@ void SearchTask::DoPeriodicSearch()
 			_MESSAGE("Player left old location, now at %s", playerLocation ? playerLocation->GetName() : "unnamed");
 #endif
 			m_playerLocation = playerLocation;
-			// Player changed location - check if it is a player house
-			if (m_playerLocation && !IsPlayerHouse(m_playerLocation))
+			// Player changed location
+			if (m_playerLocation)
 			{
-				if (m_playerLocation->HasKeyword(m_playerHouseKeyword))
+				// check if it is a player house, and if so whether it is new
+				if (!IsPlayerHouse(m_playerLocation))
 				{
-					// record as a player house and notify as it is a new one in this game load
-					AddPlayerHouse(m_playerLocation);
+					if (m_playerLocation->HasKeyword(m_playerHouseKeyword))
+					{
+						// record as a player house and notify as it is a new one in this game load
 #if _DEBUG
-					_MESSAGE("Player House %s detected", m_playerLocation->GetName());
+						_MESSAGE("Player House %s detected", m_playerLocation->GetName());
 #endif
+						AddPlayerHouse(m_playerLocation);
+					}
+				}
+				if (IsPlayerHouse(m_playerLocation))
+				{
 					static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_HOUSE_CHECK")));
 					if (!playerHouseMsg.empty())
 					{
 						std::string notificationText(playerHouseMsg);
 						Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
+						RE::DebugNotification(notificationText.c_str());
+					}
+				}
+				// check if this is a population center excluded from looting and if so, notify we entered it
+				if (IsPopulationCenterExcluded())
+				{
+					static RE::BSFixedString populationCenterMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$AHSE_POPULATED_CHECK")));
+					if (!populationCenterMsg.empty())
+					{
+						std::string notificationText(populationCenterMsg);
+						Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
 						RE::DebugNotification(notificationText.c_str());
 					}
 				}
@@ -891,14 +943,6 @@ void SearchTask::DoPeriodicSearch()
 		{
 #if _DEBUG
 			_DMESSAGE("Player is dead");
-#endif
-			return;
-		}
-
-		if (IsLocationExcluded())
-		{
-#if _DEBUG
-			_DMESSAGE("Player location is excluded");
 #endif
 			return;
 		}
@@ -1319,6 +1363,23 @@ bool SearchTask::IsPlayerHouse(const RE::BGSLocation* location)
 	return location && m_playerHouses.count(location);
 }
 
+std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> SearchTask::m_populationCenters;
+bool SearchTask::IsPopulationCenterExcluded()
+{
+	if (!m_playerLocation)
+		return false;
+	PopulationCenterSize excludedCenterSize(PopulationCenterSizeFromIniSetting(
+		m_ini->GetSetting(INIFile::common, INIFile::config, "PreventPopulationCenterLooting")));
+	if (excludedCenterSize == PopulationCenterSize::None)
+		return false;
+
+	RecursiveLockGuard guard(m_lock);
+	const auto locationRecord(m_populationCenters.find(m_playerLocation));
+	// if small locations are excluded we automatically exclude any larger, so use >= here, assuming this is
+	// a population center
+	return locationRecord != m_populationCenters.cend() && locationRecord->second >= excludedCenterSize;
+}
+
 std::unordered_set<const RE::TESForm*> SearchTask::m_excludeLocations;
 bool SearchTask::m_pluginSynced(false);
 
@@ -1463,9 +1524,155 @@ void SearchTask::Init()
 	{
 		WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
 		DataCase::GetInstance()->CategorizeLootables();
+		CategorizePopulationCenters();
 		firstTime = false;
 	}
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
 }
 
+
+// Classify items by their keywords
+void SearchTask::CategorizePopulationCenters()
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+
+	std::unordered_map<std::string, PopulationCenterSize> sizeByKeyword =
+	{
+		// Skyrim core
+		{"LocTypeSettlement", PopulationCenterSize::Settlements},
+		{"LocTypeTown", PopulationCenterSize::Towns},
+		{"LocTypeCity", PopulationCenterSize::Cities}
+	};
+
+	for (RE::TESForm* form : dhnd->GetFormArray(RE::BGSLocation::FORMTYPE))
+	{
+		RE::BGSLocation* location(form->As<RE::BGSLocation>());
+		if (!location)
+		{
+#if _DEBUG
+			_MESSAGE("Skipping non-location form 0x%08x", form->formID);
+#endif
+			continue;
+		}
+		// Scan location keywords to check if it's a settlement
+		UInt32 numKeywords(location->GetNumKeywords());
+		PopulationCenterSize size(PopulationCenterSize::None);
+		std::string largestMatch;
+		for (UInt32 next = 0; next < numKeywords; ++next)
+		{
+			std::optional<RE::BGSKeyword*> keyword(location->GetKeywordAt(next));
+			if (!keyword.has_value() || !keyword.value())
+				continue;
+
+			std::string keywordName(keyword.value()->GetFormEditorID());
+			const auto matched(sizeByKeyword.find(keywordName));
+			if (matched == sizeByKeyword.cend())
+				continue;
+			if (matched->second > size)
+			{
+				size = matched->second;
+				largestMatch = keywordName;
+			}
+		}
+		// record population center size in case looting is selectively prevented
+		if (size != PopulationCenterSize::None)
+		{
+#if _DEBUG
+			_MESSAGE("%s/0x%08x is population center of type %s", location->GetName(), location->GetFormID(), largestMatch.c_str());
+#endif
+			m_populationCenters.insert(std::make_pair(location, size));
+		}
+		else
+		{
+#if _DEBUG
+			_MESSAGE("%s/0x%08x is not a population center", location->GetName(), location->GetFormID());
+#endif
+		}
+	}
+
+	// We also categorize descendants of population centers. Not all will follow the same rule as the parent. For example,
+	// preventing looting in Whiterun should also prevent looting in the Bannered Mare, but not in Whiterun Sewers. Use
+	// child location keywords to control this.
+	std::unordered_set<std::string> lootableChildLocations =
+	{
+		// not all Skyrim core, necessarily
+		"LocTypeClearable",
+		"LocTypeDungeon",
+		"LocTypeDraugrCrypt",
+		"LocTypeNordicRuin",
+		"zzzBMLocVampireDungeon"
+	};
+#if _DEBUG
+	std::unordered_set<std::string> childKeywords;
+#endif
+	for (RE::TESForm* form : dhnd->GetFormArray(RE::BGSLocation::FORMTYPE))
+	{
+		RE::BGSLocation* location(form->As<RE::BGSLocation>());
+		if (!location)
+		{
+			continue;
+		}
+		// check if this is a descendant of a population center
+		RE::BGSLocation* antecedent(location->parentLoc);
+		PopulationCenterSize parentSize(PopulationCenterSize::None);
+		while (antecedent != nullptr)
+		{
+			const auto matched(m_populationCenters.find(antecedent));
+			if (matched != m_populationCenters.cend())
+			{
+				parentSize = matched->second;
+#if _DEBUG
+				_MESSAGE("%s/0x%08x is a descendant of population center %s/0x%08x with size %d", location->GetName(), location->GetFormID(),
+					antecedent->GetName(), antecedent->GetFormID(), parentSize);
+#endif
+				break;
+			}
+			antecedent = antecedent->parentLoc;
+		}
+
+		if (!antecedent)
+			continue;
+
+		// Scan location keywords to determine if lootable, or bucketed with its population center antecedent
+		UInt32 numKeywords(location->GetNumKeywords());
+		bool allowLooting(false);
+		for (UInt32 next = 0; !allowLooting && next < numKeywords; ++next)
+		{
+			std::optional<RE::BGSKeyword*> keyword(location->GetKeywordAt(next));
+			if (!keyword.has_value() || !keyword.value())
+				continue;
+
+			std::string keywordName(keyword.value()->GetFormEditorID());
+#if _DEBUG
+			childKeywords.insert(keywordName);
+#endif
+			if (lootableChildLocations.find(keywordName) != lootableChildLocations.cend())
+			{
+				allowLooting = true;
+#if _DEBUG
+				_MESSAGE("%s/0x%08x is lootable child location due to keyword %s", location->GetName(), location->GetFormID(), keywordName.c_str());
+#endif
+				break;
+			}
+		}
+		if (allowLooting)
+			continue;
+
+		// Store the child location with the same criterion as parent, unless it's inherently lootable
+		// e.g. dungeon within the city limits like Whiterun Sewers, parts of the Ratway
+#if _DEBUG
+		_MESSAGE("%s/0x%08x stored with same rule as its parent population center", location->GetName(), location->GetFormID());
+#endif
+		m_populationCenters.insert(std::make_pair(location, parentSize));
+	}
+#if _DEBUG
+	// this debug output from a given load order drives the list of 'really-lootable' child location types above
+	for (const std::string& keyword : childKeywords)
+	{
+		_MESSAGE("Population center child keyword: %s", keyword.c_str());
+	}
+#endif
+}
