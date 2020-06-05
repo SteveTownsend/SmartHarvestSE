@@ -1,9 +1,5 @@
 #pragma once
 
-#include "CommonLibSSE/include/RE/EnchantmentItem.h"
-#include "CommonLibSSE/include/RE/ExtraDataList.h"
-#include "CommonLibSSE/include/RE/TESKey.h"
-
 class ExtraDataListHelper
 {
 public:

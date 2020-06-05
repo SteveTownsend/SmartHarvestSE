@@ -1,10 +1,7 @@
 #include "PrecompiledHeaders.h"
-
-#include "CommonLibSSE/include/RE/BGSProjectile.h"
+#include "PrecompiledHeaders.h"
 
 #include "utils.h"
-#include "dataCase.h"
-#include "iniSettings.h"
 #include "papyrus.h"
 #include "tasks.h"
 
@@ -12,15 +9,9 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <string>
 
 namespace
 {
-	bool IsFoundFile(const char* fileName)
-	{
-		std::ifstream ifs(fileName);
-		return (ifs.fail()) ? false : true;
-	}
 	std::vector<std::string> Split(const std::string &str, char sep)
 	{
 		std::vector<std::string> result;
@@ -54,7 +45,7 @@ void DataCase::GetTranslationData()
 	RE::Setting	* setting = RE::GetINISetting("sLanguage:General");
 
 	std::string path = "Interface\\Translations\\";
-	path += std::string(AHSE_NAME);
+	path += std::string(SHSE_NAME);
 	path += std::string("_");
 	path += std::string((setting && setting->GetType() == RE::Setting::Type::kString) ? setting->data.s : "ENGLISH");
 	path += std::string(".txt");
@@ -160,11 +151,11 @@ void DataCase::ActivationVerbsByType(const char* activationVerbKey, const Object
 // Some activation verbs are used to handle referenced forms as a catch-all, though we prefer other rules
 void DataCase::StoreActivationVerbs()
 {
-	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_CLUTTER", ObjectType::clutter);
-	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_CRITTER", ObjectType::critter);
-	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_FLORA", ObjectType::flora);
-	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_OREVEIN", ObjectType::oreVein);
-	ActivationVerbsByType("$AHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
+	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_CLUTTER", ObjectType::clutter);
+	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_CRITTER", ObjectType::critter);
+	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_FLORA", ObjectType::flora);
+	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_OREVEIN", ObjectType::oreVein);
+	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
 }
 
 ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activationText) const
@@ -211,6 +202,29 @@ void DataCase::CategorizeByActivationVerb()
 					_MESSAGE("%s/0x%08x activated using '%s' categorized as %s", formName, form->formID,
 						GetVerbFromActivationText(activationText).c_str(), GetObjectTypeName(activatorType).c_str());
 #endif
+					// set resourceType for oreVein
+					if (activatorType == ObjectType::oreVein)
+					{
+						// Deposit -> volcanic
+						ResourceType resourceType;
+						if (std::string(formName).find(std::string("Heart Stone Deposit")) != std::string::npos ||	// Dragonborn
+							std::string(formName).find(std::string("Sulfur Deposit")) != std::string::npos)			// CACO
+						{
+							resourceType = ResourceType::volcanic;
+						}
+						else if (std::string(formName).find(std::string("Geode")) != std::string::npos)
+						{
+							resourceType = ResourceType::geode;
+						}
+						else
+						{
+							resourceType = ResourceType::ore;
+						}
+						m_resourceTypeByOreVein.insert(std::make_pair(typedForm, resourceType));
+#if _DEBUG
+						_MESSAGE("%s/0x%08x has ResourceType %s", formName, form->formID, PrintResourceType(resourceType));
+#endif
+					}
 				}
 				else
 				{
@@ -222,25 +236,59 @@ void DataCase::CategorizeByActivationVerb()
 			}
 		}
 #if _DEBUG
-		_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
+		_MESSAGE("%s/0x%08x not mappable, activated using '%s'", formName, form->formID, GetVerbFromActivationText(activationText).c_str());
 #endif
+	}
+}
+
+void DataCase::AnalyzePerks(void)
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+
+	for (RE::TESForm* form : dhnd->GetFormArray(RE::FormType::Perk))
+	{
+		const RE::BGSPerk* perk(form->As<RE::BGSPerk>());
+		if (!perk)
+			continue;
+#if _DEBUG
+		_MESSAGE("Perk %s/0x%08x being checked", perk->GetName(), perk->GetFormID());
+#endif
+		for (const RE::BGSPerkEntry* perkEntry : perk->perkEntries)
+		{
+			if (perkEntry->GetType() != RE::PERK_ENTRY_TYPE::kEntryPoint)
+				continue;
+
+			const RE::BGSEntryPointPerkEntry* entryPoint(static_cast<const RE::BGSEntryPointPerkEntry*>(perkEntry));
+			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kAddLeveledListOnDeath &&
+				entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kAddLeveledList)
+			{
+#if _DEBUG
+				_MESSAGE("Leveled items added on death by perk %s/0x%08x", perk->GetName(), perk->GetFormID());
+#endif
+				m_leveledItemOnDeathPerks.insert(perk);
+				break;
+			}
+		}
 	}
 }
 
 bool DataCase::GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName)
 {
-	std::string filepath(FileUtils::GetPluginPath() + std::string(AHSE_NAME) + std::string("\\") + std::string(fileName));
-
-	if (!::IsFoundFile(filepath.c_str()))
+	std::string filepath(FileUtils::GetPluginPath() + std::string(SHSE_NAME) + std::string("\\override\\") + std::string(fileName));
+	std::ifstream ifs(filepath);
+	if (ifs.fail())
 	{
 #if _DEBUG
-		_MESSAGE("* override TSV:%s not found", filepath.c_str());
+		_MESSAGE("* override TSV:%s inaccessible", filepath.c_str());
 #endif
-		filepath = FileUtils::GetPluginPath() + std::string(AHSE_NAME) + std::string("\\default\\") + std::string(fileName);
-		if (!FileUtils::IsFoundFile(filepath.c_str()))
+		filepath = FileUtils::GetPluginPath() + std::string(SHSE_NAME) + std::string("\\default\\") + std::string(fileName);
+		ifs.open(filepath);
+		if (ifs.fail())
 		{
 #if _DEBUG
-			_MESSAGE("* default TSV:%s not found", filepath.c_str());
+			_MESSAGE("* default TSV:%s inaccessible", filepath.c_str());
 #endif
 			return false;
 		}
@@ -249,15 +297,7 @@ bool DataCase::GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName)
 	_MESSAGE("Using TSV file %s", filepath.c_str());
 #endif
 
-	std::ifstream ifs(filepath);
-	if (ifs.fail())
-	{
-#if _DEBUG
-		_MESSAGE("* TSV:%s file error", filepath.c_str());
-#endif
-		return false;
-	}
-
+	// The correct file is open when we get here
 	std::string str;
 	while (getline(ifs, str))
 	{
@@ -296,14 +336,29 @@ enum FactionFlags
 void DataCase::ExcludeImmersiveArmorsGodChest()
 {
 	static std::string espName("Hothtrooper44_ArmorCompilation.esp");
-	static RE::FormID godChestFormName(0x4b352);
-	RE::TESForm* godChestForm(RE::TESDataHandler::GetSingleton()->LookupForm(godChestFormName, espName));
+	static RE::FormID godChestFormID(0x4b352);
+	RE::TESForm* godChestForm(RE::TESDataHandler::GetSingleton()->LookupForm(godChestFormID, espName));
 	if (godChestForm)
 	{
 #if _DEBUG
-		_DMESSAGE("Block Immersive Armors 'all the loot' chest %s(0x%08X)", godChestForm->GetName(), godChestForm->GetFormID());
+		_DMESSAGE("Block Immersive Armors 'all the loot' chest %s(0x%08x)", godChestForm->GetName(), godChestForm->GetFormID());
 #endif
 		m_offLimitsForms.insert(godChestForm);
+	}
+}
+
+void DataCase::IncludeFossilMiningExcavation()
+{
+	static std::string espName("Fossilsyum.esp");
+	static RE::FormID excavationSiteFormID(0x3f41b);
+	RE::TESForm* excavationSiteForm(RE::TESDataHandler::GetSingleton()->LookupForm(excavationSiteFormID, espName));
+	if (excavationSiteForm)
+	{
+#if _DEBUG
+		_DMESSAGE("Record Fossil Mining Excavation Site %s(0x%08x) as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
+#endif
+		SetObjectTypeForForm(excavationSiteForm->GetFormID(), ObjectType::oreVein);
+		m_resourceTypeByOreVein.insert(std::make_pair(excavationSiteForm->As<RE::TESObjectACTI>(), ResourceType::volcanicDigSite));
 	}
 }
 
@@ -332,7 +387,7 @@ void DataCase::BlockOffLimitsContainers()
 				if (containerRef)
 				{
 #if _DEBUG
-					_MESSAGE("Blocked vendor container : %s(%08X)", containerRef->GetName(), containerRef->formID);
+					_MESSAGE("Blocked vendor container : %s(%08x)", containerRef->GetName(), containerRef->formID);
 #endif
 					m_offLimitsContainers.insert(containerRef);
 				}
@@ -342,7 +397,7 @@ void DataCase::BlockOffLimitsContainers()
 			if (containerRef)
 			{
 #if _DEBUG
-				_MESSAGE("Blocked stolenGoodsContainer : %s(%08X)", containerRef->GetName(), containerRef->formID);
+				_MESSAGE("Blocked stolenGoodsContainer : %s(%08x)", containerRef->GetName(), containerRef->formID);
 #endif
 				m_offLimitsContainers.insert(containerRef);
 			}
@@ -351,12 +406,13 @@ void DataCase::BlockOffLimitsContainers()
 			if (containerRef)
 			{
 #if _DEBUG
-				_MESSAGE("Blocked playerInventoryContainer : %s(%08X)", containerRef->GetName(), containerRef->formID);
+				_MESSAGE("Blocked playerInventoryContainer : %s(%08x)", containerRef->GetName(), containerRef->formID);
 #endif
 				m_offLimitsContainers.insert(containerRef);
 			}
 		}
 		ExcludeImmersiveArmorsGodChest();
+		IncludeFossilMiningExcavation();
 	}
 	// block all the known off-limits containers - list is invariant during gaming session
 	for (const auto refr : m_offLimitsContainers)
@@ -445,13 +501,30 @@ bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 	return blockRefr.count(refr->GetFormID()) > 0;
 }
 
-void DataCase::ClearBlockedReferences()
+void DataCase::ClearBlockedReferences(const bool gameReload)
 {
 #if _DEBUG
 	_DMESSAGE("Reset list of blocked REFRs");
 #endif
 	RecursiveLockGuard guard(m_blockListLock);
-	blockRefr.clear();
+	// Volcanic dig sites from Fossil Mining are only cleared on game reload, to simulate the 30 day delay in
+	// the mining script. Only allow one auto-mining visit per gaming session, unless player dies.
+	decltype(blockRefr) volcanicDigSites;
+	for (const auto refrID : blockRefr)
+	{
+		RE::TESForm* form(RE::TESForm::LookupByID(refrID));
+		if (!form)
+			continue;
+		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
+		if (!refr)
+			continue;
+		if (ClassifyType(refr->GetBaseObject()) == ObjectType::oreVein &&
+			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
+		{
+			volcanicDigSites.insert(refrID);
+		}
+	}
+	blockRefr.swap(volcanicDigSites);
 }
 
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
@@ -565,6 +638,17 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	return (blockForm.insert(form)).second;
 }
 
+bool DataCase::UnblockForm(const RE::TESForm* form)
+{
+	if (!form)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (form->IsDynamicForm())
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	return blockForm.erase(form) > 0;
+}
+
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
 {
 	if (!form)
@@ -614,6 +698,14 @@ ObjectType DataCase::GetObjectTypeForFormType(RE::FormType formType) const
 	return ObjectType::unknown;
 }
 
+ResourceType DataCase::OreVeinResourceType(const RE::TESObjectACTI* mineable) const
+{
+	const auto matched(m_resourceTypeByOreVein.find(mineable));
+	if (matched != m_resourceTypeByOreVein.cend())
+		return matched->second;
+	return ResourceType::ore;
+}
+
 const char* DataCase::GetTranslation(const char* key) const
 {
 	const auto& translation(translations.find(key));
@@ -627,9 +719,9 @@ const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
 	return (proj && ammoList.find(proj) != ammoList.end()) ? ammoList[proj] : nullptr;
 }
 
-RE::TESForm* DataCase::ConvertIfLeveledItem(RE::TESForm* form) const
+const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 {
-	RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
+	const RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
 	if (produceForm)
 	{
 		const auto matched(m_produceFormContents.find(produceForm));
@@ -655,7 +747,7 @@ void DataCase::ListsClear(const bool gameReload)
 		ClearReferenceBlacklist();
 	}
 	// reset blocked references, reseed with off-limits containers
-	ClearBlockedReferences();
+	ClearBlockedReferences(gameReload);
 	BlockOffLimitsContainers();
 	ForgetLockedContainers();
 }
@@ -709,8 +801,8 @@ void DataCase::CategorizeLootables()
 #if _DEBUG
 	_MESSAGE("*** LOAD *** Load User blocked forms");
 #endif
-	if (!GetTSV(&userBlockedForm, "blocklist.tsv"))
-		GetTSV(&userBlockedForm, "default\\blocklist.tsv");
+	if (!GetTSV(&userBlockedForm, "BlackList.tsv"))
+		GetTSV(&userBlockedForm, "default\\BlackList.tsv");
 
 	// used to taxonomize ACTIvators
 #if _DEBUG
@@ -747,7 +839,13 @@ void DataCase::CategorizeLootables()
 #endif
 	CategorizeConsumables<RE::IngredientItem>();
 
-	// classes inheriting from TESProduceForm may have an ingredient, categorized as the appropriate consumable
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Categorize by Keyword: MISC");
+#endif
+	CategorizeByKeyword<RE::TESObjectMISC>();
+
+	// Classes inheriting from TESProduceForm may have an ingredient, categorized as the appropriate consumable
+	// This 'ingredient' can be MISC (e.g. Coin Replacer Redux Coin Purses) so those must be done first, as above by keyword
 #if _DEBUG
 	_MESSAGE("*** LOAD *** Categorize by Ingredient: FLOR");
 #endif
@@ -757,10 +855,6 @@ void DataCase::CategorizeLootables()
 #endif
 	CategorizeByIngredient<RE::TESObjectTREE>();
 
-#if _DEBUG
-	_MESSAGE("*** LOAD *** Categorize by Keyword: MISC");
-#endif
-	CategorizeByKeyword<RE::TESObjectMISC>();
 #if _DEBUG
 	_MESSAGE("*** LOAD *** Categorize by Keyword: ARMO");
 #endif
@@ -781,6 +875,40 @@ void DataCase::CategorizeLootables()
 		_MESSAGE("Activation verb %s unhandled at present", unhandledVerb.c_str());
 	}
 #endif
+
+	// Finally, Collections are layered on top of categorized objects
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Build Collections");
+#endif
+	CollectionManager::Instance().ProcessDefinitions();
+
+	// Analyze perks that affect looting
+#if _DEBUG
+	_MESSAGE("*** LOAD *** Analyze Perks");
+#endif
+	AnalyzePerks();
+}
+
+ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
+{
+	const RE::TESObjectWEAP* weapon = form->As<RE::TESObjectWEAP>();
+	if (weapon)
+	{
+		return weapon->formEnchanting ? ObjectType::enchantedWeapon : ObjectType::weapon;
+	}
+	const RE::TESObjectARMO* armor = form->As<RE::TESObjectARMO>();
+	if (armor)
+	{
+		if (rawType == ObjectType::jewelry)
+		{
+			return armor->formEnchanting ? ObjectType::enchantedJewelry : ObjectType::jewelry;
+		}
+		else
+		{
+			return armor->formEnchanting ? ObjectType::enchantedArmor: ObjectType::armor;
+		}
+	}
+	return rawType;
 }
 
 // Classify items by their keywords
@@ -796,20 +924,20 @@ void DataCase::SetObjectTypeByKeywords()
 		{"ArmorLight", ObjectType::armor},
 		{"ArmorHeavy", ObjectType::armor},
 		{"VendorItemArrow", ObjectType::ammo},
-		{"VendorItemBook", ObjectType::books},
-		{"VendorItemRecipe", ObjectType::books},
-		{"VendorItemGem", ObjectType::gems},
+		{"VendorItemBook", ObjectType::book},
+		{"VendorItemRecipe", ObjectType::book},
+		{"VendorItemGem", ObjectType::gem},
 		{"VendorItemOreIngot", ObjectType::oreIngot},
 		{"VendorItemAnimalHide", ObjectType::animalHide},
-		{"VendorItemAnimalPart", ObjectType::animalParts},
+		{"VendorItemAnimalPart", ObjectType::clutter},
 		{"VendorItemJewelry", ObjectType::jewelry},
 		{"VendorItemArmor", ObjectType::armor},
 		{"VendorItemClothing", ObjectType::armor},
-		{"VendorItemIngredient", ObjectType::ingredients},
-		{"VendorItemKey", ObjectType::keys},
+		{"VendorItemIngredient", ObjectType::ingredient},
+		{"VendorItemKey", ObjectType::key},
 		{"VendorItemPotion", ObjectType::potion},
 		{"VendorItemPoison", ObjectType::poison},
-		{"VendorItemScroll", ObjectType::scrolls},
+		{"VendorItemScroll", ObjectType::scroll},
 		{"VendorItemSpellTome", ObjectType::spellbook},
 		{"VendorItemSoulGem", ObjectType::soulgem},
 		{"VendorItemStaff", ObjectType::weapon},
@@ -817,8 +945,8 @@ void DataCase::SetObjectTypeByKeywords()
 		{"VendorItemClutter", ObjectType::clutter},
 		{"VendorItemFireword", ObjectType::clutter},
 		// Legacy of the Dragonborn
-		{"VendorItemJournal", ObjectType::books},
-		{"VendorItemNote", ObjectType::books},
+		{"VendorItemJournal", ObjectType::book},
+		{"VendorItemNote", ObjectType::book},
 		{"VendorItemFateCards", ObjectType::clutter}
 	};
 	std::vector<std::pair<std::string, ObjectType>> typeByVendorItemSubstring =
@@ -893,7 +1021,7 @@ void DataCase::SetObjectTypeByKeywords()
 #endif
 			continue;
 		}
-		m_objectTypeByForm[form->formID] = objectType;
+		m_objectTypeByForm[form->formID] = DecorateIfEnchanted(form, objectType);
 #if _DEBUG
 		_MESSAGE("0x%08x (%s) stored as %s", form->formID, keywordName.c_str(), GetObjectTypeName(objectType).c_str());
 #endif
@@ -905,11 +1033,18 @@ template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectARMO>()
 	return ObjectType::armor;
 }
 
-template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectARMO>(const ObjectType objectType)
+template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectARMO>(const RE::TESForm* form, const ObjectType objectType)
 {
-	return objectType == ObjectType::animalHide ? ObjectType::armor : objectType;
+	ObjectType rawType(objectType);
+	if (rawType == ObjectType::animalHide)
+		rawType = ObjectType::armor;
+	return DecorateIfEnchanted(form, rawType);
 }
 
+template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectWEAP>(const RE::TESForm* form, const ObjectType objectType)
+{
+	return DecorateIfEnchanted(form, objectType);
+}
 
 template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::AlchemyItem* consumable)
 {
@@ -924,7 +1059,7 @@ template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::Alche
 
 template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem* consumable)
 {
-	return ObjectType::ingredients;
+	return ObjectType::ingredient;
 }
 
 
@@ -959,6 +1094,20 @@ RE::TESForm* DataCase::GetLootableForProducer(RE::TESForm* producer) const
 	return nullptr;
 }
 
+bool DataCase::PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const
+{
+	const auto deathPerk = std::find_if(m_leveledItemOnDeathPerks.cbegin(), m_leveledItemOnDeathPerks.cend(),
+		[=] (const RE::BGSPerk* perk) -> bool { return actor->HasPerk(const_cast<RE::BGSPerk*>(perk)); });
+	if (deathPerk != m_leveledItemOnDeathPerks.cend())
+	{
+#if _DEBUG
+		_DMESSAGE("Leveled item added at death for perk %s/0x%08x", (*deathPerk)->GetName(), (*deathPerk)->GetFormID());
+#endif
+		return true;
+	}
+	return false;
+}
+
 std::string DataCase::GetModelPath(const RE::TESForm* thisForm) const
 {
 	if (thisForm)
@@ -988,10 +1137,10 @@ void DataCase::CategorizeStatics()
 {
 	// These form types always map to the same Object Type
 	m_objectTypeByFormType[RE::FormType::Container] = ObjectType::container;
-	m_objectTypeByFormType[RE::FormType::Ingredient] = ObjectType::ingredients;
+	m_objectTypeByFormType[RE::FormType::Ingredient] = ObjectType::ingredient;
 	m_objectTypeByFormType[RE::FormType::SoulGem] = ObjectType::soulgem;
-	m_objectTypeByFormType[RE::FormType::KeyMaster] = ObjectType::keys;
-	m_objectTypeByFormType[RE::FormType::Scroll] = ObjectType::scrolls;
+	m_objectTypeByFormType[RE::FormType::KeyMaster] = ObjectType::key;
+	m_objectTypeByFormType[RE::FormType::Scroll] = ObjectType::scroll;
 	m_objectTypeByFormType[RE::FormType::Ammo] = ObjectType::ammo;
 	m_objectTypeByFormType[RE::FormType::Light] = ObjectType::light;
 

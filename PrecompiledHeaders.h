@@ -1,21 +1,8 @@
 #pragma once
 
-// undefined CommonLibSSE dependency
-namespace RE {
-	class QueuedFile {
-	public:
-		int IncRef() {
-			return 1;
-		}
-		int DecRef() {
-			return 1;
-		}
-	};
-}
-
 #include "RecursiveLock.h"
 
-#include "CommonLibSSE/include/ForceInclude.h"
+#include "CommonLibSSE/include/SKSE/Impl/PCH.h"
 
 #include "CommonLibSSE/include/SKSE/API.h"
 #include "CommonLibSSE/include/SKSE/Interfaces.h"
@@ -24,9 +11,24 @@ namespace RE {
 
 #include "CommonLibSSE/include/RE/Skyrim.h"
 
+#include "nlohmann/json.hpp"
+#include "nlohmann/json-schema.hpp"
+
+#include <string>
+#include <vector>
+#include <memory>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "version.h"
 #include "ObjectType.h"
 #include "iniSettings.h"
-#include "IHasValueWeight.h"
-#include "FormHelper.h"
 #include "utils.h"
+#include "dataCase.h"
+#include "IHasValueWeight.h"
+#include "objects.h"
+#include "FormHelper.h"
+
+#include "LoadOrder.h"
+#include "ConditionTreeFactory.h"
+#include "CollectionManager.h"

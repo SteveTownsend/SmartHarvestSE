@@ -4,7 +4,7 @@
 
 inline bool IsBookObject(ObjectType objType)
 {
-	return objType >= ObjectType::books && objType <= ObjectType::skillbookRead;
+	return objType >= ObjectType::book && objType <= ObjectType::skillbookRead;
 }
 
 class TESObjectREFRHelper : public IHasValueWeight
@@ -16,7 +16,7 @@ public:
 	RE::NiTimeController* GetTimeController(void) const;
 	bool IsQuestItem(const bool requireFullQuestFlags);
 	double GetPosValue(void);
-	RE::TESContainer * GetContainer() const;
+	const RE::TESContainer* GetContainer() const;
 	std::vector<RE::TESObjectREFR*> GetLinkedRefs(RE::BGSKeyword* keyword);
 	bool IsPlayerOwned(void);
 
@@ -51,20 +51,38 @@ bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsContainerLocked(const RE::TESObjectREFR * refr);
-ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreUserlist = false);
-ObjectType ClassifyType(RE::TESForm* baseForm, bool ignoreUserlist = false);
+ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreWhiteList = false);
+ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreWhiteList = false);
 std::string GetObjectTypeName(SInt32 num);
 std::string GetObjectTypeName(const RE::TESObjectREFR* refr);
 std::string GetObjectTypeName(RE::TESForm* pForm);
 std::string GetObjectTypeName(ObjectType type);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
+ResourceType ResourceTypeByName(const std::string& name);
 
-inline bool ValueWeightExempt(ObjectType objectType)
+inline bool IsHarvestable(RE::TESBoundObject* target, ObjectType objectType)
+{
+#if _DEBUG
+	_DMESSAGE("check bound object %s/0x%08x with type %d", target->GetName(), target->GetFormID(), target->GetFormType());
+#endif
+	return objectType == ObjectType::critter || objectType == ObjectType::flora ||
+		target->GetFormType() == RE::FormType::Tree || target->GetFormType() == RE::FormType::Flora;
+}
+
+inline bool IsValueWeightExempt(ObjectType objectType)
 {
 	return objectType == ObjectType::ammo ||
 		objectType == ObjectType::lockpick ||
-		objectType == ObjectType::keys ||
+		objectType == ObjectType::key ||
 		objectType == ObjectType::oreVein ||
 		objectType == ObjectType::septims;
 }
+
+inline bool IsLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
+{
+	// Allow auto - mining in settlements, which Mines mostly are. No picks for you!
+	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.
+	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
+}
+
 bool IsPlayable(const RE::TESForm * pForm);

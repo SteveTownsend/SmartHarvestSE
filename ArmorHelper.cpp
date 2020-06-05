@@ -6,7 +6,7 @@ UInt32 TESObjectARMOHelper::GetGoldValue() const
 	if (!m_armor)
 		return 0;
 
-	RE::TESValueForm* pValue = m_armor->As<RE::TESValueForm>();
+	const RE::TESValueForm* pValue = m_armor->As<RE::TESValueForm>();
 	if (!pValue)
 		return 0;
 

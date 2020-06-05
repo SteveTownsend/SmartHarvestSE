@@ -1,4 +1,4 @@
-LIBRARY	AutoHarvestSE
+LIBRARY	SmartHarvestSE
 EXPORTS
 SKSEPlugin_Query
 SKSEPlugin_Load

@@ -1,13 +1,11 @@
 #pragma once
 
-#include <vector>
-
 class PlayerCellHelper
 {
 public:
 	static PlayerCellHelper& GetInstance() { return m_instance; }
 	std::vector<RE::TESObjectREFR*> GetReferences(RE::TESObjectCELL* cell, const double radius);
-	PlayerCellHelper() : m_cell(nullptr), m_radius(0.) {}
+	PlayerCellHelper() : m_cell(nullptr), m_radius(0.), m_eliminated(0) {}
 
 private:
 	bool CanLoot(RE::TESObjectREFR* refr) const;

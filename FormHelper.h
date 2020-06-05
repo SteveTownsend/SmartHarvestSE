@@ -1,12 +1,9 @@
 #pragma once
 
-#include "CommonLibSSE/include/RE/BGSKeywordForm.h"
-#include "CommonLibSSE/include/RE/EnchantmentItem.h"
-
 class TESFormHelper : public IHasValueWeight
 {
 public:
-	TESFormHelper(RE::TESForm* form);
+	TESFormHelper(const RE::TESForm* form);
 
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
@@ -15,7 +12,7 @@ public:
 	virtual double GetWeight(void) const override;
 	virtual double GetWorth(void) const override;
 
-	RE::TESForm* m_form;
+	const RE::TESForm* m_form;
 
 protected:
 	virtual const char* GetName() const;

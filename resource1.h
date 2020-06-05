@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by AutoHarvestSE.rc
+// Used by SmartHarvestSE.rc
 
 // Next default values for new objects
 // 

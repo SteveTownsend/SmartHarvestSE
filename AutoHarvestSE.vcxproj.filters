@@ -2,121 +2,181 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="utils.cpp" />
     <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="objects.cpp" />
-    <ClCompile Include="dataCase.cpp" />
-    <ClCompile Include="iniSettings.cpp" />
-    <ClCompile Include="containerLister.cpp" />
-    <ClCompile Include="tasks.cpp" />
     <ClCompile Include="debugs.cpp">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="sound.cpp" />
-    <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="PrecompiledHeaders.cpp" />
     <ClCompile Include="AlchemyItemHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="ExtraDataListHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="EnchantmentItemHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="SimpleIni.cpp" />
     <ClCompile Include="IHasValueWeight.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="PlayerCellHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="RecursiveLock.cpp" />
-    <ClCompile Include="InventoryItem.cpp" />
     <ClCompile Include="version.cpp">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClCompile>
     <ClCompile Include="StackWalker.cpp">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClCompile>
     <ClCompile Include="LogStackWalker.cpp">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClCompile>
     <ClCompile Include="ArmorHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="WeaponHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClCompile>
     <ClCompile Include="FormHelper.cpp">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="basketfile.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="dataCase.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="LoadOrder.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="containerLister.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="iniSettings.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="InventoryItem.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="objects.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="CollectionManager.cpp">
+      <Filter>Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="ConditionTreeFactory.cpp">
+      <Filter>Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="RecursiveLock.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="SimpleIni.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="sound.cpp">
+      <Filter>FormHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="tasks.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Utilities</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="utils.h" />
     <ClInclude Include="papyrus.h" />
-    <ClInclude Include="objects.h" />
-    <ClInclude Include="dataCase.h" />
-    <ClInclude Include="iniSettings.h" />
-    <ClInclude Include="containerLister.h" />
-    <ClInclude Include="tasks.h" />
     <ClInclude Include="debugs.h">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="strConv.h">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClInclude>
-    <ClInclude Include="sound.h" />
-    <ClInclude Include="basketfile.h" />
-    <ClInclude Include="resource1.h" />
     <ClInclude Include="PrecompiledHeaders.h" />
     <ClInclude Include="version.h">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="AlchemyItemHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="ExtraDataListHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="EnchantmentItemHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="SimpleIni.h" />
     <ClInclude Include="IHasValueWeight.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="RecursiveLock.h" />
-    <ClInclude Include="InventoryItem.h" />
     <ClInclude Include="StackWalker.h">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="LogStackWalker.h">
-      <Filter>_Utils</Filter>
+      <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="ArmorHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="WeaponHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="FormHelper.h">
-      <Filter>_FormHelpers</Filter>
+      <Filter>FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="basketfile.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="dataCase.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="LoadOrder.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="containerLister.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="iniSettings.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="InventoryItem.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="objects.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectType.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="CollectionManager.h">
+      <Filter>Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="ConditionTreeFactory.h">
+      <Filter>Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="RecursiveLock.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleIni.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="sound.h">
+      <Filter>FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="tasks.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="resource1.h">
+      <Filter>resources</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
       <UniqueIdentifier>{a4f07f14-48c8-4bcf-8c16-f1fb15526ea8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="_Utils">
-      <UniqueIdentifier>{3d5515fb-a938-4b89-89c8-a9bdc2656b3b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="_FormHelpers">
-      <UniqueIdentifier>{71f0c7fc-4d62-413e-afdf-5872914dd97c}</UniqueIdentifier>
     </Filter>
     <Filter Include="Config">
       <UniqueIdentifier>{b875b5fc-c381-473b-9a72-57e3f75fee2b}</UniqueIdentifier>
@@ -130,90 +190,88 @@
     <Filter Include="Papyrus Source">
       <UniqueIdentifier>{80326a15-e29b-42fa-ab74-00049edf6fd7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{7c36c054-5d9a-46f0-8b9c-8cbb7d462f76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Looting">
+      <UniqueIdentifier>{4b2ddf86-624b-4574-a70f-8ab10729627e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections">
+      <UniqueIdentifier>{f52345d8-cfb8-48ce-8990-78ed81d5fe28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FormHelpers">
+      <UniqueIdentifier>{71f0c7fc-4d62-413e-afdf-5872914dd97c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utilities">
+      <UniqueIdentifier>{3d5515fb-a938-4b89-89c8-a9bdc2656b3b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
       <Filter>resources</Filter>
     </None>
-    <None Include="Config\AutoHarvestSE.ini">
+    <None Include="Config\default\WhiteList.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Config\default\BlackList.tsv">
+      <Filter>Config\TSV</Filter>
+    </None>
+    <None Include="Scripts\SmartHarvestSE.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\SmartHarvestSE_Events_Alias.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\SmartHarvestSE_mcm.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
     </None>
-    <None Include="Config\default\blocklist.tsv">
-      <Filter>Config\TSV</Filter>
+    <None Include="Config\CollectionDefinition.json">
+      <Filter>Config</Filter>
     </None>
-    <None Include="Config\default\clutter.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\critter.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\excludelist.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\fieldcrop.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\flora.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\gem.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\orevein.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\septim.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\userlist.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Scripts\AutoHarvestSE.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\AutoHarvestSE_Events_Alias.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\AutoHarvestSE_HarvestSpell_MGEF.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\AutoHarvestSE_mcm.psc">
-      <Filter>Papyrus Source</Filter>
+    <None Include="Config\Schema.json">
+      <Filter>Config</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="AutoHarvestSE.rc" />
+    <Text Include="Interface\translations\SmartHarvestSE_czech.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_english.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_french.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_german.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_italian.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_japanese.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_polish.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_russian.txt">
+      <Filter>Localization</Filter>
+    </Text>
+    <Text Include="Interface\translations\SmartHarvestSE_spanish.txt">
+      <Filter>Localization</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Interface\towawot\AutoHarvestSE.dds" />
+    <ResourceCompile Include="SmartHarvestSE.rc">
+      <Filter>resources</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Interface\translations\AutoHarvestSE_czech.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_english.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_french.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_german.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_italian.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_japanese.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_polish.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_russian.txt">
-      <Filter>Localization</Filter>
-    </Text>
-    <Text Include="Interface\translations\AutoHarvestSE_spanish.txt">
-      <Filter>Localization</Filter>
-    </Text>
+    <Image Include="Interface\towawot\AutoHarvestSE.dds">
+      <Filter>resources</Filter>
+    </Image>
   </ItemGroup>
 </Project>

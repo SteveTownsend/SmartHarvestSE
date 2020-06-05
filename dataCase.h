@@ -1,14 +1,7 @@
 #pragma once
 
-#include <unordered_set>
-#include <unordered_map>
-#include <vector>
 #include <mutex>
 #include <chrono>
-
-#include "objects.h"
-
-#include "CommonLibSSE/include/RE/BGSProjectile.h"
 
 class DataCase
 {
@@ -24,7 +17,7 @@ public:
 
 	bool BlockReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
-	void ClearBlockedReferences();
+	void ClearBlockedReferences(const bool gameReload);
 
 	// permanent REFR blacklist, reset on game reload
 	bool BlacklistReference(const RE::TESObjectREFR* refr);
@@ -36,6 +29,7 @@ public:
 	void UpdateLockedContainers();
 
 	bool BlockForm(const RE::TESForm* form);
+	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
 	void ResetBlockedForms();
 
@@ -54,10 +48,12 @@ public:
 		return objectType;
 	}
 
+	ResourceType DataCase::OreVeinResourceType(const RE::TESObjectACTI* mineable) const;
+
 	const char* GetTranslation(const char* key) const;
 
 	const RE::TESAmmo* ProjToAmmo(const RE::BGSProjectile* proj);
-	RE::TESForm* ConvertIfLeveledItem(RE::TESForm* form) const;
+	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
 	void ListsClear(const bool gameReload);
@@ -70,6 +66,8 @@ public:
 	{
 		return keyword && m_glowableBookKeywords.find(keyword->GetFormID()) != m_glowableBookKeywords.cend();
 	}
+
+	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
 
 private:
 	std::unordered_map<std::string, std::string> translations;
@@ -87,8 +85,9 @@ private:
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
-	std::unordered_map<RE::TESProduceForm*, RE::TESForm*> m_produceFormContents;
+	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
+	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
 
 	mutable RecursiveLock m_producerIngredientLock;
 	mutable RecursiveLock m_blockListLock;
@@ -191,7 +190,7 @@ private:
 				}
 				if (storedType != ObjectType::unknown)
 				{ 
-					// Store mapping of Produce holder to ingredient
+					// Store mapping of Produce holder to ingredient - this is the most correct type for this item producer
 					if (SetObjectTypeForForm(form->formID, storedType))
 					{
 #if _DEBUG
@@ -215,6 +214,7 @@ private:
 		}
 	}
 
+	ObjectType DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType);
 	void SetObjectTypeByKeywords();
 
 	template <typename T>
@@ -277,14 +277,17 @@ private:
 	template <> ObjectType  DefaultObjectType<RE::TESObjectARMO>();
 
 	template <typename T>
-	ObjectType OverrideIfBadChoice(const ObjectType objectType)
+	ObjectType OverrideIfBadChoice(const RE::TESForm* form, const ObjectType objectType)
 	{
 		return objectType;
 	}
-	template <> ObjectType OverrideIfBadChoice<RE::TESObjectARMO>(const ObjectType objectType);
+	template <> ObjectType OverrideIfBadChoice<RE::TESObjectARMO>(const RE::TESForm* form, const ObjectType objectType);
+	template <> ObjectType OverrideIfBadChoice<RE::TESObjectWEAP>(const RE::TESForm* form, const ObjectType objectType);
 
 	std::unordered_map<std::string, ObjectType> m_objectTypeByActivationVerb;
 	mutable std::unordered_set<std::string> m_unhandledActivationVerbs;
+	std::unordered_map<const RE::TESObjectACTI*, ResourceType> m_resourceTypeByOreVein;
+
 	ObjectType GetObjectTypeForActivationText(const RE::BSString& activationText) const;
 
 	inline std::string GetVerbFromActivationText(const RE::BSString& activationText) const
@@ -368,7 +371,7 @@ private:
 			}
 			else
 			{
-				correctType = OverrideIfBadChoice<T>(correctType);
+				correctType = OverrideIfBadChoice<T>(form, correctType);
 			}
 			if (correctType != ObjectType::unknown)
 			{
@@ -395,7 +398,7 @@ private:
 				if (SetObjectTypeForForm(form->formID, ObjectType::clutter))
 				{
 #if _DEBUG
-					_MESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, valueForm->value);
+					_MESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, valueForm ? valueForm->value : 0.0);
 #endif
 				}
 				else
@@ -416,6 +419,8 @@ private:
 	void ActivationVerbsByType(const char* activationVerbKey, const ObjectType objectType);
 	void StoreActivationVerbs(void);
 	void CategorizeByActivationVerb(void);
+	void BuildCollectionDefinitions(void);
+	void AnalyzePerks(void);
 
 	std::string GetModelPath(const RE::TESForm* thisForm) const;
 	bool CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg) const;
@@ -428,6 +433,7 @@ private:
 
 	void CategorizeStatics();
 	void ExcludeImmersiveArmorsGodChest();
+	void IncludeFossilMiningExcavation();
 	DataCase(void);
 };
 

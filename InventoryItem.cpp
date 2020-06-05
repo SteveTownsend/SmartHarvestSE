@@ -67,7 +67,7 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		[30]  0x7FF7A1483E66     (SkyrimSE.exe + 113E66)          BSExtraDataList::GetContainerChanges_113E20 + 46
 		[31]  0x7FF7A15FDAAA     (SkyrimSE.exe + 28DAAA)          TESObjectREFR::RemoveItem_28D9E0 + CA
 		[32]  0x7FF7A196F7B9     (SkyrimSE.exe + 5FF7B9)          Actor::RemoveItem_5FF750 + 69
-		[33]  0x17AC0056C3A      (AutoHarvestSE.dll + 6C3A)
+		[33]  0x17AC0056C3A      (SmartHarvestSE.dll + 6C3A)
 	*/
 	for (auto& elem : queued) {
 #if _DEBUG
@@ -86,7 +86,7 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 
 void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count)
 {
-	if (m_targetType == INIFile::containers)
+	if (m_targetType == INIFile::SecondaryType::containers)
 	{
 		// safe to handle here
 		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);

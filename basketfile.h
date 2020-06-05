@@ -1,18 +1,12 @@
 #pragma once
 
-#include <unordered_set>
-#include <string>
-#include <vector>
-
-#include "CommonLibSSE/include/RE/BGSListForm.h"
-
 class BasketFile
 {
 public:
 	enum listnum
 	{
-		USERLIST = 0,
-		EXCLUDELIST,
+		WHITELIST = 0,
+		BLACKLIST,
 		MAX,
 	};
 
@@ -30,10 +24,10 @@ public:
 		return s_pInstance;
 	}
 
-	const std::unordered_set<RE::TESForm*> GetList(listnum list_number) const;
+	const std::unordered_set<const RE::TESForm*> GetList(listnum list_number) const;
 private:
 	RE::BGSListForm* formList[MAX];
-	std::unordered_set<RE::TESForm*> list[MAX];
+	std::unordered_set<const RE::TESForm*> list[MAX];
 	static BasketFile* s_pInstance;
 
 	BasketFile(void);

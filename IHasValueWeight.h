@@ -15,7 +15,8 @@ public:
 	static constexpr float ValueWeightMaximum = 1000.0f;
 
 protected:
-	virtual ~IHasValueWeight() {};
+	IHasValueWeight() : m_objectType(ObjectType::unknown) {}
+	virtual ~IHasValueWeight() {}
 	virtual const char * GetName() const = 0;
 	virtual UInt32 GetFormID() const = 0;
 

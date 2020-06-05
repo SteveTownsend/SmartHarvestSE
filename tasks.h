@@ -1,10 +1,7 @@
 #pragma once
 
-#include "objects.h"
-#include "iniSettings.h"
 #include "containerLister.h"
 
-#include <unordered_set>
 #include <mutex>
 #include <deque>
 
@@ -81,7 +78,7 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
 {
 	if (objectType == ObjectType::septims ||
-		objectType == ObjectType::keys ||
+		objectType == ObjectType::key ||
 		objectType == ObjectType::oreVein ||
 		objectType == ObjectType::ammo ||
 		objectType == ObjectType::lockpick)
@@ -110,17 +107,17 @@ public:
 	void Run();
 	static void UnlockAll();
 
-	static bool IsLockedForAutoHarvest(const RE::TESObjectREFR* refr);
-	static size_t PendingAutoHarvest();
-	static bool UnlockAutoHarvest(const RE::TESObjectREFR* refr);
+	static bool IsLockedForHarvest(const RE::TESObjectREFR* refr);
+	static size_t PendingHarvestNotifications();
+	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 	static bool IsPlayerHouse(const RE::BGSLocation* location);
 	static bool AddPlayerHouse(const RE::BGSLocation* location);
 	static bool RemovePlayerHouse(const RE::BGSLocation* location);
 
-	static void MergeExcludeList();
+	static void MergeBlackList();
 	static void ResetExcludedLocations();
-	static void AddLocationToExcludeList(const RE::TESForm* location);
-	static void DropLocationFromExcludeList(const RE::TESForm* location);
+	static void AddLocationToBlackList(const RE::TESForm* location);
+	static void DropLocationFromBlackList(const RE::TESForm* location);
 
 	static void Start();
 	static void PrepareForReload();
@@ -138,8 +135,9 @@ public:
 	void TriggerGetCritterIngredient();
 	static void TriggerCarryWeightDelta(const int delta);
 	static void TriggerResetCarryWeight();
-	void TriggerAutoHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool ignoreBlocking, const bool manualLootNotify);
-	static bool LockAutoHarvest(const RE::TESObjectREFR* refr);
+	void TriggerMining(const ResourceType resourceType, const bool manualLootNotify);
+	void TriggerHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool manualLootNotify);
+	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
 	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
@@ -172,7 +170,8 @@ public:
 	static int m_crimeCheck;
 	static SpecialObjectHandling m_belongingsCheck;
 
-	static std::unordered_set<const RE::TESObjectREFR*> m_autoHarvestLock;
+	static std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
+	static int m_pendingNotifies;
 	static std::unordered_set<const RE::BGSLocation*> m_playerHouses;
 
 	static RecursiveLock m_searchLock;
@@ -187,6 +186,7 @@ public:
 	static bool m_carryAdjustedForPlayerHome;
 	static bool m_carryAdjustedForDrawnWeapon;
 	static int m_currentCarryWeightChange;
+	static bool m_perksAddLeveledItemsOnDeath;
 	static bool m_menuOpen;
 
 	static std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> m_populationCenters;
@@ -209,7 +209,10 @@ public:
 
 	static const int ObjectGlowDurationSpecialSeconds;
 	static const int ObjectGlowDurationLootedSeconds;
+
+	// allow extended interval before looting if 'leveled list on death' perks apply to player
 	static const int ActorReallyDeadWaitIntervalSeconds;
+	static const int ActorReallyDeadWaitIntervalSecondsLong;
 private:
 	static std::vector<RE::TESObjectREFR*> m_refs;
 
@@ -223,4 +226,8 @@ private:
 	static void ScanThread();
 	static bool IsConcealed(RE::MagicTarget* target);
 	static bool IsPopulationCenterExcluded();
+
+	static std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
+	static const int PerkCheckIntervalSeconds;
+	static void CheckPerks(const bool force);
 };

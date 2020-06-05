@@ -3,8 +3,6 @@
 #define STRCONV_H
 
 #include <windows.h>
-#include <string>
-#include <vector>
 
 #if __cplusplus >= 201103L
 static inline std::wstring cp_to_wide(const std::string &s, UINT codepage)

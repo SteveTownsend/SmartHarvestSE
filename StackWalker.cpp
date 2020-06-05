@@ -744,7 +744,7 @@ private:
                     LPVOID vData = malloc(dwSize);
                     if (vData != NULL)
                     {
-                        if (GetFileVersionInfoA(szImg, dwHandle, dwSize, vData) != 0)
+                        if (GetFileVersionInfoA(szImg, 0, dwSize, vData) != 0)
                         {
                             UINT  len;
                             TCHAR szSubBlock[] = _T("\\");
@@ -1256,16 +1256,16 @@ BOOL StackWalker::ShowCallstack(HANDLE                    hThread,
             }
         } // we seem to have a valid PC
 
-        CallstackEntryType et = nextEntry;
+        CallstackEntryType et = CallstackEntryType::nextEntry;
         if (frameNum == 0)
-            et = firstEntry;
+            et = CallstackEntryType::firstEntry;
         bLastEntryCalled = false;
         this->OnCallstackEntry(et, csEntry);
 
         if (s.AddrReturn.Offset == 0)
         {
             bLastEntryCalled = true;
-            this->OnCallstackEntry(lastEntry, csEntry);
+            this->OnCallstackEntry(CallstackEntryType::lastEntry, csEntry);
             SetLastError(ERROR_SUCCESS);
             break;
         }
@@ -1276,7 +1276,7 @@ cleanup:
         free(pSym);
 
     if (bLastEntryCalled == false)
-        this->OnCallstackEntry(lastEntry, csEntry);
+        this->OnCallstackEntry(CallstackEntryType::lastEntry, csEntry);
 
     if (context == NULL)
         ResumeThread(hThread);
@@ -1306,6 +1306,11 @@ BOOL StackWalker::ShowObject(LPVOID pObject)
     DWORD64            dwDisplacement = 0;
     IMAGEHLP_SYMBOL64* pSym =
         (IMAGEHLP_SYMBOL64*)malloc(sizeof(IMAGEHLP_SYMBOL64) + STACKWALK_MAX_NAMELEN);
+    if (!pSym)
+	{
+		this->OnDbgHelpErr("malloc", 0, dwAddress);
+		return FALSE;
+	}
     memset(pSym, 0, sizeof(IMAGEHLP_SYMBOL64) + STACKWALK_MAX_NAMELEN);
     pSym->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
     pSym->MaxNameLength = STACKWALK_MAX_NAMELEN;
@@ -1381,7 +1386,7 @@ void StackWalker::OnCallstackEntry(CallstackEntryType eType, CallstackEntry& ent
 #if _MSC_VER >= 1400
     maxLen = _TRUNCATE;
 #endif
-    if ((eType != lastEntry) && (entry.offset != 0))
+    if ((eType != CallstackEntryType::lastEntry) && (entry.offset != 0))
     {
         if (entry.name[0] == 0)
             MyStrCpy(entry.name, STACKWALK_MAX_NAMELEN, "(function-name not available)");

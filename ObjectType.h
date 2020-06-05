@@ -5,26 +5,25 @@ enum class ObjectType : UInt8
 	unknown = 0,
 	flora,
 	critter,
-	ingredients,
+	ingredient,
 	septims,
-	gems,
+	gem,
 	lockpick,
 	animalHide,
-	animalParts,
 	oreIngot,
 	soulgem,
-	keys,
+	key,
 	clutter,
 	light,
 	// books - must be contiguous
-	books,
+	book,
 	spellbook,
 	skillbook,
-	booksRead,
+	bookRead,
 	spellbookRead,
 	skillbookRead,
 	// end books
-	scrolls,
+	scroll,
 	ammo,
 	weapon,
 	enchantedWeapon,
@@ -37,10 +36,24 @@ enum class ObjectType : UInt8
 	food,
 	drink,
 	oreVein,
-	userlist,
+	whitelist,
+	blacklist,
 	container,
 	actor,
 	ashPile,
 	manualLoot
 };
 
+enum class ResourceType : UInt8
+{
+	ore = 0,
+	geode,
+	volcanic,
+	volcanicDigSite
+};
+
+inline const char* PrintResourceType(ResourceType resourceType)
+{
+	static std::vector<const char*> resourceTypeNames = { "Ore", "Geode", "Volcanic", "VolcanicDigSite" };
+	return resourceTypeNames.at(static_cast<size_t>(resourceType));
+}

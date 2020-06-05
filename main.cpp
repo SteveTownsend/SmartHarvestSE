@@ -55,19 +55,21 @@ extern "C"
 bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_info)
 {
 	std::wostringstream path;
-	path << L"/My Games/Skyrim Special Edition/SKSE/" << std::wstring(L_AHSE_NAME) << L".log";
+	path << L"/My Games/Skyrim Special Edition/SKSE/" << std::wstring(L_SHSE_NAME) << L".log";
 	std::wstring wLogPath(path.str());
 	SKSE::Logger::OpenRelative(FOLDERID_Documents, wLogPath);
 	SKSE::Logger::SetPrintLevel(SKSE::Logger::Level::kDebugMessage);
 	SKSE::Logger::SetFlushLevel(SKSE::Logger::Level::kDebugMessage);
 	SKSE::Logger::UseLogStamp(true);
-	SKSE::Logger::UseTimeStamp(true, true, true);
-	SKSE::Logger::UseThreadId(true);
-
-	_MESSAGE("%s v%s", AHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
+	SKSE::Logger::UseTimeStamp(true);
+	SKSE::Logger::UseThreadID(true);
+#if _DEBUG
+	SKSE::Logger::HookPapyrusLog(true);
+#endif
+	_MESSAGE("%s v%s", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
 
 	a_info->infoVersion = SKSE::PluginInfo::kVersion;
-	a_info->name = AHSE_NAME;
+	a_info->name = SHSE_NAME;
 	a_info->version = VersionInfo::Instance().GetVersionMajor();
 
 	if (a_skse->IsEditor()) {
@@ -77,7 +79,7 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	SKSE::Version runtimeVer(a_skse->RuntimeVersion());
 	if (runtimeVer < SKSE::RUNTIME_1_5_73)
 	{
-		_FATALERROR("Unsupported runtime version %08X!\n", runtimeVer);
+		_FATALERROR("Unsupported runtime version %08x!\n", runtimeVer);
 		return false;
 	}
 
@@ -94,13 +96,14 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 {
 #if _DEBUG
-	_MESSAGE("%s plugin loaded", AHSE_NAME);
+	_MESSAGE("%s plugin loaded", SHSE_NAME);
 #endif
 
 	if (!SKSE::Init(skse)) {
 		return false;
 	}
 	SKSE::GetMessagingInterface()->RegisterListener("SKSE", SKSEMessageHandler);
+	SKSE::GetSerializationInterface()->SetUniqueID('SHSE');
 
 	return true;
 }

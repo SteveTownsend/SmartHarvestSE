@@ -1,0 +1,153 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./Schema.json",
+  "collections": [
+    {
+      "name": "LoTD Fate Cards",
+      "description": "Fate Card Decks from Legacy of the Dragonborn",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "LegacyoftheDragonborn.esm",
+          "keywords": [ "VendorItemFateCards" ]
+        }
+      }
+    },
+
+    {
+      "name": "Bad Gremlins",
+      "description": "Items added by Bad Gremlins Collectables",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "BGCollectables.esp",
+          "signatures": [ "BOOK", "MISC" ]
+        }
+      }
+    },
+
+    {
+      "name": "Skyrim's Unique Treasures",
+      "description": "Items added by Skyrim's Unique Treasures",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "SkyrimsUniqueTreasures.esp",
+          "signatures": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Palaeontologist",
+      "description": "All the fossils added by Fossil Mining",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Fossilsyum.esp",
+          "signatures": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Daedric Wielder",
+      "description": "Every Daedric Artifact",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "keywords": [ "VendorItemDaedricArtifact" ]
+        }
+      }
+    },
+
+    {
+      "name": "A Hot Meal",
+      "description": "Every Daedric Artifact",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Complete Alchemy & Cooking Overhaul.esp",
+          "keywords": [ "VendorItemFoodCooked" ]
+        }
+      }
+    },
+
+    {
+      "name": "I've Got Skills",
+      "description": "Every Skill Book",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "lootCategories": [ "skillbook" ]
+        }
+      }
+    },
+
+    {
+      "name": "Spells Trouble",
+      "description": "Every Spell Book",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "lootCategories": [ "spellbook" ]
+        }
+      }
+    },
+
+    {
+      "name": "Menagerie",
+      "description": "Every Critter",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "lootCategories": [ "critter" ]
+        }
+      }
+    },
+
+    {
+      "name": "Cloaking Device",
+      "description": "Every Cloak",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Weapons Armor Clothing & Clutter Fixes.esp",
+          "signatures": [ "ARMO" ],
+          "keywords": [ "WAF_ClothingCloak" ]
+        }
+      }
+    },
+
+    {
+      "name": "Baggage Handler",
+      "description": "Every Pouch and Carrier",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Weapons Armor Clothing & Clutter Fixes.esp",
+          "signatures": [ "ARMO" ],
+          "keywords": [ "WAF_ClothingPouch" ]
+        }
+      }
+    },
+
+    {
+      "name": "Keys to the City",
+      "description": "Every Key in the Forgotten City",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Forgotten City.esp",
+          "subFilter": {
+            "operator": "OR",
+            "conditions": {
+              "signatures": [ "KEYM" ],
+              "keywords": [ "VendorItemKey" ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

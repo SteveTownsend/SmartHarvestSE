@@ -15,10 +15,10 @@ constexpr const char* VW_Default = "valueWeightDefault";
 bool IHasValueWeight::ValueWeightTooLowToLoot(INIFile* settings) const
 {
 	// A specified default for value-weight supersedes a missing type-specific value-weight
-	double valueWeight(settings->GetSetting(INIFile::autoharvest, INIFile::SecondaryType::valueWeight, m_typeName.c_str()));
+	double valueWeight(settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::valueWeight, m_typeName.c_str()));
 	if (valueWeight <= 0.)
 	{
-		valueWeight = settings->GetSetting(INIFile::autoharvest, INIFile::SecondaryType::config, VW_Default);
+		valueWeight = settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, VW_Default);
 	}
 	if (valueWeight > 0.)
 	{

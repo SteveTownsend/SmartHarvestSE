@@ -1,20 +1,20 @@
 #pragma once
 
-#define INI_FILE "AutoHarvestSE.ini"
+#define INI_FILE "SmartHarvestSE.ini"
 #include "SimpleIni.h"
 
 class INIFile : public SimpleIni
 {
 public:
-	enum PrimaryType
+	enum class PrimaryType
 	{
 		NONE = 0,
 		common,
-		autoharvest,
+		harvest,
 		LAST
 	};
 
-	enum SecondaryType
+	enum class SecondaryType
 	{
 		NONE2 = 0,
 		config,
@@ -31,10 +31,10 @@ public:
 	{
 		switch (type)
 		{
-		case common:
+		case PrimaryType::common:
 			result += "common"; break;
-		case autoharvest:
-			result += "autoharvest"; break;
+		case PrimaryType::harvest:
+			result += "smartHarvest"; break;
 		default:
 			return false;
 		}
@@ -45,15 +45,15 @@ public:
 	{
 		switch (type)
 		{
-		case config:
+		case SecondaryType::config:
 			result += "config"; break;
-		case itemObjects:
+		case SecondaryType::itemObjects:
 			result += "itemobjects"; break;
-		case containers:
+		case SecondaryType::containers:
 			result += "containers"; break;
-		case deadbodies:
+		case SecondaryType::deadbodies:
 			result += "deadbodies"; break;
-		case valueWeight:
+		case SecondaryType::valueWeight:
 			result += "valueWeight"; break;
 		default:
 			return false;
@@ -71,6 +71,7 @@ public:
 	}
 
 	double GetRadius(PrimaryType first);
+	double GetIndoorsRadius(PrimaryType first);
 	double GetSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key);
 	void PutSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key, double m_value);
 	void SaveFile(void);

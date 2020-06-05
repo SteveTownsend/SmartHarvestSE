@@ -1,8 +1,6 @@
 #include "PrecompiledHeaders.h"
 
 #include "ExtraDataListHelper.h"
-#include "CommonLibSSE/include/RE/ExtraEnchantment.h"
-#include "CommonLibSSE/include/RE/ExtraAliasInstanceArray.h"
 
 RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void)
 {

@@ -1,10 +1,8 @@
 #pragma once
 
-#include <string>
-
-constexpr char* AHSE_NAME = "AutoHarvestSE";
-constexpr wchar_t* L_AHSE_NAME = L"AutoHarvestSE";
-constexpr char* MODNAME = "AutoHarvestSE.esp";
+constexpr char* SHSE_NAME = "SmartHarvestSE";
+constexpr wchar_t* L_SHSE_NAME = L"SmartHarvestSE";
+constexpr char* MODNAME = "SmartHarvestSE.esp";
 
 class VersionInfo
 {
@@ -14,6 +12,7 @@ public:
 	UInt32 GetVersionMajor() const;
 
 private:
+	VersionInfo() : m_majorVersion(0) {}
 	static VersionInfo* m_instance;
 	void GetPluginVersionInfo();
 	std::string m_versionString;

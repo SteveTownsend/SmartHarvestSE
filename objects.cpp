@@ -1,17 +1,9 @@
 #include "PrecompiledHeaders.h"
 
-#include "iniSettings.h"
 #include "utils.h"
-#include "objects.h"
-#include "dataCase.h"
 #include "basketfile.h"
 #include "containerLister.h"
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include "ExtraDataListHelper.h"
-
-#include "CommonLibSSE/include/RE/BGSProjectile.h"
 
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {
@@ -121,15 +113,15 @@ std::vector<RE::TESObjectREFR*> TESObjectREFRHelper::GetLinkedRefs(RE::BGSKeywor
 	return result;
 }
 
-RE::TESContainer* TESObjectREFRHelper::GetContainer() const
+const RE::TESContainer* TESObjectREFRHelper::GetContainer() const
 {
-	if (!m_ref->data.objectReference)
+	if (!m_ref->GetBaseObject())
 		return nullptr;
 
-	RE::TESContainer *container = nullptr;
-	if (m_ref->data.objectReference->formType == RE::FormType::Container ||
-	    m_ref->data.objectReference->formType == RE::FormType::NPC)
-		container = m_ref->data.objectReference->As<RE::TESContainer>();
+	const RE::TESContainer *container = nullptr;
+	if (m_ref->GetBaseObject()->formType == RE::FormType::Container ||
+	    m_ref->GetBaseObject()->formType == RE::FormType::NPC)
+		container = m_ref->GetBaseObject()->As<RE::TESContainer>();
 
 	return container;
 }
@@ -169,13 +161,13 @@ void TESObjectREFRHelper::SetLootable(RE::TESForm* lootable)
 
 double TESObjectREFRHelper::GetWorth(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->data.objectReference);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
 	return itemEx.GetWorth();
 }
 
 double TESObjectREFRHelper::GetWeight(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->data.objectReference);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
 	return itemEx.GetWeight();
 }
 
@@ -186,21 +178,22 @@ const char* TESObjectREFRHelper::GetName() const
 
 UInt32 TESObjectREFRHelper::GetFormID() const
 {
-	return m_ref->data.objectReference->formID;
+	return m_ref->GetBaseObject()->formID;
 }
 
 SInt16 TESObjectREFRHelper::GetItemCount()
 {
 	if (!m_ref)
 		return 1;
-	if (!m_ref->data.objectReference)
+	if (!m_ref->GetBaseObject())
 		return 1;
 	if (m_lootable)
 		return 1;
 	if (m_objectType == ObjectType::oreVein)
 	{
 		// limit ore harvesting to constrain Player Home mining
-		return static_cast<SInt16>(INIFile::GetInstance()->GetInstance()->GetSetting(INIFile::autoharvest, INIFile::config, "maxMiningItems"));
+		return static_cast<SInt16>(INIFile::GetInstance()->GetInstance()->GetSetting(
+			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
 	}
 
 	const RE::ExtraCount* exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
@@ -245,59 +238,55 @@ bool ActorHelper::IsSummoned(void) const
 	return m_actor ? m_actor->IsSummoned() : false;
 }
 
-ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreUserlist)
+// this is the pivotal function that maps a REFR to its loot category
+ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreWhiteList)
 {
-	if (!refr || !refr->data.objectReference)
+	if (!refr || !refr->GetBaseObject())
 		return ObjectType::unknown;
 
 	if (refr->formType == RE::FormType::ActorCharacter)
 	{
+		// derived from REFR directly
 		return ObjectType::actor;
 	}
-	else if (refr->data.objectReference->formType == RE::FormType::Activator && HasAshPile(refr))
+	else if (refr->GetBaseObject()->formType == RE::FormType::Activator && HasAshPile(refr))
 	{
 		return ObjectType::unknown;
 	}
 	else if (refr->formType == RE::FormType::ProjectileArrow)
 	{
+		// derived from REFR via Projectile
 		return ObjectType::ammo;
 	}
-	else if (refr->data.objectReference->formType == RE::FormType::SoulGem)
-	{
-		return ObjectType::soulgem;
-	}
 
-	return ClassifyType(refr->data.objectReference, ignoreUserlist);
+	return ClassifyType(refr->GetBaseObject(), ignoreWhiteList);
 }
 
-ObjectType ClassifyType(RE::TESForm* baseForm, bool ignoreUserlist)
+ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreWhiteList)
 {
 	// Leveled items typically redirect to their contents
-	baseForm = DataCase::GetInstance()->ConvertIfLeveledItem(baseForm);
+	DataCase* data = DataCase::GetInstance();
+	baseForm = data->ConvertIfLeveledItem(baseForm);
 	if (!baseForm)
 		return ObjectType::unknown;
 
-	if (!ignoreUserlist && BasketFile::GetSingleton()->IsinList(BasketFile::USERLIST, baseForm))
+	if (!ignoreWhiteList && BasketFile::GetSingleton()->IsinList(BasketFile::WHITELIST, baseForm))
 	{
-		return ObjectType::userlist;
+		return ObjectType::whitelist;
+	}
+	if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, baseForm))
+	{
+		return ObjectType::blacklist;
 	}
 
-	DataCase* data = DataCase::GetInstance();
 	ObjectType objectType(data->GetObjectTypeForForm(baseForm));
 	if (objectType != ObjectType::unknown)
 	{
     	return objectType;
 	}
-	if (baseForm->formType == RE::FormType::Misc)
+	if (baseForm->formType == RE::FormType::Book)
 	{
-		const RE::TESObjectMISC* miscObject = baseForm->As<RE::TESObjectMISC>();
-		if (!miscObject)
-			return ObjectType::unknown;
-
-		return objectType;
-	}
-	else if (baseForm->formType == RE::FormType::Book)
-	{
+		// done here instead of during init because state of object can change during gameplay
 		const RE::TESObjectBOOK* book = baseForm->As<RE::TESObjectBOOK>();
 		if (!book || !book->CanBeTaken())
 			return ObjectType::unknown;
@@ -306,15 +295,11 @@ ObjectType ClassifyType(RE::TESForm* baseForm, bool ignoreUserlist)
 			return (isRead) ? ObjectType::skillbookRead : ObjectType::skillbook;
 		else if (book->TeachesSpell())
 			return (isRead) ? ObjectType::spellbookRead : ObjectType::spellbook;
-		return (isRead) ? ObjectType::booksRead : ObjectType::books;
-	}
-	else if (baseForm->formType == RE::FormType::Ammo || baseForm->formType == RE::FormType::Light)
-	{
-		if (baseForm->GetPlayable())
-			return objectType;
+		return (isRead) ? ObjectType::bookRead : ObjectType::book;
 	}
 	else if (baseForm->formType == RE::FormType::Weapon)
 	{
+		// done here instead of during init because state of object can change during gameplay
 		const static RE::FormID Artifacts1 = 0x0A8668;
 		const static RE::FormID Artifacts2 = 0x0917E8;
 
@@ -327,14 +312,13 @@ ObjectType ClassifyType(RE::TESForm* baseForm, bool ignoreUserlist)
 
 		return (weapon->formEnchanting) ? ObjectType::enchantedWeapon : ObjectType::weapon;
 	}
-	else if (baseForm->formType == RE::FormType::Armor || objectType == ObjectType::jewelry)
+	else if (baseForm->formType == RE::FormType::Armor)
 	{
+		// done here instead of during init because state of object can change during gameplay
 		const RE::TESObjectARMO* armor = baseForm->As<RE::TESObjectARMO>();
 		if (!armor || !armor->GetPlayable())
 			return ObjectType::unknown;
 
-		if (objectType == ObjectType::jewelry)
-			return (armor->formEnchanting) ? ObjectType::enchantedJewelry : ObjectType::jewelry;
 		return (armor->formEnchanting) ? ObjectType::enchantedArmor : ObjectType::armor;
 	}
 	return ObjectType::unknown;
@@ -362,24 +346,23 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::unknown, "unknown"},
 	{ObjectType::flora, "flora"},
 	{ObjectType::critter, "critter"},
-	{ObjectType::ingredients, "ingredients"},
+	{ObjectType::ingredient, "ingredient"},
 	{ObjectType::septims, "septims"},
-	{ObjectType::gems, "gems"},
+	{ObjectType::gem, "gems"},
 	{ObjectType::lockpick, "lockpick"},
 	{ObjectType::animalHide, "animalhide"},
-	{ObjectType::animalParts, "animalparts"},
 	{ObjectType::oreIngot, "oreingot"},
 	{ObjectType::soulgem, "soulgem"},
-	{ObjectType::keys, "keys"},
+	{ObjectType::key, "key"},
 	{ObjectType::clutter, "clutter"},
 	{ObjectType::light, "light"},
-	{ObjectType::books, "books"},
+	{ObjectType::book, "book"},
 	{ObjectType::spellbook, "spellbook"},
 	{ObjectType::skillbook, "skillbook"},
-	{ObjectType::booksRead, "booksread"},
+	{ObjectType::bookRead, "bookread"},
 	{ObjectType::spellbookRead, "spellbookread"},
 	{ObjectType::skillbookRead, "skillbookread"},
-	{ObjectType::scrolls, "scrolls"},
+	{ObjectType::scroll, "scroll"},
 	{ObjectType::ammo, "ammo"},
 	{ObjectType::weapon, "weapon"},
 	{ObjectType::enchantedWeapon, "enchantedweapon"},
@@ -392,7 +375,7 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::food, "food"},
 	{ObjectType::drink, "drink"},
 	{ObjectType::oreVein, "orevein"},
-	{ObjectType::userlist, "userlist"},
+	{ObjectType::whitelist, "whitelist"},
 	{ObjectType::container, "container"},
 	{ObjectType::actor, "actor"},
 	{ObjectType::ashPile, "ashpile"},
@@ -428,3 +411,18 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 	return ObjectType::unknown;
 }
 
+const std::unordered_map<std::string, ResourceType> resourceTypeByName({
+	{"Ore", ResourceType::ore},
+	{"Geode", ResourceType::geode},
+	{"Volcanic", ResourceType::volcanic}
+	});
+
+ResourceType ResourceTypeByName(const std::string& name)
+{
+	const auto matched(resourceTypeByName.find(name));
+	if (matched != resourceTypeByName.cend())
+	{
+		return matched->second;
+	}
+	return ResourceType::ore;
+}

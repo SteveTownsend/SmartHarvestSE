@@ -124,7 +124,7 @@ class SimpleIni
 		};
 
 	public:
-		enum optionKey {Comment};
+		enum class optionKey {Comment};
 
 		/// \brief    Iterator for sections
 		/// \details  Iterator for sections return a string reference on section's name.

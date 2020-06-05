@@ -1,6 +1,5 @@
 #include "PrecompiledHeaders.h"
 
-#include "CommonLibSSE/include/RE/GameSettingCollection.h"
 #include "WeaponHelper.h"
 
 UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
@@ -13,7 +12,7 @@ UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 	static RE::BSFixedString fEnchantmentEffectPointsMult = "fEnchantmentEffectPointsMult";
 	double fEEPM = GetGameSettingFloat(fEnchantmentEffectPointsMult);
 
-	RE::TESValueForm* pValue = m_weapon->As<RE::TESValueForm>();
+	const RE::TESValueForm* pValue = m_weapon->As<RE::TESValueForm>();
 	if (!pValue)
 		return 0;
 
@@ -21,7 +20,7 @@ UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 	if (!ench)
 		return pValue->value;
 
-	SInt16 charge = static_cast<SInt16>(ench->data.chargeOverride);
+	SInt16 charge = this->GetMaxCharge();
 	UInt32 cost = static_cast<UInt32>(ench->data.costOverride);
 	return static_cast<UInt32>((pValue->value * 2) + (fEPM * charge) + (fEEPM * cost));
 }
@@ -32,7 +31,7 @@ SInt16 TESObjectWEAPHelper::GetMaxCharge() const
 		return 0;
 	RE::EnchantmentItem* ench = TESFormHelper(m_weapon).GetEnchantment();
 	if (ench)
-        return static_cast<SInt16>(ench->data.chargeOverride);
+        return static_cast<SInt16>(m_weapon->amountofEnchantment);
 	return 0;
 }
 

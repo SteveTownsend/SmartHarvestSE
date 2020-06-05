@@ -1,8 +1,5 @@
 ﻿#include "PrecompiledHeaders.h"
 
-#include "CommonLibSSE/include/RE/Misc.h"
-#include "CommonLibSSE/include/RE/Setting.h"
-
 #include "utils.h"
 
 #include <shlobj.h>
@@ -10,14 +7,31 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
-#include <string>
-#include <vector>
 #include <algorithm> //Trim
 #include <math.h>	// pow
 
 
 namespace FileUtils
 {
+	std::string ReadFileToString(const std::string& filePath)
+	{
+		std::ifstream fileStream(filePath);
+		if (fileStream.fail())
+		{
+#if _DEBUG
+			_MESSAGE("File for string read %s inaccessible", filePath.c_str());
+#endif
+			return std::string();
+		}
+		std::string fileData;
+		fileStream.seekg(0, std::ios::end);
+		fileData.reserve(fileStream.tellg());
+		fileStream.seekg(0, std::ios::beg);
+
+		fileData.assign((std::istreambuf_iterator<char>(fileStream)), std::istreambuf_iterator<char>());
+		return fileData;
+	}
+
 	std::string GetGamePath(void)
 	{
 		static std::string s_runtimeDirectory;
@@ -93,11 +107,14 @@ namespace FileUtils
 			if (!pluginFileName.empty())
 			{
 			    char drive[MAX_PATH];
-			    char dir[MAX_PATH];
+				memset(drive, 0, MAX_PATH);
+				char dir[MAX_PATH];
+				memset(dir, 0, MAX_PATH);
 				if (_splitpath_s(pluginFileName.c_str(), drive, MAX_PATH, dir, MAX_PATH, nullptr, 0, nullptr, 0) == 0)
 				{
 					char path[MAX_PATH];
-      			    if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
+					memset(path, 0, MAX_PATH);
+					if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
 					{
 					    s_skseDirectory = path;
 #if _DEBUG
@@ -110,12 +127,6 @@ namespace FileUtils
 		return s_skseDirectory;
 	}
 
-	bool IsFoundFile(const char* fileName)
-	{
-		std::ifstream ifs(fileName);
-		return (ifs.fail()) ? false : true;
-	}
-
 	bool WriteSectionKey(LPCTSTR section_name, LPCTSTR key_name, LPCTSTR key_data, LPCTSTR ini_file_path)
 	{
 		return (WritePrivateProfileString(section_name, key_name, key_data, ini_file_path)) != 0;
@@ -125,7 +136,7 @@ namespace FileUtils
 	{
 		std::vector<std::string> result;
 		std::string file_path(ini_file_path);
-		if (IsFoundFile(ini_file_path))
+		if (CanOpenFile(ini_file_path))
 		{
 			TCHAR buf[32768] = {};
 			GetPrivateProfileSection(section_name, buf, sizeof(buf), ini_file_path);
@@ -145,7 +156,7 @@ namespace FileUtils
 		std::vector<std::string> result;
 		std::string filePath = GetPluginPath();
 		filePath += fileName;
-		if (IsFoundFile(filePath.c_str()))
+		if (CanOpenFile(filePath.c_str()))
 		{
 			std::vector<std::string> list = GetSectionKeys(section.c_str(), filePath.c_str());
 			for (std::string str : list)
@@ -189,7 +200,7 @@ namespace WindowsUtils
 			return (1000000LL * now.QuadPart) / s_frequency.QuadPart;
 		}
 		else {
-			return GetTickCount() * 1000;
+			return GetTickCount64() * 1000UL;
 		}
 	}
 
@@ -199,8 +210,8 @@ namespace WindowsUtils
 		if (refr)
 		{
 			std::ostringstream fullContext;
-			fullContext << context << ' ' << refr->data.objectReference->GetName() <<
-				"/0x" << std::hex << std::setw(8) << std::setfill('0') << refr->data.objectReference->GetFormID();
+			fullContext << context << ' ' << refr->GetBaseObject()->GetName() <<
+				"/0x" << std::hex << std::setw(8) << std::setfill('0') << refr->GetBaseObject()->GetFormID();
 			m_context = fullContext.str();
 		}
 	}

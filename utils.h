@@ -1,22 +1,26 @@
 #pragma once
 
 #include <shlobj.h>
-#include <string>
-#include <vector>
 
 constexpr RE::FormID ClothKeyword = 0x06BBE8;
 constexpr RE::FormID CurrentFollowerFaction = 0x0005C84E;
 
 namespace FileUtils
 {
+	std::string ReadFileToString(const std::string& filePath);
 	std::string GetGamePath(void);
 	std::string GetDataPath(void);
 	std::string GetPluginFileName(void);
 	std::string GetPluginPath(void);
-	bool IsFoundFile(const char* fileName);
 	bool WriteSectionKey(LPCTSTR section_name, LPCTSTR key_name, LPCTSTR key_data, LPCTSTR ini_file_path);
 	std::vector<std::string> GetSectionKeys(LPCTSTR section_name, LPCTSTR ini_file_path);
 	std::vector<std::string> GetIniKeys(std::string section, std::string fileName);
+	inline bool CanOpenFile(const char* fileName)
+	{
+		std::ifstream ifs(fileName);
+		return ifs.fail() ? false : true;
+	}
+
 }
 
 namespace utils

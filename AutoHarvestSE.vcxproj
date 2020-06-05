@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectName>AutoHarvestSE</ProjectName>
+    <ProjectName>SmartHarvestSE</ProjectName>
     <ProjectGuid>{A9D9042D-D2FF-47EA-B77E-5BD1E424734C}</ProjectGuid>
     <RootNamespace>AutoHarvestSE</RootNamespace>
     <Keyword>Win32Proj</Keyword>
@@ -58,7 +58,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_AMD64_;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -69,7 +69,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dbghelp.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <PreBuildEvent>
@@ -92,7 +92,7 @@
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
@@ -125,6 +125,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AlchemyItemHelper.cpp" />
+    <ClCompile Include="CollectionManager.cpp" />
+    <ClCompile Include="ConditionTreeFactory.cpp" />
     <ClCompile Include="ExtraDataListHelper.cpp" />
     <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="containerLister.cpp" />
@@ -132,6 +134,7 @@
     <ClCompile Include="EnchantmentItemHelper.cpp" />
     <ClCompile Include="IHasValueWeight.cpp" />
     <ClCompile Include="InventoryItem.cpp" />
+    <ClCompile Include="LoadOrder.cpp" />
     <ClCompile Include="LogStackWalker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -162,6 +165,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AlchemyItemHelper.h" />
+    <ClInclude Include="CollectionManager.h" />
+    <ClInclude Include="ConditionTreeFactory.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
     <ClInclude Include="basketfile.h" />
     <ClInclude Include="containerLister.h" />
@@ -169,6 +174,7 @@
     <ClInclude Include="EnchantmentItemHelper.h" />
     <ClInclude Include="IHasValueWeight.h" />
     <ClInclude Include="InventoryItem.h" />
+    <ClInclude Include="LoadOrder.h" />
     <ClInclude Include="LogStackWalker.h" />
     <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h" />
@@ -191,26 +197,25 @@
     <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\AutoHarvestSE.ini" />
-    <None Include="Config\default\blocklist.tsv" />
-    <None Include="Config\default\clutter.tsv" />
-    <None Include="Config\default\critter.tsv" />
-    <None Include="Config\default\excludelist.tsv" />
-    <None Include="Config\default\fieldcrop.tsv" />
-    <None Include="Config\default\flora.tsv" />
-    <None Include="Config\default\gem.tsv" />
-    <None Include="Config\default\orevein.tsv" />
-    <None Include="Config\default\septim.tsv" />
-    <None Include="Config\default\userlist.tsv" />
+    <None Include="Config\CollectionDefinition.json" />
+    <None Include="Config\Schema.json" />
+    <None Include="Config\SmartHarvestSE.ini" />
+    <None Include="Config\default\BlackList.tsv" />
+    <None Include="Config\default\WhiteList.tsv" />
     <None Include="exports.def" />
-    <None Include="Scripts\AutoHarvestSE.psc" />
-    <None Include="Scripts\AutoHarvestSE_Events_Alias.psc" />
-    <None Include="Scripts\AutoHarvestSE_HarvestSpell_MGEF.psc" />
-    <None Include="Scripts\AutoHarvestSE_mcm.psc" />
+    <None Include="Scripts\SmartHarvestSE.psc" />
+    <None Include="Scripts\SmartHarvestSE_Events_Alias.psc" />
+    <None Include="Scripts\SmartHarvestSE_mcm.psc" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CommonLibSSE\CommonLibSSE.vcxproj">
       <Project>{c1af9204-ee2d-421b-b11e-1d70d8acc11f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\json-schema-validator\json-schema-validator.vcxproj">
+      <Project>{0d43801e-1d25-4614-a6a1-f79b3fc9897d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\json\nlohmann-json.vcxproj">
+      <Project>{1626aa45-d0e0-401d-b090-298f7a392ead}</Project>
     </ProjectReference>
     <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
       <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
@@ -223,21 +228,21 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="AutoHarvestSE.rc" />
+    <ResourceCompile Include="SmartHarvestSE.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Interface\towawot\AutoHarvestSE.dds" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Interface\translations\AutoHarvestSE_czech.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_english.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_french.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_german.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_italian.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_japanese.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_polish.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_russian.txt" />
-    <Text Include="Interface\translations\AutoHarvestSE_spanish.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_czech.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_english.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_french.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_german.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_italian.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_japanese.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_polish.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_russian.txt" />
+    <Text Include="Interface\translations\SmartHarvestSE_spanish.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

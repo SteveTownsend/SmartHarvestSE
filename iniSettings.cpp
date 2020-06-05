@@ -1,7 +1,5 @@
 #include "PrecompiledHeaders.h"
 
-#include "iniSettings.h"
-
 INIFile* INIFile::s_instance = nullptr;
 namespace
 {
@@ -61,7 +59,7 @@ const std::string INIFile::GetFileName(void)
 		iniFilePath = RuntimeDir + "Data\\SKSE\\Plugins\\";
 		iniFilePath += INI_FILE;
 #if _DEBUG
-		_MESSAGE("%s", iniFilePath.c_str());
+		_MESSAGE("INI file at %s", iniFilePath.c_str());
 #endif
 	}
 	return iniFilePath.c_str();
@@ -103,6 +101,17 @@ double INIFile::GetRadius(PrimaryType first)
 	const double setting(GetSetting(first, SecondaryType::config, "RadiusFeet"));
 #if _DEBUG
 	_MESSAGE("Search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
+#endif
+	return setting / FEET_PER_DISTANCE_UNIT;
+}
+
+double INIFile::GetIndoorsRadius(PrimaryType first)
+{
+	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
+	static const double FEET_PER_DISTANCE_UNIT(0.046875);
+	const double setting(GetSetting(first, SecondaryType::config, "IndoorsRadiusFeet"));
+#if _DEBUG
+	_MESSAGE("Indoors search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
 #endif
 	return setting / FEET_PER_DISTANCE_UNIT;
 }

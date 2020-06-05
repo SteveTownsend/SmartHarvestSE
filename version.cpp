@@ -46,7 +46,7 @@ void VersionInfo::GetPluginVersionInfo()
 
 	/* Get FileVersionInfo structure */
 	verInfo = new BYTE[verInfoLen];
-	if (!GetFileVersionInfo(moduleName.c_str(), zero, verInfoLen, verInfo)) {
+	if (!GetFileVersionInfo(moduleName.c_str(), 0, verInfoLen, verInfo)) {
 #if _DEBUG
 		_MESSAGE("GetFileVersionInfo() Failed");
 #endif

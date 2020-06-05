@@ -1,17 +1,11 @@
 #include "PrecompiledHeaders.h"
 
-#include "dataCase.h"
-#include "iniSettings.h"
-#include "objects.h"
-
 #include "AlchemyItemHelper.h"
 #include "FormHelper.h"
 #include "ArmorHelper.h"
 #include "WeaponHelper.h"
 
-#include "CommonLibSSE/include/RE/BGSProjectile.h"
-
-TESFormHelper::TESFormHelper(RE::TESForm* form) : m_form(form)
+TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
@@ -31,7 +25,7 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 
 	if (m_form->formType == RE::FormType::Weapon || m_form->formType == RE::FormType::Armor)
 	{
-		RE::TESEnchantableForm* enchanted(m_form->As<RE::TESEnchantableForm>());
+		const RE::TESEnchantableForm* enchanted(m_form->As<RE::TESEnchantableForm>());
 		if (enchanted)
    		    return enchanted->formEnchanting;
 	}

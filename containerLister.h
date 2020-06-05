@@ -1,6 +1,5 @@
 #pragma once
 
-#include <unordered_map>
 #include "InventoryItem.h"
 
 typedef std::vector<InventoryItem> LootableItems;

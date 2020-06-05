@@ -1,9 +1,6 @@
 #include "PrecompiledHeaders.h"
 
-#include "dataCase.h"
-#include "objects.h"
 #include "tasks.h"
-#include "iniSettings.h"
 #include "papyrus.h"
 #include "PlayerCellHelper.h"
 
@@ -42,22 +39,22 @@ Lootability can be subjective and/or time-sensitive. Dynamic forms (FormID 0xffn
 Current hypothesis is that this is safe so long as the base object is not itself dynamic.
 Example from play-testing CTD logs where we crashed getting FormID for a pending-loot dead body.
 
-Line 3732034: 0x8e70 (2020 - 05 - 23 07:24 : 16.910) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
-Line 3735016 : 0x8e70 (2020 - 05 - 23 07:24 : 17.800) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
-Line 3737998 : 0x8e70 (2020 - 05 - 23 07:24 : 18.700) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
-Line 3785563 : 0x8e70 (2020 - 05 - 23 07:24 : 36.095) J : \GitHub\AutoHarvestSE.Port\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024eb with base object Restless Skeleton / 0xff0024ed
-Line 3785564 : 0x8e70 (2020-05-23 07:24:36.095) J:\GitHub\AutoHarvestSE.Port\tasks.cpp(277): [DEBUG] Enqueued dead body to loot later 0xff0024eb
-Line 3785565 : 0x8e70 (2020-05-23 07:24:36.095) J:\GitHub\AutoHarvestSE.Port\utils.cpp(211): [MESSAGE] TIME(Process Auto-loot Candidate Restless Skeleton/0xff0024ed)=114 micros
+Line 3732034: 0x8e70 (2020 - 05 - 23 07:24 : 16.910) J : \GitHub\SmartHarvestSE\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
+Line 3735016 : 0x8e70 (2020 - 05 - 23 07:24 : 17.800) J : \GitHub\SmartHarvestSE\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
+Line 3737998 : 0x8e70 (2020 - 05 - 23 07:24 : 18.700) J : \GitHub\SmartHarvestSE\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024e9 with base object Ancient Nord Arrow / 0x0003be1a
+Line 3785563 : 0x8e70 (2020 - 05 - 23 07:24 : 36.095) J : \GitHub\SmartHarvestSE\tasks.cpp(1034) : [MESSAGE] Process REFR 0xff0024eb with base object Restless Skeleton / 0xff0024ed
+Line 3785564 : 0x8e70 (2020-05-23 07:24:36.095) J:\GitHub\SmartHarvestSE\tasks.cpp(277): [DEBUG] Enqueued dead body to loot later 0xff0024eb
+Line 3785565 : 0x8e70 (2020-05-23 07:24:36.095) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Process Auto-loot Candidate Restless Skeleton/0xff0024ed)=114 micros
 
 When we come to process this dead body a little later, we get CTD. The FormID has morphed, meaning the REFR was junked.
 
-Line 3797443 : 0x8e70 (2020-05-23 07:24:39.705) J:\GitHub\AutoHarvestSE.Port\tasks.cpp(295): [DEBUG] Process enqueued dead body 0x10000000
-Line 3797443 : 0x8e70 (2020-05-23 07:24:40.707) J:\GitHub\AutoHarvestSE.Port\LogStackWalker.cpp(7): [MESSAGE] Callstack dump :
+Line 3797443 : 0x8e70 (2020-05-23 07:24:39.705) J:\GitHub\SmartHarvestSE\tasks.cpp(295): [DEBUG] Process enqueued dead body 0x10000000
+Line 3797443 : 0x8e70 (2020-05-23 07:24:40.707) J:\GitHub\SmartHarvestSE\LogStackWalker.cpp(7): [MESSAGE] Callstack dump :
 ...snip...
 J:\GitHub\CommonLibSSE\src\RE\TESForm.cpp (110): RE::TESForm::GetFormID
-J:\GitHub\AutoHarvestSE.Port\tasks.cpp (1033): SearchTask::DoPeriodicSearch
-J:\GitHub\AutoHarvestSE.Port\tasks.cpp (690): SearchTask::ScanThread
-J:\GitHub\AutoHarvestSE.Port\tasks.cpp (705): `SearchTask::Start'::`2'::<lambda_1>::operator()
+J:\GitHub\SmartHarvestSE\tasks.cpp (1033): SearchTask::DoPeriodicSearch
+J:\GitHub\SmartHarvestSE\tasks.cpp (690): SearchTask::ScanThread
+J:\GitHub\SmartHarvestSE\tasks.cpp (705): `SearchTask::Start'::`2'::<lambda_1>::operator()
 C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.25.28610\include\type_traits (1610): std::_Invoker_functor::_Call<`SearchTask::Start'::`2'::<lambda_1> >
 C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.25.28610\include\type_traits (1610): std::invoke<`SearchTask::Start'::`2'::<lambda_1> >
 C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.25.28610\include\thread (44): std::thread::_Invoke<std::tuple<`SearchTask::Start'::`2'::<lambda_1> >,0>
@@ -97,7 +94,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// check blacklist early - this may be a malformed REFR e.g. data.objectReference blank, 0x00000000 FormID
+	// check blacklist early - this may be a malformed REFR e.g. GetBaseObject() blank, 0x00000000 FormID
 	// as observed in play testing
 	if (data->IsReferenceOnBlacklist(refr))
 	{
@@ -111,7 +108,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	if (!refr->Is3DLoaded())
 	{
 #if _DEBUG
-		_DMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 #endif
 		return false;
 	}
@@ -121,34 +118,34 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		if (!refr->IsDead(true))
 		{
 #if _DEBUG
-			_DMESSAGE("skip living ActorCharacter %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+			_DMESSAGE("skip living ActorCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 #endif
 			return false;
 		}
 		if (refr == RE::PlayerCharacter::GetSingleton())
 		{
 #if _DEBUG
-			_DMESSAGE("skip PlayerCharacter %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+			_DMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 #endif
 			return false;
 		}
 	}
 
-	if ((refr->data.objectReference->formType == RE::FormType::Flora || refr->data.objectReference->formType == RE::FormType::Tree) &&
+	if ((refr->GetBaseObject()->formType == RE::FormType::Flora || refr->GetBaseObject()->formType == RE::FormType::Tree) &&
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
 #if _DEBUG
-		_DMESSAGE("skip harvested Flora %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("skip REFR 0x%08x to harvested Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 #endif
 		return false;
 	}
 
-	if (refr->data.objectReference->formType == RE::FormType::Furniture ||
-		refr->data.objectReference->formType == RE::FormType::Hazard ||
-		refr->data.objectReference->formType == RE::FormType::Door)
+	if (refr->GetBaseObject()->formType == RE::FormType::Furniture ||
+		refr->GetBaseObject()->formType == RE::FormType::Hazard ||
+		refr->GetBaseObject()->formType == RE::FormType::Door)
 	{
 #if _DEBUG
-		_DMESSAGE("skip ineligible Form Type %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 #endif
 		return false;
 	}
@@ -157,17 +154,17 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	if (!WithinLootingRange(refr))
 		return false;
 
-	if (SearchTask::IsLockedForAutoHarvest(refr))
+	if (SearchTask::IsLockedForHarvest(refr))
 	{
 #if _DEBUG
-		_DMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 #endif
 		return false;
 	}
 	if (SearchTask::IsLootedContainer(refr))
 	{
 #if _DEBUG
-		_DMESSAGE("skip looted container %s/0x%08x", refr->data.objectReference->GetName(), refr->data.objectReference->formID);
+		_DMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 #endif
 		return false;
 	}
@@ -180,7 +177,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 #endif
 		return false;
 	}
-	if (data->IsFormBlocked(refr->data.objectReference))
+	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
 #if _DEBUG
 		_DMESSAGE("skip blocked REFR base form 0x%08x", refr->formID);
@@ -188,7 +185,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	RE::TESFullName* fullName = refr->data.objectReference->As<RE::TESFullName>();
+	RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
 		data->BlacklistReference(refr);
