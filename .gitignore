@@ -10,3 +10,4 @@ DeadSKSE
 /skyrimse.ppj
 /.vscode/launch.json
 /.vscode/tasks.json
+*.user
