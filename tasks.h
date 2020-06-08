@@ -162,7 +162,6 @@ public:
 
 	static INIFile* m_ini;
 	static RE::BGSRefAlias* m_eventTarget;
-	static bool firstTime;
 
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
@@ -216,6 +215,7 @@ public:
 	static const int ActorReallyDeadWaitIntervalSecondsLong;
 private:
 	static std::vector<RE::TESObjectREFR*> m_refs;
+	static bool m_pluginOK;
 
 	GlowReason m_glowReason;
 	inline void UpdateGlowReason(const GlowReason glowReason)

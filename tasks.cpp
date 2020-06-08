@@ -832,6 +832,9 @@ void SearchTask::ScanThread()
 
 void SearchTask::Start()
 {
+	// do not start the thread if we failed to initialize
+	if (!m_pluginOK)
+		return;
 	std::thread([]()
 	{
 		// use structured exception handling to get stack walk on windows exceptions
@@ -871,6 +874,8 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 }
 
 std::vector<RE::TESObjectREFR*> SearchTask::m_refs;
+bool SearchTask::m_pluginOK(false);
+
 
 // used for PlayerCharacter
 bool SearchTask::IsConcealed(RE::MagicTarget* target)
@@ -1650,11 +1655,9 @@ void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, 
 	onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
 }
 
-bool SearchTask::firstTime = true;
-
 bool SearchTask::Init()
 {
-    if (firstTime)
+    if (!m_pluginOK)
 	{
 		WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
 		if (!LoadOrder::Instance().Analyze())
@@ -1664,7 +1667,7 @@ bool SearchTask::Init()
 		}
 		DataCase::GetInstance()->CategorizeLootables();
 		CategorizePopulationCenters();
-		firstTime = false;
+		m_pluginOK = true;
 	}
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
