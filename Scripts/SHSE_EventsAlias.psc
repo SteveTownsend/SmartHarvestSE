@@ -183,7 +183,7 @@ endFunction
 
 Function ResetAddedItems()
 	;prepare for collection management
-	DebugTrace("eventScript.ResetAddedItems")
+	;DebugTrace("eventScript.ResetAddedItems")
 	addedItemIDs = New Int[128]
 	addedItemTypes = New Int[128]
 	maxAddedItems = 128
@@ -192,7 +192,7 @@ EndFunction
 
 Function ApplySetting()
 
-	DebugTrace("eventScript ApplySetting start")
+	;DebugTrace("eventScript ApplySetting start")
 
 	UnregisterForAllKeys()
 	UnregisterForMenu("Loading Menu")
@@ -219,14 +219,14 @@ Function ApplySetting()
   	;update CACO index in load order, to handle custom ore mining
     CACOModIndex = Game.GetModByName("Complete Alchemy & Cooking Overhaul.esp")
     if (CACOModIndex != 255)
-		DebugTrace("CACO mod index: " + CACOModIndex)
+		;DebugTrace("CACO mod index: " + CACOModIndex)
    		StrikesBeforeCollection = Game.GetFormFromFile(0xCC0503,"Update.esm") as GlobalVariable
 	endif
 
   	;update Fossil Mining index in load order, to handle fossil handout after mining
     FossilMiningModIndex = Game.GetModByName("Fossilsyum.esp")
     if (FossilMiningModIndex != 255)
-		DebugTrace("Fossil Mining mod index: " + FossilMiningModIndex)
+		;DebugTrace("Fossil Mining mod index: " + FossilMiningModIndex)
     	FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
 		FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
 		FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
@@ -347,7 +347,7 @@ endFunction
 
 Function RecordItem(Form akBaseItem, int objectType)
   ;register item received in the 'collection pending' list
-  DebugTrace("RecordItem " + akBaseItem)
+  ;DebugTrace("RecordItem " + akBaseItem)
   if currentAddedItem == maxAddedItems
   	; list is full, flush to the plugin
   	FlushAddedItems(addedItemIDs, addedItemTypes, currentAddedItem)
@@ -371,8 +371,8 @@ bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, 
 endFunction
 
 Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify)
-	DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
-	DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
+	;DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
+	;DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
 	int miningStrikes = 0
 	int targetResourceTotal = 0
 	int strikesToCollect = 0
@@ -381,7 +381,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 	int FOSStrikesBeforeFossil
 	bool handled = false
 	if (oreScript)
-		DebugTrace("Detected ore vein")
+		;DebugTrace("Detected ore vein")
 		; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
 		targetResourceTotal = oreScript.ResourceCountTotal
 		strikesToCollect = oreScript.StrikesBeforeCollection
@@ -412,7 +412,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 	if !handled && (CACOModIndex != 255)
 		CACO_MineOreScript cacoMinable = akMineable as CACO_MineOreScript
 		if (cacoMinable)
-			DebugTrace("Detected CACO ore vein")
+			;DebugTrace("Detected CACO ore vein")
 			; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
 			int available = cacoMinable.ResourceCountCurrent
 			targetResourceTotal = cacoMinable.ResourceCountTotal
@@ -444,10 +444,10 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 		endif
 	endif
 	if !handled && (FossilMiningModIndex != 255)
-		DebugTrace("Check for Fossil Mining Dig Site")
+		;DebugTrace("Check for Fossil Mining Dig Site")
 		FOS_DigsiteScript FOSMinable = akMineable as FOS_DigsiteScript
 		if (FOSMinable)
-			DebugTrace("Process Fossil Mining Dig Site")
+			;DebugTrace("Process Fossil Mining Dig Site")
 			; brute force fossil gathering to bypass tedious Script/Furniture handshaking
 			; REFR will be blocked ater this call, until we leave the cell
 			; FOS script enables the FURN when we first enter the cell, provided mining is legal
@@ -471,9 +471,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 		;randomize drop of fossil based on number of strikes and vein characteristics
 	    FOSStrikesBeforeFossil = strikesToCollect * targetResourceTotal
 	    int dropFactor = Utility.RandomInt(1, FOSStrikesBeforeFossil)
-		DebugTrace("Fossil Mining: strikes = " + miningStrikes + ", required for drop = " + FOSStrikesBeforeFossil)
+		;DebugTrace("Fossil Mining: strikes = " + miningStrikes + ", required for drop = " + FOSStrikesBeforeFossil)
 	    if (dropFactor <= miningStrikes)
-			DebugTrace("Fossil Mining: provide loot!")
+			;DebugTrace("Fossil Mining: provide loot!")
 			if (resourceType == resource_Geode)
 				player.AddItem(FOS_LItemFossilTierOneGeode, 1)
 			Elseif (resourceType == resource_Volcanic)
@@ -607,7 +607,7 @@ EndEvent
 
 Function RemoveCarryWeightDelta()
 	int carryWeight = player.GetActorValue("CarryWeight") as int
-	DebugTrace("Player carry weight initially " + carryWeight)
+	;DebugTrace("Player carry weight initially " + carryWeight)
 
 	int weightDelta = 0
 	while (carryWeight > infiniteWeight)
@@ -622,7 +622,7 @@ Function RemoveCarryWeightDelta()
 	if (weightDelta != 0)
 		player.ModActorValue("CarryWeight", weightDelta as float)
 	endif
-	DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
+	;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
 
 Event OnResetCarryWeight()
@@ -631,7 +631,7 @@ Event OnResetCarryWeight()
 EndEvent
 
 Event OnFlushAddedItems()
-	DebugTrace("Request to flush added items")
+	;DebugTrace("Request to flush added items")
 	; no-op if empty list
 	if currentAddedItem > 0
 	  	FlushAddedItems(addedItemIDs, addedItemTypes, currentAddedItem)

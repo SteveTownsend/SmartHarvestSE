@@ -190,7 +190,7 @@ endFunction
 
 Function ApplySetting()
 
-;	DebugTrace("  MCM ApplySetting start")
+	;DebugTrace("  MCM ApplySetting start")
 
 	PutSetting(type_Common, type_Config, "enableHarvest", enableHarvest as float)
 	PutSetting(type_Common, type_Config, "enableLootContainer", enableLootContainer as float)
@@ -257,12 +257,12 @@ Function ApplySetting()
 		DisallowSearch()
 	EndIf
 
-;	DebugTrace("  MCM ApplySetting finished")
+	;DebugTrace("  MCM ApplySetting finished")
 endFunction
 
 Event OnConfigInit()
 
-;	DebugTrace("** OnConfigInit start **")
+	;DebugTrace("** OnConfigInit start **")
 
 	ModName = "$SHSE_MOD_NAME"
 
@@ -343,7 +343,7 @@ Event OnConfigInit()
 	pushLocationToExcludeList = false
 	pushCellToExcludeList= false
 
-;	DebugTrace("** OnConfigInit finished **")
+	;DebugTrace("** OnConfigInit finished **")
 endEvent
 
 int function GetVersion()
@@ -408,15 +408,15 @@ int function GetVersion()
 endFunction
 
 Event OnVersionUpdate(int a_version)
-;	DebugTrace("OnVersionUpdate start" + a_version)
+	;DebugTrace("OnVersionUpdate start" + a_version)
 
 	if (a_version >= 22 && CurrentVersion < 22)
 		; Major revision to reduce script dependence and auto-categorize lootables
-		Debug.Trace(self + ": Updating script to version " + a_version)
+		;Debug.Trace(self + ": Updating script to version " + a_version)
 		OnConfigInit()
 	endIf
 
-;	DebugTrace("OnVersionUpdate finished" + a_version)
+	;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
 
 Event OnGameReload()
@@ -436,12 +436,12 @@ Event OnGameReload()
 
 	ApplySetting()
 	
-;	DebugTrace("* OnGameReload finished *")
+	;DebugTrace("* OnGameReload finished *")
 	gameReloadLock = false
 endEvent
 
 Event OnConfigOpen()
-;	DebugTrace("OnConfigOpen")
+	;DebugTrace("OnConfigOpen")
 	Pages = New String[5]
 	Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
 	Pages[1] = "$SHSE_SPECIALS_LISTS_PAGENAME"
@@ -479,13 +479,13 @@ Event OnConfigOpen()
 		index = 0
 		while(index < max_size)
 
-;			DebugTrace("   " + index)
+			;DebugTrace("   " + index)
 		
 			blacklist_form_array[index] = eventScript.blacklist_form.GetAt(index)
 			blackList_name_array[index] = GetNameForListForm(blacklist_form_array[index])
 			blackList_flag_array[index] = true
-			
-;			DebugTrace(blackList_name_array[index])
+
+			;DebugTrace(blackList_name_array[index])
 
 			
 			index += 1
@@ -519,7 +519,7 @@ bool Function TidyListUp(Formlist m_list, form[] m_forms, bool[] m_flags, string
 endFunction
 
 Event OnConfigClose()
-;	DebugTrace("OnConfigClose")
+	;DebugTrace("OnConfigClose")
 
 	TidyListUp(eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
 	TidyListUp(eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
@@ -564,7 +564,7 @@ Event OnConfigClose()
 endEvent
 
 event OnPageReset(string currentPage)
-;	DebugTrace("OnPageReset")
+	;DebugTrace("OnPageReset")
 
 	If (currentPage == "")
 		LoadCustomContent("towawot/SmartHarvestSE.dds")
@@ -892,16 +892,7 @@ state pushCellToExcludeList
 	endEvent
 endState
 
-;Int function GetStateOptionIndex(String a_stateName)
-;	return parent.GetStateOptionIndex(a_stateName)
-;endFunction
-
 state enableHarvest
-;	Event OnBeginState()
-;		int result = GetStateOptionIndex(self.GetState())
-;		DebugTrace("Entered the running state! " + result)
-;	EndEvent
-
 	event OnSelectST()
 		enableHarvest = !(enableHarvest as bool)
 		SetToggleOptionValueST(enableHarvest)
@@ -915,10 +906,6 @@ state enableHarvest
 	event OnHighlightST()
 		SetInfoText(GetTranslation("$SHSE_DESC_ENABLE_HARVEST"))
 	endEvent
-
-;	event OnEndState()
-;		DebugTrace("Leaving the running state!")
-;	endEvent
 endState
 
 
