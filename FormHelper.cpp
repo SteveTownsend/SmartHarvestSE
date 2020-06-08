@@ -9,7 +9,7 @@ TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
-	m_objectType = ClassifyType(m_form);
+	m_objectType = GetBaseFormObjectType(m_form);
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 

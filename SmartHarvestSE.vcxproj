@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <ProjectName>SmartHarvestSE</ProjectName>
     <ProjectGuid>{A9D9042D-D2FF-47EA-B77E-5BD1E424734C}</ProjectGuid>
-    <RootNamespace>AutoHarvestSE</RootNamespace>
+    <RootNamespace>SmartHarvestSE</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -125,8 +125,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AlchemyItemHelper.cpp" />
+    <ClCompile Include="Collection.cpp" />
     <ClCompile Include="CollectionManager.cpp" />
-    <ClCompile Include="ConditionTreeFactory.cpp" />
+    <ClCompile Include="Condition.cpp" />
+    <ClCompile Include="CollectionFactory.cpp" />
+    <ClCompile Include="Exception.cpp" />
     <ClCompile Include="ExtraDataListHelper.cpp" />
     <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="containerLister.cpp" />
@@ -165,8 +168,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AlchemyItemHelper.h" />
+    <ClInclude Include="Collection.h" />
+    <ClInclude Include="Condition.h" />
     <ClInclude Include="CollectionManager.h" />
-    <ClInclude Include="ConditionTreeFactory.h" />
+    <ClInclude Include="CollectionFactory.h" />
+    <ClInclude Include="Exception.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
     <ClInclude Include="basketfile.h" />
     <ClInclude Include="containerLister.h" />

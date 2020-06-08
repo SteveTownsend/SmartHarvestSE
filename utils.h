@@ -4,6 +4,10 @@
 
 constexpr RE::FormID ClothKeyword = 0x06BBE8;
 constexpr RE::FormID CurrentFollowerFaction = 0x0005C84E;
+constexpr RE::FormID InvalidForm = 0x0;
+constexpr RE::FormID ESPMask = 0xFF000000;
+constexpr RE::FormID ESPFETypeMask = 0xFE000000;
+constexpr RE::FormID ESPFEMask = 0xFEFFF000;
 
 namespace FileUtils
 {
@@ -62,8 +66,12 @@ namespace PluginUtils
 	void SetBaseName(RE::TESForm* pForm, const char* str);
 	std::string GetPluginName(UInt8 modIndex);
 	UInt8 GetModIndex(RE::TESForm* thisForm);
-	//UInt8 GetOrderIDByModName(std::string name);
 	UInt8 GetLoadedModIndex(const char* espName);
+	inline RE::FormID FormIDMaskForPlugin(const RE::FormID formID)
+	{
+		RE::FormID result(formID & ESPMask);
+		return result == ESPFETypeMask ? (formID & ESPFEMask) : result;
+	}
 }
 
 namespace StringUtils

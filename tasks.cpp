@@ -3,7 +3,6 @@
 #include "tasks.h"
 #include "basketfile.h"
 #include "debugs.h"
-#include "papyrus.h"
 #include "PlayerCellHelper.h"
 #include "LogStackWalker.h"
 
@@ -25,8 +24,9 @@ SKSE::RegistrationSet<int> onCarryWeightDelta("OnCarryWeightDelta");
 SKSE::RegistrationSet<> onResetCarryWeight("OnResetCarryWeight");
 SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool> onHarvest("OnHarvest");
 SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool> onMining("OnMining");
-SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int> onLootFromNPC("OnLootFromNPC");
+SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int> onLootFromNPC("OnLootFromNPC");
 SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> onObjectGlow("OnObjectGlow");
+SKSE::RegistrationSet<> onFlushAddedItems("OnFlushAddedItems");
 
 RE::BGSRefAlias* GetScriptTarget(const char* espName, UInt32 questID)
 {
@@ -112,6 +112,7 @@ bool SearchTask::GoodToGo()
 			onHarvest.Register(m_eventTarget);
 			onMining.Register(m_eventTarget);
 			onLootFromNPC.Register(m_eventTarget);
+			onFlushAddedItems.Register(m_eventTarget);
 		}
 	}
 	return m_eventTarget != nullptr;
@@ -245,7 +246,7 @@ bool SearchTask::IsBookGlowable() const
 bool SearchTask::HasDynamicData(RE::TESObjectREFR* refr)
 {
 	// do not reregister known REFR
-	if (IsLootedDynamicContainer(refr))
+	if (LootedDynamicContainerFormID(refr) != InvalidForm)
 		return true;
 
 	// risk exists if REFR or its concrete object is dynamic
@@ -268,14 +269,14 @@ void SearchTask::MarkDynamicContainerLooted(RE::TESObjectREFR* refr)
 	m_lootedDynamicContainers.insert(std::make_pair(refr, refr->GetFormID()));
 }
 
-RE::FormID SearchTask::IsLootedDynamicContainer(RE::TESObjectREFR* refr)
+RE::FormID SearchTask::LootedDynamicContainerFormID(RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
 	RecursiveLockGuard guard(m_lock);
 	if (m_lootedDynamicContainers.count(refr) > 0)
 		return m_lootedDynamicContainers[refr];
-	return RE::FormID(0);
+	return InvalidForm;
 }
 
 // forget about dynamic containers we looted when cell changes. This is more aggressive than static container looting
@@ -404,7 +405,7 @@ void SearchTask::Run()
 			if (!manualLootText.empty())
 			{
 				notificationText = manualLootText;
-				Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
+				StringUtils::Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
 				if (!notificationText.empty())
 				{
 					RE::DebugNotification(notificationText.c_str());
@@ -496,7 +497,7 @@ void SearchTask::Run()
 		LootingType lootingType(LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str())));
 		if (objType == ObjectType::whitelist)
 		{
-			// LootBlockedActivatorswhitelisted objects are always looted silently
+			// whitelisted objects are always looted silently
 #if _DEBUG
 			_MESSAGE("pick up REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
 #endif
@@ -696,7 +697,7 @@ void SearchTask::Run()
 				continue;
 			}
 
-			ObjectType objType = ClassifyType(itemEx.m_form);
+			ObjectType objType = targetItemInfo.LootObjectType();
 			std::string typeName = GetObjectTypeName(objType);
 
 			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
@@ -811,9 +812,15 @@ void SearchTask::ScanThread()
 		}
 		else
 		{
-			// re-evaluate perks if timer has popped - no force
+			// process any queued added items since last time
+			CollectionManager::Instance().ProcessAddedItems();
+
+			// re-evaluate perks if timer has popped - no force, and execute scan
 			CheckPerks(false);
 			DoPeriodicSearch();
+
+			// request added items to be pushed to us while we are sleeping
+			TriggerFlushAddedItems();
 		}
 #if _DEBUG
 		_DMESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
@@ -857,6 +864,7 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 		m_playerHouses.clear();
 		// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
 		ResetLootedContainers();
+		// TODO reset collections to what is in the saved-game data
 	}
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
 	m_glowExpiration.clear();
@@ -972,7 +980,7 @@ void SearchTask::DoPeriodicSearch()
 					if (!playerHouseMsg.empty())
 					{
 						std::string notificationText(playerHouseMsg);
-						Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
+						StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
 						RE::DebugNotification(notificationText.c_str());
 					}
 				}
@@ -983,7 +991,7 @@ void SearchTask::DoPeriodicSearch()
 					if (!populationCenterMsg.empty())
 					{
 						std::string notificationText(populationCenterMsg);
-						Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
+						StringUtils::Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
 						RE::DebugNotification(notificationText.c_str());
 					}
 				}
@@ -995,7 +1003,7 @@ void SearchTask::DoPeriodicSearch()
 				if (!populationCenterMsg.empty())
 				{
 					std::string notificationText(populationCenterMsg);
-					Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
+					StringUtils::Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
 					RE::DebugNotification(notificationText.c_str());
 				}
 			}
@@ -1385,6 +1393,11 @@ void SearchTask::TriggerResetCarryWeight()
 	onResetCarryWeight.SendEvent();
 }
 
+void SearchTask::TriggerFlushAddedItems()
+{
+	onFlushAddedItems.SendEvent();
+}
+
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_HarvestLock;
 int SearchTask::m_pendingNotifies = 0;
 
@@ -1403,7 +1416,7 @@ void SearchTask::TriggerHarvest(const ObjectType objType, int itemCount, const b
 	if (effectiveType == ObjectType::whitelist)
 	{
 		// find lootable type if whitelist were not a factor, for Harvest script
-		effectiveType = ClassifyType(m_candidate, true);
+		effectiveType = GetREFRObjectType(m_candidate, true);
 	}
 	onHarvest.SendEvent(m_candidate, static_cast<int>(effectiveType), itemCount, isSilent, manualLootNotify);
 }
@@ -1448,9 +1461,9 @@ size_t SearchTask::PendingHarvestNotifications()
 	return m_pendingNotifies;
 }
 
-void SearchTask::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount)
+void SearchTask::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType)
 {
-	onLootFromNPC.SendEvent(npc, item, itemCount);
+	onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType));
 }
 
 std::unordered_set<const RE::BGSLocation*> SearchTask::m_playerHouses;
@@ -1590,10 +1603,10 @@ void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, b
 				if (!multiActivate.empty())
 				{
 					notificationText = multiActivate;
-					Replace(notificationText, "{ITEMNAME}", name.c_str());
+					StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
 					std::ostringstream intStr;
 					intStr << count;
-					Replace(notificationText, "{COUNT}", intStr.str());
+					StringUtils::Replace(notificationText, "{COUNT}", intStr.str());
 				}
 			}
 			else
@@ -1602,7 +1615,7 @@ void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, b
 				if (!singleActivate.empty())
 				{
 					notificationText = singleActivate;
-					Replace(notificationText, "{ITEMNAME}", name.c_str());
+					StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
 				}
 			}
 			if (!notificationText.empty())
@@ -1639,18 +1652,23 @@ void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, 
 
 bool SearchTask::firstTime = true;
 
-void SearchTask::Init()
+bool SearchTask::Init()
 {
     if (firstTime)
 	{
 		WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
-		LoadOrder::Instance().Analyze();
+		if (!LoadOrder::Instance().Analyze())
+		{
+			_ERROR("Load Order unsupportable");
+			return false;
+		}
 		DataCase::GetInstance()->CategorizeLootables();
 		CategorizePopulationCenters();
 		firstTime = false;
 	}
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
+	return true;
 }
 
 

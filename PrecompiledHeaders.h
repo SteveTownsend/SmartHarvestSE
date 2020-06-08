@@ -28,7 +28,11 @@
 #include "IHasValueWeight.h"
 #include "objects.h"
 #include "FormHelper.h"
+#include "papyrus.h"
 
+#include "Exception.h"
 #include "LoadOrder.h"
-#include "ConditionTreeFactory.h"
+#include "Condition.h"
+#include "Collection.h"
+#include "CollectionFactory.h"
 #include "CollectionManager.h"

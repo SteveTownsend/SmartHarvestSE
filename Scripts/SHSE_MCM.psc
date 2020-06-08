@@ -1,8 +1,8 @@
-Scriptname SmartHarvestSE_mcm extends SKI_ConfigBase  
+Scriptname SHSE_MCM extends SKI_ConfigBase  
 
-Import SmartHarvestSE
+Import SHSE_PluginProxy
 
-SmartHarvestSE_Events_Alias Property eventScript Auto
+SHSE_EventsAlias Property eventScript Auto
 GlobalVariable Property g_LootingEnabled Auto
 
 bool initComplete = false
@@ -107,6 +107,8 @@ bool[] blackList_flag_array
 
 bool gameReloadLock = false
 
+Actor player
+
 int Function CycleInt(int num, int max)
 	int result = num + 1
 	if (result >= max)
@@ -178,6 +180,7 @@ endFunction
 function init()
  	;DebugTrace("init start")
     ; Seed defaults from the INI file
+
     LoadIniFile()
     SeedDefaults()
 
@@ -240,6 +243,8 @@ Function ApplySetting()
 
 	; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
 	; Do this before plugin becomes aware of player home list
+	player = Game.GetPlayer()
+	eventScript.SetPlayer(player)
     eventScript.RemoveCarryWeightDelta()
 	eventScript.ApplySetting()
 
@@ -331,6 +336,40 @@ Event OnConfigInit()
 	valueWeightSettingArray = New float[33]
 
 	s_objectTypeNameArray = New String[33]
+
+	eventScript.whitelist_form = Game.GetFormFromFile(0x0333C, "SmartHarvestSE.esp") as Formlist
+	eventScript.blacklist_form = Game.GetFormFromFile(0x0333D, "SmartHarvestSE.esp") as Formlist
+	
+	pushLocationToExcludeList = false
+	pushCellToExcludeList= false
+
+;	DebugTrace("** OnConfigInit finished **")
+endEvent
+
+int function GetVersion()
+	; update script variables needing sync to native
+	objType_Flora = GetObjectTypeByName("flora")
+	objType_Critter = GetObjectTypeByName("critter")
+	objType_Septim = GetObjectTypeByName("septims")
+	objType_LockPick = GetObjectTypeByName("lockpick")
+	objType_Soulgem = GetObjectTypeByName("soulgem")
+	objType_Key = GetObjectTypeByName("key")
+	objType_Ammo = GetObjectTypeByName("ammo")
+	objType_Mine = GetObjectTypeByName("orevein")
+	objType_WhiteList = GetObjectTypeByName("whitelist")
+	eventScript.SyncNativeDataTypes()
+
+    ; New or clarified defaults and constants
+	manualLootTargetNotify = true
+	defaultRadius = 30
+	defaultInterval = 1.0
+	defaultRadiusIndoors = 15
+	defaultIntervalIndoors = 0.5
+	valueWeightDefaultDefault = 10
+	maxMiningItemsDefault = 15
+	playContainerAnimation = 2
+	eventScript.UpdateMaxMiningItems(maxMiningItems)
+
 	s_objectTypeNameArray[0]  = "$SHSE_UNKNOWN"
 	s_objectTypeNameArray[1]  = "$SHSE_FLORA"
 	s_objectTypeNameArray[2]  = "$SHSE_CRITTER"
@@ -365,38 +404,6 @@ Event OnConfigInit()
 	s_objectTypeNameArray[31] = "$SHSE_OREVEIN"
 	s_objectTypeNameArray[32] = "$SHSE_WHITELIST"
 
-	eventScript.whitelist_form = Game.GetFormFromFile(0x0333C, "SmartHarvestSE.esp") as Formlist
-	eventScript.blacklist_form = Game.GetFormFromFile(0x0333D, "SmartHarvestSE.esp") as Formlist
-	
-	pushLocationToExcludeList = false
-	pushCellToExcludeList= false
-
-;	DebugTrace("** OnConfigInit finished **")
-endEvent
-
-int function GetVersion()
-	; update script variables needing sync to native
-	objType_Flora = GetObjectTypeByName("flora")
-	objType_Critter = GetObjectTypeByName("critter")
-	objType_Septim = GetObjectTypeByName("septims")
-	objType_LockPick = GetObjectTypeByName("lockpick")
-	objType_Soulgem = GetObjectTypeByName("soulgem")
-	objType_Key = GetObjectTypeByName("key")
-	objType_Ammo = GetObjectTypeByName("ammo")
-	objType_Mine = GetObjectTypeByName("orevein")
-	objType_WhiteList = GetObjectTypeByName("whitelist")
-	eventScript.SyncNativeDataTypes()
-
-    ; New or clarified defaults and constants
-	manualLootTargetNotify = true
-	defaultRadius = 30
-	defaultInterval = 1.0
-	defaultRadiusIndoors = 15
-	defaultIntervalIndoors = 0.5
-	valueWeightDefaultDefault = 10
-	maxMiningItemsDefault = 15
-	playContainerAnimation = 2
-	eventScript.UpdateMaxMiningItems(maxMiningItems)
 	return 22
 endFunction
 
@@ -435,7 +442,6 @@ endEvent
 
 Event OnConfigOpen()
 ;	DebugTrace("OnConfigOpen")
-
 	Pages = New String[5]
 	Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
 	Pages[1] = "$SHSE_SPECIALS_LISTS_PAGENAME"
@@ -539,7 +545,7 @@ Event OnConfigClose()
 	blackListSaveLoad = 0
 	
 	if (pushLocationToExcludeList)
-		form locForm = Game.GetPlayer().GetCurrentLocation() as form
+		form locForm = player.GetCurrentLocation() as form
 		if (locForm)
 			eventScript.ManageBlackList(locForm)
 		endif
@@ -547,7 +553,7 @@ Event OnConfigClose()
 	endif
 
 	if (pushCellToExcludeList)
-		form cellForm = Game.GetPlayer().GetParentCell() as form
+		form cellForm = player.GetParentCell() as form
 		if (cellForm)
 			eventScript.ManageBlackList(cellForm)
 		endif
@@ -622,14 +628,14 @@ event OnPageReset(string currentPage)
 		AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode)
 		; TODO do we need file support here?
 		;AddMenuOptionST("whiteListSaveLoad", "$SHSE_WHITELIST_FILE_OPERATION", s_whiteListSaveLoadArray[whiteListSaveLoad])
-		Form locForm = Game.GetPlayer().GetCurrentLocation() as Form
+		Form locForm = player.GetCurrentLocation() as Form
 		int flagLocation = OPTION_FLAG_NONE
 		if (!locForm)
 			flagLocation = OPTION_FLAG_DISABLED
 		endif
 		AddToggleOptionST("pushLocationToExcludeList", "$SHSE_LOCATION_TO_BLACKLIST", pushLocationToExcludeList, flagLocation)
 
-		Form cellForm = Game.GetPlayer().GetParentCell() as Form
+		Form cellForm = player.GetParentCell() as Form
 		int flagCell = OPTION_FLAG_NONE
 		if (!cellForm)
 			flagCell = OPTION_FLAG_DISABLED
@@ -814,7 +820,7 @@ event OnOptionHighlight(int a_option)
 
 		string[] replacements = New String[3]
 		replacements[0] = GetTextObjectType(item)
-		replacements[1] = GetTextFormID(item)
+		replacements[1] = PrintFormID(item.GetFormID())
 		replacements[2] = GetPluginName(item)
 		
 		translation = ReplaceArray(translation, targets, replacements)
@@ -843,7 +849,7 @@ event OnOptionHighlight(int a_option)
 
 		string[] replacements = New String[3]
 		replacements[0] = GetTextObjectType(item)
-		replacements[1] = GetTextFormID(item)
+		replacements[1] = PrintFormID(item.GetFormID())
 		replacements[2] = GetPluginName(item)
 		
 		translation = ReplaceArray(translation, targets, replacements)

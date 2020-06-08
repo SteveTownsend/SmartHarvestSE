@@ -51,11 +51,11 @@ bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsContainerLocked(const RE::TESObjectREFR * refr);
-ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreWhiteList = false);
-ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreWhiteList = false);
-std::string GetObjectTypeName(SInt32 num);
-std::string GetObjectTypeName(const RE::TESObjectREFR* refr);
-std::string GetObjectTypeName(RE::TESForm* pForm);
+ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList = false);
+ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteList = false);
+// this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
+ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList);
+// end link-time misuse guard
 std::string GetObjectTypeName(ObjectType type);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
 ResourceType ResourceTypeByName(const std::string& name);

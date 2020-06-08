@@ -170,7 +170,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 			{
 				bool bPlayable = IsPlayable(itemEx.m_form);
 				const RE::TESFullName* name = itemEx.m_form->As<RE::TESFullName>();
-				std::string typeName = GetObjectTypeName(ClassifyType(itemEx.m_form));
+				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.m_form));
 
 				_MESSAGE("%08x [%s] count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
 
@@ -193,7 +193,7 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 			TESFormHelper itemEx(const_cast<RE::InventoryEntryData*>(entryData)->GetObject());
 
 			bool bPlayable = IsPlayable(itemEx.m_form);
-			std::string typeName = GetObjectTypeName(ClassifyType(itemEx.m_form));
+			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.m_form));
 			const RE::TESFullName *name = itemEx.m_form->As<RE::TESFullName>();
 			_MESSAGE("- %08x [%s] %p count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());
 

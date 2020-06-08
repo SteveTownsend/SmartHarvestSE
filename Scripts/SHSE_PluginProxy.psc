@@ -1,9 +1,8 @@
-scriptname SmartHarvestSE
+scriptname SHSE_PluginProxy
 
 Function DebugTrace(string str) global native
 string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
-string Function GetTextFormID(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
@@ -45,6 +44,9 @@ String Function GetTranslation(String key) global native
 String Function Replace(String str, String target, String replacement) global native
 String Function ReplaceArray(String str, String[] targets, String[] replacements) global native
 
+;Collection Management
+Function FlushAddedItems(int[] formIDs, int[] objectTypes, int itemCount) global native
+
 int location_type_whitelist = 1
 int location_type_blacklist = 2
 
@@ -77,18 +79,6 @@ string Function GetNameForListForm(Form locationOrCell) global
 	return name
 EndFunction
 
-bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool isSilentMessage = false) global
-	bool bShowHUD = Utility.GetINIBool("bShowHUDMessages:Interface")
-	if (bShowHUD && isSilentMessage)
-		Utility.SetINIBool("bShowHUDMessages:Interface", false)
-	endif
-	bool result = akTarget.Activate(akActivator)
-	if (bShowHUD && isSilentMessage)
-		Utility.SetINIBool("bShowHUDMessages:Interface", true)
-	endif
-	return result
-endFunction
-
 form Function GetSelectedItemForm(string menuName) global
 	int formID = UI.GetInt(menuName, "_root.Menu_mc.inventoryLists.itemList.selectedEntry.formId")
 	if (formID == 0x0)
@@ -100,14 +90,4 @@ form Function GetSelectedItemForm(string menuName) global
 		return none
 	endif
 	return itemForm
-endFunction
-
-string Function sif (bool cc, string aa, string bb) global
-	string result
-	if (cc)
-		result = aa
-	else
-		result = bb
-	endif
-	return result
 endFunction

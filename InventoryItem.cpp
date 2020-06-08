@@ -3,9 +3,9 @@
 #include "tasks.h"
 
 InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
-	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count) {}
+	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count), m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
-	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count) {}
+	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
 // returns number of objects added
 int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target)
@@ -88,12 +88,13 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 {
 	if (m_targetType == INIFile::SecondaryType::containers)
 	{
-		// safe to handle here
+		// safe to handle here - record the item for Collection correlation before moving
+		CollectionManager::Instance().EnqueueAddedItem(BoundObject()->GetFormID(), m_objectType);
 		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else
 	{
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
-		SearchTask::TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count));
+		SearchTask::TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
 	}
 }

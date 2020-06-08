@@ -1,7 +1,7 @@
-Scriptname SmartHarvestSE_Events_Alias extends ReferenceAlias  
+Scriptname SHSE_EventsAlias extends ReferenceAlias  
 
-import SmartHarvestSE
-import SmartHarvestSE_mcm
+import SHSE_PluginProxy
+import SHSE_MCM
 GlobalVariable Property g_LootingEnabled Auto
 int CACOModIndex
 int FossilMiningModIndex
@@ -25,6 +25,11 @@ int objType_Mine
 int objType_Book
 int objType_skillBookRead
 
+Actor player
+int[] addedItemIDs
+int[] addedItemTypes
+int maxAddedItems
+int currentAddedItem
 int resource_Ore
 int resource_Geode
 int resource_Volcanic
@@ -60,6 +65,10 @@ int glowReasonLockedContainer
 int glowReasonEnchantedItem
 int glowReasonPlayerProperty
 int glowReasonSimpleTarget
+
+Function SetPlayer(Actor playerref)
+	player = playerref
+EndFunction
 
 Function SyncWhiteList()
 	SyncWhiteListWithPlugin()
@@ -172,15 +181,18 @@ Function SyncNativeDataTypes()
 	ownedShader = Game.GetFormFromFile(0xa9dd, "SmartHarvestSE.esp") as EffectShader		; green
 endFunction
 
-Event OnInit()
-endEvent
-
-Event OnPlayerLoadGame()
-endEvent
+Function ResetAddedItems()
+	;prepare for collection management
+	DebugTrace("eventScript.ResetAddedItems")
+	addedItemIDs = New Int[128]
+	addedItemTypes = New Int[128]
+	maxAddedItems = 128
+	currentAddedItem = 0
+EndFunction
 
 Function ApplySetting()
 
-	;DebugTrace("eventScript ApplySetting start")
+	DebugTrace("eventScript ApplySetting start")
 
 	UnregisterForAllKeys()
 	UnregisterForMenu("Loading Menu")
@@ -226,10 +238,21 @@ Function ApplySetting()
 
 	SyncWhiteList()
 	SyncBlackList()
-	
+	ResetAddedItems()
+
 	utility.waitMenumode(g_interval)
 	RegisterForMenu("Loading Menu")
 	;DebugTrace("eventScript ApplySetting finished")
+endFunction
+
+string Function sif (bool cc, string aa, string bb) global
+	string result
+	if (cc)
+		result = aa
+	else
+		result = bb
+	endif
+	return result
 endFunction
 
 ;hotkey changes sense of looting
@@ -322,6 +345,31 @@ bool Function IsBookObject(int type)
 	return type >= objType_Book && type <= objType_skillBookRead
 endFunction
 
+Function RecordItem(Form akBaseItem, int objectType)
+  ;register item received in the 'collection pending' list
+  DebugTrace("RecordItem " + akBaseItem)
+  if currentAddedItem == maxAddedItems
+  	; list is full, flush to the plugin
+  	FlushAddedItems(addedItemIDs, addedItemTypes, currentAddedItem)
+  	currentAddedItem = 0
+  endif
+  addedItemIDs[currentAddedItem] = akBaseItem.GetFormID()
+  addedItemTypes[currentAddedItem] = objectType
+  currentAddedItem += 1
+EndFunction
+
+bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool isSilentMessage = false)
+	bool bShowHUD = Utility.GetINIBool("bShowHUDMessages:Interface")
+	if (bShowHUD && isSilentMessage)
+		Utility.SetINIBool("bShowHUDMessages:Interface", false)
+	endif
+	bool result = akTarget.Activate(akActivator)
+	if (bShowHUD && isSilentMessage)
+		Utility.SetINIBool("bShowHUDMessages:Interface", true)
+	endif
+	return result
+endFunction
+
 Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify)
 	DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
 	DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
@@ -333,6 +381,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 	int FOSStrikesBeforeFossil
 	bool handled = false
 	if (oreScript)
+		DebugTrace("Detected ore vein")
 		; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
 		targetResourceTotal = oreScript.ResourceCountTotal
 		strikesToCollect = oreScript.StrikesBeforeCollection
@@ -363,12 +412,16 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 	if !handled && (CACOModIndex != 255)
 		CACO_MineOreScript cacoMinable = akMineable as CACO_MineOreScript
 		if (cacoMinable)
-			;DebugTrace("Detected CACO ore vein")
+			DebugTrace("Detected CACO ore vein")
 			; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
 			int available = cacoMinable.ResourceCountCurrent
 			targetResourceTotal = cacoMinable.ResourceCountTotal
-		    strikesToCollect = oreScript.StrikesBeforeCollection
-		    oreName = cacoMinable.ore.GetName()
+		    strikesToCollect = cacoMinable.StrikesBeforeCollection
+		    if cacoMinable.Ore
+				oreName = cacoMinable.Ore.GetName()
+			elseif cacoMinable.lItemGems10
+				oreName = "gems"
+			endif
 			int mined = 0
 			if (available == -1)
        		    ;DebugTrace("CACO ore vein not yet initialized, start mining")
@@ -400,8 +453,8 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 			; FOS script enables the FURN when we first enter the cell, provided mining is legal
 			; If we re-enter the cell we will check again but not be able to mine
 			if !FOSMinable.GetLinkedRef().IsDisabled()
-				Game.GetPlayer().AddItem(FOS_LItemFossilTierOneVolcanicDigSite, 1)
-				Game.GetPlayer().AddItem(FOS_LItemFossilTierTwoVolcanic, 1)
+				player.AddItem(FOS_LItemFossilTierOneVolcanicDigSite, 1)
+				player.AddItem(FOS_LItemFossilTierTwoVolcanic, 1)
 				Debug.Notification("Dig site is exhausted")
 				FOSMinable.GetLinkedRef().Disable()	
 			else
@@ -422,16 +475,16 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 	    if (dropFactor <= miningStrikes)
 			DebugTrace("Fossil Mining: provide loot!")
 			if (resourceType == resource_Geode)
-				Game.GetPlayer().AddItem(FOS_LItemFossilTierOneGeode, 1)
+				player.AddItem(FOS_LItemFossilTierOneGeode, 1)
 			Elseif (resourceType == resource_Volcanic)
-				Game.GetPlayer().AddItem(FOS_LItemFossilTierOneVolcanic, 1)
+				player.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
 			Elseif (resourceType == resource_Ore)
-				Game.GetPlayer().AddItem(FOS_LItemFossilTierOneyum, 1)
+				player.AddItem(FOS_LItemFossilTierOneyum, 1)
 			Endif
 		Endif
 	Endif
 
-	if (miningStrikes == 0 && manualLootNotify)
+	if !handled && manualLootNotify
 		; unrecognized 'Mine' target? glow as a 'nearby manual lootable' if configured to do so
 		DoObjectGlow(akMineable, 5, glowReasonSimpleTarget)
 	endif
@@ -441,33 +494,34 @@ EndEvent
 Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify)
 	;DebugTrace("OnHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
 	;DebugTrace("item type: " + itemType + ", do not notify: " + silent + "notify for manual loot: " + manualLootNotify)
-	Actor akActivator = Game.GetPlayer()
 	bool notify = false
    	form baseForm = akTarget.GetBaseObject()
 
 	if (IsBookObject(itemType))
-		akActivator.AddItem(akTarget, count, true)
+		player.AddItem(akTarget, count, true)
+    	RecordItem(baseForm, itemType)
+
 		notify = !silent
 	elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
 		; no-op but must still unlock
 
 	elseif (!akTarget.IsActivationBlocked())
 		if (itemType == objType_Flora)
-			if (ActivateEx(akTarget, akActivator, silent) && (greenThumbPerk && akActivator.HasPerk(greenThumbPerk)) as bool)
+			if (ActivateEx(akTarget, player, silent) && (greenThumbPerk && player.HasPerk(greenThumbPerk)) as bool)
 				float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
 				int countPP = ((count * greenThumbValue) - count) as int
 				if (countPP >= 1)
-					akActivator.AddItem(baseForm, countPP, true)
+					player.AddItem(baseForm, countPP, true)
 				endif
 			endif
 		elseif (itemType == objType_Critter)
-			ActivateEx(akTarget, akActivator, silent)
+			ActivateEx(akTarget, player, silent)
 		elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
-			ActivateEx(akTarget, akActivator, silent)
-		elseif (ActivateEx(akTarget, akActivator, true) && !silent)
+			ActivateEx(akTarget, player, silent)
+		elseif (ActivateEx(akTarget, player, true) && !silent)
 			notify = true
 		endif
-
+    	RecordItem(baseForm, itemType)
 		;DebugTrace("OnHarvest:Activated:" + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
 	endif
 	if (notify)
@@ -497,7 +551,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 endEvent
 
 ; NPC looting appears to have thread safety issues requiring script to perform
-Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count)
+Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int itemType)
 	;DebugTrace("OnLootFromNPC: " + akContainerRef.GetDisplayName() + " " + akForm.GetName() + "(" + count + ")")
 	if (!akContainerRef)
 		return
@@ -505,7 +559,8 @@ Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count)
 		return
 	endif
 
-	akContainerRef.RemoveItem(akForm, count, true, Game.GetPlayer())
+	akContainerRef.RemoveItem(akForm, count, true, player)
+   	RecordItem(akForm, itemType)
 endEvent
 
 Event OnGetCritterIngredient(ObjectReference akTarget)
@@ -546,13 +601,11 @@ Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
 endEvent
 
 Event OnCarryWeightDelta(int weightDelta)
-	Actor player = Game.GetPlayer()
 	player.ModActorValue("CarryWeight", weightDelta as float)
 	;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
 EndEvent
 
 Function RemoveCarryWeightDelta()
-	Actor player = Game.GetPlayer()
 	int carryWeight = player.GetActorValue("CarryWeight") as int
 	DebugTrace("Player carry weight initially " + carryWeight)
 
@@ -575,6 +628,15 @@ endFunction
 Event OnResetCarryWeight()
 	;DebugTrace("Player carry weight reset request")
 	RemoveCarryWeightDelta()
+EndEvent
+
+Event OnFlushAddedItems()
+	DebugTrace("Request to flush added items")
+	; no-op if empty list
+	if currentAddedItem > 0
+	  	FlushAddedItems(addedItemIDs, addedItemTypes, currentAddedItem)
+  		currentAddedItem = 0
+  	endif
 EndEvent
 
 Event OnMenuOpen(String MenuName)

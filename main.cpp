@@ -1,6 +1,5 @@
 ﻿#include "PrecompiledHeaders.h"
 
-#include "papyrus.h"
 #include "tasks.h"
 #include "PlayerCellHelper.h"
 #include "version.h"
@@ -37,7 +36,9 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 #if _DEBUG
 		_MESSAGE("Game load done, initializing Tasks");
 #endif
-		SearchTask::Init();
+		// if checks fail, abort scanning
+		if (!SearchTask::Init())
+			return;
 #if _DEBUG
 		_MESSAGE("Initialized Tasks, restart looting if allowed");
 #endif

@@ -1,8 +1,6 @@
 #include "PrecompiledHeaders.h"
 #include "PrecompiledHeaders.h"
 
-#include "utils.h"
-#include "papyrus.h"
 #include "tasks.h"
 
 #include <algorithm>
@@ -518,7 +516,7 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
 		if (!refr)
 			continue;
-		if (ClassifyType(refr->GetBaseObject()) == ObjectType::oreVein &&
+		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
 			volcanicDigSites.insert(refrID);

@@ -62,7 +62,7 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 
 TESObjectREFRHelper::TESObjectREFRHelper(const RE::TESObjectREFR* ref) : m_ref(ref), m_lootable(nullptr)
 {
-	m_objectType = ClassifyType(m_ref);
+	m_objectType = GetREFRObjectType(m_ref);
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
@@ -239,7 +239,7 @@ bool ActorHelper::IsSummoned(void) const
 }
 
 // this is the pivotal function that maps a REFR to its loot category
-ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreWhiteList)
+ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList)
 {
 	if (!refr || !refr->GetBaseObject())
 		return ObjectType::unknown;
@@ -259,10 +259,10 @@ ObjectType ClassifyType(const RE::TESObjectREFR* refr, bool ignoreWhiteList)
 		return ObjectType::ammo;
 	}
 
-	return ClassifyType(refr->GetBaseObject(), ignoreWhiteList);
+	return GetBaseFormObjectType(refr->GetBaseObject(), ignoreWhiteList);
 }
 
-ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreWhiteList)
+ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteList)
 {
 	// Leveled items typically redirect to their contents
 	DataCase* data = DataCase::GetInstance();
@@ -322,24 +322,6 @@ ObjectType ClassifyType(const RE::TESForm* baseForm, bool ignoreWhiteList)
 		return (armor->formEnchanting) ? ObjectType::enchantedArmor : ObjectType::armor;
 	}
 	return ObjectType::unknown;
-}
-
-std::string GetObjectTypeName(SInt32 num)
-{
-	ObjectType objType = static_cast<ObjectType>(num);
-	return GetObjectTypeName(objType);
-}
-
-std::string GetObjectTypeName(const RE::TESObjectREFR* refr)
-{
-	ObjectType objType = ClassifyType(refr);
-	return GetObjectTypeName(objType);
-}
-
-std::string GetObjectTypeName(RE::TESForm* pForm)
-{
-	ObjectType objType = ClassifyType(pForm);
-	return GetObjectTypeName(objType);
 }
 
 const std::unordered_map<ObjectType, std::string> nameByType({

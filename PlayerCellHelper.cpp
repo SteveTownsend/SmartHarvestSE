@@ -1,7 +1,6 @@
 #include "PrecompiledHeaders.h"
 
 #include "tasks.h"
-#include "papyrus.h"
 #include "PlayerCellHelper.h"
 
 PlayerCellHelper PlayerCellHelper::m_instance;
@@ -135,7 +134,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
 #if _DEBUG
-		_DMESSAGE("skip REFR 0x%08x to harvested Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		_DMESSAGE("skip harvested REFR 0x%08x to Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 #endif
 		return false;
 	}
@@ -169,8 +168,8 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(SearchTask::IsLootedDynamicContainer(refr));
-	if (dynamicForm != 0)
+	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
+	if (dynamicForm != InvalidForm)
 	{
 #if _DEBUG
 		_DMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);

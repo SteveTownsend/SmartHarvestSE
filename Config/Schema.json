@@ -20,18 +20,29 @@
 
     "signatureType": {
       "type": "string",
-      "enum": [ "ALCH", "BOOK", "ARMO", "KEYM", "MISC", "WEAP" ]
+      "enum": [ "ALCH", "BOOK", "ARMO", "INGR", "KEYM", "MISC", "SLGM", "WEAP" ]
     },
 
     "lootCategoryType": {
       "$comment": "restricted to deterministic loot categories",
       "type": "string",
-      "enum": [ "book", "critter", "skillbook", "spellbook" ]
+      "enum": [ "book", "clutter", "critter", "drink", "food", "ingredient", "key", "skillbook", "spellbook" ]
     },
 
     "conditionsType": {
       "type": "object",
-      "minProperties": 1,
+      "$comment": "we need 'signatures' or 'lootCategories' in a leaf node as they are highly restrictive, or 'subFilters' which defers the decision",
+      "oneOf": [
+        {
+          "required": [ "signatures" ]
+        },
+        {
+          "required": [ "lootCategories" ]
+        },
+        {
+          "required": [ "subFilters" ]
+        }
+      ],
       "properties": {
         "plugin": {
           "type": "string",
