@@ -14,39 +14,29 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 	switch (msg->type)
 	{
 	case SKSE::MessagingInterface::kDataLoaded:
-#if _DEBUG
-		_MESSAGE("Loading Papyrus");
-#endif
+		DBG_MESSAGE("Loading Papyrus");
 		SKSE::GetPapyrusInterface()->Register(papyrus::RegisterFuncs);
-#if _DEBUG
-		_MESSAGE("Loaded Papyrus");
-#endif
+		DBG_MESSAGE("Loaded Papyrus");
 		break;
 
 	case SKSE::MessagingInterface::kPreLoadGame:
-#if _DEBUG
-		_MESSAGE("Game load starting, disable looting");
-#endif
+		DBG_MESSAGE("Game load starting, disable looting");
 		scanOK = SearchTask::IsAllowed();
 		SearchTask::PrepareForReload();
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:
 	case SKSE::MessagingInterface::kPostLoadGame:
-#if _DEBUG
-		_MESSAGE("Game load done, initializing Tasks");
-#endif
+		DBG_MESSAGE("Game load done, initializing Tasks");
 		// if checks fail, abort scanning
 		if (!SearchTask::Init())
 			return;
-#if _DEBUG
-		_MESSAGE("Initialized Tasks, restart looting if allowed");
-#endif
+		DBG_MESSAGE("Initialized Tasks, restart looting if allowed");
 		if (scanOK)
 		{
 			SearchTask::Allow();
 		}
-break;
+		break;
 	}
 }
 
@@ -67,39 +57,36 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 #if _DEBUG
 	SKSE::Logger::HookPapyrusLog(true);
 #endif
-	_MESSAGE("%s v%s", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
+	REL_MESSAGE("%s v%s", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
 
 	a_info->infoVersion = SKSE::PluginInfo::kVersion;
 	a_info->name = SHSE_NAME;
 	a_info->version = VersionInfo::Instance().GetVersionMajor();
 
 	if (a_skse->IsEditor()) {
-		_FATALERROR("Loaded in editor, marking as incompatible!\n");
+		REL_FATALERROR("Loaded in editor, marking as incompatible!\n");
 		return false;
 	}
 	SKSE::Version runtimeVer(a_skse->RuntimeVersion());
 	if (runtimeVer < SKSE::RUNTIME_1_5_73)
 	{
-		_FATALERROR("Unsupported runtime version %08x!\n", runtimeVer);
+		REL_FATALERROR("Unsupported runtime version %08x!\n", runtimeVer);
 		return false;
 	}
 
 	// print loaded addresses of key functions for debugging
-	_MESSAGE("*** Function addresses START");
+	DBG_MESSAGE("*** Function addresses START");
 	utils::LogFunctionAddress(&SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
 	utils::LogFunctionAddress(&SearchTask::Run, "SearchTask::Run");
 	utils::LogFunctionAddress(&PlayerCellHelper::GetReferences, "PlayerCellHelper::GetReferences");
-	_MESSAGE("*** Function addresses END");
+	DBG_MESSAGE("*** Function addresses END");
 
 	return true;
 }
 
 bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 {
-#if _DEBUG
-	_MESSAGE("%s plugin loaded", SHSE_NAME);
-#endif
-
+	REL_MESSAGE("%s plugin loaded", SHSE_NAME);
 	if (!SKSE::Init(skse)) {
 		return false;
 	}

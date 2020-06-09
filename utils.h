@@ -33,7 +33,7 @@ namespace utils
 	template <typename T> void LogFunctionAddress(T func, const char * name)
 	{
 		decltype(func) func1(func);
-		_MESSAGE("%p %s", func1, name);
+		DBG_MESSAGE("%p %s", func1, name);
 	}
 }
 

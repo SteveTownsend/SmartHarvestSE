@@ -11,9 +11,6 @@ UInt32 EnchantmentItemHelper::GetGoldValue()
 	if (!pValue)
 		return 0;
 
-#if _DEBUG
-	_MESSAGE("EnchantmentItemHelper::GetGoldValue()  %d", pValue->value);
-#endif
-
+	DBG_VMESSAGE("EnchantmentItemHelper::GetGoldValue()  %d", pValue->value);
 	return pValue->value;
 }

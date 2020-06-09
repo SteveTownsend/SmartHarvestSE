@@ -45,6 +45,7 @@ String Function Replace(String str, String target, String replacement) global na
 String Function ReplaceArray(String str, String[] targets, String[] replacements) global native
 
 ;Collection Management
+bool Function CollectionsInUse() global native
 Function FlushAddedItems(int[] formIDs, int[] objectTypes, int itemCount) global native
 
 int location_type_whitelist = 1
@@ -54,40 +55,40 @@ Formlist whitelist_form
 Formlist blacklist_form
 
 int Function GetConfig_Pausekey() global
-	int type1_Common = 1
-	int type2_Config = 1
-	return GetSetting(type1_Common, type2_Config, "pauseHotkeycode") as int
+    int type1_Common = 1
+    int type2_Config = 1
+    return GetSetting(type1_Common, type2_Config, "pauseHotkeycode") as int
 endFunction
 
 int Function GetConfig_WhiteListKey() global
-	int type1_Common = 1
-	int type2_Config = 1
-	return GetSetting(type1_Common, type2_Config, "whiteListHotkeycode") as int
+    int type1_Common = 1
+    int type2_Config = 1
+    return GetSetting(type1_Common, type2_Config, "whiteListHotkeycode") as int
 endFunction
 
 int Function GetConfig_BlackListKey() global
-	int type1_Common = 1
-	int type2_Config = 1
-	return GetSetting(type1_Common, type2_Config, "blackListHotkeycode") as int
+    int type1_Common = 1
+    int type2_Config = 1
+    return GetSetting(type1_Common, type2_Config, "blackListHotkeycode") as int
 endFunction
 
 string Function GetNameForListForm(Form locationOrCell) global
-	string name = locationOrCell.GetName()
-	if (StringUtil.GetLength(name) == 0)
-		name = "Cell " + PrintFormID(locationOrCell.GetFormID())
-	endif
-	return name
+    string name = locationOrCell.GetName()
+    if (StringUtil.GetLength(name) == 0)
+        name = "Cell " + PrintFormID(locationOrCell.GetFormID())
+    endif
+    return name
 EndFunction
 
 form Function GetSelectedItemForm(string menuName) global
-	int formID = UI.GetInt(menuName, "_root.Menu_mc.inventoryLists.itemList.selectedEntry.formId")
-	if (formID == 0x0)
-		return none
-	endif
-	
-	Form itemForm = Game.GetFormEx(formID)
-	if (!itemForm)
-		return none
-	endif
-	return itemForm
+    int formID = UI.GetInt(menuName, "_root.Menu_mc.inventoryLists.itemList.selectedEntry.formId")
+    if (formID == 0x0)
+        return none
+    endif
+    
+    Form itemForm = Game.GetFormEx(formID)
+    if (!itemForm)
+        return none
+    endif
+    return itemForm
 endFunction

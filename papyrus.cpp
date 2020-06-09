@@ -47,7 +47,7 @@ namespace papyrus
 	// available in release build, but typically unused
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		_MESSAGE("%s", str);
+		DBG_MESSAGE("%s", str);
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -109,9 +109,7 @@ namespace papyrus
 		::ToLower(str);
 
 		float result(static_cast<float>(ini->GetSetting(first, second, str.c_str())));
-#if _DEBUG
-		_DMESSAGE("Config setting %d/%d/%s = %f", first, second, str.c_str(), result);
-#endif
+		DBG_VMESSAGE("Config setting %d/%d/%s = %f", first, second, str.c_str(), result);
 		return result;
 	}
 
@@ -157,9 +155,7 @@ namespace papyrus
 				value = static_cast<float>(tmp_value);
 			}
 		}
-#if _DEBUG
-		_DMESSAGE("Config setting %d/%d/%s = %f", first, second, key.c_str(), value);
-#endif
+		DBG_VMESSAGE("Config setting %d/%d/%s = %f", first, second, key.c_str(), value);
 		return value;
 	}
 
@@ -213,9 +209,7 @@ namespace papyrus
 		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->LoadFile())
 		{
-#if _DEBUG
-			_MESSAGE("LoadFile error");
-#endif
+			REL_ERROR("LoadFile error");
 		}
 	}
 
@@ -231,16 +225,12 @@ namespace papyrus
 
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
-#if _DEBUG
-		_MESSAGE("Reference Search enabled");
-#endif
+		DBG_MESSAGE("Reference Search enabled");
 		SearchTask::Allow();
 	}
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
-#if _DEBUG
-		_MESSAGE("Reference Search disabled");
-#endif
+		DBG_MESSAGE("Reference Search disabled");
 		SearchTask::Disallow();
 	}
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
@@ -311,9 +301,7 @@ namespace papyrus
 		std::ostringstream formIDStr;
 		formIDStr << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<RE::FormID>(formID);
 		std::string result(formIDStr.str());
-#if _DEBUG
-		_MESSAGE("FormID 0x%08x mapped to %s", formID, result.c_str());
-#endif
+		DBG_VMESSAGE("FormID 0x%08x mapped to %s", formID, result.c_str());
 		return RE::BSFixedString(result.c_str());
 	}
 
@@ -351,6 +339,11 @@ namespace papyrus
 				return nullptr;
 		}
 		return result.c_str();
+	}
+
+	bool CollectionsInUse(RE::StaticFunctionTag* base)
+	{
+		return CollectionManager::Instance().IsReady();
 	}
 
 	void FlushAddedItems(RE::StaticFunctionTag* base, std::vector<int> formIDs, std::vector<int> objectTypes, const int itemCount)
@@ -415,6 +408,7 @@ namespace papyrus
 		a_vm->RegisterFunction("Replace", SHSE_PROXY, papyrus::Replace);
 		a_vm->RegisterFunction("ReplaceArray", SHSE_PROXY, papyrus::ReplaceArray);
 
+		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
 		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
 
 		return true;

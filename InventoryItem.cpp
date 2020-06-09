@@ -14,18 +14,15 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	if (toRemove <= 0) {
 		return 0;
 	}
-#if _DEBUG
-	_DMESSAGE("get %s/0x%08x (%d)", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
-#endif
 
+	DBG_VMESSAGE("get %s/0x%08x (%d)", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
 	std::vector<std::pair<RE::ExtraDataList*, std::ptrdiff_t>> queued;
 	if (m_entry->extraLists) {
 		for (auto& xList : *m_entry->extraLists) {
 			if (xList) {
 				auto xCount = std::min<std::ptrdiff_t>(xList->GetCount(), toRemove);
-#if _DEBUG
-				_DMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(BoundObject()), xCount);
-#endif
+				DBG_VMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(BoundObject()), xCount);
+
 				toRemove -= xCount;
 				queued.push_back(std::make_pair(xList, xCount));
 
@@ -70,15 +67,11 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		[33]  0x17AC0056C3A      (SmartHarvestSE.dll + 6C3A)
 	*/
 	for (auto& elem : queued) {
-#if _DEBUG
-		_DMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
-#endif
+		DBG_VMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
 		Remove(container, target, elem.first, elem.second);
 	}
 	if (toRemove > 0) {
-#if _DEBUG
-		_DMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
-#endif
+		DBG_VMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
 		Remove(container, target, nullptr, toRemove);
 	}
 	return static_cast<int>(toRemove + queued.size());

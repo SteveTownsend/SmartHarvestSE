@@ -10,6 +10,7 @@
 #include "CommonLibSSE/include/SKSE/RegistrationSet.h"
 
 #include "CommonLibSSE/include/RE/Skyrim.h"
+#include "LogWrapper.h"
 
 #include "nlohmann/json.hpp"
 #include "nlohmann/json-schema.hpp"

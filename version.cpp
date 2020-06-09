@@ -38,26 +38,20 @@ void VersionInfo::GetPluginVersionInfo()
 	/* Get the size of FileVersionInfo structure */
 	verInfoLen = GetFileVersionInfoSize(moduleName.c_str(), &zero);
 	if (verInfoLen == 0) {
-#if _DEBUG
-		_MESSAGE("GetFileVersionInfoSize() Failed");
-#endif
+		REL_WARNING("GetFileVersionInfoSize() Failed");
 		return;
 	}
 
 	/* Get FileVersionInfo structure */
 	verInfo = new BYTE[verInfoLen];
 	if (!GetFileVersionInfo(moduleName.c_str(), 0, verInfoLen, verInfo)) {
-#if _DEBUG
-		_MESSAGE("GetFileVersionInfo() Failed");
-#endif
+		REL_WARNING("GetFileVersionInfo() Failed");
 		return;
 	}
 
 	/* Query for File version details. */
 	if (!VerQueryValue(verInfo, "\\", (LPVOID*)&fileInfo, &len)) {
-#if _DEBUG
-		_MESSAGE("VerQueryValue() Failed");
-#endif
+		REL_WARNING("VerQueryValue() Failed");
 		return;
 	}
 	m_majorVersion = HIWORD(fileInfo->dwFileVersionMS);

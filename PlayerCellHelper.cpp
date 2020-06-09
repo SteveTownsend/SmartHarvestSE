@@ -16,20 +16,16 @@ bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
 	// don't do Floating Point math if we can trivially see it's too far away
 	if (dx > m_radius || dy > m_radius || dz > m_radius)
 	{
-#if _DEBUG
 		// very verbose
-		_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
+		DBG_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
 			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionX(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionY(),
 			RE::PlayerCharacter::GetSingleton()->GetPositionZ());
-#endif
     	return false;
 	}
 	double distance(sqrt((dx*dx) + (dy*dy) + (dz*dz)));
-#if _DEBUG
-	_DMESSAGE("REFR 0x%08x is %.2f units away, loot range %.2f units", formID, distance, m_radius);
-#endif
+	DBG_VMESSAGE("REFR 0x%08x is %.2f units away, loot range %.2f units", formID, distance, m_radius);
 	return distance <= m_radius;
 }
 
@@ -70,26 +66,20 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	// prioritize checks that do not require obtaining a lock
 	if (!refr)
 	{
-#if _DEBUG
-		_DMESSAGE("null REFR");
-#endif
+		DBG_VMESSAGE("null REFR");
 		return false;
 	}
 
 	if (!refr->GetBaseObject())
 	{
-#if _DEBUG
-		_DMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
-#endif
+		DBG_VMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
 		return false;
 	}
 
 	DataCase* data = DataCase::GetInstance();
 	if (data->IsReferenceBlocked(refr))
 	{
-#if _DEBUG
-		_DMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
-#endif
+		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
 		return false;
 	}
 
@@ -97,18 +87,14 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	// as observed in play testing
 	if (data->IsReferenceOnBlacklist(refr))
 	{
-#if _DEBUG
-		_DMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
-#endif
+		DBG_VMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
 		return false;
 	}
 
 	// if 3D not loaded do not measure
 	if (!refr->Is3DLoaded())
 	{
-#if _DEBUG
-		_DMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+		DBG_VMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 
@@ -116,16 +102,12 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	{
 		if (!refr->IsDead(true))
 		{
-#if _DEBUG
-			_DMESSAGE("skip living ActorCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+			DBG_VMESSAGE("skip living ActorCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 			return false;
 		}
 		if (refr == RE::PlayerCharacter::GetSingleton())
 		{
-#if _DEBUG
-			_DMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+			DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 			return false;
 		}
 	}
@@ -133,9 +115,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	if ((refr->GetBaseObject()->formType == RE::FormType::Flora || refr->GetBaseObject()->formType == RE::FormType::Tree) &&
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
-#if _DEBUG
-		_DMESSAGE("skip harvested REFR 0x%08x to Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-#endif
+		DBG_VMESSAGE("skip harvested REFR 0x%08x to Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		return false;
 	}
 
@@ -143,9 +123,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		refr->GetBaseObject()->formType == RE::FormType::Hazard ||
 		refr->GetBaseObject()->formType == RE::FormType::Door)
 	{
-#if _DEBUG
-		_DMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+		DBG_VMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 
@@ -155,32 +133,24 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 
 	if (SearchTask::IsLockedForHarvest(refr))
 	{
-#if _DEBUG
-		_DMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 	if (SearchTask::IsLootedContainer(refr))
 	{
-#if _DEBUG
-		_DMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
 	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
-#if _DEBUG
-		_DMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
-#endif
+		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
 		return false;
 	}
 	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
-#if _DEBUG
-		_DMESSAGE("skip blocked REFR base form 0x%08x", refr->formID);
-#endif
+		DBG_VMESSAGE("skip blocked REFR base form 0x%08x", refr->formID);
 		return false;
 	}
 
@@ -188,15 +158,11 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
 		data->BlacklistReference(refr);
-#if _DEBUG
-		_DMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
-#endif
+		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
 		return false;
 	}
 
-#if _DEBUG
-	_DMESSAGE("lootable candidate 0x%08x", refr->formID);
-#endif
+	DBG_VMESSAGE("lootable candidate 0x%08x", refr->formID);
 	return true;
 }
 
@@ -234,46 +200,34 @@ void PlayerCellHelper::GetAdjacentCells(RE::TESObjectCELL* cell)
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	if (!m_cell->IsInteriorCell())
 	{
-#if _DEBUG
-		_DMESSAGE("Check for adjacent cells to 0x%08x", m_cell->GetFormID());
-#endif
+		DBG_MESSAGE("Check for adjacent cells to 0x%08x", m_cell->GetFormID());
 		RE::TESWorldSpace* worldSpace(m_cell->worldSpace);
 		if (worldSpace)
 		{
-#if _DEBUG
-			_DMESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
-#endif
+			DBG_MESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
 			for (const auto& worldCell : worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
 				// skip player cell, handled above
 				if (candidateCell == m_cell)
 				{
-#if _DEBUG
-					_DMESSAGE("Player cell, already handled");
-#endif
+					DBG_MESSAGE("Player cell, already handled");
 					continue;
 				}
 				// do not loot across interior/exterior boundary
 				if (candidateCell->IsInteriorCell())
 				{
-#if _DEBUG
-					_DMESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
-#endif
+					DBG_MESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
 					continue;
 				}
 				// check for adjacency on the cell grid
 				if (!IsAdjacent(candidateCell))
 				{
-#if _DEBUG
-					_DMESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
-#endif
+					DBG_MESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
 					continue;
 				}
 				m_adjacentCells.push_back(candidateCell);
-#if _DEBUG
-				_MESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
-#endif
+				DBG_MESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
 			}
 		}
 	}
@@ -290,7 +244,9 @@ bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
 
 std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, const double radius)
 {
+#ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
+#endif
 	if (!cell || !cell->IsAttached())
 		return std::vector<RE::TESObjectREFR*>();
 
@@ -304,29 +260,21 @@ std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCEL
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	if (!m_cell->IsInteriorCell())
 	{
-#if _DEBUG
-		_DMESSAGE("Scan cells adjacent to 0x%08x", m_cell->GetFormID());
-#endif
+		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", m_cell->GetFormID());
 		for (const auto& adjacentCell : m_adjacentCells)
 		{
 			// sanity checks
 			if (!adjacentCell || !adjacentCell->IsAttached())
 			{
-#if _DEBUG
-				_DMESSAGE("Adjacent cell null or unattached");
-#endif
+				DBG_VMESSAGE("Adjacent cell null or unattached");
 				continue;
 			}
-#if _DEBUG
-			_MESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
-#endif
+			DBG_VMESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
 			GetCellReferences(adjacentCell);
 		}
 	}
-#if _DEBUG
 	// Summary of unlootable REFRs
-	_MESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, m_cell->GetFormID());
-#endif
+	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, m_cell->GetFormID());
 	// set up return value and clear accumulator
 	std::vector<RE::TESObjectREFR*> result;
 	result.swap(m_targets);

@@ -47,9 +47,7 @@ KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
 		if (matched != keywordsLeft.end())
 		{
 			m_keywords.insert(keywordRecord);
-#if _DEBUG
-			_MESSAGE("BGSKeyword recorded for %s", keywordRecord->GetFormEditorID());
-#endif
+			DBG_VMESSAGE("BGSKeyword recorded for %s", keywordRecord->GetFormEditorID());
 			// eliminate the matched candidate input from JSON
 			keywordsLeft.erase(matched);
 
@@ -58,12 +56,10 @@ KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
 				break;
 		}
 	}
-#if _DEBUG
 	for (const std::string& badKeyword : keywordsLeft)
 	{
-		_WARNING("Collection has invalid KYWD %s", badKeyword.c_str());
+		DBG_WARNING("Collection has invalid KYWD %s", badKeyword.c_str());
 	}
-#endif
 	if (!keywordsLeft.empty())
 	{
 		std::ostringstream err;
@@ -116,9 +112,7 @@ SignaturesCondition::SignaturesCondition(const std::vector<std::string>& signatu
 		if (matched != validSignatures.cend())
 		{
 			m_formTypes.push_back(matched->second);
-#if _DEBUG
-			_MESSAGE("Record Signature %s mapped to FormType %d", signature.c_str(), static_cast<int>(matched->second));
-#endif
+			DBG_VMESSAGE("Record Signature %s mapped to FormType %d", signature.c_str(), static_cast<int>(matched->second));
 		}
 	}
 }
@@ -166,9 +160,7 @@ LootCategoriesCondition::LootCategoriesCondition(const std::vector<std::string>&
 		if (matched != validCategories.cend())
 		{
 			m_categories.push_back(matched->second);
-#if _DEBUG
-			_MESSAGE("Loot Category %s mapped to %s", category.c_str(), GetObjectTypeName(matched->second).c_str());
-#endif
+			DBG_VMESSAGE("Loot Category %s mapped to %s", category.c_str(), GetObjectTypeName(matched->second).c_str());
 		}
 	}
 }

@@ -191,6 +191,9 @@
     <ClInclude Include="Collection.h">
       <Filter>Collections</Filter>
     </ClInclude>
+    <ClInclude Include="LogWrapper.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">

@@ -1,9 +1,13 @@
 #include "PrecompiledHeaders.h"
 
-PluginError::PluginError(const char* pluginName) : std::exception(pluginName)
+PluginError::PluginError(const char* pluginName) : std::runtime_error(std::string(PluginError::ErrorName) + pluginName)
 {
 }
 
-KeywordError::KeywordError(const char* keyword) : std::exception(keyword)
+KeywordError::KeywordError(const char* keyword) : std::runtime_error(std::string(KeywordError::ErrorName) + keyword)
+{
+}
+
+FileNotFound::FileNotFound(const char* filename) : std::runtime_error(std::string(FileNotFound::ErrorName) + filename)
 {
 }

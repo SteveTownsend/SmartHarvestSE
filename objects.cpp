@@ -381,15 +381,11 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 	{
 		if (nextPair.second == lcName)
 		{
-#if _DEBUG
-			_DMESSAGE("Mapped name %s to ObjectType %d", name.c_str(), nextPair.first);
-#endif
+			DBG_VMESSAGE("Mapped name %s to ObjectType %d", name.c_str(), nextPair.first);
 			return nextPair.first;
 		}
 	}
-#if _DEBUG
-	_DMESSAGE("Unmapped ObjectType name %s", name.c_str());
-#endif
+	DBG_WARNING("Unmapped ObjectType name %s", name.c_str());
 	return ObjectType::unknown;
 }
 
