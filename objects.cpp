@@ -330,7 +330,7 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::critter, "critter"},
 	{ObjectType::ingredient, "ingredient"},
 	{ObjectType::septims, "septims"},
-	{ObjectType::gem, "gems"},
+	{ObjectType::gem, "gem"},
 	{ObjectType::lockpick, "lockpick"},
 	{ObjectType::animalHide, "animalhide"},
 	{ObjectType::oreIngot, "oreingot"},
