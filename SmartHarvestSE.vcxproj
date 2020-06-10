@@ -135,7 +135,7 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)install_dll.bat" "$(TargetPath)"</Command>
+      <Command>"$(ProjectDir)install_dll.bat" "$(TargetPath)"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Installing DLL...</Message>
@@ -248,7 +248,6 @@
     <ClInclude Include="SimpleIni.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="StackWalker.h" />
-    <ClInclude Include="strConv.h" />
     <ClInclude Include="tasks.h" />
     <ClInclude Include="FormHelper.h" />
     <ClInclude Include="dataCase.h" />
