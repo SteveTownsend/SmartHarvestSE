@@ -109,7 +109,8 @@ bool SearchTask::IsLootingForbidden()
 
 		if (isForbidden)
 		{
-			DBG_MESSAGE("Skip owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			DBG_MESSAGE("Block owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			DataCase::GetInstance()->BlockReference(m_candidate);
 		}
 	}
 	return isForbidden;
@@ -297,7 +298,7 @@ void SearchTask::Run()
 			return;
 		}
 
-		if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, m_candidate->GetBaseObject()))
+		if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, m_candidate->GetBaseObject()))
 		{
 			DBG_VMESSAGE("register REFR base form 0x%08x in BlackList", m_candidate->GetBaseObject()->GetFormID());
 			data->BlockForm(m_candidate->GetBaseObject());
@@ -534,7 +535,7 @@ void SearchTask::Run()
 
 			TESFormHelper itemEx(target);
 
-			if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, target))
+			if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, target))
 			{
 				DBG_VMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
 				data->BlockForm(target);
@@ -709,7 +710,7 @@ void SearchTask::ScanThread()
 		double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 			m_playerCell && m_playerCell->IsInteriorCell() ?  "IndoorsIntervalSeconds" : "IntervalSeconds"));
 		delay = std::max(MinDelay, delay);
-		if (UIState::Instance().OKForSearch() && !IsAllowed())
+		if (!UIState::Instance().OKForSearch() || !IsAllowed())
 		{
 			DBG_MESSAGE("search disallowed or game loading or menus open");
 		}
@@ -1323,8 +1324,8 @@ void SearchTask::MergeBlackList()
 {
 	RecursiveLockGuard guard(m_lock);
 	// Add loaded locations to the list of exclusions
-	BasketFile::GetSingleton()->SyncList(BasketFile::BLACKLIST);
-	for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::BLACKLIST))
+	BasketFile::GetSingleton()->SyncList(BasketFile::listnum::BLACKLIST);
+	for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::listnum::BLACKLIST))
 	{
 		SearchTask::AddLocationToBlackList(exclusion);
 	}
