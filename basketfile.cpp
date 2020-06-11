@@ -1,8 +1,5 @@
 #include "PrecompiledHeaders.h"
 
-// still required from SKSE Common
-#include "common/IFileStream.h"
-
 #include "utils.h"
 #include "basketfile.h"
 
@@ -56,13 +53,13 @@ namespace
 BasketFile::BasketFile()
 {
 	RE::TESDataHandler* dhnd(RE::TESDataHandler::GetSingleton());
-	formList[WHITELIST] = dhnd->LookupForm<RE::BGSListForm>(g_whiteList_formid, MODNAME);
-	formList[BLACKLIST] = dhnd->LookupForm<RE::BGSListForm>(g_blackList_formid, MODNAME);
+	formList[int(listnum::WHITELIST)] = dhnd->LookupForm<RE::BGSListForm>(g_whiteList_formid, MODNAME);
+	formList[int(listnum::BLACKLIST)] = dhnd->LookupForm<RE::BGSListForm>(g_blackList_formid, MODNAME);
 }
 
 inline UInt32 BasketFile::GetSize(listnum list_number)
 {
-	return formList[list_number]->forms.size();
+	return formList[int(list_number)]->forms.size();
 }
 
 bool BasketFile::SaveFile(listnum list_number, const char* basketText)
@@ -76,13 +73,16 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 		return false;
 
 	std::string fullPath = RuntimeDir + "Data\\SKSE\\Plugins\\" + SHSE_NAME + "\\" + basketText;
-	IFileStream fs;
-	if(!fs.Create(fullPath.c_str()))
-		return false;
-
-	if(formList[list_number])
+	std::ofstream fs(fullPath);
+	if (fs.fail())
 	{
-		for (RE::TESForm* childForm : formList[list_number]->forms)
+		REL_ERROR("Basket File %s cannot be opened for output", fullPath.c_str());
+		return false;
+	}
+
+	if(formList[int(list_number)])
+	{
+		for (RE::TESForm* childForm : formList[int(list_number)]->forms)
 		{
 			if (childForm)
 			{
@@ -96,12 +96,12 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 				std::vector<char>buf(str.size() + 1);
 				buf[str.size()] = 0;
 				memcpy(&buf[0], str.c_str(),str.size());
-				fs.WriteBuf(&buf[0], static_cast<UInt32>(str.size()));
+				fs.write(&buf[0], str.size());
 			}
 			
-			if(formList[list_number]->scriptAddedTempForms)
+			if(formList[int(list_number)]->scriptAddedTempForms)
 			{
-				for(RE::FormID formid : *formList[list_number]->scriptAddedTempForms)
+				for(RE::FormID formid : *formList[int(list_number)]->scriptAddedTempForms)
 				{
 					RE::TESForm* childForm = RE::TESForm::LookupByID(formid);
 					if(childForm)
@@ -116,13 +116,13 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 						std::vector<char>buf(str.size() + 1);
 						buf[str.size()] = 0;
 						memcpy(&buf[0], str.c_str(), str.size());
-						fs.WriteBuf(&buf[0], static_cast<UInt32>(str.length()));
+						fs.write(&buf[0], str.length());
 					}
 				}
 			}
 		}
 	}
-	fs.Close();
+	fs.close();
 
 	DBG_VMESSAGE("BasketFile::SaveFile end");
 	return true;
@@ -140,14 +140,17 @@ bool BasketFile::LoadFile(listnum list_number, const char* basketText)
 
 	std::string fullPath = RuntimeDir + "Data\\SKSE\\Plugins\\" + SHSE_NAME + "\\" + basketText;
 
-	IFileStream fs;
-	if(!fs.Open(fullPath.c_str()))
-		return false;
-
-	for (int index = 0; !fs.HitEOF(); index++)
+	std::ifstream fs(fullPath);
+	if (fs.fail())
 	{
-		char buf[512];
-		fs.ReadString(buf, 512, '\n', '\r');
+		REL_ERROR("Basket File %s cannot be opened for output", fullPath.c_str());
+		return false;
+	}
+
+	char buf[512];
+	for (int index = 0; !fs.eof() && !fs.fail(); ++index)
+	{
+		fs.getline(buf, 512);
 
 		// skip comments
 		if (buf[0] == '#')
@@ -184,43 +187,43 @@ bool BasketFile::LoadFile(listnum list_number, const char* basketText)
 		if (!thisForm)
 			continue;
 		
-		formList[list_number]->AddForm(thisForm);
+		formList[int(list_number)]->AddForm(thisForm);
 	}
-	fs.Close();
+	fs.close();
 	DBG_VMESSAGE("BasketFile::LoadFile end");
 	return true;
 }
 
 void BasketFile::SyncList(listnum list_number)
 {
-	if (formList[list_number])
+	if (formList[int(list_number)])
 	{
 		// unblock forms which may have been blacklisted and are no longer
-		if (list_number == BLACKLIST)
+		if (list_number == listnum::BLACKLIST)
 		{
 			DataCase* data(DataCase::GetInstance());
-			for (auto form : list[list_number])
+			for (auto form : list[int(list_number)])
 			{
 				data->UnblockForm(form);
 			}
 		}
 
-		list[list_number].clear();
+		list[int(list_number)].clear();
 
-		for (RE::TESForm* listMember : formList[list_number]->forms)
+		for (RE::TESForm* listMember : formList[int(list_number)]->forms)
 		{
 			DBG_VMESSAGE("FormID 0x%08x stored on list %d", listMember->GetFormID(), list_number);
-			list[list_number].insert(listMember);
+			list[int(list_number)].insert(listMember);
 		}
-		if (formList[list_number]->scriptAddedTempForms)
+		if (formList[int(list_number)]->scriptAddedTempForms)
 		{
-			for (RE::FormID formid : *formList[list_number]->scriptAddedTempForms)
+			for (RE::FormID formid : *formList[int(list_number)]->scriptAddedTempForms)
 			{
 				RE::TESForm* childForm = RE::TESForm::LookupByID(formid);
 				if (childForm)
 				{
 					DBG_VMESSAGE("FormID 0x%08x (temp) stored on list %d", childForm->GetFormID(), list_number);
-					list[list_number].insert(childForm);
+					list[int(list_number)].insert(childForm);
 				}
 				else
 				{
@@ -229,10 +232,10 @@ void BasketFile::SyncList(listnum list_number)
 			}
 		}
 		// unblock forms which may have been checked and blocked prior to whitelisting
-		if (list_number == WHITELIST)
+		if (list_number == listnum::WHITELIST)
 		{
 			DataCase* data(DataCase::GetInstance());
-			for (auto form : list[list_number])
+			for (auto form : list[int(list_number)])
 			{
 				data->UnblockForm(form);
 			}
@@ -242,11 +245,11 @@ void BasketFile::SyncList(listnum list_number)
 
 const std::unordered_set<const RE::TESForm*> BasketFile::GetList(listnum list_number) const
 {
-	return list[list_number];
+	return list[int(list_number)];
 }
 
 bool BasketFile::IsinList(listnum list_number, const RE::TESForm * pickupform) const
 {
-	return list[list_number].count(pickupform) > 0;
+	return list[int(list_number)].count(pickupform) > 0;
 }
 

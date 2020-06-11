@@ -270,11 +270,11 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 	if (!baseForm)
 		return ObjectType::unknown;
 
-	if (!ignoreWhiteList && BasketFile::GetSingleton()->IsinList(BasketFile::WHITELIST, baseForm))
+	if (!ignoreWhiteList && BasketFile::GetSingleton()->IsinList(BasketFile::listnum::WHITELIST, baseForm))
 	{
 		return ObjectType::whitelist;
 	}
-	if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, baseForm))
+	if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, baseForm))
 	{
 		return ObjectType::blacklist;
 	}

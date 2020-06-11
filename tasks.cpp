@@ -298,7 +298,7 @@ void SearchTask::Run()
 			return;
 		}
 
-		if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, m_candidate->GetBaseObject()))
+		if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, m_candidate->GetBaseObject()))
 		{
 			DBG_VMESSAGE("register REFR base form 0x%08x in BlackList", m_candidate->GetBaseObject()->GetFormID());
 			data->BlockForm(m_candidate->GetBaseObject());
@@ -535,7 +535,7 @@ void SearchTask::Run()
 
 			TESFormHelper itemEx(target);
 
-			if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, target))
+			if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, target))
 			{
 				DBG_VMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
 				data->BlockForm(target);
@@ -1324,8 +1324,8 @@ void SearchTask::MergeBlackList()
 {
 	RecursiveLockGuard guard(m_lock);
 	// Add loaded locations to the list of exclusions
-	BasketFile::GetSingleton()->SyncList(BasketFile::BLACKLIST);
-	for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::BLACKLIST))
+	BasketFile::GetSingleton()->SyncList(BasketFile::listnum::BLACKLIST);
+	for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::listnum::BLACKLIST))
 	{
 		SearchTask::AddLocationToBlackList(exclusion);
 	}

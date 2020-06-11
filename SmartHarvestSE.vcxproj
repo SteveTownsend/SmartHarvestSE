@@ -285,9 +285,6 @@
     <ProjectReference Include="..\json\nlohmann-json.vcxproj">
       <Project>{1626aa45-d0e0-401d-b090-298f7a392ead}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
-      <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SmartHarvestSE.rc" />
