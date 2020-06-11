@@ -3,7 +3,8 @@
 class LoadOrder {
 public:
 	static LoadOrder& Instance();
-	void Analyze(void);
+	bool Analyze(void);
+	RE::FormID GetFormIDMask(const std::string& modName) const;
 
 private:
 	static std::unique_ptr<LoadOrder> m_instance;

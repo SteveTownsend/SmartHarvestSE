@@ -3,9 +3,9 @@
 #include "tasks.h"
 
 InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
-	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count) {}
+	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count), m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
-	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count) {}
+	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
 // returns number of objects added
 int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target)
@@ -14,18 +14,15 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	if (toRemove <= 0) {
 		return 0;
 	}
-#if _DEBUG
-	_DMESSAGE("get %s/0x%08x (%d)", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
-#endif
 
+	DBG_VMESSAGE("get %s/0x%08x (%d)", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
 	std::vector<std::pair<RE::ExtraDataList*, std::ptrdiff_t>> queued;
 	if (m_entry->extraLists) {
 		for (auto& xList : *m_entry->extraLists) {
 			if (xList) {
 				auto xCount = std::min<std::ptrdiff_t>(xList->GetCount(), toRemove);
-#if _DEBUG
-				_DMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(BoundObject()), xCount);
-#endif
+				DBG_VMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(BoundObject()), xCount);
+
 				toRemove -= xCount;
 				queued.push_back(std::make_pair(xList, xCount));
 
@@ -70,15 +67,11 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		[33]  0x17AC0056C3A      (SmartHarvestSE.dll + 6C3A)
 	*/
 	for (auto& elem : queued) {
-#if _DEBUG
-		_DMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
-#endif
+		DBG_VMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
 		Remove(container, target, elem.first, elem.second);
 	}
 	if (toRemove > 0) {
-#if _DEBUG
-		_DMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
-#endif
+		DBG_VMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
 		Remove(container, target, nullptr, toRemove);
 	}
 	return static_cast<int>(toRemove + queued.size());
@@ -88,12 +81,13 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 {
 	if (m_targetType == INIFile::SecondaryType::containers)
 	{
-		// safe to handle here
+		// safe to handle here - record the item for Collection correlation before moving
+		CollectionManager::Instance().EnqueueAddedItem(BoundObject()->GetFormID(), m_objectType);
 		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else
 	{
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
-		SearchTask::TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count));
+		SearchTask::TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
 	}
 }

@@ -4,7 +4,7 @@
 LogStackWalker::LogStackWalker() : StackWalker() {}
 
 LogStackWalker::~LogStackWalker() {
-	_MESSAGE("Callstack dump :\n%s", m_fullStack.str().c_str());
+	DBG_MESSAGE("Callstack dump :\n%s", m_fullStack.str().c_str());
 }
 
 void LogStackWalker::OnOutput(LPCSTR szText) {

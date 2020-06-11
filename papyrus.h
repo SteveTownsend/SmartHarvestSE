@@ -1,7 +1,5 @@
 #pragma once
 
-bool Replace(std::string& str, const std::string& target, const std::string& replacement);
-
 namespace papyrus
 {
 	RE::BSFixedString GetTranslation(RE::StaticFunctionTag* base, RE::BSFixedString key);

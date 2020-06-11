@@ -5,7 +5,7 @@ public:
 	virtual ~Condition();
 
 	virtual bool operator()(const RE::TESForm* form, ObjectType objectType) const = 0;
-	virtual std::ostream& Print(std::ostream& os) const = 0; 
+	virtual nlohmann::json MakeJSON() const = 0;
 protected:
 	Condition();
 };
@@ -14,41 +14,58 @@ class PluginCondition : public Condition {
 public:
 	PluginCondition(const std::string& plugin);
 	virtual bool operator()(const RE::TESForm* form, ObjectType objectType) const;
-	virtual std::ostream& Print(std::ostream& os) const;
+	virtual nlohmann::json MakeJSON() const;
 
 private:
+	friend void to_json(nlohmann::json& j, const PluginCondition& p);
+
 	const std::string m_plugin;
+	RE::FormID m_formIDMask;
 };
+
+void to_json(nlohmann::json& j, const PluginCondition& p);
 
 class KeywordsCondition : public Condition {
 public:
 	KeywordsCondition(const std::vector<std::string>& keywords);
 	virtual bool operator()(const RE::TESForm* form, ObjectType objectType) const;
-	virtual std::ostream& Print(std::ostream& os) const;
+	virtual nlohmann::json MakeJSON() const;
 
 private:
+	friend void to_json(nlohmann::json& j, const KeywordsCondition& p);
+
 	std::unordered_set<const RE::BGSKeyword*> m_keywords;
 };
+
+void to_json(nlohmann::json& j, const KeywordsCondition& p);
 
 class SignaturesCondition : public Condition {
 public:
 	SignaturesCondition(const std::vector<std::string>& signatures);
 	virtual bool operator()(const RE::TESForm* form, ObjectType objectType) const;
-	virtual std::ostream& Print(std::ostream& os) const;
+	virtual nlohmann::json MakeJSON() const;
 
 private:
+	friend void to_json(nlohmann::json& j, const SignaturesCondition& p);
+
 	std::vector<RE::FormType> m_formTypes;
 };
+
+void to_json(nlohmann::json& j, const SignaturesCondition& p);
 
 class LootCategoriesCondition : public Condition {
 public:
 	LootCategoriesCondition(const std::vector<std::string>& lootCategories);
 	virtual bool operator()(const RE::TESForm* form, ObjectType objectType) const;
-	virtual std::ostream& Print(std::ostream& os) const;
+	virtual nlohmann::json MakeJSON() const;
 
 private:
+	friend void to_json(nlohmann::json& j, const LootCategoriesCondition& p);
+
 	std::vector<ObjectType> m_categories;
 };
+
+void to_json(nlohmann::json& j, const LootCategoriesCondition& p);
 
 class ConditionTree : public Condition {
 public:
@@ -57,31 +74,19 @@ public:
 		Or
 	};
 
-	ConditionTree(const Operator op, const unsigned int nestingLevel);
+	ConditionTree(const Operator op, const unsigned int depth);
 	virtual bool operator()(const RE::TESForm* form, ObjectType objectType) const;
 	void AddCondition(std::unique_ptr<Condition> condition);
-	virtual std::ostream& Print(std::ostream& os) const;
+	virtual nlohmann::json MakeJSON() const;
 
 private:
+	friend void to_json(nlohmann::json& j, const ConditionTree& p);
+
 	std::vector<std::unique_ptr<Condition>> m_conditions;
 	Operator m_operator;
-	unsigned int m_nestingLevel;
+	unsigned int m_depth;
 };
 
-class ConditionTreeFactory {
-public:
-	static ConditionTreeFactory& Instance();
-	std::unique_ptr<Condition> ParseTree(const nlohmann::json& rootFilter, const unsigned int nestingLevel);
-private:
-	std::unique_ptr<Condition> ParsePlugin(const nlohmann::json& pluginRule);
-	std::unique_ptr<Condition> ParseKeywords(const nlohmann::json& keywordRule);
-	std::unique_ptr<Condition> ParseSignatures(const nlohmann::json& signatureRule);
-	std::unique_ptr<Condition> ParseLootCategories(const nlohmann::json& lootCategoryRule);
+void to_json(nlohmann::json& j, const ConditionTree& p);
 
-	std::unique_ptr<ConditionTreeFactory> m_factory;
-};
-
-std::ostream& operator<<(std::ostream& os, const Condition& condition)
-{
-	return condition.Print(os);
-}
+std::ostream& operator<<(std::ostream& os, const Condition& condition);

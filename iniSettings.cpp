@@ -22,14 +22,14 @@ bool INIFile::LoadFile()
 
 	if (result)
 	{
+		REL_MESSAGE("Loaded %s OK", GetFileName().c_str());
 #if _DEBUG
-		_MESSAGE("Loaded %s OK", GetFileName().c_str());
 		SimpleIni::SectionIterator itSection;
 		SimpleIni::KeyIterator itKey;
 		for (itSection = beginSection(); itSection != endSection(); ++itSection)
 		{
 			for (itKey = beginKey(*itSection); itKey != endKey(*itSection); ++itKey)
-				_MESSAGE("[%s] %s = %0.2f ", (*itSection).c_str(), (*itKey).c_str(), GetValue<double>(*itSection, *itKey, 0.0));
+				DBG_VMESSAGE("[%s] %s = %0.2f ", (*itSection).c_str(), (*itKey).c_str(), GetValue<double>(*itSection, *itKey, 0.0));
 		}
 #endif
 	}
@@ -58,9 +58,7 @@ const std::string INIFile::GetFileName(void)
 
 		iniFilePath = RuntimeDir + "Data\\SKSE\\Plugins\\";
 		iniFilePath += INI_FILE;
-#if _DEBUG
-		_MESSAGE("INI file at %s", iniFilePath.c_str());
-#endif
+		DBG_MESSAGE("INI file at %s", iniFilePath.c_str());
 	}
 	return iniFilePath.c_str();
 }
@@ -99,9 +97,7 @@ double INIFile::GetRadius(PrimaryType first)
 	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
 	static const double FEET_PER_DISTANCE_UNIT(0.046875);
 	const double setting(GetSetting(first, SecondaryType::config, "RadiusFeet"));
-#if _DEBUG
-	_MESSAGE("Search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
-#endif
+	DBG_VMESSAGE("Search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
 	return setting / FEET_PER_DISTANCE_UNIT;
 }
 
@@ -110,9 +106,7 @@ double INIFile::GetIndoorsRadius(PrimaryType first)
 	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
 	static const double FEET_PER_DISTANCE_UNIT(0.046875);
 	const double setting(GetSetting(first, SecondaryType::config, "IndoorsRadiusFeet"));
-#if _DEBUG
-	_MESSAGE("Indoors search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
-#endif
+	DBG_VMESSAGE("Indoors search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
 	return setting / FEET_PER_DISTANCE_UNIT;
 }
 

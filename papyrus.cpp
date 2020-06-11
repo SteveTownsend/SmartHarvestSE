@@ -1,7 +1,5 @@
 #include "PrecompiledHeaders.h"
 
-#include "papyrus.h"
-
 #include "IHasValueWeight.h"
 #include "tasks.h"
 #include "basketfile.h"
@@ -44,29 +42,12 @@ namespace
 	}
 }
 
-bool Replace(std::string& str, const std::string& target, const std::string& replacement)
-{
-	if (str.empty() || target.empty())
-		return false;
-
-	bool result = false;
-	std::string::size_type pos = 0;
-	while ((pos = str.find(target, pos)) != std::string::npos)
-	{
-		if (!result)
-			result = true;
-		str.replace(pos, target.length(), replacement);
-		pos += replacement.length();
-	}
-	return result;
-}
-
 namespace papyrus
 {
 	// available in release build, but typically unused
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		_MESSAGE("%s", str);
+		DBG_MESSAGE("%s", str);
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -81,19 +62,12 @@ namespace papyrus
 		return RE::BSFixedString(VersionInfo::Instance().GetPluginVersionString());
 	}
 
-	RE::BSFixedString GetTextFormID(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
-	{
-		if (!thisForm)
-			return nullptr;
-		return ::ToStringID(thisForm->formID).c_str();
-	}
-
 	RE::BSFixedString GetTextObjectType(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
 	{
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = ClassifyType(thisForm, true);
+		ObjectType objType = GetBaseFormObjectType(thisForm, true);
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 
@@ -105,7 +79,7 @@ namespace papyrus
 	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag* base, SInt32 objectNumber)
 	{
 		RE::BSFixedString result;
-		std::string str = GetObjectTypeName(objectNumber);
+		std::string str = GetObjectTypeName(ObjectType(objectNumber));
 		if (str.empty() || str.c_str() == "unknown")
 			return result;
 		else
@@ -135,9 +109,7 @@ namespace papyrus
 		::ToLower(str);
 
 		float result(static_cast<float>(ini->GetSetting(first, second, str.c_str())));
-#if _DEBUG
-		_DMESSAGE("Config setting %d/%d/%s = %f", first, second, str.c_str(), result);
-#endif
+		DBG_VMESSAGE("Config setting %d/%d/%s = %f", first, second, str.c_str(), result);
 		return result;
 	}
 
@@ -150,7 +122,7 @@ namespace papyrus
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return 0.0;
 
-		std::string key = GetObjectTypeName(index);
+		std::string key = GetObjectTypeName(ObjectType(index));
 		::ToLower(key);
 		// constrain INI values to sensible values
 		float value(0.0f);
@@ -183,9 +155,7 @@ namespace papyrus
 				value = static_cast<float>(tmp_value);
 			}
 		}
-#if _DEBUG
-		_DMESSAGE("Config setting %d/%d/%s = %f", first, second, key.c_str(), value);
-#endif
+		DBG_VMESSAGE("Config setting %d/%d/%s = %f", first, second, key.c_str(), value);
 		return value;
 	}
 
@@ -216,7 +186,7 @@ namespace papyrus
 		SInt32 index(0);
 		for (auto tmp_value : value_arr)
 		{
-			std::string key = GetObjectTypeName(index);
+			std::string key = GetObjectTypeName(ObjectType(index));
 			::ToLower(key);
 			ini->PutSetting(first, second, key.c_str(), static_cast<double>(tmp_value));
 			++index;
@@ -239,9 +209,7 @@ namespace papyrus
 		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->LoadFile())
 		{
-#if _DEBUG
-			_MESSAGE("LoadFile error");
-#endif
+			REL_ERROR("LoadFile error");
 		}
 	}
 
@@ -257,16 +225,12 @@ namespace papyrus
 
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
-#if _DEBUG
-		_MESSAGE("Reference Search enabled");
-#endif
+		DBG_MESSAGE("Reference Search enabled");
 		SearchTask::Allow();
 	}
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
-#if _DEBUG
-		_MESSAGE("Reference Search disabled");
-#endif
+		DBG_MESSAGE("Reference Search disabled");
 		SearchTask::Disallow();
 	}
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
@@ -295,11 +259,6 @@ namespace papyrus
 	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
 	{
 		return SearchTask::UnlockHarvest(refr, isSilent);
-	}
-
-	bool BlockReference(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
-	{
-		return DataCase::GetInstance()->BlockReference(refr);
 	}
 
 	void UnblockEverything(RE::StaticFunctionTag* base)
@@ -342,9 +301,7 @@ namespace papyrus
 		std::ostringstream formIDStr;
 		formIDStr << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<RE::FormID>(formID);
 		std::string result(formIDStr.str());
-#if _DEBUG
-		_MESSAGE("FormID 0x%08x mapped to %s", formID, result.c_str());
-#endif
+		DBG_VMESSAGE("FormID 0x%08x mapped to %s", formID, result.c_str());
 		return RE::BSFixedString(result.c_str());
 	}
 
@@ -383,54 +340,77 @@ namespace papyrus
 		}
 		return result.c_str();
 	}
-}
 
-bool papyrus::RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
-{
-	a_vm->RegisterFunction("DebugTrace", SHSE_NAME, papyrus::DebugTrace);
-	a_vm->RegisterFunction("GetPluginName", SHSE_NAME, papyrus::GetPluginName);
-	a_vm->RegisterFunction("GetPluginVersion", SHSE_NAME, papyrus::GetPluginVersion);
-	a_vm->RegisterFunction("GetTextFormID", SHSE_NAME, papyrus::GetTextFormID);
-	a_vm->RegisterFunction("GetTextObjectType", SHSE_NAME, papyrus::GetTextObjectType);
+	bool CollectionsInUse(RE::StaticFunctionTag* base)
+	{
+		return CollectionManager::Instance().IsReady();
+	}
 
-	a_vm->RegisterFunction("UnlockHarvest", SHSE_NAME, papyrus::UnlockHarvest);
-	a_vm->RegisterFunction("BlockReference", SHSE_NAME, papyrus::BlockReference);
-	a_vm->RegisterFunction("UnblockEverything", SHSE_NAME, papyrus::UnblockEverything);
+	void FlushAddedItems(RE::StaticFunctionTag* base, std::vector<int> formIDs, std::vector<int> objectTypes, const int itemCount)
+	{
+		std::vector<std::pair<RE::FormID, ObjectType>> looted;
+		looted.reserve(itemCount);
+		auto formID(formIDs.cbegin());
+		auto objectType(objectTypes.cbegin());
+		int current(0);
+		while (current < itemCount)
+		{
+			looted.emplace_back(RE::FormID(*formID), ObjectType(*objectType));
+			++current;
+			++formID;
+			++objectType;
+		}
+		CollectionManager::Instance().EnqueueAddedItems(looted);
+	}
 
-	a_vm->RegisterFunction("GetSetting", SHSE_NAME, papyrus::GetSetting);
-	a_vm->RegisterFunction("GetSettingToObjectArrayEntry", SHSE_NAME, papyrus::GetSettingToObjectArrayEntry);
-	a_vm->RegisterFunction("PutSetting", SHSE_NAME, papyrus::PutSetting);
-	a_vm->RegisterFunction("PutSettingObjectArray", SHSE_NAME, papyrus::PutSettingObjectArray);
+	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
+	{
+		a_vm->RegisterFunction("DebugTrace", SHSE_PROXY, papyrus::DebugTrace);
+		a_vm->RegisterFunction("GetPluginName", SHSE_PROXY, papyrus::GetPluginName);
+		a_vm->RegisterFunction("GetPluginVersion", SHSE_PROXY, papyrus::GetPluginVersion);
+		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
-	a_vm->RegisterFunction("GetObjectTypeNameByType", SHSE_NAME, papyrus::GetObjectTypeNameByType);
-	a_vm->RegisterFunction("GetObjectTypeByName", SHSE_NAME, papyrus::GetObjectTypeByName);
-	a_vm->RegisterFunction("GetResourceTypeByName", SHSE_NAME, papyrus::GetResourceTypeByName);
+		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
+		a_vm->RegisterFunction("UnblockEverything", SHSE_PROXY, papyrus::UnblockEverything);
 
-	a_vm->RegisterFunction("Reconfigure", SHSE_NAME, papyrus::Reconfigure);
-	a_vm->RegisterFunction("LoadIniFile", SHSE_NAME, papyrus::LoadIniFile);
-	a_vm->RegisterFunction("SaveIniFile", SHSE_NAME, papyrus::SaveIniFile);
+		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
+		a_vm->RegisterFunction("GetSettingToObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingToObjectArrayEntry);
+		a_vm->RegisterFunction("PutSetting", SHSE_PROXY, papyrus::PutSetting);
+		a_vm->RegisterFunction("PutSettingObjectArray", SHSE_PROXY, papyrus::PutSettingObjectArray);
 
-	a_vm->RegisterFunction("SetIngredientForCritter", SHSE_NAME, papyrus::SetIngredientForCritter);
+		a_vm->RegisterFunction("GetObjectTypeNameByType", SHSE_PROXY, papyrus::GetObjectTypeNameByType);
+		a_vm->RegisterFunction("GetObjectTypeByName", SHSE_PROXY, papyrus::GetObjectTypeByName);
+		a_vm->RegisterFunction("GetResourceTypeByName", SHSE_PROXY, papyrus::GetResourceTypeByName);
 
-	a_vm->RegisterFunction("SyncWhiteListWithPlugin", SHSE_NAME, papyrus::SyncWhiteList);
-	a_vm->RegisterFunction("SaveWhiteList", SHSE_NAME, papyrus::SaveWhiteList);
-	a_vm->RegisterFunction("LoadWhiteList", SHSE_NAME, papyrus::LoadWhiteList);
+		a_vm->RegisterFunction("Reconfigure", SHSE_PROXY, papyrus::Reconfigure);
+		a_vm->RegisterFunction("LoadIniFile", SHSE_PROXY, papyrus::LoadIniFile);
+		a_vm->RegisterFunction("SaveIniFile", SHSE_PROXY, papyrus::SaveIniFile);
 
-	a_vm->RegisterFunction("ClearPluginBlackList", SHSE_NAME, papyrus::ClearBlackList);
-	a_vm->RegisterFunction("MergePluginBlackList", SHSE_NAME, papyrus::MergeBlackList);
-	a_vm->RegisterFunction("SaveBlackList", SHSE_NAME, papyrus::SaveBlackList);
-	a_vm->RegisterFunction("LoadBlackList", SHSE_NAME, papyrus::LoadBlackList);
-	a_vm->RegisterFunction("PrintFormID", SHSE_NAME, papyrus::PrintFormID);
+		a_vm->RegisterFunction("SetIngredientForCritter", SHSE_PROXY, papyrus::SetIngredientForCritter);
 
-	a_vm->RegisterFunction("AllowSearch", SHSE_NAME, papyrus::AllowSearch);
-	a_vm->RegisterFunction("DisallowSearch", SHSE_NAME, papyrus::DisallowSearch);
-	a_vm->RegisterFunction("IsSearchAllowed", SHSE_NAME, papyrus::IsSearchAllowed);
-	a_vm->RegisterFunction("AddLocationToList", SHSE_NAME, papyrus::AddLocationToList);
-	a_vm->RegisterFunction("DropLocationFromList", SHSE_NAME, papyrus::DropLocationFromList);
+		a_vm->RegisterFunction("SyncWhiteListWithPlugin", SHSE_PROXY, papyrus::SyncWhiteList);
+		a_vm->RegisterFunction("SaveWhiteList", SHSE_PROXY, papyrus::SaveWhiteList);
+		a_vm->RegisterFunction("LoadWhiteList", SHSE_PROXY, papyrus::LoadWhiteList);
 
-	a_vm->RegisterFunction("GetTranslation", SHSE_NAME, papyrus::GetTranslation);
-	a_vm->RegisterFunction("Replace", SHSE_NAME, papyrus::Replace);
-	a_vm->RegisterFunction("ReplaceArray", SHSE_NAME, papyrus::ReplaceArray);
+		a_vm->RegisterFunction("ClearPluginBlackList", SHSE_PROXY, papyrus::ClearBlackList);
+		a_vm->RegisterFunction("MergePluginBlackList", SHSE_PROXY, papyrus::MergeBlackList);
+		a_vm->RegisterFunction("SaveBlackList", SHSE_PROXY, papyrus::SaveBlackList);
+		a_vm->RegisterFunction("LoadBlackList", SHSE_PROXY, papyrus::LoadBlackList);
+		a_vm->RegisterFunction("PrintFormID", SHSE_PROXY, papyrus::PrintFormID);
 
-	return true;
+		a_vm->RegisterFunction("AllowSearch", SHSE_PROXY, papyrus::AllowSearch);
+		a_vm->RegisterFunction("DisallowSearch", SHSE_PROXY, papyrus::DisallowSearch);
+		a_vm->RegisterFunction("IsSearchAllowed", SHSE_PROXY, papyrus::IsSearchAllowed);
+		a_vm->RegisterFunction("AddLocationToList", SHSE_PROXY, papyrus::AddLocationToList);
+		a_vm->RegisterFunction("DropLocationFromList", SHSE_PROXY, papyrus::DropLocationFromList);
+
+		a_vm->RegisterFunction("GetTranslation", SHSE_PROXY, papyrus::GetTranslation);
+		a_vm->RegisterFunction("Replace", SHSE_PROXY, papyrus::Replace);
+		a_vm->RegisterFunction("ReplaceArray", SHSE_PROXY, papyrus::ReplaceArray);
+
+		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
+		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
+
+		return true;
+	}
 }

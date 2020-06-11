@@ -103,7 +103,7 @@ class SearchTask
 public:
 	SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType);
 
-	static void Init(void);
+	static bool Init(void);
 	void Run();
 	static void UnlockAll();
 
@@ -141,14 +141,15 @@ public:
 
 	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
-	static void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount);
+	static void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType);
+	static void TriggerFlushAddedItems(void);
 
 	static bool IsLocationExcluded();
 	bool IsLootingForbidden();
 	bool IsBookGlowable() const;
 
 	static void MarkDynamicContainerLooted(RE::TESObjectREFR* refr);
-	static RE::FormID IsLootedDynamicContainer(RE::TESObjectREFR* refr);
+	static RE::FormID LootedDynamicContainerFormID(RE::TESObjectREFR* refr);
 	static void ResetLootedDynamicContainers();
 
 	static void MarkContainerLooted(RE::TESObjectREFR* refr);
@@ -161,7 +162,6 @@ public:
 
 	static INIFile* m_ini;
 	static RE::BGSRefAlias* m_eventTarget;
-	static bool firstTime;
 
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
@@ -215,6 +215,7 @@ public:
 	static const int ActorReallyDeadWaitIntervalSecondsLong;
 private:
 	static std::vector<RE::TESObjectREFR*> m_refs;
+	static bool m_pluginOK;
 
 	GlowReason m_glowReason;
 	inline void UpdateGlowReason(const GlowReason glowReason)
@@ -224,7 +225,7 @@ private:
 	}
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	static void ScanThread();
-	static bool IsConcealed(RE::MagicTarget* target);
+	static bool IsMagicallyConcealed(RE::MagicTarget* target);
 	static bool IsPopulationCenterExcluded();
 
 	static std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
