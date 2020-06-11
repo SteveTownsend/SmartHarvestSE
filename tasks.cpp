@@ -109,7 +109,8 @@ bool SearchTask::IsLootingForbidden()
 
 		if (isForbidden)
 		{
-			DBG_MESSAGE("Skip owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			DBG_MESSAGE("Block owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			DataCase::GetInstance()->BlockReference(m_candidate);
 		}
 	}
 	return isForbidden;
@@ -709,7 +710,7 @@ void SearchTask::ScanThread()
 		double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 			m_playerCell && m_playerCell->IsInteriorCell() ?  "IndoorsIntervalSeconds" : "IntervalSeconds"));
 		delay = std::max(MinDelay, delay);
-		if (UIState::Instance().OKForSearch() && !IsAllowed())
+		if (!UIState::Instance().OKForSearch() || !IsAllowed())
 		{
 			DBG_MESSAGE("search disallowed or game loading or menus open");
 		}
