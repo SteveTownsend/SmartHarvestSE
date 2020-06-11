@@ -7,11 +7,12 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SourceRoot);$(SourceRoot)\CommonLibSSE\include;$(SourceRoot)skse64_2_00_17\src;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)xbyak;$(SourceRoot)json\include;$(SourceRoot)json\benchmarks\thirdparty\benchmark\include;$(SourceRoot)\json-schema-validator\src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SourceRoot);$(SourceRoot)gsl\include;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)skse64_2_00_17\src;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)xbyak;$(SourceRoot)json\include;$(SourceRoot)json\benchmarks\thirdparty\benchmark\include;$(SourceRoot)\json-schema-validator\src</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/Wv:19.12 %(AdditionalOptions)</AdditionalOptions>
       <WarningLevel>Level4</WarningLevel>
       <DisableSpecificWarnings>4668;4820</DisableSpecificWarnings>
+      <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

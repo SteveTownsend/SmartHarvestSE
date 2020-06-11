@@ -36,8 +36,6 @@ DataCase::DataCase()
 {
 }
 
-#include "strConv.h"
-
 void DataCase::GetTranslationData()
 {
 	RE::Setting	* setting = RE::GetINISetting("sLanguage:General");
@@ -109,8 +107,8 @@ void DataCase::GetTranslationData()
 		std::wstring translation(buf.c_str() + offset, buf.c_str() + buf.length() - whitespace);
 
 		// convert Unicode to UTF8 for UI usage
-		std::string keyS = wide_to_utf8(key);
-		std::string translationS = wide_to_utf8(translation);
+		std::string keyS = StringUtils::FromUnicode(key);
+		std::string translationS = StringUtils::FromUnicode(translation);
 
 		translations[keyS] = translationS;
 		DBG_VMESSAGE("Translation entry: %s -> %s", keyS.c_str(), translationS.c_str());
@@ -660,7 +658,8 @@ void DataCase::ListsClear(const bool gameReload)
 	{
 		ClearReferenceBlacklist();
 	}
-	// reset blocked references, reseed with off-limits containers
+	// reset blocked Base Objects and REFRs, reseed with off-limits containers
+	ResetBlockedForms();
 	ClearBlockedReferences(gameReload);
 	BlockOffLimitsContainers();
 	ForgetLockedContainers();
@@ -770,21 +769,20 @@ void DataCase::CategorizeLootables()
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
 {
-	const RE::TESObjectWEAP* weapon = form->As<RE::TESObjectWEAP>();
-	if (weapon)
-	{
-		return weapon->formEnchanting ? ObjectType::enchantedWeapon : ObjectType::weapon;
-	}
-	const RE::TESObjectARMO* armor = form->As<RE::TESObjectARMO>();
-	if (armor)
+	const RE::TESEnchantableForm* enchantable(form->As<RE::TESEnchantableForm>());
+	if (enchantable && enchantable->formEnchanting)
 	{
 		if (rawType == ObjectType::jewelry)
 		{
-			return armor->formEnchanting ? ObjectType::enchantedJewelry : ObjectType::jewelry;
+			return ObjectType::enchantedJewelry;
+		}
+		else if (rawType == ObjectType::weapon)
+		{
+			return ObjectType::enchantedWeapon;
 		}
 		else
 		{
-			return armor->formEnchanting ? ObjectType::enchantedArmor: ObjectType::armor;
+			return ObjectType::enchantedArmor;
 		}
 	}
 	return rawType;

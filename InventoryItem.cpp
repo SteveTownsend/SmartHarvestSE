@@ -88,6 +88,6 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	else
 	{
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
-		SearchTask::TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
+		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
 	}
 }

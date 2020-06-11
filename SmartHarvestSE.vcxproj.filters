@@ -91,6 +91,12 @@
     <ClCompile Include="Collection.cpp">
       <Filter>Collections</Filter>
     </ClCompile>
+    <ClCompile Include="UIState.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="EventPublisher.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
@@ -189,6 +195,15 @@
       <Filter>Collections</Filter>
     </ClInclude>
     <ClInclude Include="LogWrapper.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="UIState.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="EventPublisher.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="BoundedList.h">
       <Filter>Utilities</Filter>
     </ClInclude>
   </ItemGroup>

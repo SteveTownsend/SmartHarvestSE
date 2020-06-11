@@ -188,6 +188,7 @@ namespace papyrus
 		{
 			std::string key = GetObjectTypeName(ObjectType(index));
 			::ToLower(key);
+			DBG_VMESSAGE("Put config setting %d/%d/%s = %f", first, second, key.c_str(), tmp_value);
 			ini->PutSetting(first, second, key.c_str(), static_cast<double>(tmp_value));
 			++index;
 		}

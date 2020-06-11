@@ -183,6 +183,7 @@
     <ClCompile Include="CollectionManager.cpp" />
     <ClCompile Include="Condition.cpp" />
     <ClCompile Include="CollectionFactory.cpp" />
+    <ClCompile Include="EventPublisher.cpp" />
     <ClCompile Include="Exception.cpp" />
     <ClCompile Include="ExtraDataListHelper.cpp" />
     <ClCompile Include="basketfile.cpp" />
@@ -219,16 +220,19 @@
     <ClCompile Include="objects.cpp" />
     <ClCompile Include="papyrus.cpp" />
     <ClCompile Include="ArmorHelper.cpp" />
+    <ClCompile Include="UIState.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="WeaponHelper.cpp" />
     <ClCompile Include="version.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AlchemyItemHelper.h" />
+    <ClInclude Include="BoundedList.h" />
     <ClInclude Include="Collection.h" />
     <ClInclude Include="Condition.h" />
     <ClInclude Include="CollectionManager.h" />
     <ClInclude Include="CollectionFactory.h" />
+    <ClInclude Include="EventPublisher.h" />
     <ClInclude Include="Exception.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
     <ClInclude Include="basketfile.h" />
@@ -255,6 +259,7 @@
     <ClInclude Include="objects.h" />
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="ArmorHelper.h" />
+    <ClInclude Include="UIState.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="WeaponHelper.h" />
     <ClInclude Include="version.h" />
