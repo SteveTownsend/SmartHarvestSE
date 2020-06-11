@@ -10,6 +10,7 @@
 #include "CommonLibSSE/include/SKSE/RegistrationSet.h"
 
 #include "CommonLibSSE/include/RE/Skyrim.h"
+#include "LogWrapper.h"
 
 #include "nlohmann/json.hpp"
 #include "nlohmann/json-schema.hpp"
@@ -28,7 +29,11 @@
 #include "IHasValueWeight.h"
 #include "objects.h"
 #include "FormHelper.h"
+#include "papyrus.h"
 
+#include "Exception.h"
 #include "LoadOrder.h"
-#include "ConditionTreeFactory.h"
+#include "Condition.h"
+#include "Collection.h"
+#include "CollectionFactory.h"
 #include "CollectionManager.h"

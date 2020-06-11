@@ -3,7 +3,6 @@
 #include "tasks.h"
 #include "basketfile.h"
 #include "debugs.h"
-#include "papyrus.h"
 #include "PlayerCellHelper.h"
 #include "LogStackWalker.h"
 
@@ -11,7 +10,6 @@
 #include <thread>
 
 INIFile* SearchTask::m_ini = nullptr;
-RE::BGSRefAlias* SearchTask::m_eventTarget = nullptr;
 
 RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
@@ -19,103 +17,6 @@ std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono
 // special object glow - not too long, in case we loot or move away
 const int SearchTask::ObjectGlowDurationLootedSeconds = 2;
 const int SearchTask::ObjectGlowDurationSpecialSeconds = 10;
-
-SKSE::RegistrationSet<RE::TESObjectREFR*> onGetCritterIngredient("OnGetCritterIngredient");
-SKSE::RegistrationSet<int> onCarryWeightDelta("OnCarryWeightDelta");
-SKSE::RegistrationSet<> onResetCarryWeight("OnResetCarryWeight");
-SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool> onHarvest("OnHarvest");
-SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool> onMining("OnMining");
-SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int> onLootFromNPC("OnLootFromNPC");
-SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> onObjectGlow("OnObjectGlow");
-
-RE::BGSRefAlias* GetScriptTarget(const char* espName, UInt32 questID)
-{
-	static RE::TESQuest* quest = nullptr;
-	static RE::BGSRefAlias* alias = nullptr;
-#if _DEBUG
-	static bool listed(false);
-#endif
-	if (!quest)
-	{
-		UInt32 formID = 0;
-		std::optional<UInt8> idx = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(espName);
-		if (idx.has_value())
-		{
-			formID = (idx.value() << 24) | questID;
-#if _DEBUG
-			_DMESSAGE("Got formID for questID %08.2x", questID);
-#endif
-		}
-#if _DEBUG
-		else if (!listed)
-		{
-			for (const auto& nextFile : RE::TESDataHandler::GetSingleton()->compiledFileCollection.files)
-			{
-				_DMESSAGE("Mod loaded %s", &nextFile->fileName);
-			}
-			listed = true;
-		}
-#endif
-		if (formID != 0)
-		{
-			RE::TESForm* questForm = RE::TESForm::LookupByID(formID);
-#if _DEBUG
-			_DMESSAGE("Got Base Form %s", questForm ? questForm->GetFormEditorID() : "nullptr");
-#endif
-			quest = questForm ? questForm->As<RE::TESQuest>() : nullptr;
-#if _DEBUG
-			_DMESSAGE("Got Quest Form %s", quest ? quest->GetFormEditorID() : "nullptr");
-#endif
-		}
-	}
-	if (quest && quest->IsRunning())
-	{
-#if _DEBUG
-		_DMESSAGE("Quest %s is running", quest->GetFormEditorID());
-#endif
-		RE::BGSBaseAlias* baseAlias(quest->aliases[0]);
-		if (!baseAlias)
-		{
-#if _DEBUG
-			_DMESSAGE("Quest has no alias at index 0");
-#endif
-			return nullptr;
-		}
-
-		alias = static_cast<RE::BGSRefAlias*>(baseAlias);
-		if (!alias)
-		{
-#if _DEBUG
-			_DMESSAGE("Quest is not type BGSRefAlias");
-#endif
-			return nullptr;
-		}
-#if _DEBUG
-		_MESSAGE("Got BGSRefAlias for Mod's Quest");
-#endif
-	}
-	return alias;
-}
-
-bool SearchTask::GoodToGo()
-{
-	if (!m_eventTarget)
-	{
-		m_eventTarget = GetScriptTarget(MODNAME, QUEST_ID);
-		// register the events
-		if (m_eventTarget)
-		{
-			onGetCritterIngredient.Register(m_eventTarget);
-			onCarryWeightDelta.Register(m_eventTarget);
-			onResetCarryWeight.Register(m_eventTarget);
-			onObjectGlow.Register(m_eventTarget);
-			onHarvest.Register(m_eventTarget);
-			onMining.Register(m_eventTarget);
-			onLootFromNPC.Register(m_eventTarget);
-		}
-	}
-	return m_eventTarget != nullptr;
-}
 
 SearchTask::SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType)
 	: m_candidate(candidate), m_targetType(targetType), m_glowReason(GlowReason::None)
@@ -128,9 +29,7 @@ RE::TESForm* GetCellOwner(RE::TESObjectCELL* cell)
 	{
 		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
 		{
-#if _DEBUG
-			_MESSAGE("GetCellOwner Hit %08x", reinterpret_cast<RE::ExtraOwnership&>(extraData).owner->formID);
-#endif
+			DBG_VMESSAGE("GetCellOwner Hit %08x", reinterpret_cast<RE::ExtraOwnership&>(extraData).owner->formID);
 			return reinterpret_cast<RE::ExtraOwnership&>(extraData).owner;
 		}
 	}
@@ -178,15 +77,13 @@ bool SearchTask::IsLootingForbidden()
 		// check up to three ownership conditions depending on config
 		bool playerOwned(TESObjectREFRHelper(m_candidate).IsPlayerOwned());
 		bool lootingIsCrime(m_candidate->IsOffLimits());
-		if (m_playerCellSelfOwned || playerOwned)
+		if (!lootingIsCrime && (m_playerCellSelfOwned || playerOwned))
 		{
 			// can configure to not loot my own belongings even though it's always legal
 			if (!IsSpecialObjectLootable(m_belongingsCheck))
 			{
-#if _DEBUG
-				_DMESSAGE("Player home or player-owned, looting belongings disallowed: %s/0x%08x",
+				DBG_VMESSAGE("Player home or player-owned, looting belongings disallowed: %s/0x%08x",
 					m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-#endif
 				isForbidden = true;
 				// Glow if configured
 				if (m_belongingsCheck == SpecialObjectHandling::GlowTarget)
@@ -196,29 +93,23 @@ bool SearchTask::IsLootingForbidden()
 		// if restricted to law-abiding citizenship, check if OK to loot
 		else if (m_crimeCheck > 0)
 		{
-			if (m_candidate->IsOffLimits())
+			if (lootingIsCrime)
 			{
 				// never commit a crime unless crimeCheck is 0
-#if _DEBUG
-				_DMESSAGE("Crime to loot REFR, cannot loot");
-#endif
+				DBG_VMESSAGE("Crime to loot REFR, cannot loot");
 				isForbidden = true;
 			}
-			else if (m_crimeCheck == 2 && m_candidate->GetOwner() != nullptr)
+			else if (m_crimeCheck == 2 && !playerOwned && m_candidate->GetOwner() != nullptr)
 			{
-				// owner cannot be player by construction, disallow
-#if _DEBUG
-				_DMESSAGE("REFR is owned, cannot loot");
-#endif
+				// owner is not player, disallow
+				DBG_VMESSAGE("REFR is owned, cannot loot");
 				isForbidden = true;
 			}
 		}
 
 		if (isForbidden)
 		{
-#if _DEBUG
-			_MESSAGE("Skip owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-#endif
+			DBG_MESSAGE("Skip owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 		}
 	}
 	return isForbidden;
@@ -245,13 +136,13 @@ bool SearchTask::IsBookGlowable() const
 bool SearchTask::HasDynamicData(RE::TESObjectREFR* refr)
 {
 	// do not reregister known REFR
-	if (IsLootedDynamicContainer(refr))
+	if (LootedDynamicContainerFormID(refr) != InvalidForm)
 		return true;
 
 	// risk exists if REFR or its concrete object is dynamic
 	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
 	{
-		_DMESSAGE("dynamic REFR 0x%08x or base 0x%08x for %s", refr->GetFormID(),
+		DBG_VMESSAGE("dynamic REFR 0x%08x or base 0x%08x for %s", refr->GetFormID(),
 			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
 		// record looting so we don't rescan
 		MarkDynamicContainerLooted(refr);
@@ -268,14 +159,14 @@ void SearchTask::MarkDynamicContainerLooted(RE::TESObjectREFR* refr)
 	m_lootedDynamicContainers.insert(std::make_pair(refr, refr->GetFormID()));
 }
 
-RE::FormID SearchTask::IsLootedDynamicContainer(RE::TESObjectREFR* refr)
+RE::FormID SearchTask::LootedDynamicContainerFormID(RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
 	RecursiveLockGuard guard(m_lock);
 	if (m_lootedDynamicContainers.count(refr) > 0)
 		return m_lootedDynamicContainers[refr];
-	return RE::FormID(0);
+	return InvalidForm;
 }
 
 // forget about dynamic containers we looted when cell changes. This is more aggressive than static container looting
@@ -318,16 +209,15 @@ void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 	m_actorApparentTimeOfDeath.emplace_back(std::make_pair(refr, std::chrono::high_resolution_clock::now()));
 	// record looting so we don't rescan
 	MarkContainerLooted(refr);
-#if _DEBUG
-	_DMESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
-#endif
+	DBG_MESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
 }
 
 std::deque<std::pair<RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>>> SearchTask::m_actorApparentTimeOfDeath;
 const int SearchTask::ActorReallyDeadWaitIntervalSeconds = 3;
 const int SearchTask::ActorReallyDeadWaitIntervalSecondsLong = 10;
 
-void SearchTask::ReleaseReliablyDeadActors()
+// return false iff output list is full
+bool SearchTask::ReleaseReliablyDeadActors(BoundedList<RE::TESObjectREFR*>& refs)
 {
 	RecursiveLockGuard guard(m_lock);
 	const int interval(m_perksAddLeveledItemsOnDeath ? ActorReallyDeadWaitIntervalSecondsLong : ActorReallyDeadWaitIntervalSeconds);
@@ -338,19 +228,17 @@ void SearchTask::ReleaseReliablyDeadActors()
 		RE::TESObjectREFR* refr(m_actorApparentTimeOfDeath.front().first);
 		if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID()))
 		{
-#if _DEBUG
-			_DMESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
-#endif
+			DBG_MESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
 		}
 		else
 		{
-#if _DEBUG
-			_DMESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
-#endif
+			DBG_MESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
 		}
-		m_refs.push_back(refr);
 		m_actorApparentTimeOfDeath.pop_front();
+		if (!refs.Add(refr))
+			return false;
 	}
+	return true;
 }
 
 void SearchTask::Run()
@@ -366,31 +254,25 @@ void SearchTask::Run()
 		RE::TESForm* lootable(DataCase::GetInstance()->GetLootableForProducer(m_candidate->GetBaseObject()));
 		if (lootable)
 		{
-#if _DEBUG
-			_DMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
+			DBG_VMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
 				lootable->GetName(), lootable->formID);
-#endif
 			refrEx.SetLootable(lootable);
 		}
 		else if (objType == ObjectType::critter)
 		{
 			// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
 			// only trigger if not already pending
-#if _DEBUG
-			_DMESSAGE("resolve critter %s/0x%08x to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-#endif
+			DBG_VMESSAGE("resolve critter %s/0x%08x to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 			if (DataCase::GetInstance()->SetLootableForProducer(m_candidate->GetBaseObject(), nullptr))
 			{
-				TriggerGetCritterIngredient();
+				EventPublisher::Instance().TriggerGetCritterIngredient(m_candidate);
 			}
 			return;
 		}
 
 		if (objType == ObjectType::unknown)
 		{
-#if _DEBUG
-			_DMESSAGE("blacklist objType == ObjectType::unknown for 0x%08x", m_candidate->GetFormID());
-#endif
+			DBG_VMESSAGE("blacklist objType == ObjectType::unknown for 0x%08x", m_candidate->GetFormID());
 			data->BlacklistReference(m_candidate);
 			return;
 		}
@@ -404,33 +286,26 @@ void SearchTask::Run()
 			if (!manualLootText.empty())
 			{
 				notificationText = manualLootText;
-				Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
+				StringUtils::Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
 				if (!notificationText.empty())
 				{
 					RE::DebugNotification(notificationText.c_str());
 				}
 			}
-#if _DEBUG
-			_DMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
-#endif
+			DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
 			data->BlockReference(m_candidate);
 			return;
 		}
 
 		if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, m_candidate->GetBaseObject()))
 		{
-#if _DEBUG
-			_DMESSAGE("record REFR base form 0x%08x in BlackList", m_candidate->GetBaseObject()->GetFormID());
-#endif
+			DBG_VMESSAGE("register REFR base form 0x%08x in BlackList", m_candidate->GetBaseObject()->GetFormID());
 			data->BlockForm(m_candidate->GetBaseObject());
 			return;
 		}
-
 #if _DEBUG
-		_MESSAGE("typeName  %s", typeName.c_str());
 		DumpReference(refrEx, typeName.c_str());
 #endif
-
 		// initially no glow - use synthetic value with highest precedence
 		m_glowReason = GlowReason::None;
 		bool skipLooting(false);
@@ -440,14 +315,10 @@ void SearchTask::Run()
 			SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
 		if (refrEx.IsQuestItem(needsFullQuestFlags))
 		{
-#if _DEBUG
-			_DMESSAGE("Quest Item 0x%08x", m_candidate->GetBaseObject()->formID);
-#endif
+			DBG_VMESSAGE("Quest Item 0x%08x", m_candidate->GetBaseObject()->formID);
 			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
-#if _DEBUG
-				_DMESSAGE("glow quest object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-#endif
+				DBG_VMESSAGE("glow quest object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
@@ -456,9 +327,7 @@ void SearchTask::Run()
 		// glow unread notes as they are often quest-related
 		else if (questObjectLoot == SpecialObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
 		{
-#if _DEBUG
-			_DMESSAGE("Glowable book 0x%08x", m_candidate->GetBaseObject()->formID);
-#endif
+			DBG_VMESSAGE("Glowable book 0x%08x", m_candidate->GetBaseObject()->formID);
 			UpdateGlowReason(GlowReason::SimpleTarget);
 		}
 
@@ -472,14 +341,12 @@ void SearchTask::Run()
 
 		if (m_glowReason != GlowReason::None)
 		{
-			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecialSeconds);
+			GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
 		}
 
 		if (IsLocationExcluded())
 		{
-#if _DEBUG
-			_DMESSAGE("Player location is excluded");
-#endif
+			DBG_VMESSAGE("Player location is excluded");
 			skipLooting = true;
 		}
 
@@ -487,29 +354,23 @@ void SearchTask::Run()
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
 		if (IsPopulationCenterExcluded() && !IsLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
 		{
-#if _DEBUG
-			_DMESSAGE("Player location is excluded as unpermitted population center");
-#endif
+			DBG_VMESSAGE("Player location is excluded as unpermitted population center");
 			skipLooting = true;
 		}
 
 		LootingType lootingType(LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str())));
 		if (objType == ObjectType::whitelist)
 		{
-			// LootBlockedActivatorswhitelisted objects are always looted silently
-#if _DEBUG
-			_MESSAGE("pick up REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
-#endif
+			// whitelisted objects are always looted silently
+			DBG_VMESSAGE("pick up REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
 			skipLooting = false;
 			lootingType = LootingType::LootAlwaysSilent;
 		}
 		else if (objType == ObjectType::blacklist)
 		{
 			// blacklisted objects are never looted
-#if _DEBUG
-			_MESSAGE("block blacklisted base %s/0x%08x for REFR 0x%08x",
+			DBG_VMESSAGE("block blacklisted base %s/0x%08x for REFR 0x%08x",
 				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
-#endif
 			data->BlockForm(m_candidate->GetBaseObject());
 			skipLooting = true;
 			lootingType = LootingType::LeaveBehind;
@@ -518,17 +379,13 @@ void SearchTask::Run()
 		{
 			if (lootingType == LootingType::LeaveBehind)
 			{
-#if _DEBUG
-				_MESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
-#endif
+				DBG_VMESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
 				data->BlockReference(m_candidate);
 				skipLooting = true;
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_candidate->GetBaseObject()).ValueWeightTooLowToLoot(m_ini))
 			{
-#if _DEBUG
-				_DMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
-#endif
+				DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
 				data->BlockForm(m_candidate->GetBaseObject());
 				skipLooting = true;
 			}
@@ -540,26 +397,32 @@ void SearchTask::Run()
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
-#if _DEBUG
-			_DMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_candidate->formID);
-#endif
+			DBG_VMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_candidate->formID);
 			data->BlockReference(m_candidate);
-			TriggerMining(data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
+			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
 		}
 		else
 		{
 			bool isSilent = !LootingRequiresNotification(lootingType);
-#if _DEBUG
-			_MESSAGE("Enqueue SmartHarvest event");
-#endif
+			DBG_VMESSAGE("Enqueue SmartHarvest event");
 			// don't let the backlog of messages get too large, it's about 1 per second
-			TriggerHarvest(objType, refrEx.GetItemCount(), isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify);
+			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
+			if (!LockHarvest(m_candidate, isSilent))
+				return;
+			ObjectType effectiveType(objType);
+			if (effectiveType == ObjectType::whitelist)
+			{
+				// find lootable type if whitelist were not a factor, for Harvest script
+				effectiveType = GetREFRObjectType(m_candidate, true);
+			}
+			EventPublisher::Instance().TriggerHarvest(m_candidate, effectiveType, refrEx.GetItemCount(),
+				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify);
 		}
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
+		DBG_MESSAGE("scanning container/body %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 #if _DEBUG
-		_DMESSAGE("scanning container/body %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 		DumpContainer(refrEx);
 #endif
 		bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0;
@@ -571,9 +434,7 @@ void SearchTask::Run()
 		if (lootableItems.empty())
 		{
 			// Nothing lootable here
-#if _DEBUG
-			_DMESSAGE("container %s/0x%08x is empty", m_candidate->GetName(), m_candidate->formID);
-#endif
+			DBG_MESSAGE("container %s/0x%08x is empty", m_candidate->GetName(), m_candidate->formID);
 			// record looting so we don't rescan
 			MarkContainerLooted(m_candidate);
 			return;
@@ -589,9 +450,7 @@ void SearchTask::Run()
 					SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "lockedChestLoot"));
 				if (lockedChestLoot == SpecialObjectHandling::GlowTarget)
 				{
-#if _DEBUG
-					_DMESSAGE("glow locked container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-#endif
+					DBG_VMESSAGE("glow locked container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::LockedContainer);
 				}
 
@@ -604,9 +463,7 @@ void SearchTask::Run()
 					SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "bossChestLoot"));
 				if (bossChestLoot == SpecialObjectHandling::GlowTarget)
 				{
-#if _DEBUG
-					_DMESSAGE("glow boss container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-#endif
+					DBG_VMESSAGE("glow boss container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::BossContainer);
 				}
 
@@ -620,9 +477,7 @@ void SearchTask::Run()
 				SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
 			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
-#if _DEBUG
-				_DMESSAGE("glow container with quest object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-#endif
+				DBG_VMESSAGE("glow container with quest object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
@@ -634,9 +489,7 @@ void SearchTask::Run()
 			SInt32 enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "enchantItemGlow"));
 			if (enchantItemGlow == 1)
 			{
-#if _DEBUG
-				_DMESSAGE("glow container with enchanted object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-#endif
+				DBG_VMESSAGE("glow container with enchanted object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
 		}
@@ -645,9 +498,7 @@ void SearchTask::Run()
 
 		if (IsLocationExcluded())
 		{
-#if _DEBUG
-			_DMESSAGE("Player location is excluded");
-#endif
+			DBG_VMESSAGE("Player location is excluded");
 			skipLooting = true;
 		}
 
@@ -655,26 +506,22 @@ void SearchTask::Run()
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
 		if (m_targetType != INIFile::SecondaryType::deadbodies && IsPopulationCenterExcluded())
 		{
-#if _DEBUG
-			_DMESSAGE("Player location is excluded as unpermitted population center");
-#endif
+			DBG_VMESSAGE("Player location is excluded as unpermitted population center");
 			skipLooting = true;
 		}
 
 		if (m_glowReason != GlowReason::None)
 		{
-			TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecialSeconds);
+			GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
 		}
 
-		// TODO if container has whitelisted items we will nonetheless skip, due to checks at the container level
+		// TODO if it contains whitelisted items we will nonetheless skip, due to checks at the container level
 		if (skipLooting)
 			return;
 
 		// when we get to the point where looting is confirmed, block the reference to
 		// avoid re-looting without a player cell or config change
-#if _DEBUG
-		_DMESSAGE("block looted container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-#endif
+		DBG_MESSAGE("block looted container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 		data->BlockReference(m_candidate);
 		// Build list of lootable targets with count and notification flag for each
 		std::vector<std::pair<InventoryItem, bool>> targets;
@@ -689,56 +536,44 @@ void SearchTask::Run()
 
 			if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, target))
 			{
-#if _DEBUG
-				_DMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
-#endif
+				DBG_VMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
 				data->BlockForm(target);
 				continue;
 			}
 
-			ObjectType objType = ClassifyType(itemEx.m_form);
+			ObjectType objType = targetItemInfo.LootObjectType();
 			std::string typeName = GetObjectTypeName(objType);
 
 			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
 			if (objType == ObjectType::whitelist)
 			{
 				// whitelisted objects are always looted silently
-#if _DEBUG
-				_MESSAGE("transfer whitelisted 0x%08x", target->formID);
-#endif
+				DBG_VMESSAGE("transfer whitelisted 0x%08x", target->formID);
 				lootingType = LootingType::LootAlwaysSilent;
 			}
 			else if (objType == ObjectType::blacklist)
 			{
 				// blacklisted objects are never looted
-#if _DEBUG
-				_MESSAGE("block blacklisted target %s/0x%08x", target->GetName(), target->GetFormID());
-#endif
+				DBG_VMESSAGE("block blacklisted target %s/0x%08x", target->GetName(), target->GetFormID());
 				data->BlockForm(target);
 				continue;
 			}
 			else if (lootingType == LootingType::LeaveBehind)
 			{
-#if _DEBUG
-				_DMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
-#endif
+				DBG_VMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
 				data->BlockForm(target);
 				continue;
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType) && itemEx.ValueWeightTooLowToLoot(m_ini))
 			{
-#if _DEBUG
-				_DMESSAGE("block - v/w excludes for 0x%08x", target->formID);
-#endif
+				DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
 				data->BlockForm(target);
 				continue;
 			}
 
 			targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
-#if _DEBUG
-			_DMESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetItemInfo.Count(),
+			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
-#endif
 		}
 
 		if (!targets.empty())
@@ -762,9 +597,83 @@ void SearchTask::Run()
 				}
 			}
 
-			TriggerContainerLootMany(targets, playContainerAnimation);
+			GetLootFromContainer(targets, playContainerAnimation);
 		}
 	}
+}
+
+void SearchTask::GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType)
+{
+	if (!m_candidate)
+		return;
+
+	// visual notification, if requested
+	if (animationType == 1)
+	{
+		m_candidate->PlayAnimation("Close", "Open");
+	}
+	else if (animationType == 2)
+	{
+		// glow looted object briefly after looting
+		GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
+	}
+
+	for (auto& target : targets)
+	{
+		// Play sound first as this uses InventoryItemData on the source container
+		InventoryItem& itemInfo(target.first);
+		bool notify(target.second);
+		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
+		std::string name(itemInfo.BoundObject()->GetName());
+		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton()));
+		if (notify)
+		{
+			std::string notificationText;
+			if (count > 1)
+			{
+				static RE::BSFixedString multiActivate(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ACTIVATE(COUNT)_MSG")));
+				if (!multiActivate.empty())
+				{
+					notificationText = multiActivate;
+					StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
+					std::ostringstream intStr;
+					intStr << count;
+					StringUtils::Replace(notificationText, "{COUNT}", intStr.str());
+				}
+			}
+			else
+			{
+				static RE::BSFixedString singleActivate(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ACTIVATE_MSG")));
+				if (!singleActivate.empty())
+				{
+					notificationText = singleActivate;
+					StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
+				}
+			}
+			if (!notificationText.empty())
+			{
+				RE::DebugNotification(notificationText.c_str());
+			}
+		}
+	}
+}
+
+
+void SearchTask::GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
+{
+
+	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
+	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
+	// never be so many in a cell that this is a problem.
+	RecursiveLockGuard guard(m_lock);
+	const auto existingGlow(m_glowExpiration.find(refr));
+	auto currentTime(std::chrono::high_resolution_clock::now());
+	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
+		return;
+	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0));
+	m_glowExpiration[refr] = expiry;
+	DBG_VMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
+	EventPublisher::Instance().TriggerObjectGlow(m_candidate, ObjectGlowDurationSpecialSeconds, glowReason);
 }
 
 RecursiveLock SearchTask::m_searchLock;
@@ -780,7 +689,6 @@ bool SearchTask::m_carryAdjustedForPlayerHome = false;
 bool SearchTask::m_carryAdjustedForDrawnWeapon = false;
 int SearchTask::m_currentCarryWeightChange = 0;
 bool SearchTask::m_perksAddLeveledItemsOnDeath = false;
-bool SearchTask::m_menuOpen = false;
 
 int SearchTask::m_crimeCheck = 0;
 SpecialObjectHandling SearchTask::m_belongingsCheck = SpecialObjectHandling::GlowTarget;
@@ -794,30 +702,30 @@ double MinDelay = 0.1;
 
 void SearchTask::ScanThread()
 {
-#if _DEBUG
-	_DMESSAGE("starting thread");
-#endif
+	REL_MESSAGE("Starting Loot Scan Thread");
 	m_ini = INIFile::GetInstance();
 	while (true)
 	{
 		double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 			m_playerCell && m_playerCell->IsInteriorCell() ?  "IndoorsIntervalSeconds" : "IntervalSeconds"));
 		delay = std::max(MinDelay, delay);
-		if (!IsAllowed())
+		if (UIState::Instance().OKForSearch() && !IsAllowed())
 		{
-#if _DEBUG
-			_DMESSAGE("search disallowed, game loading or menus open");
-#endif
+			DBG_MESSAGE("search disallowed or game loading or menus open");
 		}
 		else
 		{
-			// re-evaluate perks if timer has popped - no force
+			// process any queued added items since last time
+			CollectionManager::Instance().ProcessAddedItems();
+
+			// re-evaluate perks if timer has popped - no force, and execute scan
 			CheckPerks(false);
 			DoPeriodicSearch();
+
+			// request added items to be pushed to us while we are sleeping
+			EventPublisher::Instance().TriggerFlushAddedItems();
 		}
-#if _DEBUG
-		_DMESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
-#endif
+		DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
 		auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
 		std::this_thread::sleep_until(nextRunTime);
 	}
@@ -825,6 +733,9 @@ void SearchTask::ScanThread()
 
 void SearchTask::Start()
 {
+	// do not start the thread if we failed to initialize
+	if (!m_pluginOK)
+		return;
 	std::thread([]()
 	{
 		// use structured exception handling to get stack walk on windows exceptions
@@ -843,45 +754,59 @@ int InfiniteWeight = 100000;
 void SearchTask::ResetRestrictions(const bool gameReload)
 {
 	DataCase::GetInstance()->ListsClear(gameReload);
-#if _DEBUG
-	_MESSAGE("Unlock task-pending REFRs");
-#endif
+
+	DBG_MESSAGE("Unlock task-pending REFRs");
 	RecursiveLockGuard guard(m_lock);
 	// unblock all blocked auto-harvest objects
 	m_HarvestLock.clear();
+
 	// Dynamic containers that we looted reset on cell change
 	ResetLootedDynamicContainers();
+
 	if (gameReload)
 	{
 		// unblock possible player house checks after game reload
 		m_playerHouses.clear();
 		// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
 		ResetLootedContainers();
+		// TODO reset collections to what is in the saved-game data
 	}
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
 	m_glowExpiration.clear();
 }
 
-std::vector<RE::TESObjectREFR*> SearchTask::m_refs;
+bool SearchTask::m_pluginOK(false);
 
 // used for PlayerCharacter
-bool SearchTask::IsConcealed(RE::MagicTarget* target)
+bool SearchTask::IsMagicallyConcealed(RE::MagicTarget* target)
 {
 	if (target->HasEffectWithArchetype(RE::EffectArchetypes::ArchetypeID::kInvisibility))
 	{
-#if _DEBUG
-		_DMESSAGE("player invisible");
-#endif
+		DBG_VMESSAGE("player invisible");
 		return true;
 	}
 	if (target->HasEffectWithArchetype(RE::EffectArchetypes::ArchetypeID::kEtherealize))
 	{
-#if _DEBUG
-		_DMESSAGE("player ethereal");
-#endif
+		DBG_VMESSAGE("player ethereal");
 		return true;
 	}
 	return false;
+}
+
+void SearchTask::OnMenuClose()
+{
+	DBG_MESSAGE("console and/or menu(s) closed");
+	// reset state that might be invalidated by MCM setting updates
+	CheckPerks(true);
+	// reset carry weight - will reinstate correct value if/when scan resumes
+	ResetCarryWeight();
+	// update Locked Container last-accessed time
+	DataCase::GetInstance()->UpdateLockedContainers();
+	// Base Object Forms and REFRs handled for the case where we are not reloading game
+	DataCase::GetInstance()->ResetBlockedForms();
+	DataCase::GetInstance()->ClearBlockedReferences(false);
+	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
+	ResetLootedContainers();
 }
 
 void SearchTask::DoPeriodicSearch()
@@ -892,20 +817,18 @@ void SearchTask::DoPeriodicSearch()
 	bool playerInCombat(false);
 	bool sneaking(false);
 	{
+#ifdef _PROFILING
 		WindowsUtils::ScopedTimer elapsed("Periodic Search pre-checks");
+#endif
 		if (!IsAllowed())
 		{
-#if _DEBUG
-			_DMESSAGE("search disallowed");
-#endif
+			DBG_MESSAGE("search disallowed");
 			return;
 		}
 
-		if (!GoodToGo())
+		if (!EventPublisher::Instance().GoodToGo())
 		{
-#if _DEBUG
-			_DMESSAGE("Prerequisites not in place yet");
-#endif
+			DBG_MESSAGE("Event publisher not ready yet");
 			return;
 		}
 
@@ -913,9 +836,7 @@ void SearchTask::DoPeriodicSearch()
 		RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 		if (!player)
 		{
-#if _DEBUG
-			_DMESSAGE("PlayerCharacter not available");
-#endif
+			DBG_MESSAGE("PlayerCharacter not available");
 			return;
 		}
 
@@ -923,9 +844,7 @@ void SearchTask::DoPeriodicSearch()
 			RecursiveLockGuard guard(m_lock);
 			if (!m_pluginSynced)
 			{
-	#if _DEBUG
-				_DMESSAGE("Plugin sync still pending");
-	#endif
+				DBG_MESSAGE("Plugin sync still pending");
 				return;
 			}
 		}
@@ -946,9 +865,7 @@ void SearchTask::DoPeriodicSearch()
 		if (playerLocation != m_playerLocation)
 		{
 			std::string oldName(m_playerLocation ? m_playerLocation->GetName() : "unnamed");
-#if _DEBUG
-			_MESSAGE("Player left old location %s, now at %s", oldName.c_str(), playerLocation ? playerLocation->GetName() : "unnamed");
-#endif
+			DBG_MESSAGE("Player left old location %s, now at %s", oldName.c_str(), playerLocation ? playerLocation->GetName() : "unnamed");
 			bool wasExcluded(IsPopulationCenterExcluded());
 			m_playerLocation = playerLocation;
 			// Player changed location
@@ -960,9 +877,7 @@ void SearchTask::DoPeriodicSearch()
 					if (m_playerLocation->HasKeyword(m_playerHouseKeyword))
 					{
 						// record as a player house and notify as it is a new one in this game load
-#if _DEBUG
-						_MESSAGE("Player House %s detected", m_playerLocation->GetName());
-#endif
+						DBG_MESSAGE("Player House %s detected", m_playerLocation->GetName());
 						AddPlayerHouse(m_playerLocation);
 					}
 				}
@@ -972,7 +887,7 @@ void SearchTask::DoPeriodicSearch()
 					if (!playerHouseMsg.empty())
 					{
 						std::string notificationText(playerHouseMsg);
-						Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
+						StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
 						RE::DebugNotification(notificationText.c_str());
 					}
 				}
@@ -983,7 +898,7 @@ void SearchTask::DoPeriodicSearch()
 					if (!populationCenterMsg.empty())
 					{
 						std::string notificationText(populationCenterMsg);
-						Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
+						StringUtils::Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
 						RE::DebugNotification(notificationText.c_str());
 					}
 				}
@@ -995,7 +910,7 @@ void SearchTask::DoPeriodicSearch()
 				if (!populationCenterMsg.empty())
 				{
 					std::string notificationText(populationCenterMsg);
-					Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
+					StringUtils::Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
 					RE::DebugNotification(notificationText.c_str());
 				}
 			}
@@ -1003,58 +918,15 @@ void SearchTask::DoPeriodicSearch()
 
 		if (RIPPlayer)
 		{
-#if _DEBUG
-			_DMESSAGE("Player is dead");
-#endif
+			DBG_MESSAGE("Player is dead");
 			return;
 		}
 
 		if (!RE::PlayerControls::GetSingleton() || !RE::PlayerControls::GetSingleton()->IsActivateControlsEnabled())
 		{
-#if _DEBUG
-			_DMESSAGE("player controls disabled");
-#endif
+			DBG_MESSAGE("player controls disabled");
 			return;
 		}
-
-		// By inspection, UI menu stack has steady state size of 1. Opening application and/or inventory adds 1 each,
-		// opening console adds 2. So this appears to be a catch-all for those conditions.
-		if (!RE::UI::GetSingleton())
-		{
-#if _DEBUG
-			_DMESSAGE("UI inaccessible");
-			return;
-#endif
-		}
-		size_t count(RE::UI::GetSingleton()->menuStack.size());
-		bool menuOpen(count > 1);
-		if (menuOpen != m_menuOpen)
-		{
-			// record state change
-			m_menuOpen = menuOpen;
-			if (menuOpen)
-			{
-				// Menu just opened
-#if _DEBUG
-				_DMESSAGE("console and/or menu(s) opened, delta to menu-stack size = %d", count);
-#endif
-			}
-			else
-			{
-#if _DEBUG
-				_DMESSAGE("console and/or menu(s) closed");
-#endif
-				// Menu just closed - force perk review
-				CheckPerks(true);
-				// reset carry weight - will reinstate correct value if/when scan resumes
-				// update Locked Container last-accessed time
-				ResetCarryWeight();
-				data->UpdateLockedContainers();
-			}
-			return;
-		}
-		if (m_menuOpen)
-			return;
 
 		// Respect encumbrance quality of life settings
 		bool playerInOwnHouse(IsPlayerHouse(m_playerLocation));
@@ -1066,9 +938,7 @@ void SearchTask::DoPeriodicSearch()
 			{
 				carryWeightChange += playerInOwnHouse ? InfiniteWeight : -InfiniteWeight;
 				m_carryAdjustedForPlayerHome = playerInOwnHouse;
-#if _DEBUG
-				_MESSAGE("Carry weight delta after in-player-home adjustment %d", carryWeightChange);
-#endif
+				DBG_MESSAGE("Carry weight delta after in-player-home adjustment %d", carryWeightChange);
 			}
 		}
 		playerInCombat = player->IsInCombat() && !player->IsDead(true);
@@ -1079,9 +949,7 @@ void SearchTask::DoPeriodicSearch()
 			{
 				carryWeightChange += playerInCombat ? InfiniteWeight : -InfiniteWeight;
 				m_carryAdjustedForCombat = playerInCombat;
-#if _DEBUG
-				_MESSAGE("Carry weight delta after in-combat adjustment %d", carryWeightChange);
-#endif
+				DBG_MESSAGE("Carry weight delta after in-combat adjustment %d", carryWeightChange);
 			}
 		}
 		bool isWeaponDrawn(player->IsWeaponDrawn());
@@ -1092,9 +960,7 @@ void SearchTask::DoPeriodicSearch()
 			{
 				carryWeightChange += isWeaponDrawn ? InfiniteWeight : -InfiniteWeight;
 				m_carryAdjustedForDrawnWeapon = isWeaponDrawn;
-#if _DEBUG
-				_MESSAGE("Carry weight delta after drawn weapon adjustment %d", carryWeightChange);
-#endif
+				DBG_MESSAGE("Carry weight delta after drawn weapon adjustment %d", carryWeightChange);
 			}
 		}
 		if (carryWeightChange != m_currentCarryWeightChange)
@@ -1102,44 +968,34 @@ void SearchTask::DoPeriodicSearch()
 			int requiredWeightDelta(carryWeightChange - m_currentCarryWeightChange);
 			m_currentCarryWeightChange = carryWeightChange;
 			// handle carry weight update via a script event
-#if _DEBUG
-			_MESSAGE("Adjust carry weight by delta %d", requiredWeightDelta);
-#endif
-			TriggerCarryWeightDelta(requiredWeightDelta);
+			DBG_MESSAGE("Adjust carry weight by delta %d", requiredWeightDelta);
+			EventPublisher::Instance().TriggerCarryWeightDelta(requiredWeightDelta);
 		}
 
 		if (playerInOwnHouse)
 		{
-#if _DEBUG
-			_DMESSAGE("Player House, skip");
-#endif
+			DBG_VMESSAGE("Player House, skip");
 			return;
 		}
 
 		const int disableDuringCombat = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "disableDuringCombat"));
 		if (disableDuringCombat != 0 && playerInCombat)
 		{
-#if _DEBUG
-			_MESSAGE("disableDuringCombat %d", disableDuringCombat);
-#endif
+			DBG_VMESSAGE("Player in combat, skip");
 			return;
 		}
 
 		const int disableWhileWeaponIsDrawn = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "disableWhileWeaponIsDrawn"));
 		if (disableWhileWeaponIsDrawn != 0 && player->IsWeaponDrawn())
 		{
-#if _DEBUG
-			_MESSAGE("disableWhileWeaponIsDrawn %d", disableWhileWeaponIsDrawn);
-#endif
+			DBG_VMESSAGE("Player weapon is drawn, skip");
 			return;
 		}
 
 		const int disableWhileConcealed = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DisableWhileConcealed"));
-		if (disableWhileConcealed != 0 && IsConcealed(player))
+		if (disableWhileConcealed != 0 && IsMagicallyConcealed(player))
 		{
-#if _DEBUG
-			_MESSAGE("disableWhileConcealed %d", disableWhileConcealed);
-#endif
+			DBG_MESSAGE("Player is magically concealed, skip");
 			return;
 		}
 
@@ -1158,16 +1014,14 @@ void SearchTask::DoPeriodicSearch()
 			unblockAll = true;
 			m_playerCell = playerCell;
 			m_playerCellSelfOwned = IsCellPlayerOwned(m_playerCell);
-#if _DEBUG
 			if (m_playerCell)
 			{
-				_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
+				DBG_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
 			}
 			else
 			{
-				_MESSAGE("Player cell cleared");
+				DBG_MESSAGE("Player cell cleared");
 			}
-#endif
 		}
 		if (unblockAll)
 		{
@@ -1176,9 +1030,7 @@ void SearchTask::DoPeriodicSearch()
 		}
 		if (!m_playerCell)
 		{
-#if _DEBUG
-			_MESSAGE("Player cell not yet set up");
-#endif
+			DBG_WARNING("Player cell not yet set up");
 			return;
 		}
 
@@ -1187,12 +1039,21 @@ void SearchTask::DoPeriodicSearch()
 	// Retrieve these settings only once
 	m_crimeCheck = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, (sneaking) ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
 	m_belongingsCheck = SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
-	m_refs = PlayerCellHelper::GetInstance().GetReferences(m_playerCell,
-		m_playerCell->IsInteriorCell() ? m_ini->GetIndoorsRadius(INIFile::PrimaryType::harvest) : m_ini->GetRadius(INIFile::PrimaryType::harvest));
-	// Process any queued dead body that is dead long enough to have played kill animation
-	ReleaseReliablyDeadActors();
 
-	for (RE::TESObjectREFR* refr : m_refs)
+	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
+	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly.
+	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to loot in an orderly fashion than to get it all into inventory on
+	// one pass.
+	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
+	BoundedList<RE::TESObjectREFR*> refrs(MaxREFRSPerPass);
+	if (ReleaseReliablyDeadActors(refrs))
+	{
+	    // space remains to process loot after corpses checked
+		PlayerCellHelper::GetInstance().GetReferences(refrs, m_playerCell,
+			m_playerCell->IsInteriorCell() ? m_ini->GetIndoorsRadius(INIFile::PrimaryType::harvest) : m_ini->GetRadius(INIFile::PrimaryType::harvest));
+	}
+
+	for (RE::TESObjectREFR* refr : refrs.Data())
 	{
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
 		/*
@@ -1203,26 +1064,31 @@ void SearchTask::DoPeriodicSearch()
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54195 micros
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
 		*/
+		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
 
-		if (!refr->GetBaseObject())
+		if (refr->GetFormID() == InvalidForm)
 		{
-#if _DEBUG
-			_MESSAGE("REFR 0x%08x has no Base Object", refr->GetFormID());
-#endif
+			DBG_WARNING("REFR has invalid FormID");
+			data->BlacklistReference(refr);
+			continue;
+		}
+		else if (!refr->GetBaseObject())
+		{
+			DBG_WARNING("REFR 0x%08x has no Base Object", refr->GetFormID());
 			data->BlacklistReference(refr);
 			continue;
 		}
 		else
 		{
-#if _DEBUG
-			_MESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
+			DBG_VMESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
 				refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-#endif
 		}
 
 		INIFile::SecondaryType lootTargetType = INIFile::SecondaryType::itemObjects;
 		{
+#ifdef _PROFILING
 			WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
+#endif
 			if (!refr)
 				continue;
 			RE::Actor* actor(nullptr);
@@ -1274,7 +1140,7 @@ void SearchTask::DoPeriodicSearch()
 #endif
 				refr = GetAshPile(refr);
 #if _DEBUG
-				_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), originalRefr->GetFormID());
+				DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), originalRefr->GetFormID());
 #endif
 			}
 			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
@@ -1284,7 +1150,6 @@ void SearchTask::DoPeriodicSearch()
 		}
 		SearchTask(refr, lootTargetType).Run();
 	}
-	m_refs.clear();
 }
 
 // check perks that affect looting
@@ -1301,9 +1166,7 @@ void SearchTask::CheckPerks(const bool force)
 		if (player)
 		{
 			m_perksAddLeveledItemsOnDeath = DataCase::GetInstance()->PerksAddLeveledItemsOnDeath(player);
-#if _DEBUG
-			_MESSAGE("Leveled items added on death by perks? %s", m_perksAddLeveledItemsOnDeath ? "true" : "false");
-#endif
+			DBG_MESSAGE("Leveled items added on death by perks? %s", m_perksAddLeveledItemsOnDeath ? "true" : "false");
 		}
 		m_lastPerkCheck = timeNow;
 	}
@@ -1314,15 +1177,13 @@ void SearchTask::ResetCarryWeight()
 {
 	if (m_currentCarryWeightChange != 0)
 	{
-#if _DEBUG
-		_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
+		DBG_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
 			m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
-#endif
 		m_currentCarryWeightChange = 0;
 		m_carryAdjustedForCombat = false;
 		m_carryAdjustedForPlayerHome = false;
 		m_carryAdjustedForDrawnWeapon = false;
-		TriggerResetCarryWeight();
+		EventPublisher::Instance().TriggerResetCarryWeight();
 	}
 }
 
@@ -1336,7 +1197,7 @@ void SearchTask::PrepareForReload()
 
 	// reset carry weight and menu-active state
 	ResetCarryWeight();
-	m_menuOpen = false;
+	UIState::Instance().Reset();
 
 	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
 	m_playerCell = nullptr;
@@ -1370,43 +1231,8 @@ bool SearchTask::IsAllowed()
 	return m_searchAllowed;
 }
 
-void SearchTask::TriggerGetCritterIngredient()
-{
-	onGetCritterIngredient.SendEvent(m_candidate);
-}
-
-void SearchTask::TriggerCarryWeightDelta(const int delta)
-{
-	onCarryWeightDelta.SendEvent(delta);
-}
-
-void SearchTask::TriggerResetCarryWeight()
-{
-	onResetCarryWeight.SendEvent();
-}
-
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_HarvestLock;
 int SearchTask::m_pendingNotifies = 0;
-
-void SearchTask::TriggerMining(const ResourceType resourceType, const bool manualLootNotify)
-{
-	// We always block the REFR before firing this
-	onMining.SendEvent(m_candidate, static_cast<int>(resourceType), manualLootNotify);
-}
-
-void SearchTask::TriggerHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool manualLootNotify)
-{
-	// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
-	if (!LockHarvest(m_candidate, isSilent))
-		return;
-	ObjectType effectiveType(objType);
-	if (effectiveType == ObjectType::whitelist)
-	{
-		// find lootable type if whitelist were not a factor, for Harvest script
-		effectiveType = ClassifyType(m_candidate, true);
-	}
-	onHarvest.SendEvent(m_candidate, static_cast<int>(effectiveType), itemCount, isSilent, manualLootNotify);
-}
 
 bool SearchTask::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
 {
@@ -1446,11 +1272,6 @@ size_t SearchTask::PendingHarvestNotifications()
 {
 	RecursiveLockGuard guard(m_lock);
 	return m_pendingNotifies;
-}
-
-void SearchTask::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount)
-{
-	onLootFromNPC.SendEvent(npc, item, itemCount);
 }
 
 std::unordered_set<const RE::BGSLocation*> SearchTask::m_playerHouses;
@@ -1517,9 +1338,7 @@ void SearchTask::MergeBlackList()
 
 void SearchTask::ResetExcludedLocations()
 {
-#if _DEBUG
-	_DMESSAGE("Reset list of locations excluded from looting");
-#endif
+	DBG_MESSAGE("Reset list of locations excluded from looting");
 	RecursiveLockGuard guard(m_lock);
 	m_excludeLocations.clear();
 }
@@ -1529,9 +1348,7 @@ void SearchTask::AddLocationToBlackList(const RE::TESForm* location)
 	// confirm this is a location or cell
 	if (!location->As<RE::TESObjectCELL>() && !location->As<RE::BGSLocation>())
 		return;
-#if _DEBUG
-	_DMESSAGE("Location/cell %s/0x%08x excluded from looting", location->GetName(), location->GetFormID());
-#endif
+	DBG_MESSAGE("Location/cell %s/0x%08x excluded from looting", location->GetName(), location->GetFormID());
 	RecursiveLockGuard guard(m_lock);
 	m_excludeLocations.insert(location);
 }
@@ -1541,9 +1358,7 @@ void SearchTask::DropLocationFromBlackList(const RE::TESForm* location)
 	// confirm this is a location or cell
 	if (!location->As<RE::TESObjectCELL>() && !location->As<RE::BGSLocation>())
 		return;
-#if _DEBUG
-	_DMESSAGE("Location/cell %s/0x%08x no longer excluded from looting", location->GetName(), location->GetFormID());
-#endif
+	DBG_MESSAGE("Location/cell %s/0x%08x no longer excluded from looting", location->GetName(), location->GetFormID());
 	RecursiveLockGuard guard(m_lock);
 	m_excludeLocations.erase(location);
 }
@@ -1557,100 +1372,25 @@ bool SearchTask::IsLocationExcluded()
 	return m_excludeLocations.count(m_playerLocation) > 0 || m_excludeLocations.count(m_playerCell) > 0;
 }
 
-void SearchTask::TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType)
+bool SearchTask::Init()
 {
-	if (!m_candidate)
-		return;
-
-	// visual notification, if requested
-	if (animationType == 1)
+    if (!m_pluginOK)
 	{
-		m_candidate->PlayAnimation("Close", "Open");
-	}
-	else if (animationType == 2)
-	{
-		// glow looted object briefly after looting
-		TriggerObjectGlow(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
-	}
-
-	for (auto& target : targets)
-	{
-		// Play sound first as this uses InventoryItemData on the source container
-		InventoryItem& itemInfo(target.first);
-		bool notify(target.second);
-		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
-		std::string name(itemInfo.BoundObject()->GetName());
-		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton()));
-		if (notify)
-		{
-			std::string notificationText;
-			if (count > 1)
-			{
-				static RE::BSFixedString multiActivate(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ACTIVATE(COUNT)_MSG")));
-				if (!multiActivate.empty())
-				{
-					notificationText = multiActivate;
-					Replace(notificationText, "{ITEMNAME}", name.c_str());
-					std::ostringstream intStr;
-					intStr << count;
-					Replace(notificationText, "{COUNT}", intStr.str());
-				}
-			}
-			else
-			{
-				static RE::BSFixedString singleActivate(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ACTIVATE_MSG")));
-				if (!singleActivate.empty())
-				{
-					notificationText = singleActivate;
-					Replace(notificationText, "{ITEMNAME}", name.c_str());
-				}
-			}
-			if (!notificationText.empty())
-			{
-				RE::DebugNotification(notificationText.c_str());
-			}
-		}
-	}
-}
-
-void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration)
-{
-	TriggerObjectGlow(refr, duration, m_glowReason);
-}
-
-void SearchTask::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
-{
-
-	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
-	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
-	// never be so many in a cell that this is a problem.
-	RecursiveLockGuard guard(m_lock);
-	const auto existingGlow(m_glowExpiration.find(refr));
-	auto currentTime(std::chrono::high_resolution_clock::now());
-	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
-		return;
-	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0));
-	m_glowExpiration[refr] = expiry;
-#if _DEBUG
-	_DMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
-#endif
-	onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
-}
-
-bool SearchTask::firstTime = true;
-
-void SearchTask::Init()
-{
-    if (firstTime)
-	{
+#ifdef _PROFILING
 		WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
-		LoadOrder::Instance().Analyze();
+#endif
+		if (!LoadOrder::Instance().Analyze())
+		{
+			REL_ERROR("Load Order unsupportable");
+			return false;
+		}
 		DataCase::GetInstance()->CategorizeLootables();
 		CategorizePopulationCenters();
-		firstTime = false;
+		m_pluginOK = true;
 	}
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
+	return true;
 }
 
 
@@ -1674,9 +1414,7 @@ void SearchTask::CategorizePopulationCenters()
 		RE::BGSLocation* location(form->As<RE::BGSLocation>());
 		if (!location)
 		{
-#if _DEBUG
-			_MESSAGE("Skipping non-location form 0x%08x", form->formID);
-#endif
+			DBG_WARNING("Skipping non-location form 0x%08x", form->formID);
 			continue;
 		}
 		// Scan location keywords to check if it's a settlement
@@ -1702,16 +1440,12 @@ void SearchTask::CategorizePopulationCenters()
 		// record population center size in case looting is selectively prevented
 		if (size != PopulationCenterSize::None)
 		{
-#if _DEBUG
-			_MESSAGE("%s/0x%08x is population center of type %s", location->GetName(), location->GetFormID(), largestMatch.c_str());
-#endif
+			DBG_MESSAGE("%s/0x%08x is population center of type %s", location->GetName(), location->GetFormID(), largestMatch.c_str());
 			m_populationCenters.insert(std::make_pair(location, size));
 		}
 		else
 		{
-#if _DEBUG
-			_MESSAGE("%s/0x%08x is not a population center", location->GetName(), location->GetFormID());
-#endif
+			DBG_MESSAGE("%s/0x%08x is not a population center", location->GetName(), location->GetFormID());
 		}
 	}
 
@@ -1746,10 +1480,8 @@ void SearchTask::CategorizePopulationCenters()
 			if (matched != m_populationCenters.cend())
 			{
 				parentSize = matched->second;
-#if _DEBUG
-				_MESSAGE("%s/0x%08x is a descendant of population center %s/0x%08x with size %d", location->GetName(), location->GetFormID(),
+				DBG_MESSAGE("%s/0x%08x is a descendant of population center %s/0x%08x with size %d", location->GetName(), location->GetFormID(),
 					antecedent->GetName(), antecedent->GetFormID(), parentSize);
-#endif
 				break;
 			}
 			antecedent = antecedent->parentLoc;
@@ -1774,9 +1506,7 @@ void SearchTask::CategorizePopulationCenters()
 			if (lootableChildLocations.find(keywordName) != lootableChildLocations.cend())
 			{
 				allowLooting = true;
-#if _DEBUG
-				_MESSAGE("%s/0x%08x is lootable child location due to keyword %s", location->GetName(), location->GetFormID(), keywordName.c_str());
-#endif
+				DBG_MESSAGE("%s/0x%08x is lootable child location due to keyword %s", location->GetName(), location->GetFormID(), keywordName.c_str());
 				break;
 			}
 		}
@@ -1785,16 +1515,14 @@ void SearchTask::CategorizePopulationCenters()
 
 		// Store the child location with the same criterion as parent, unless it's inherently lootable
 		// e.g. dungeon within the city limits like Whiterun Sewers, parts of the Ratway
-#if _DEBUG
-		_MESSAGE("%s/0x%08x stored with same rule as its parent population center", location->GetName(), location->GetFormID());
-#endif
+		DBG_MESSAGE("%s/0x%08x stored with same rule as its parent population center", location->GetName(), location->GetFormID());
 		m_populationCenters.insert(std::make_pair(location, parentSize));
 	}
 #if _DEBUG
-	// this debug output from a given load order drives the list of 'really-lootable' child location types above
+	// this debug output from a given load order drives the list of 'really lootable' child location types above
 	for (const std::string& keyword : childKeywords)
 	{
-		_MESSAGE("Population center child keyword: %s", keyword.c_str());
+		DBG_MESSAGE("Population center child keyword: %s", keyword.c_str());
 	}
 #endif
 }

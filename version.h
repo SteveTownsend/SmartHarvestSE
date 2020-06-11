@@ -1,8 +1,10 @@
 #pragma once
 
 constexpr char* SHSE_NAME = "SmartHarvestSE";
+constexpr char* SHSE_PROXY = "SHSE_PluginProxy";
 constexpr wchar_t* L_SHSE_NAME = L"SmartHarvestSE";
 constexpr char* MODNAME = "SmartHarvestSE.esp";
+constexpr char* PRIORNAME = "AutoHarvestSE.esp";
 
 class VersionInfo
 {

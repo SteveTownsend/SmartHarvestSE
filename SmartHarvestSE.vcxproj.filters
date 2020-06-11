@@ -64,9 +64,6 @@
     <ClCompile Include="CollectionManager.cpp">
       <Filter>Collections</Filter>
     </ClCompile>
-    <ClCompile Include="ConditionTreeFactory.cpp">
-      <Filter>Collections</Filter>
-    </ClCompile>
     <ClCompile Include="RecursiveLock.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
@@ -82,13 +79,28 @@
     <ClCompile Include="utils.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="Condition.cpp">
+      <Filter>Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="Exception.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="CollectionFactory.cpp">
+      <Filter>Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="Collection.cpp">
+      <Filter>Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="UIState.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="EventPublisher.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="debugs.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="strConv.h">
       <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="PrecompiledHeaders.h" />
@@ -152,9 +164,6 @@
     <ClInclude Include="CollectionManager.h">
       <Filter>Collections</Filter>
     </ClInclude>
-    <ClInclude Include="ConditionTreeFactory.h">
-      <Filter>Collections</Filter>
-    </ClInclude>
     <ClInclude Include="RecursiveLock.h">
       <Filter>Utilities</Filter>
     </ClInclude>
@@ -172,6 +181,30 @@
     </ClInclude>
     <ClInclude Include="resource1.h">
       <Filter>resources</Filter>
+    </ClInclude>
+    <ClInclude Include="Condition.h">
+      <Filter>Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="Exception.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="CollectionFactory.h">
+      <Filter>Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="Collection.h">
+      <Filter>Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="LogWrapper.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="UIState.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="EventPublisher.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="BoundedList.h">
+      <Filter>Utilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -67,9 +67,7 @@ inline UInt32 BasketFile::GetSize(listnum list_number)
 
 bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 {
-#if _DEBUG
-	_MESSAGE("BasketFile::SaveFile");
-#endif
+	DBG_VMESSAGE("BasketFile::SaveFile");
 	// NYI
 	return false;
 
@@ -93,10 +91,7 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 				
 				stringEx str;
 				str.Format("%s\t0x%06x\t%s\n", name.c_str(), hexID, PluginUtils::GetBaseName(childForm).c_str());
-				
-				#if _DEBUG
-				_MESSAGE("%s\t%08x\t%s", name.c_str(), hexID, PluginUtils::GetBaseName(childForm).c_str());
-				#endif
+				DBG_VMESSAGE("%s\t%08x\t%s", name.c_str(), hexID, PluginUtils::GetBaseName(childForm).c_str());
 				
 				std::vector<char>buf(str.size() + 1);
 				buf[str.size()] = 0;
@@ -116,10 +111,7 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 
 						stringEx str;
 						str.Format("%s\t0x%06x\n", name.c_str(), hexID);
-
-						#if _DEBUG
-						_MESSAGE("%s\t%08x", name.c_str(), hexID);
-						#endif
+						DBG_VMESSAGE("%s\t%08x", name.c_str(), hexID);
 						
 						std::vector<char>buf(str.size() + 1);
 						buf[str.size()] = 0;
@@ -132,17 +124,13 @@ bool BasketFile::SaveFile(listnum list_number, const char* basketText)
 	}
 	fs.Close();
 
-#if _DEBUG
-	_MESSAGE("BasketFile::SaveFile end");
-#endif
+	DBG_VMESSAGE("BasketFile::SaveFile end");
 	return true;
 }
 
 bool BasketFile::LoadFile(listnum list_number, const char* basketText)
 {
-#if _DEBUG
-	_MESSAGE("BasketFile::LoadFile");
-#endif
+	DBG_VMESSAGE("BasketFile::LoadFile");
 	// NYI
 	return false;
 
@@ -199,9 +187,7 @@ bool BasketFile::LoadFile(listnum list_number, const char* basketText)
 		formList[list_number]->AddForm(thisForm);
 	}
 	fs.Close();
-#if _DEBUG
-	_MESSAGE("BasketFile::LoadFile end");
-#endif
+	DBG_VMESSAGE("BasketFile::LoadFile end");
 	return true;
 }
 
@@ -223,9 +209,7 @@ void BasketFile::SyncList(listnum list_number)
 
 		for (RE::TESForm* listMember : formList[list_number]->forms)
 		{
-#if _DEBUG
-			_MESSAGE("FormID 0x%08x stored on list %d", listMember->GetFormID(), list_number);
-#endif
+			DBG_VMESSAGE("FormID 0x%08x stored on list %d", listMember->GetFormID(), list_number);
 			list[list_number].insert(listMember);
 		}
 		if (formList[list_number]->scriptAddedTempForms)
@@ -235,16 +219,12 @@ void BasketFile::SyncList(listnum list_number)
 				RE::TESForm* childForm = RE::TESForm::LookupByID(formid);
 				if (childForm)
 				{
-#if _DEBUG
-					_MESSAGE("FormID 0x%08x (temp) stored on list %d", childForm->GetFormID(), list_number);
-#endif
+					DBG_VMESSAGE("FormID 0x%08x (temp) stored on list %d", childForm->GetFormID(), list_number);
 					list[list_number].insert(childForm);
 				}
 				else
 				{
-#if _DEBUG
-					_MESSAGE("FormID 0x%08x (temp) not mapped to Form", formid);
-#endif
+					DBG_VMESSAGE("FormID 0x%08x (temp) not mapped to Form", formid);
 				}
 			}
 		}

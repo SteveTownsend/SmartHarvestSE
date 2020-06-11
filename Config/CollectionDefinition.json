@@ -9,6 +9,7 @@
         "operator": "AND",
         "conditions": {
           "plugin": "LegacyoftheDragonborn.esm",
+          "lootCategories": [ "clutter" ],
           "keywords": [ "VendorItemFateCards" ]
         }
       }
@@ -56,6 +57,7 @@
       "rootFilter": {
         "operator": "AND",
         "conditions": {
+          "signatures": [ "ARMO", "BOOK", "MISC", "SLGM", "WEAP" ],
           "keywords": [ "VendorItemDaedricArtifact" ]
         }
       }
@@ -63,11 +65,12 @@
 
     {
       "name": "A Hot Meal",
-      "description": "Every Daedric Artifact",
+      "description": "Every Cooked Food Item",
       "rootFilter": {
         "operator": "AND",
         "conditions": {
           "plugin": "Complete Alchemy & Cooking Overhaul.esp",
+          "lootCategories": [ "food", "drink" ],
           "keywords": [ "VendorItemFoodCooked" ]
         }
       }
@@ -138,14 +141,82 @@
       "rootFilter": {
         "operator": "AND",
         "conditions": {
-          "plugin": "Forgotten City.esp",
-          "subFilter": {
-            "operator": "OR",
-            "conditions": {
-              "signatures": [ "KEYM" ],
-              "keywords": [ "VendorItemKey" ]
+          "plugin": "ForgottenCity.esp",
+          "subFilters": [
+            {
+              "operator": "OR",
+              "conditions": {
+                "signatures": [ "KEYM" ],
+                "keywords": [ "VendorItemKey" ]
+              }
             }
-          }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Keys to the City Smart",
+      "description": "Every Key in the Forgotten City, harvestable",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "ForgottenCity.esp",
+          "subFilters": [
+            {
+              "operator": "OR",
+              "conditions": {
+                "lootCategories": [ "key" ]
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Witch's Brew",
+      "description": "Every Ingredient in the game",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "signatures": [ "INGR" ]
+        }
+      }
+    },
+
+    {
+      "name": "Witch's Brew Smart",
+      "description": "Every Ingredient in the game, harvestable",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "lootCategories": [ "ingredient" ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid Plugin",
+      "description": "Demonstrates load resilient to unknown plugin",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Wibble.esp",
+          "signatures": [ "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid Keyword",
+      "description": "Demonstrates load resilient to invalid KYWD",
+      "rootFilter": {
+        "operator": "AND",
+        "conditions": {
+          "plugin": "Skyrim.esm",
+          "signatures": [ "WEAP" ],
+          "keywords": [ "this is invalid" ]
         }
       }
     }

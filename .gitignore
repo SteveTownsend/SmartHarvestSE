@@ -11,3 +11,4 @@ DeadSKSE
 /.vscode/launch.json
 /.vscode/tasks.json
 *.user
+/Artifacts

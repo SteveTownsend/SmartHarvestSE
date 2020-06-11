@@ -18,9 +18,7 @@ namespace FileUtils
 		std::ifstream fileStream(filePath);
 		if (fileStream.fail())
 		{
-#if _DEBUG
-			_MESSAGE("File for string read %s inaccessible", filePath.c_str());
-#endif
+			REL_ERROR("File for string read %s inaccessible", filePath.c_str());
 			return std::string();
 		}
 		std::string fileData;
@@ -46,9 +44,7 @@ namespace FileUtils
 				if (lastSlash != std::string::npos)
 					s_runtimeDirectory = runtimePath.substr(0, lastSlash + 1);
 			}
-#if _DEBUG
-			_MESSAGE("GetGamePath result: %s", s_runtimeDirectory.c_str());
-#endif
+			DBG_MESSAGE("GetGamePath result: %s", s_runtimeDirectory.c_str());
 		}
 		return s_runtimeDirectory;
 	}
@@ -60,9 +56,7 @@ namespace FileUtils
 		{
 			s_dataDirectory = GetGamePath();
 			s_dataDirectory += "data\\";
-#if _DEBUG
-			_MESSAGE("GetDataPath result: %s", s_dataDirectory.c_str());
-#endif
+			DBG_MESSAGE("GetDataPath result: %s", s_dataDirectory.c_str());
 		}
 		return s_dataDirectory;
 	}
@@ -79,16 +73,12 @@ namespace FileUtils
 				(LPCSTR)&GetPluginPath, &hm) == 0)
 			{
 				int ret = GetLastError();
-#if _DEBUG
-				_MESSAGE("GetModuleHandle failed, error = %d\n", ret);
-#endif
+				REL_ERROR("GetModuleHandle failed, error = %d\n", ret);
 			}
 			else if (GetModuleFileName(hm, path, sizeof(path)) == 0)
 			{
 				int ret = GetLastError();
-#if _DEBUG
-				_MESSAGE("GetModuleFileName failed, error = %d\n", ret);
-#endif
+				REL_ERROR("GetModuleFileName failed, error = %d\n", ret);
 			}
 			else
 			{
@@ -117,9 +107,7 @@ namespace FileUtils
 					if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
 					{
 					    s_skseDirectory = path;
-#if _DEBUG
-						_MESSAGE("GetPluginPath result: %s", s_skseDirectory.c_str());
-#endif
+						REL_MESSAGE("GetPluginPath result: %s", s_skseDirectory.c_str());
 					}
 				}
 			}
@@ -219,7 +207,7 @@ namespace WindowsUtils
 	ScopedTimer::~ScopedTimer()
 	{
 		long long endTime(microsecondsNow());
-		_MESSAGE("TIME(%s)=%d micros", m_context.c_str(), endTime - m_startTime);
+		REL_MESSAGE("TIME(%s)=%d micros", m_context.c_str(), endTime - m_startTime);
 	}
 }
 
@@ -270,24 +258,18 @@ namespace PluginUtils
 		const RE::TESFile* info = RE::TESDataHandler::GetSingleton()->LookupModByName(espName);
 		if (!info)
 		{
-#if _DEBUG
-			_DMESSAGE("Mod lookup failed for %s", espName);
-#endif
+			REL_ERROR("Mod lookup failed for %s", espName);
 			return 0xFF;
 		}
 
 		if ((info->recordFlags & RE::TESFile::RecordFlag::kSmallFile) == RE::TESFile::RecordFlag::kSmallFile)
 		{
-#if _DEBUG
-			_DMESSAGE("Found Creation Club Mod %s", espName);
-#endif
+			DBG_VMESSAGE("Found ESPFE/ESL Mod %s", espName);
 			//いつか対応する
 			return 0xFF;
 		}
 		// a full mod, not light file
-#if _DEBUG
-		_DMESSAGE("Found index 0x02%d Mod %s", static_cast<int>(info->compileIndex), espName);
-#endif
+		DBG_VMESSAGE("Found ESP index 0x02%d Mod %s", static_cast<int>(info->compileIndex), espName);
 		return info->compileIndex;
 	}
 }
@@ -380,6 +362,20 @@ namespace StringUtils
 			pos += replacement.length();
 		}
 		return result;
+	}
+
+	// see https://stackoverflow.com/questions/215963/how-do-you-properly-use-widechartomultibyte
+	std::string FromUnicode(const std::wstring& input) {
+		if (input.empty()) return std::string();
+
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, NULL, NULL);
+		if (size_needed == 0) return std::string();
+
+		std::string output(size_needed, 0);
+		int result(WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, NULL, NULL));
+		if (result == 0) return std::string();
+
+		return output;
 	}
 }
 

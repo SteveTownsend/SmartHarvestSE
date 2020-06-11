@@ -1,12 +1,12 @@
 #pragma once
 
 #include "containerLister.h"
+#include "BoundedList.h"
+#include "EventPublisher.h"
+#include "UIState.h"
 
 #include <mutex>
 #include <deque>
-
-#define QUEST_ID	0x01D8C
-#define NGEF_ID		0x00D64
 
 enum class LootingType {
 	LeaveBehind = 0,
@@ -24,17 +24,6 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
-// object glow reasons, in descending order of precedence
-enum class GlowReason {
-	BossContainer = 1,
-	QuestObject,
-	EnchantedItem,
-	LockedContainer,
-	PlayerProperty,
-	SimpleTarget,
-	None
-};
-
 // Population Center Looting Size, overloaded to check Looting Permissions
 enum class PopulationCenterSize {
 	None = 0,
@@ -43,7 +32,6 @@ enum class PopulationCenterSize {
 	Cities,		// implies Towns and Settlements
 	MAX
 };
-
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {
@@ -101,9 +89,11 @@ inline PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniS
 class SearchTask
 {
 public:
+	static constexpr size_t MaxREFRSPerPass = 75;
+
 	SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType);
 
-	static void Init(void);
+	static bool Init(void);
 	void Run();
 	static void UnlockAll();
 
@@ -132,23 +122,14 @@ public:
 
 	static bool GoodToGo();
 
-	void TriggerGetCritterIngredient();
-	static void TriggerCarryWeightDelta(const int delta);
-	static void TriggerResetCarryWeight();
-	void TriggerMining(const ResourceType resourceType, const bool manualLootNotify);
-	void TriggerHarvest(const ObjectType objType, int itemCount, const bool isSilent, const bool manualLootNotify);
 	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
-
-	void TriggerContainerLootMany(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
-	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration);
-	static void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount);
 
 	static bool IsLocationExcluded();
 	bool IsLootingForbidden();
 	bool IsBookGlowable() const;
 
 	static void MarkDynamicContainerLooted(RE::TESObjectREFR* refr);
-	static RE::FormID IsLootedDynamicContainer(RE::TESObjectREFR* refr);
+	static RE::FormID LootedDynamicContainerFormID(RE::TESObjectREFR* refr);
 	static void ResetLootedDynamicContainers();
 
 	static void MarkContainerLooted(RE::TESObjectREFR* refr);
@@ -157,11 +138,10 @@ public:
 
 	static bool HasDynamicData(RE::TESObjectREFR* refr);
 	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
-	static void ReleaseReliablyDeadActors();
+
+	static void OnMenuClose(void);
 
 	static INIFile* m_ini;
-	static RE::BGSRefAlias* m_eventTarget;
-	static bool firstTime;
 
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
@@ -187,7 +167,6 @@ public:
 	static bool m_carryAdjustedForDrawnWeapon;
 	static int m_currentCarryWeightChange;
 	static bool m_perksAddLeveledItemsOnDeath;
-	static bool m_menuOpen;
 
 	static std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> m_populationCenters;
 	static std::unordered_set<const RE::TESForm*> m_excludeLocations;
@@ -213,8 +192,9 @@ public:
 	// allow extended interval before looting if 'leveled list on death' perks apply to player
 	static const int ActorReallyDeadWaitIntervalSeconds;
 	static const int ActorReallyDeadWaitIntervalSecondsLong;
+
 private:
-	static std::vector<RE::TESObjectREFR*> m_refs;
+	static bool m_pluginOK;
 
 	GlowReason m_glowReason;
 	inline void UpdateGlowReason(const GlowReason glowReason)
@@ -222,12 +202,15 @@ private:
 		if (glowReason < m_glowReason)
 			m_glowReason = glowReason;
 	}
-	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	static void ScanThread();
-	static bool IsConcealed(RE::MagicTarget* target);
+	static bool IsMagicallyConcealed(RE::MagicTarget* target);
 	static bool IsPopulationCenterExcluded();
+
+	void GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
+	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 
 	static std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
 	static const int PerkCheckIntervalSeconds;
 	static void CheckPerks(const bool force);
+	static bool ReleaseReliablyDeadActors(BoundedList<RE::TESObjectREFR*>& refs);
 };

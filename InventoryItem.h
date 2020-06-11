@@ -10,6 +10,7 @@ public:
 	int TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target);
 
 	inline RE::TESBoundObject* BoundObject() const { return m_entry->GetObject(); }
+	inline ObjectType LootObjectType() const { return m_objectType; }
 	inline std::ptrdiff_t Count() const { return m_count; }
 
 private:
@@ -18,4 +19,5 @@ private:
 	const INIFile::SecondaryType m_targetType;
 	mutable std::unique_ptr<RE::InventoryEntryData> m_entry;
 	const std::ptrdiff_t m_count;
+	const ObjectType m_objectType;
 };

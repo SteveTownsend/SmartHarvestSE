@@ -9,7 +9,7 @@ TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
-	m_objectType = ClassifyType(m_form);
+	m_objectType = GetBaseFormObjectType(m_form);
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
@@ -85,9 +85,7 @@ double TESFormHelper::GetWorth() const
 	{
 		const RE::TESAmmo* ammo(m_form->As<RE::TESAmmo>());
 
-#if _DEBUG
-		_MESSAGE("Ammo %0.2f", ammo->data.damage);
-#endif
+		DBG_VMESSAGE("Ammo %0.2f", ammo->data.damage);
 		return ammo ? static_cast<int>(ammo->data.damage) : 0;
 	}
 	else if (m_form->formType == RE::FormType::Projectile)
@@ -96,12 +94,10 @@ double TESFormHelper::GetWorth() const
 		if (proj)
 		{
 			const RE::TESAmmo* ammo(DataCase::GetInstance()->ProjToAmmo(proj));
-#if _DEBUG
 			if (ammo)
 			{
-				_MESSAGE("Projectile %0.2f", ammo->data.damage);
+				DBG_VMESSAGE("Projectile %0.2f", ammo->data.damage);
 			}
-#endif
 			return ammo ? static_cast<int>(ammo->data.damage) : 0;
 		}
 	}

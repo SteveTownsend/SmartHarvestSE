@@ -149,16 +149,12 @@ private:
 			if (!target || !target->GetFullNameLength())
 				continue;
 			const char * targetName(target->GetFullName());
-#if _DEBUG
-			_MESSAGE("Checking target %s/0x%08x", targetName, form->formID);
-#endif
+			DBG_VMESSAGE("Checking target %s/0x%08x", targetName, form->formID);
 
 			const RE::TESBoundObject* ingredient(target->produceItem);
 			if (!ingredient)
 			{
-#if _DEBUG
-				_MESSAGE("No ingredient for %s/0x%08x", targetName, form->formID);
-#endif
+				REL_WARNING("No ingredient for %s/0x%08x", targetName, form->formID);
 				continue;
 			}
 
@@ -167,9 +163,7 @@ private:
 			const RE::TESLevItem* leveledItem(ingredient->As<RE::TESLevItem>());
 			if (leveledItem)
 			{
-#if _DEBUG
-				_MESSAGE("%s/0x%08x ingredient is Leveled Item", targetName, form->formID);
-#endif
+				DBG_VMESSAGE("%s/0x%08x ingredient is Leveled Item", targetName, form->formID);
 				ProduceFormCategorizer(target, leveledItem, targetName).CategorizeContents();
 			}
 			else
@@ -178,10 +172,8 @@ private:
 				storedType = GetObjectTypeForForm(ingredient);
 				if (storedType != ObjectType::unknown)
 				{
-#if _DEBUG
-					_MESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, form->formID,
+					DBG_VMESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, form->formID,
 						ingredient->GetName(), ingredient->formID, GetObjectTypeName(storedType).c_str());
-#endif
 					SetLootableForProducer(form, const_cast<RE::TESBoundObject*>(ingredient));
 				}
 				else
@@ -193,22 +185,16 @@ private:
 					// Store mapping of Produce holder to ingredient - this is the most correct type for this item producer
 					if (SetObjectTypeForForm(form->formID, storedType))
 					{
-#if _DEBUG
-						_MESSAGE("Target %s/0x%08x stored as type %s", targetName, form->formID, GetObjectTypeName(storedType).c_str());
-#endif
+						DBG_VMESSAGE("Target %s/0x%08x stored as type %s", targetName, form->formID, GetObjectTypeName(storedType).c_str());
 					}
 					else
 					{
-#if _DEBUG
-						_MESSAGE("Target %s/0x%08x (%s) already stored, check data", targetName, form->formID, GetObjectTypeName(storedType).c_str());
-#endif
+						REL_WARNING("Target %s/0x%08x (%s) already stored, check data", targetName, form->formID, GetObjectTypeName(storedType).c_str());
 					}
 				}
 				else
 				{
-#if _DEBUG
-					_MESSAGE("Target %s/0x%08x not stored", targetName, form->formID);
-#endif
+					DBG_VMESSAGE("Target %s/0x%08x not stored", targetName, form->formID);
 				}
 			}
 		}
@@ -237,34 +223,26 @@ private:
 			T* consumable(form->As<T>());
 			if (!consumable)
 			{
-#if _DEBUG
-				_MESSAGE("Skipping non-consumable form 0x%08x", form->formID);
-#endif
+				DBG_VMESSAGE("Skipping non-consumable form 0x%08x", form->formID);
 				continue;
 			}
 
 			RE::TESFullName* pFullName = form->As<RE::TESFullName>();
 			if (!pFullName || pFullName->GetFullNameLength() == 0)
 			{
-#if _DEBUG
-				_MESSAGE("Skipping unnamed form 0x%08x", form->formID);
-#endif
+				DBG_VMESSAGE("Skipping unnamed form 0x%08x", form->formID);
 				continue;
 			}
 
 			std::string formName(pFullName->GetFullName());
 			if (GetFormObjectType(form->formID) != ObjectType::unknown)
 			{
-#if _DEBUG
-				_MESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), form->formID);
-#endif
+				DBG_VMESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), form->formID);
 				continue;
 			}
 
 			ObjectType objectType(ConsumableObjectType<T>(consumable));
-#if _DEBUG
-			_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), form->formID, GetObjectTypeName(objectType).c_str());
-#endif
+			DBG_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), form->formID, GetObjectTypeName(objectType).c_str());
 			m_objectTypeByForm[form->formID] = objectType;
 		}
 	}
@@ -318,22 +296,16 @@ private:
 			if (!typedForm || !typedForm->GetFullNameLength())
 				continue;
 			const char* formName(typedForm->GetFullName());
-#if _DEBUG
-			_MESSAGE("Categorizing %s/0x%08x", formName, form->formID);
-#endif
+			DBG_VMESSAGE("Categorizing %s/0x%08x", formName, form->formID);
 			if ((form->formFlags & T::RecordFlags::kNonPlayable) == T::RecordFlags::kNonPlayable)
 			{
-#if _DEBUG
-				_MESSAGE("%s/0x%08x is NonPlayable", formName, form->formID);
-#endif
+				DBG_VMESSAGE("%s/0x%08x is NonPlayable", formName, form->formID);
 				continue;
 			}
 			RE::BGSKeywordForm* keywordForm(form->As<RE::BGSKeywordForm>());
 			if (!keywordForm)
 			{
-#if _DEBUG
-				_MESSAGE("%s/0x%08x Not a Keyword", formName, form->formID);
-#endif
+				DBG_WARNING("%s/0x%08x Not a Keyword", formName, form->formID);
 				continue;
 			}
 
@@ -354,10 +326,8 @@ private:
 					}
 					else if (correctType != ObjectType::unknown)
 					{
-#if _DEBUG
-						_MESSAGE("%s/0x%08x mapped to %s already stored with keyword %s, check data", formName, form->formID,
+						REL_WARNING("%s/0x%08x mapped to %s already stored with keyword %s, check data", formName, form->formID,
 							GetObjectTypeName(matched->second).c_str(), GetObjectTypeName(correctType).c_str());
-#endif
 					}
 					else
 					{
@@ -377,41 +347,30 @@ private:
 			{
 				if (SetObjectTypeForForm(form->formID, correctType))
 				{
-#if _DEBUG
-					_MESSAGE("%s/0x%08x stored as %s", formName, form->formID, GetObjectTypeName(correctType).c_str());
-#endif
+					DBG_VMESSAGE("%s/0x%08x stored as %s", formName, form->formID, GetObjectTypeName(correctType).c_str());
 				}
 				else
 				{
-#if _DEBUG
-					_MESSAGE("%s/0x%08x (%s) already stored, check data", formName, form->formID, GetObjectTypeName(correctType).c_str());
-#endif
+					REL_WARNING("%s/0x%08x (%s) already stored, check data", formName, form->formID, GetObjectTypeName(correctType).c_str());
 				}
 				continue;
 			}
 
 			// fail-safe is to check if the form has value and store as clutter if so
 			// Also, check model path for - you guessed it - clutter. Some base game MISC objects lack keywords.
-			RE::TESValueForm* valueForm(form->As<RE::TESValueForm>());
-			if ((valueForm && valueForm->value > 0) || CheckObjectModelPath(form, "clutter"))
+			if (typedForm->value > 0 || CheckObjectModelPath(form, "clutter"))
 			{
 				if (SetObjectTypeForForm(form->formID, ObjectType::clutter))
 				{
-#if _DEBUG
-					_MESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, valueForm ? valueForm->value : 0.0);
-#endif
+					DBG_VMESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, std::max(typedForm->value, SInt32(0)));
 				}
 				else
 				{
-#if _DEBUG
-					_MESSAGE("%s/0x%08x (defaulting as clutter) already stored, check data", formName, form->formID);
-#endif
+					REL_WARNING("%s/0x%08x (defaulting as clutter) already stored, check data", formName, form->formID);
 				}
 				continue;
 			}
-#if _DEBUG
-			_MESSAGE("%s/0x%08x not mappable", formName, form->formID);
-#endif
+			DBG_VMESSAGE("%s/0x%08x not mappable", formName, form->formID);
 		}
 	}
 

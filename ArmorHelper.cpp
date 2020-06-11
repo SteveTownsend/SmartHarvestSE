@@ -6,18 +6,10 @@ UInt32 TESObjectARMOHelper::GetGoldValue() const
 	if (!m_armor)
 		return 0;
 
-	const RE::TESValueForm* pValue = m_armor->As<RE::TESValueForm>();
-	if (!pValue)
-		return 0;
-
 	RE::EnchantmentItem* ench = TESFormHelper(m_armor).GetEnchantment();
 	if (!ench)
 	{
-#if _DEBUG
-		_MESSAGE("!ench");
-#endif
-
-		return pValue->value;
+		return m_armor->value;
 	}
 
 	double costPP = 0.0;
@@ -30,10 +22,7 @@ UInt32 TESObjectARMOHelper::GetGoldValue() const
 	}
 
 	UInt32 result = (costPP > 0) ? static_cast<UInt32>(costPP) : 0;
+	DBG_VMESSAGE("TESObjectARMOHelper::GetGoldValue()  %d  %d", m_armor->value, result);
 
-#if _DEBUG
-	_MESSAGE("TESObjectARMOHelper::GetGoldValue()  %d  %d", pValue->value, result);
-#endif
-
-	return pValue->value + result;
+	return m_armor->value + result;
 }

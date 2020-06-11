@@ -5,6 +5,10 @@
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Profiling|x64">
+      <Configuration>Profiling</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
@@ -13,12 +17,18 @@
   <PropertyGroup Label="Globals">
     <ProjectName>SmartHarvestSE</ProjectName>
     <ProjectGuid>{A9D9042D-D2FF-47EA-B77E-5BD1E424734C}</ProjectGuid>
-    <RootNamespace>AutoHarvestSE</RootNamespace>
+    <RootNamespace>SmartHarvestSE</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
@@ -36,6 +46,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="Common.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="Common.props" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="Common.props" />
@@ -49,6 +63,10 @@
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <LinkIncremental>false</LinkIncremental>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
@@ -117,6 +135,42 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
+      <Command>"$(ProjectDir)install_dll.bat" "$(TargetPath)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Installing DLL...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_PROFILING;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <GenerateMapFile>true</GenerateMapFile>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+      <Message>
+      </Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
       <Command>"$(SolutionDir)install_dll.bat" "$(TargetPath)"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
@@ -125,8 +179,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AlchemyItemHelper.cpp" />
+    <ClCompile Include="Collection.cpp" />
     <ClCompile Include="CollectionManager.cpp" />
-    <ClCompile Include="ConditionTreeFactory.cpp" />
+    <ClCompile Include="Condition.cpp" />
+    <ClCompile Include="CollectionFactory.cpp" />
+    <ClCompile Include="EventPublisher.cpp" />
+    <ClCompile Include="Exception.cpp" />
     <ClCompile Include="ExtraDataListHelper.cpp" />
     <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="containerLister.cpp" />
@@ -138,6 +196,7 @@
     <ClCompile Include="LogStackWalker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="PlayerCellHelper.cpp" />
     <ClCompile Include="RecursiveLock.cpp" />
@@ -146,10 +205,12 @@
     <ClCompile Include="PrecompiledHeaders.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="StackWalker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="tasks.cpp" />
     <ClCompile Include="FormHelper.cpp" />
@@ -159,14 +220,20 @@
     <ClCompile Include="objects.cpp" />
     <ClCompile Include="papyrus.cpp" />
     <ClCompile Include="ArmorHelper.cpp" />
+    <ClCompile Include="UIState.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="WeaponHelper.cpp" />
     <ClCompile Include="version.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AlchemyItemHelper.h" />
+    <ClInclude Include="BoundedList.h" />
+    <ClInclude Include="Collection.h" />
+    <ClInclude Include="Condition.h" />
     <ClInclude Include="CollectionManager.h" />
-    <ClInclude Include="ConditionTreeFactory.h" />
+    <ClInclude Include="CollectionFactory.h" />
+    <ClInclude Include="EventPublisher.h" />
+    <ClInclude Include="Exception.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
     <ClInclude Include="basketfile.h" />
     <ClInclude Include="containerLister.h" />
@@ -175,6 +242,7 @@
     <ClInclude Include="IHasValueWeight.h" />
     <ClInclude Include="InventoryItem.h" />
     <ClInclude Include="LoadOrder.h" />
+    <ClInclude Include="LogWrapper.h" />
     <ClInclude Include="LogStackWalker.h" />
     <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h" />
@@ -184,7 +252,6 @@
     <ClInclude Include="SimpleIni.h" />
     <ClInclude Include="sound.h" />
     <ClInclude Include="StackWalker.h" />
-    <ClInclude Include="strConv.h" />
     <ClInclude Include="tasks.h" />
     <ClInclude Include="FormHelper.h" />
     <ClInclude Include="dataCase.h" />
@@ -192,6 +259,7 @@
     <ClInclude Include="objects.h" />
     <ClInclude Include="papyrus.h" />
     <ClInclude Include="ArmorHelper.h" />
+    <ClInclude Include="UIState.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="WeaponHelper.h" />
     <ClInclude Include="version.h" />
@@ -219,12 +287,6 @@
     </ProjectReference>
     <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
       <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\skse64_2_00_17\src\skse64\skse64\skse64.vcxproj">
-      <Project>{7028b79c-06e3-4d9a-b38c-1dc3680b1bdb}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\skse64_2_00_17\src\skse64\skse64_common\skse64_common.vcxproj">
-      <Project>{5fd1c08d-db80-480c-a1c6-f0920005cd13}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
