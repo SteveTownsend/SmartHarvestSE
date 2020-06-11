@@ -358,12 +358,11 @@ private:
 
 			// fail-safe is to check if the form has value and store as clutter if so
 			// Also, check model path for - you guessed it - clutter. Some base game MISC objects lack keywords.
-			RE::TESValueForm* valueForm(form->As<RE::TESValueForm>());
-			if ((valueForm && valueForm->value > 0) || CheckObjectModelPath(form, "clutter"))
+			if (typedForm->value > 0 || CheckObjectModelPath(form, "clutter"))
 			{
 				if (SetObjectTypeForForm(form->formID, ObjectType::clutter))
 				{
-					DBG_VMESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, valueForm ? valueForm->value : 0.0);
+					DBG_VMESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, std::max(typedForm->value, SInt32(0)));
 				}
 				else
 				{

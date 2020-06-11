@@ -84,4 +84,5 @@ namespace StringUtils
 	bool Replace(std::string &str, const std::string target, const std::string replacement);
 	std::string Trim(const std::string& str, const char* trimCharacterList);
 	void DeleteNl(std::string &str);
+	std::string FromUnicode(const std::wstring& input);
 }

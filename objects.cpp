@@ -270,11 +270,11 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 	if (!baseForm)
 		return ObjectType::unknown;
 
-	if (!ignoreWhiteList && BasketFile::GetSingleton()->IsinList(BasketFile::WHITELIST, baseForm))
+	if (!ignoreWhiteList && BasketFile::GetSingleton()->IsinList(BasketFile::listnum::WHITELIST, baseForm))
 	{
 		return ObjectType::whitelist;
 	}
-	if (BasketFile::GetSingleton()->IsinList(BasketFile::BLACKLIST, baseForm))
+	if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, baseForm))
 	{
 		return ObjectType::blacklist;
 	}
@@ -300,14 +300,8 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 	else if (baseForm->formType == RE::FormType::Weapon)
 	{
 		// done here instead of during init because state of object can change during gameplay
-		const static RE::FormID Artifacts1 = 0x0A8668;
-		const static RE::FormID Artifacts2 = 0x0917E8;
-
 		const RE::TESObjectWEAP* weapon = baseForm->As<RE::TESObjectWEAP>();
 		if (!weapon || !weapon->GetPlayable())
-			return ObjectType::unknown;
-
-		if (weapon->HasKeyword(Artifacts1) || weapon->HasKeyword(Artifacts2))
 			return ObjectType::unknown;
 
 		return (weapon->formEnchanting) ? ObjectType::enchantedWeapon : ObjectType::weapon;

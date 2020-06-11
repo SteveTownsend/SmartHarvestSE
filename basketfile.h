@@ -3,12 +3,14 @@
 class BasketFile
 {
 public:
-	enum listnum
+	enum class listnum : int
 	{
 		WHITELIST = 0,
 		BLACKLIST,
 		MAX,
 	};
+
+	static constexpr int MAXLISTS = int(listnum::MAX);
 
 	UInt32 GetSize(listnum list_number);
 	bool IsinList(listnum list_number, const RE::TESForm* form) const;
@@ -26,8 +28,8 @@ public:
 
 	const std::unordered_set<const RE::TESForm*> GetList(listnum list_number) const;
 private:
-	RE::BGSListForm* formList[MAX];
-	std::unordered_set<const RE::TESForm*> list[MAX];
+	RE::BGSListForm* formList[MAXLISTS];
+	std::unordered_set<const RE::TESForm*> list[MAXLISTS];
 	static BasketFile* s_pInstance;
 
 	BasketFile(void);

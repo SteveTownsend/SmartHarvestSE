@@ -75,7 +75,9 @@ double INIFile::GetSetting(PrimaryType m_section_first, SecondaryType m_section_
 	::ToLower(section);
 	::ToLower(key);
 
-	return GetValue<double>(section, key, 0.0);
+	double setting(GetValue<double>(section, key, 0.0));
+	DBG_DMESSAGE("Get config setting %d/%d/%s = %f", m_section_first, m_section_second, key.c_str(), setting);
+	return setting;
 }
 
 void INIFile::PutSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key, double m_value)

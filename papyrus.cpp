@@ -188,6 +188,7 @@ namespace papyrus
 		{
 			std::string key = GetObjectTypeName(ObjectType(index));
 			::ToLower(key);
+			DBG_VMESSAGE("Put config setting %d/%d/%s = %f", first, second, key.c_str(), tmp_value);
 			ini->PutSetting(first, second, key.c_str(), static_cast<double>(tmp_value));
 			++index;
 		}
@@ -268,15 +269,15 @@ namespace papyrus
 	}
 	void SyncWhiteList(RE::StaticFunctionTag* base)
 	{
-		BasketFile::GetSingleton()->SyncList(BasketFile::WHITELIST);
+		BasketFile::GetSingleton()->SyncList(BasketFile::listnum::WHITELIST);
 	}
 	bool SaveWhiteList(RE::StaticFunctionTag* base)
 	{
-		return BasketFile::GetSingleton()->SaveFile(BasketFile::WHITELIST, "WhiteList.tsv");
+		return BasketFile::GetSingleton()->SaveFile(BasketFile::listnum::WHITELIST, "WhiteList.tsv");
 	}
 	bool LoadWhiteList(RE::StaticFunctionTag* base)
 	{
-		return BasketFile::GetSingleton()->LoadFile(BasketFile::WHITELIST, "WhiteList.tsv");
+		return BasketFile::GetSingleton()->LoadFile(BasketFile::listnum::WHITELIST, "WhiteList.tsv");
 	}
 
 	void ClearBlackList(RE::StaticFunctionTag* base)
@@ -289,11 +290,11 @@ namespace papyrus
 	}
 	bool SaveBlackList(RE::StaticFunctionTag* base)
 	{
-		return BasketFile::GetSingleton()->SaveFile(BasketFile::BLACKLIST, "BlackList.tsv");
+		return BasketFile::GetSingleton()->SaveFile(BasketFile::listnum::BLACKLIST, "BlackList.tsv");
 	}
 	bool LoadBlackList(RE::StaticFunctionTag* base)
 	{
-		return BasketFile::GetSingleton()->LoadFile(BasketFile::BLACKLIST, "BlackList.tsv");
+		return BasketFile::GetSingleton()->LoadFile(BasketFile::listnum::BLACKLIST, "BlackList.tsv");
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)

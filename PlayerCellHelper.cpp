@@ -2,6 +2,7 @@
 
 #include "tasks.h"
 #include "PlayerCellHelper.h"
+#include "BoundedList.h"
 
 PlayerCellHelper PlayerCellHelper::m_instance;
 std::vector<RE::TESObjectCELL*> PlayerCellHelper::m_adjacentCells;
@@ -166,11 +167,12 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	return true;
 }
 
-void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
+// returns false iff output list is full
+bool PlayerCellHelper::GetCellReferences(BoundedList<RE::TESObjectREFR*>& refs, const RE::TESObjectCELL* cell)
 {
 	// Do not scan reference list until cell is attached
 	if (!cell->IsAttached())
-		return;
+		return true;
 
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
@@ -183,9 +185,11 @@ void PlayerCellHelper::GetCellReferences(const RE::TESObjectCELL* cell)
 				continue;
 			}
 
-			m_targets.push_back(refr);
+			if (!refs.Add(refr))
+				return false;
 		}
 	}
+	return true;
 }
 
 void PlayerCellHelper::GetAdjacentCells(RE::TESObjectCELL* cell)
@@ -242,23 +246,23 @@ bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
 		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
 }
 
-std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCELL* cell, const double radius)
+void PlayerCellHelper::GetReferences(BoundedList<RE::TESObjectREFR*>& refs, RE::TESObjectCELL* cell, const double radius)
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
 #endif
 	if (!cell || !cell->IsAttached())
-		return std::vector<RE::TESObjectREFR*>();
+		return;
 
 	m_radius = radius;
 	m_eliminated = 0;
 
 	// find the adjacent cells, we only need to scan those and current player cell
 	GetAdjacentCells(cell);
-	GetCellReferences(m_cell);
 
-	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
-	if (!m_cell->IsInteriorCell())
+	// For exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
+	// If current cell fills the list then ignore others.
+	if (GetCellReferences(refs, m_cell) && !m_cell->IsInteriorCell())
 	{
 		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", m_cell->GetFormID());
 		for (const auto& adjacentCell : m_adjacentCells)
@@ -270,13 +274,12 @@ std::vector<RE::TESObjectREFR*> PlayerCellHelper::GetReferences(RE::TESObjectCEL
 				continue;
 			}
 			DBG_VMESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
-			GetCellReferences(adjacentCell);
+			if (!GetCellReferences(refs, adjacentCell)) {
+				// list full
+				break;
+			}
 		}
 	}
 	// Summary of unlootable REFRs
 	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, m_cell->GetFormID());
-	// set up return value and clear accumulator
-	std::vector<RE::TESObjectREFR*> result;
-	result.swap(m_targets);
-	return result;
 }
