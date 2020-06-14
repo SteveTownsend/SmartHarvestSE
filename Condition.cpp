@@ -43,11 +43,11 @@ KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
 	{
 		const RE::BGSKeyword* keywordRecord(form->As<RE::BGSKeyword>());
 		auto matched(std::find_if(keywordsLeft.begin(), keywordsLeft.end(),
-			[&](const std::string& keyword) -> bool { return keywordRecord->GetFormEditorID() == keyword; }));
+			[&](const std::string& keyword) -> bool { return FormUtils::SafeGetFormEditorID(keywordRecord) == keyword; }));
 		if (matched != keywordsLeft.end())
 		{
 			m_keywords.insert(keywordRecord);
-			DBG_VMESSAGE("BGSKeyword recorded for %s", keywordRecord->GetFormEditorID());
+			DBG_VMESSAGE("BGSKeyword recorded for %s", FormUtils::SafeGetFormEditorID(keywordRecord).c_str());
 			// eliminate the matched candidate input from JSON
 			keywordsLeft.erase(matched);
 
@@ -87,7 +87,7 @@ void to_json(nlohmann::json& j, const KeywordsCondition& condition)
 	j["keywords"] = nlohmann::json::array();
 	for (const auto keyword : condition.m_keywords)
 	{
-		j["keywords"].push_back(std::string(keyword->GetFormEditorID()));
+		j["keywords"].push_back(FormUtils::SafeGetFormEditorID(keyword));
 	}
 }
 
