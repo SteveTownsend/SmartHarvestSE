@@ -139,7 +139,7 @@ public:
 	static bool HasDynamicData(RE::TESObjectREFR* refr);
 	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
 
-	static void OnMenuClose(void);
+	static void OnGoodToGo(void);
 
 	static INIFile* m_ini;
 

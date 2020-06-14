@@ -20,7 +20,8 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onMining("OnMining"),
 	m_onLootFromNPC("OnLootFromNPC"),
 	m_onFlushAddedItems("OnFlushAddedItems"),
-	m_onObjectGlow("OnObjectGlow")
+	m_onObjectGlow("OnObjectGlow"),
+	m_onCheckOKToScan("OnCheckOKToScan")
 {
 }
 
@@ -90,6 +91,7 @@ void EventPublisher::HookUp()
 	m_onMining.Register(m_eventTarget);
 	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
+	m_onCheckOKToScan.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetCritterIngredient(RE::TESObjectREFR* refr)
@@ -132,4 +134,9 @@ void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* ite
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
 {
 	m_onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
+}
+
+void EventPublisher::TriggerCheckOKToScan(const int nonce)
+{
+	m_onCheckOKToScan.SendEvent(nonce);
 }
