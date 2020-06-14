@@ -10,16 +10,16 @@ public:
 
 	bool OKForSearch();
 	void Reset();
-	void ReportGoodToGo(const bool goodToGo, const int nonce);
+	void ReportVMGoodToGo(const bool goodToGo, const int nonce);
 
 private:
-	bool UIGoodToGo();
+	bool VMGoodToGo();
 
 	static std::unique_ptr<UIState> m_instance;
-	bool m_pluginUIGoodToGo;
+	bool m_effectiveGoodToGo;
 	int m_nonce;
 	std::condition_variable m_uiReport;
 	std::mutex m_uiLock;
-	bool m_uiResponded;
-	bool m_uiGoodToGo;
+	bool m_vmResponded;
+	bool m_vmGoodToGo;
 };
