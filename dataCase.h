@@ -15,6 +15,9 @@ public:
 
 	typedef std::unordered_set<const RE::TESForm*> FormCategory;
 
+	void BlockFirehoseSource(const RE::TESObjectREFR* refr);
+	void ForgetFirehoseSources();
+
 	bool BlockReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
 	void ClearBlockedReferences(const bool gameReload);
@@ -70,17 +73,18 @@ public:
 	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
 
 private:
-	std::unordered_map<std::string, std::string> translations;
+	std::unordered_map<std::string, std::string> m_translations;
 
-	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> arrowCheck;
-	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> ammoList;
+	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
+	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
 	std::unordered_set<RE::TESObjectREFR*> m_offLimitsContainers;
 	std::unordered_set<RE::TESForm*> m_offLimitsForms;
-	std::unordered_set<RE::FormID> userBlockedForm;
-	std::unordered_set<const RE::TESForm*> blockForm;
-	std::unordered_set<RE::FormID> blockRefr;
-	std::unordered_set<RE::FormID> blacklistRefr;
+	std::unordered_set<RE::FormID> m_userBlockedForm;
+	std::unordered_set<const RE::TESForm*> m_blockForm;
+	std::unordered_set<RE::FormID> m_firehoseSources;
+	std::unordered_set<RE::FormID> m_blockRefr;
+	std::unordered_set<RE::FormID> m_blacklistRefr;
 	std::unordered_map<RE::FormID, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lockedContainers;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
@@ -391,6 +395,7 @@ private:
 	static constexpr RE::FormID Gold = 0x0F;
 
 	void CategorizeStatics();
+	void ExcludeBrokenVendorContainers();
 	void ExcludeImmersiveArmorsGodChest();
 	void IncludeFossilMiningExcavation();
 	DataCase(void);

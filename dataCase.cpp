@@ -110,11 +110,11 @@ void DataCase::GetTranslationData()
 		std::string keyS = StringUtils::FromUnicode(key);
 		std::string translationS = StringUtils::FromUnicode(translation);
 
-		translations[keyS] = translationS;
+		m_translations[keyS] = translationS;
 		DBG_VMESSAGE("Translation entry: %s -> %s", keyS.c_str(), translationS.c_str());
 
 	}
-	DBG_MESSAGE("* TranslationData(%d)", translations.size());
+	DBG_MESSAGE("* TranslationData(%d)", m_translations.size());
 
 	return;
 }
@@ -289,6 +289,19 @@ bool DataCase::GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName)
 	return true;
 }
 
+void DataCase::ExcludeBrokenVendorContainers()
+{
+	// This chest is fixed in but broken in base game
+	static std::string espName("Skyrim.esm");
+	static RE::FormID heljarchenBlackSmithChestFormID(0x9e48f);
+	RE::TESForm* chestForm(RE::TESDataHandler::GetSingleton()->LookupForm(heljarchenBlackSmithChestFormID, espName));
+	if (chestForm)
+	{
+		DBG_MESSAGE("Block broken vendor chest %s(0x%08x)", chestForm->GetName(), chestForm->GetFormID());
+		m_offLimitsForms.insert(chestForm);
+	}
+}
+
 void DataCase::ExcludeImmersiveArmorsGodChest()
 {
 	static std::string espName("Hothtrooper44_ArmorCompilation.esp");
@@ -355,6 +368,7 @@ void DataCase::BlockOffLimitsContainers()
 				m_offLimitsContainers.insert(containerRef);
 			}
 		}
+		ExcludeBrokenVendorContainers();
 		ExcludeImmersiveArmorsGodChest();
 		IncludeFossilMiningExcavation();
 	}
@@ -403,11 +417,27 @@ void DataCase::GetAmmoData()
 			continue;
 
 		DBG_VMESSAGE("Adding Projectile %s with ammo %s", proj->GetFullName(), ammo->GetFullName());
-		ammoList[proj] = ammo;
+		m_ammoList[proj] = ammo;
 	}
 
-	REL_MESSAGE("* AmmoData(%d)", ammoList.size());
+	REL_MESSAGE("* AmmoData(%d)", m_ammoList.size());
 }
+
+void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	if (!refr)
+		return;
+	// looted REFR was 'blocked while I am in this cell' before the triggering event was fired
+	m_firehoseSources.insert(refr->GetFormID());
+}
+
+void DataCase::ForgetFirehoseSources()
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	m_firehoseSources.clear();
+}
+
 
 bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 {
@@ -417,7 +447,7 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (blockRefr.insert(refr->GetFormID())).second;
+	return (m_blockRefr.insert(refr->GetFormID())).second;
 }
 
 bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
@@ -428,17 +458,24 @@ bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return blockRefr.count(refr->GetFormID()) > 0;
+	return m_blockRefr.count(refr->GetFormID()) > 0;
 }
 
 void DataCase::ClearBlockedReferences(const bool gameReload)
 {
-	DBG_MESSAGE("Reset list of blocked REFRs");
 	RecursiveLockGuard guard(m_blockListLock);
+	if (gameReload)
+	{
+		DBG_MESSAGE("Reset entire list of blocked REFRs");
+		m_blockRefr.clear();
+		ForgetFirehoseSources();
+		return;
+	}
 	// Volcanic dig sites from Fossil Mining are only cleared on game reload, to simulate the 30 day delay in
 	// the mining script. Only allow one auto-mining visit per gaming session, unless player dies.
-	decltype(blockRefr) volcanicDigSites;
-	for (const auto refrID : blockRefr)
+	// The same goes for Firehose item sources, currently the BYOH mined materials
+	decltype(m_blockRefr) volcanicDigSites(m_firehoseSources);
+	for (const auto refrID : m_blockRefr)
 	{
 		RE::TESForm* form(RE::TESForm::LookupByID(refrID));
 		if (!form)
@@ -452,7 +489,9 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 			volcanicDigSites.insert(refrID);
 		}
 	}
-	blockRefr.swap(volcanicDigSites);
+	DBG_MESSAGE("Reset blocked REFRs apart from %d volcanic and %d firehose",
+		volcanicDigSites.size() - m_firehoseSources.size(), m_firehoseSources.size());
+	m_blockRefr.swap(volcanicDigSites);
 }
 
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
@@ -463,7 +502,7 @@ bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (blacklistRefr.insert(refr->GetFormID())).second;
+	return (m_blacklistRefr.insert(refr->GetFormID())).second;
 }
 
 bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr)
@@ -474,14 +513,14 @@ bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return blacklistRefr.count(refr->GetFormID()) > 0;
+	return m_blacklistRefr.count(refr->GetFormID()) > 0;
 }
 
 void DataCase::ClearReferenceBlacklist()
 {
 	DBG_MESSAGE("Reset blacklisted REFRs");
 	RecursiveLockGuard guard(m_blockListLock);
-	blacklistRefr.clear();
+	m_blacklistRefr.clear();
 }
 
 // Remember locked containers so we do not indiscriminately auto-loot them after a player unlock, if config forbids
@@ -553,7 +592,7 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (blockForm.insert(form)).second;
+	return (m_blockForm.insert(form)).second;
 }
 
 bool DataCase::UnblockForm(const RE::TESForm* form)
@@ -564,7 +603,7 @@ bool DataCase::UnblockForm(const RE::TESForm* form)
 	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return blockForm.erase(form) > 0;
+	return m_blockForm.erase(form) > 0;
 }
 
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
@@ -575,7 +614,7 @@ bool DataCase::IsFormBlocked(const RE::TESForm* form)
 	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return blockForm.count(form) > 0;
+	return m_blockForm.count(form) > 0;
 }
 
 void DataCase::ResetBlockedForms()
@@ -583,8 +622,8 @@ void DataCase::ResetBlockedForms()
 	// reset blocked forms to just the user's list
 	DBG_MESSAGE("Reset Blocked Forms");
 	RecursiveLockGuard guard(m_blockListLock);
-	blockForm.clear();
-	for (RE::FormID formID : userBlockedForm)
+	m_blockForm.clear();
+	for (RE::FormID formID : m_userBlockedForm)
 	{
 		DBG_VMESSAGE("Restore block status for user form 0x%08x", formID);
 		BlockForm(RE::TESForm::LookupByID(formID));
@@ -622,15 +661,15 @@ ResourceType DataCase::OreVeinResourceType(const RE::TESObjectACTI* mineable) co
 
 const char* DataCase::GetTranslation(const char* key) const
 {
-	const auto& translation(translations.find(key));
-	if (translation == translations.cend())
+	const auto& translation(m_translations.find(key));
+	if (translation == m_translations.cend())
 		return nullptr;
 	return translation->second.c_str();
 }
 
 const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
 {
-	return (proj && ammoList.find(proj) != ammoList.end()) ? ammoList[proj] : nullptr;
+	return (proj && m_ammoList.find(proj) != m_ammoList.end()) ? m_ammoList[proj] : nullptr;
 }
 
 const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
@@ -651,7 +690,7 @@ void DataCase::ListsClear(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
 	DBG_MESSAGE("Clear arrow history");
-	arrowCheck.clear();
+	m_arrowCheck.clear();
 
 	// only clear blacklist on game reload
 	if (gameReload)
@@ -677,25 +716,25 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	}
 
 	RecursiveLockGuard guard(m_blockListLock);
-	if (arrowCheck.count(refr) == 0)
+	if (m_arrowCheck.count(refr) == 0)
 	{
 		DBG_VMESSAGE("pick %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
-		arrowCheck.insert(std::make_pair(refr, pos));
+		m_arrowCheck.insert(std::make_pair(refr, pos));
 		skip = true;
 	}
 	else
 	{
-		RE::NiPoint3 prev = arrowCheck.at(refr);
+		RE::NiPoint3 prev = m_arrowCheck.at(refr);
 		if (prev != pos)
 		{
 			DBG_VMESSAGE("moving pos:%0.2f,%0.2f,%0.2f prev:%0.2f %0.2f, %0.2f", pos.x, pos.y, pos.z, prev.x, prev.y, prev.z);
-			arrowCheck[refr] = pos;
+			m_arrowCheck[refr] = pos;
 			skip = true;
 		}
 		else
 		{
 			DBG_VMESSAGE("catch %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
-			arrowCheck.erase(refr);
+			m_arrowCheck.erase(refr);
 		}
 	}
 	return skip;
@@ -704,8 +743,8 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 void DataCase::CategorizeLootables()
 {
 	REL_MESSAGE("*** LOAD *** Load User blocked forms");
-	if (!GetTSV(&userBlockedForm, "BlackList.tsv"))
-		GetTSV(&userBlockedForm, "default\\BlackList.tsv");
+	if (!GetTSV(&m_userBlockedForm, "BlackList.tsv"))
+		GetTSV(&m_userBlockedForm, "default\\BlackList.tsv");
 
 	// used to taxonomize ACTIvators
 	REL_MESSAGE("*** LOAD *** Load Text Translation");
@@ -849,7 +888,13 @@ void DataCase::SetObjectTypeByKeywords()
 			continue;
 		}
 
-		std::string keywordName(keywordDef->GetFormEditorID());
+		DBG_VMESSAGE("Process KYWD formID 0x%08x", form->formID);
+		std::string keywordName(FormUtils::SafeGetFormEditorID(keywordDef));
+		if (keywordName.empty())
+		{
+			REL_WARNING("KYWD record 0x%08x has missing/blank EDID, skip", form->formID);
+			continue;
+		}
 		// Store player house keyword for SearchTask usage
 		if (keywordName == "LocTypePlayerHouse")
 		{

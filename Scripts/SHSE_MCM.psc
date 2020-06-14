@@ -5,12 +5,8 @@ Import SHSE_PluginProxy
 SHSE_EventsAlias Property eventScript Auto
 GlobalVariable Property g_LootingEnabled Auto
 
-bool initComplete = false
-
-int defaultRadius = 30
-float defaultInterval = 1.0
-int defaultRadiusIndoors = 15
-float defaultIntervalIndoors = 0.5
+; check for first init for this playthrough
+GlobalVariable Property g_InitComplete Auto
 
 int type_Common = 1
 int type_Harvest = 2
@@ -48,9 +44,13 @@ int blackListHotkeyCode
 int preventPopulationCenterLooting
 string[] s_populationCenterArray
 
-float radius
+int defaultRadius
+float defaultInterval
+int defaultRadiusIndoors
+float defaultIntervalIndoors
+int radius
 float interval
-float radiusIndoors
+int radiusIndoors
 float intervalIndoors
 
 int iniSaveLoad
@@ -86,9 +86,9 @@ int[] id_objectSettingArray
 float[] objectSettingArray
 
 int valueWeightDefault
-int valueWeightDefaultDefault = 10
+int valueWeightDefaultDefault
 int maxMiningItems
-int maxMiningItemsDefault = 15
+int maxMiningItemsDefault
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -124,8 +124,8 @@ endFunction
 
 float[] function GetSettingToObjectArray(int section1, int section2)
     int index = 0
-    float[] result = New float[33]
-    while (index < 33)
+    float[] result = New float[32]
+    while (index < 32)
         result[index] = GetSettingToObjectArrayEntry(section1, section2, index)
         ;DebugTrace("Config setting " + section1 + "/" + section2 + "/" + index + " = " + result[index])
         index += 1
@@ -133,61 +133,66 @@ float[] function GetSettingToObjectArray(int section1, int section2)
     return result
 endFunction
 
-function SeedDefaults()
+function ApplySettingsFromFile()
     enableHarvest = GetSetting(type_Common, type_Config, "enableHarvest") as bool
     enableLootContainer = GetSetting(type_Common, type_Config, "enableLootContainer") as bool
     enableLootDeadbody = GetSetting(type_Common, type_Config, "enableLootDeadbody") as bool
     unencumberedInCombat = GetSetting(type_Common, type_Config, "unencumberedInCombat") as bool
     unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "unencumberedInPlayerHome") as bool
     unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "unencumberedIfWeaponDrawn") as bool
-    ;DebugTrace("SeedDefaults - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
+    ;DebugTrace("ApplySettingsFromFile - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
     pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
     whiteListHotkeyCode = GetSetting(type_Common, type_Config, "whiteListHotkeyCode") as int
     blackListHotkeyCode = GetSetting(type_Common, type_Config, "blackListHotkeyCode") as int
     preventPopulationCenterLooting = GetSetting(type_Common, type_Config, "preventPopulationCenterLooting") as int
 
-    radius = GetSetting(type_Harvest, type_Config, "RadiusFeet") as float
+    radius = GetSetting(type_Harvest, type_Config, "RadiusFeet") as int
     interval = GetSetting(type_Harvest, type_Config, "IntervalSeconds") as float
-    radiusIndoors = GetSetting(type_Harvest, type_Config, "IndoorsRadiusFeet") as float
+    radiusIndoors = GetSetting(type_Harvest, type_Config, "IndoorsRadiusFeet") as int
     intervalIndoors = GetSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds") as float
-
-    questObjectScope = GetSetting(type_Harvest, type_Config, "questObjectScope") as int
-    crimeCheckNotSneaking = GetSetting(type_Harvest, type_Config, "crimeCheckNotSneaking") as int
-    crimeCheckSneaking = GetSetting(type_Harvest, type_Config, "crimeCheckSneaking") as int
-
-    playerBelongingsLoot = GetSetting(type_Harvest, type_Config, "playerBelongingsLoot") as int
-    questObjectLoot = GetSetting(type_Harvest, type_Config, "questObjectLoot") as int
-    enchantItemGlow = GetSetting(type_Harvest, type_Config, "enchantItemGlow") as bool
-    lockedChestLoot = GetSetting(type_Harvest, type_Config, "lockedChestLoot") as int
-    bossChestLoot = GetSetting(type_Harvest, type_Config, "bossChestLoot") as int
-    manualLootTargetNotify = GetSetting(type_Harvest, type_Config, "manualLootTargetNotify") as bool
 
     disableDuringCombat = GetSetting(type_Harvest, type_Config, "disableDuringCombat") as bool
     disableWhileWeaponIsDrawn = GetSetting(type_Harvest, type_Config, "disableWhileWeaponIsDrawn") as bool
     disableWhileConcealed = GetSetting(type_Harvest, type_Config, "disableWhileConcealed") as bool
 
-    playContainerAnimation = GetSetting(type_Harvest, type_Config, "PlayContainerAnimation") as int
-    ;DebugTrace("SeedDefaults - playContainerAnimation " + playContainerAnimation)
+    crimeCheckNotSneaking = GetSetting(type_Harvest, type_Config, "crimeCheckNotSneaking") as int
+    crimeCheckSneaking = GetSetting(type_Harvest, type_Config, "crimeCheckSneaking") as int
 
+    questObjectLoot = GetSetting(type_Harvest, type_Config, "questObjectLoot") as int
+    questObjectScope = GetSetting(type_Harvest, type_Config, "questObjectScope") as int
+    lockedChestLoot = GetSetting(type_Harvest, type_Config, "lockedChestLoot") as int
+    bossChestLoot = GetSetting(type_Harvest, type_Config, "bossChestLoot") as int
+    enchantItemGlow = GetSetting(type_Harvest, type_Config, "enchantItemGlow") as bool
+    playerBelongingsLoot = GetSetting(type_Harvest, type_Config, "playerBelongingsLoot") as int
+    playContainerAnimation = GetSetting(type_Harvest, type_Config, "PlayContainerAnimation") as int
+    ;DebugTrace("ApplySettingsFromFile - playContainerAnimation " + playContainerAnimation)
+
+    manualLootTargetNotify = GetSetting(type_Harvest, type_Config, "manualLootTargetNotify") as bool
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "valueWeightDefault") as int
-    ;DebugTrace("SeedDefaults - vw default " + valueWeightDefault)
+    ;DebugTrace("ApplySettingsFromFile - vw default " + valueWeightDefault)
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "maxMiningItems") as int)
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
 endFunction
 
-function init()
-    ;DebugTrace("init start")
-    ; Seed defaults from the INI file
+;Seed defaults from the INI file, first time only - not repeated when user starts new game
+function CheckFirstTimeEver()
+    ;DebugTrace("CheckFirstTimeEver start")
+    int doneInit = g_InitComplete.GetValue() as int
+    if doneInit == 0
+        ;DebugTrace("CheckFirstTimeEver - init required")
+        AllocateItemCategoryArrays()
 
-    LoadIniFile()
-    SeedDefaults()
+        LoadIniFile()
+        ApplySettingsFromFile()
 
-    initComplete = true
-    ;DebugTrace("init finished")
+        g_InitComplete.SetValue(1)
+    endif
+    ;DebugTrace("FirstTimeEver finished")
 endFunction
 
+; push current settings to plugin and event handler script
 Function ApplySetting()
 
     ;DebugTrace("  MCM ApplySetting start")
@@ -237,8 +242,10 @@ Function ApplySetting()
     ;DebugTrace("result " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
     if (isEnabled)
         g_LootingEnabled.SetValue(1)
+        eventScript.SetScanActive()
     else
         g_LootingEnabled.SetValue(0)
+        eventScript.SetScanInactive()
     endif
 
     ; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
@@ -246,7 +253,9 @@ Function ApplySetting()
     player = Game.GetPlayer()
     eventScript.SetPlayer(player)
     eventScript.RemoveCarryWeightDelta()
-    eventScript.ApplySetting()
+    ; hard code for oreVein pickup type, yuck
+    ;DebugTrace("oreVein setting " + objectSettingArray[31] as int)
+    eventScript.ApplySetting(objectSettingArray[31] as int)
 
     ; do this last so plugin state is in sync   
     if (isEnabled)
@@ -260,13 +269,101 @@ Function ApplySetting()
     ;DebugTrace("  MCM ApplySetting finished")
 endFunction
 
-Event OnConfigInit()
+Function SetOreVeinChoices()
+    s_behaviorToggleArray = New String[3]
+    s_behaviorToggleArray[0] = "$SHSE_DONT_PICK_UP"
+    s_behaviorToggleArray[1] = "$SHSE_PICK_UP_IF_NOT_BYOH"
+    s_behaviorToggleArray[2] = "$SHSE_PICK_UP"
+EndFunction
 
+Function AllocateItemCategoryArrays()
+    id_objectSettingArray = New Int[32]
+    objectSettingArray = New float[32]
+
+    id_valueWeightArray = New Int[32]
+    valueWeightSettingArray = New float[32]
+EndFunction
+
+Function SetObjectTypeData()
+    s_objectTypeNameArray = New String[32]
+
+    s_objectTypeNameArray[0]  = "$SHSE_UNKNOWN"
+    s_objectTypeNameArray[1]  = "$SHSE_FLORA"
+    s_objectTypeNameArray[2]  = "$SHSE_CRITTER"
+    s_objectTypeNameArray[3]  = "$SHSE_INGREDIENT"
+    s_objectTypeNameArray[4]  = "$SHSE_SEPTIM"
+    s_objectTypeNameArray[5]  = "$SHSE_GEM"
+    s_objectTypeNameArray[6]  = "$SHSE_LOCKPICK"
+    s_objectTypeNameArray[7]  = "$SHSE_ANIMAL_HIDE"
+    s_objectTypeNameArray[8]  = "$SHSE_OREINGOT"
+    s_objectTypeNameArray[9]  = "$SHSE_SOULGEM"
+    s_objectTypeNameArray[10] = "$SHSE_KEY"
+    s_objectTypeNameArray[11] = "$SHSE_CLUTTER"
+    s_objectTypeNameArray[12] = "$SHSE_LIGHT"
+    s_objectTypeNameArray[13] = "$SHSE_BOOK"
+    s_objectTypeNameArray[14] = "$SHSE_SPELLBOOK"
+    s_objectTypeNameArray[15] = "$SHSE_SKILLBOOK"
+    s_objectTypeNameArray[16] = "$SHSE_BOOK_READ"
+    s_objectTypeNameArray[17] = "$SHSE_SPELLBOOK_READ"
+    s_objectTypeNameArray[18] = "$SHSE_SKILLBOOK_READ"
+    s_objectTypeNameArray[19] = "$SHSE_SCROLL"
+    s_objectTypeNameArray[20] = "$SHSE_AMMO"
+    s_objectTypeNameArray[21] = "$SHSE_WEAPON"
+    s_objectTypeNameArray[22] = "$SHSE_ENCHANTED_WEAPON"
+    s_objectTypeNameArray[23] = "$SHSE_ARMOR"
+    s_objectTypeNameArray[24] = "$SHSE_ENCHANTED_ARMOR"
+    s_objectTypeNameArray[25] = "$SHSE_JEWELRY"
+    s_objectTypeNameArray[26] = "$SHSE_ENCHANTED_JEWELRY"
+    s_objectTypeNameArray[27] = "$SHSE_POTION"
+    s_objectTypeNameArray[28] = "$SHSE_POISON"
+    s_objectTypeNameArray[29] = "$SHSE_FOOD"
+    s_objectTypeNameArray[30] = "$SHSE_DRINK"
+    s_objectTypeNameArray[31] = "$SHSE_OREVEIN"
+    s_objectTypeNameArray[32] = "$SHSE_WHITELIST"
+
+    ; update script variables needing sync to native
+    objType_Flora = GetObjectTypeByName("flora")
+    objType_Critter = GetObjectTypeByName("critter")
+    objType_Septim = GetObjectTypeByName("septims")
+    objType_LockPick = GetObjectTypeByName("lockpick")
+    objType_Soulgem = GetObjectTypeByName("soulgem")
+    objType_Key = GetObjectTypeByName("key")
+    objType_Ammo = GetObjectTypeByName("ammo")
+    objType_Mine = GetObjectTypeByName("orevein")
+    objType_WhiteList = GetObjectTypeByName("whitelist")
+    eventScript.SyncNativeDataTypes()
+EndFunction
+
+Function SetMiscDefaults(bool firstTime)
+    ; New or clarified defaults and constants
+    manualLootTargetNotify = true
+
+    defaultRadius = 30
+    defaultInterval = 1.0
+    defaultRadiusIndoors = 15
+    defaultIntervalIndoors = 0.5
+    if firstTime
+        radius = defaultRadius
+        interval = defaultInterval
+        radiusIndoors = defaultRadiusIndoors
+        intervalIndoors = defaultIntervalIndoors
+        playContainerAnimation = 2
+    endIf        
+
+    valueWeightDefaultDefault = 10
+
+    maxMiningItemsDefault = 8
+    eventScript.UpdateMaxMiningItems(maxMiningItems)
+EndFunction
+
+; called when new game started or mod installed mid-playthrough
+Event OnConfigInit()
     ;DebugTrace("** OnConfigInit start **")
+    CheckFirstTimeEver()
 
     ModName = "$SHSE_MOD_NAME"
 
-    Pages = New String[6]
+    Pages = New String[5]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
     Pages[1] = "$SHSE_SPECIALS_LISTS_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
@@ -318,10 +415,6 @@ Event OnConfigInit()
     s_specialObjectHandlingArray[1] = "$SHSE_PICK_UP"
     s_specialObjectHandlingArray[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
 
-    s_behaviorToggleArray = New String[2]
-    s_behaviorToggleArray[0] = "$SHSE_DONT_PICK_UP"
-    s_behaviorToggleArray[1] = "$SHSE_PICK_UP"
-
     s_behaviorArray = New String[5]
     s_behaviorArray[0] = "$SHSE_DONT_PICK_UP"
     s_behaviorArray[1] = "$SHSE_PICK_UP_W/O_MSG"
@@ -329,96 +422,39 @@ Event OnConfigInit()
     s_behaviorArray[3] = "$SHSE_PICK_UP_V/W_W/O_MSG"
     s_behaviorArray[4] = "$SHSE_PICK_UP_V/W_W/MSG"
 
-    id_objectSettingArray = New Int[33]
-    objectSettingArray = New float[33]
-
-    id_valueWeightArray = New Int[33]
-    valueWeightSettingArray = New float[33]
-
-    s_objectTypeNameArray = New String[33]
-
     eventScript.whitelist_form = Game.GetFormFromFile(0x0333C, "SmartHarvestSE.esp") as Formlist
     eventScript.blacklist_form = Game.GetFormFromFile(0x0333D, "SmartHarvestSE.esp") as Formlist
     
     pushLocationToExcludeList = false
     pushCellToExcludeList= false
 
+    SetOreVeinChoices()
+    SetMiscDefaults(true)
+    SetObjectTypeData()
+
     ;DebugTrace("** OnConfigInit finished **")
 endEvent
 
 int function GetVersion()
-    ; update script variables needing sync to native
-    objType_Flora = GetObjectTypeByName("flora")
-    objType_Critter = GetObjectTypeByName("critter")
-    objType_Septim = GetObjectTypeByName("septims")
-    objType_LockPick = GetObjectTypeByName("lockpick")
-    objType_Soulgem = GetObjectTypeByName("soulgem")
-    objType_Key = GetObjectTypeByName("key")
-    objType_Ammo = GetObjectTypeByName("ammo")
-    objType_Mine = GetObjectTypeByName("orevein")
-    objType_WhiteList = GetObjectTypeByName("whitelist")
-    eventScript.SyncNativeDataTypes()
-
-    ; New or clarified defaults and constants
-    manualLootTargetNotify = true
-    defaultRadius = 30
-    defaultInterval = 1.0
-    defaultRadiusIndoors = 15
-    defaultIntervalIndoors = 0.5
-    valueWeightDefaultDefault = 10
-    maxMiningItemsDefault = 15
-    playContainerAnimation = 2
-    eventScript.UpdateMaxMiningItems(maxMiningItems)
-
-    s_objectTypeNameArray[0]  = "$SHSE_UNKNOWN"
-    s_objectTypeNameArray[1]  = "$SHSE_FLORA"
-    s_objectTypeNameArray[2]  = "$SHSE_CRITTER"
-    s_objectTypeNameArray[3]  = "$SHSE_INGREDIENT"
-    s_objectTypeNameArray[4]  = "$SHSE_SEPTIM"
-    s_objectTypeNameArray[5]  = "$SHSE_GEM"
-    s_objectTypeNameArray[6]  = "$SHSE_LOCKPICK"
-    s_objectTypeNameArray[7]  = "$SHSE_ANIMAL_HIDE"
-    s_objectTypeNameArray[8]  = "$SHSE_OREINGOT"
-    s_objectTypeNameArray[9]  = "$SHSE_SOULGEM"
-    s_objectTypeNameArray[10] = "$SHSE_KEY"
-    s_objectTypeNameArray[11] = "$SHSE_CLUTTER"
-    s_objectTypeNameArray[12] = "$SHSE_LIGHT"
-    s_objectTypeNameArray[13] = "$SHSE_BOOK"
-    s_objectTypeNameArray[14] = "$SHSE_SPELLBOOK"
-    s_objectTypeNameArray[15] = "$SHSE_SKILLBOOK"
-    s_objectTypeNameArray[16] = "$SHSE_BOOK_READ"
-    s_objectTypeNameArray[17] = "$SHSE_SPELLBOOK_READ"
-    s_objectTypeNameArray[18] = "$SHSE_SKILLBOOK_READ"
-    s_objectTypeNameArray[19] = "$SHSE_SCROLL"
-    s_objectTypeNameArray[20] = "$SHSE_AMMO"
-    s_objectTypeNameArray[21] = "$SHSE_WEAPON"
-    s_objectTypeNameArray[22] = "$SHSE_ENCHANTED_WEAPON"
-    s_objectTypeNameArray[23] = "$SHSE_ARMOR"
-    s_objectTypeNameArray[24] = "$SHSE_ENCHANTED_ARMOR"
-    s_objectTypeNameArray[25] = "$SHSE_JEWELRY"
-    s_objectTypeNameArray[26] = "$SHSE_ENCHANTED_JEWELRY"
-    s_objectTypeNameArray[27] = "$SHSE_POTION"
-    s_objectTypeNameArray[28] = "$SHSE_POISON"
-    s_objectTypeNameArray[29] = "$SHSE_FOOD"
-    s_objectTypeNameArray[30] = "$SHSE_DRINK"
-    s_objectTypeNameArray[31] = "$SHSE_OREVEIN"
-    s_objectTypeNameArray[32] = "$SHSE_WHITELIST"
-
-    return 22
+    return 25
 endFunction
 
+; called when mod is _upgraded_ mid-playthrough
 Event OnVersionUpdate(int a_version)
     ;DebugTrace("OnVersionUpdate start" + a_version)
-
-    if (a_version >= 22 && CurrentVersion < 22)
-        ; Major revision to reduce script dependence and auto-categorize lootables
-        ;Debug.Trace(self + ": Updating script to version " + a_version)
-        OnConfigInit()
+    if (a_version >= 25 && CurrentVersion < 25)
+        ; clean up after release with bad upgrade/install workflow and MCM bugs
+        ; logic required to support existing saves, as well as the update per se
+        Debug.Trace(self + ": Updating script to version " + a_version)
+        CheckFirstTimeEver()
+        SetOreVeinChoices()
+        SetMiscDefaults(false)
+        SetObjectTypeData()
     endIf
-
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
 
+; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
 Event OnGameReload()
     parent.OnGameReload()
     ;DebugTrace("OnGameReload - vw default " + valueWeightDefault)
@@ -427,12 +463,6 @@ Event OnGameReload()
         return
     endif
     gameReloadLock = true
-
-    ;DebugTrace("OnGameReload - init-complete " + initComplete)
-    if (!initComplete)
-        ;DebugTrace("OnGameReload - init required")
-        init()
-    endif
 
     ApplySetting()
     
@@ -596,10 +626,10 @@ event OnPageReset(string currentPage)
         AddMenuOptionST("iniSaveLoad", "$SHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
         AddKeyMapOptionST("pauseHotkeyCode", "$SHSE_PAUSE_KEY", pauseHotkeyCode)
         AddSliderOptionST("ValueWeightDefault", "$SHSE_VW_DEFAULT", valueWeightDefault)
-        AddSliderOptionST("Radius", "$SHSE_RADIUS", radius, "$SHSE{0}UNIT")
-        AddSliderOptionST("Interval", "$SHSE_INTERVAL", interval, "$SHSE{1}SEC")
-        AddSliderOptionST("RadiusIndoors", "$SHSE_RADIUS_INDOORS", radiusIndoors, "$SHSE{0}UNIT")
-        AddSliderOptionST("IntervalIndoors", "$SHSE_INTERVAL_INDOORS", intervalIndoors, "$SHSE{1}SEC")
+        AddSliderOptionST("Radius", "$SHSE_RADIUS", radius, "$SHSE_DISTANCE")
+        AddSliderOptionST("Interval", "$SHSE_INTERVAL", interval, "$SHSE_ELAPSED_TIME")
+        AddSliderOptionST("RadiusIndoors", "$SHSE_RADIUS_INDOORS", radiusIndoors, "$SHSE_DISTANCE")
+        AddSliderOptionST("IntervalIndoors", "$SHSE_INTERVAL_INDOORS", intervalIndoors, "$SHSE_ELAPSED_TIME")
         AddSliderOptionST("MaxMiningItems", "$SHSE_MAX_MINING_ITEMS", maxMiningItems)
         AddToggleOptionST("unencumberedInCombat", "$SHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
         AddToggleOptionST("unencumberedInPlayerHome", "$SHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHome)
@@ -654,7 +684,7 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_PICK_UP_ITEM_TYPE_HEADER")
         
         int index = 1
-        while (index <= (s_objectTypeNameArray.length - 2)) ; whitelist is the last
+        while index < s_objectTypeNameArray.length ; oreVein is the last
             if (index == objType_Mine)
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorToggleArray[(objectSettingArray[index] as int)])
             else
@@ -669,12 +699,12 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_VALUE/WEIGHT_HEADER")
 
         index = 1
-        while (index <= (s_objectTypeNameArray.length - 2)) ; whitelist is the last
+        while index < s_objectTypeNameArray.length ; oreVein is the last
             ; do not request V/W for weightless or unhandleable item types
             if (index == objType_Mine || index == objType_Ammo || index == objType_Septim  || index == objType_Key || index == objType_LockPick || index == objType_WhiteList)
                 AddEmptyOption()
             else
-                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W{1}")
+                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W")
             endif
             index += 1
         endWhile
@@ -781,7 +811,7 @@ event OnOptionSliderAccept(int a_option, float a_value)
         if (keyName != "unknown")
             valueWeightSettingArray[index] = a_value
 ;           PutSetting(type_Harvest, type_ValueWeight, keyName, valueWeightSettingArray[index])
-            SetSliderOptionValue(a_option, a_value, "$SHSE_V/W{1}")
+            SetSliderOptionValue(a_option, a_value, "$SHSE_V/W")
         endif
         return
     endif
@@ -998,13 +1028,13 @@ state Radius
     endEvent
 
     event OnSliderAcceptST(float value)
-        radius = value
-        SetSliderOptionValueST(radius, "$SHSE{0}UNIT")
+        radius = value as int
+        SetSliderOptionValueST(radius, "$SHSE_DISTANCE")
     endEvent
 
     event OnDefaultST()
         radius = defaultRadius
-        SetSliderOptionValueST(radius, "$SHSE{0}UNIT")
+        SetSliderOptionValueST(radius, "$SHSE_DISTANCE")
     endEvent
 
     event OnHighlightST()
@@ -1022,12 +1052,12 @@ state Interval
 
     event OnSliderAcceptST(float value)
         interval = value
-        SetSliderOptionValueST(interval, "$SHSE{1}SEC")
+        SetSliderOptionValueST(interval, "$SHSE_ELAPSED_TIME")
     endEvent
 
     event OnDefaultST()
         interval = defaultInterval
-        SetSliderOptionValueST(interval, "$SHSE{1}SEC")
+        SetSliderOptionValueST(interval, "$SHSE_ELAPSED_TIME")
     endEvent
 
     event OnHighlightST()
@@ -1044,13 +1074,13 @@ state RadiusIndoors
     endEvent
 
     event OnSliderAcceptST(float value)
-        radiusIndoors = value
-        SetSliderOptionValueST(radiusIndoors, "$SHSE{0}UNIT")
+        radiusIndoors = value as int
+        SetSliderOptionValueST(radiusIndoors, "$SHSE_DISTANCE")
     endEvent
 
     event OnDefaultST()
         radiusIndoors = defaultRadiusIndoors
-        SetSliderOptionValueST(radius, "$SHSE{0}UNIT")
+        SetSliderOptionValueST(radiusIndoors, "$SHSE_DISTANCE")
     endEvent
 
     event OnHighlightST()
@@ -1068,12 +1098,12 @@ state IntervalIndoors
 
     event OnSliderAcceptST(float value)
         intervalIndoors = value
-        SetSliderOptionValueST(interval, "$SHSE{1}SEC")
+        SetSliderOptionValueST(interval, "$SHSE_ELAPSED_TIME")
     endEvent
 
     event OnDefaultST()
         intervalIndoors = defaultIntervalIndoors
-        SetSliderOptionValueST(intervalIndoors, "$SHSE{1}SEC")
+        SetSliderOptionValueST(intervalIndoors, "$SHSE_ELAPSED_TIME")
     endEvent
 
     event OnHighlightST()
@@ -1203,7 +1233,7 @@ state iniSaveLoad
             if (iniSaveLoad == 1) ; load/restore
                 ;DebugTrace("loading from file")
                 LoadIniFile()
-                SeedDefaults()
+                ApplySettingsFromFile()
             elseif (iniSaveLoad == 2) ; save/store
                 SaveIniFile()
             endif

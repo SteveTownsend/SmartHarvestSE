@@ -1377,17 +1377,26 @@ bool SearchTask::Init()
 {
     if (!m_pluginOK)
 	{
-#ifdef _PROFILING
-		WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
-#endif
-		if (!LoadOrder::Instance().Analyze())
+		// Use structured exception handling during game data load
+		__try
 		{
-			REL_ERROR("Load Order unsupportable");
+#ifdef _PROFILING
+			WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
+#endif
+			if (!LoadOrder::Instance().Analyze())
+			{
+				REL_ERROR("Load Order unsupportable");
+				return false;
+			}
+			DataCase::GetInstance()->CategorizeLootables();
+			CategorizePopulationCenters();
+			m_pluginOK = true;
+		}
+		__except (LogStackWalker::LogStack(GetExceptionInformation()))
+		{
+			REL_FATALERROR("Fatal Exception during Load Order data analysis");
 			return false;
 		}
-		DataCase::GetInstance()->CategorizeLootables();
-		CategorizePopulationCenters();
-		m_pluginOK = true;
 	}
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
@@ -1428,7 +1437,7 @@ void SearchTask::CategorizePopulationCenters()
 			if (!keyword.has_value() || !keyword.value())
 				continue;
 
-			std::string keywordName(keyword.value()->GetFormEditorID());
+			std::string keywordName(FormUtils::SafeGetFormEditorID(keyword.value()));
 			const auto matched(sizeByKeyword.find(keywordName));
 			if (matched == sizeByKeyword.cend())
 				continue;

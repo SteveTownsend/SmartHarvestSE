@@ -74,6 +74,16 @@ namespace PluginUtils
 	}
 }
 
+namespace FormUtils
+{
+	// this can be blank, e.g. "Elementary Destruction.esp" FormID 0x31617, Github issue #28
+	inline std::string SafeGetFormEditorID(const RE::TESForm* form)
+	{
+		const char* edid(form->GetFormEditorID());
+		return edid ? std::string(edid) : std::string();
+	}
+}
+
 namespace StringUtils
 {
 	std::string ToStringID(RE::FormID id);

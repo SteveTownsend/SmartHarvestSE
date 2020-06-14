@@ -262,6 +262,11 @@ namespace papyrus
 		return SearchTask::UnlockHarvest(refr, isSilent);
 	}
 
+	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	{
+		return DataCase::GetInstance()->BlockFirehoseSource(refr);
+	}
+
 	void UnblockEverything(RE::StaticFunctionTag* base)
 	{
 		static const bool gameReload(false);
@@ -372,6 +377,7 @@ namespace papyrus
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
+		a_vm->RegisterFunction("BlockFirehose", SHSE_PROXY, papyrus::BlockFirehose);
 		a_vm->RegisterFunction("UnblockEverything", SHSE_PROXY, papyrus::UnblockEverything);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);

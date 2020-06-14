@@ -5,6 +5,7 @@ import SHSE_MCM
 GlobalVariable Property g_LootingEnabled Auto
 int CACOModIndex
 int FossilMiningModIndex
+bool scanActive
 
 GlobalVariable StrikesBeforeCollection
 
@@ -29,6 +30,7 @@ Actor player
 int[] addedItemIDs
 int[] addedItemTypes
 int maxAddedItems
+
 int currentAddedItem
 bool collectionsInUse
 int resource_Ore
@@ -48,17 +50,19 @@ EffectShader questShader     ; purple
 EffectShader enchantedShader ; blue
 EffectShader ownedShader     ; green
 
+; FormType from CommonLibSSE - this is core Game data, so invariant
 int getType_kFlora = 39
-
-float g_interval = 0.3
-float min_interval = 0.1
 
 Formlist Property whitelist_form auto
 Formlist Property blacklist_form auto
-int location_type_whitelist = 1
-int location_type_blacklist = 2
+int location_type_whitelist
+int location_type_blacklist
+
 int maxMiningItems
-int infiniteWeight = 100000
+int oreMiningOption
+int oreMiningTakeAll
+
+int infiniteWeight
 
 int glowReasonBossContainer
 int glowReasonQuestObject
@@ -173,6 +177,13 @@ Function SyncNativeDataTypes()
     glowReasonPlayerProperty = 5
     glowReasonSimpleTarget = 6
 
+    location_type_whitelist = 1
+    location_type_blacklist = 2
+
+    oreMiningTakeAll = 2
+
+    infiniteWeight = 100000
+
     ; must line up with shaders defined in ESP/ESM file
     lootedShader = Game.GetFormFromFile(0xa9e1, "SmartHarvestSE.esp") as EffectShader   ; white
     enchantedShader = Game.GetFormFromFile(0xa9dc, "SmartHarvestSE.esp") as EffectShader    ; blue
@@ -195,10 +206,11 @@ Function ResetAddedItems()
     currentAddedItem = 0
 EndFunction
 
-Function ApplySetting()
+Function ApplySetting(int oreMining)
 
     ;DebugTrace("eventScript ApplySetting start")
-
+    oreMiningOption = oreMining
+    ;DebugTrace("oreMiningOption = " + oreMiningOption)
     UnregisterForAllKeys()
     UnregisterForMenu("Loading Menu")
 
@@ -245,7 +257,7 @@ Function ApplySetting()
     SyncBlackList()
     ResetAddedItems()
 
-    utility.waitMenumode(g_interval)
+    utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
     ;DebugTrace("eventScript ApplySetting finished")
 endFunction
@@ -260,21 +272,30 @@ string Function sif (bool cc, string aa, string bb) global
     return result
 endFunction
 
-;hotkey changes sense of looting
+Function SetScanActive()
+    scanActive = true
+EndFunction
+
+Function SetScanInactive()
+    scanActive = false
+EndFunction
+
+; hotkey changes sense of looting. Use of MCM/new character/game reload resets this to whatever's
+; implied by current settings
 function Pause()
     string s_enableStr = none
-    int priorState = g_LootingEnabled.GetValue() as int
-    if (priorState != 0)
-        g_LootingEnabled.SetValue(0)
+    bool priorState = scanActive
+    if (priorState)
         DisallowSearch()
     else
-        g_LootingEnabled.SetValue(1)
         AllowSearch()
     endif
+    scanActive = !scanActive
         
-    ;DebugTrace("Pause, looting-enabled toggled to = " + g_LootingEnabled.GetValue())
-    string str = sif(priorState == 0, "$SHSE_ENABLE", "$SHSE_DISABLE")
+    ;DebugTrace("Pause, looting-enabled toggled to = " + scanActive)
+    string str = sif(scanActive, "$SHSE_ENABLE", "$SHSE_DISABLE")
     str = Replace(GetTranslation(str), "{VERSION}", GetPluginVersion())
+    ;DebugTrace("looting-enabled output = " + str)
     Debug.Notification(str)
 endFunction
 
@@ -378,6 +399,10 @@ bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, 
     return result
 endFunction
 
+bool Function isOverlyGenerousResource(string oreName)
+    return oreName == "Quarried Stone" || oreName == "Clay"
+endFunction
+
 Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify)
     ;DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
     ;DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
@@ -394,26 +419,31 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         targetResourceTotal = oreScript.ResourceCountTotal
         strikesToCollect = oreScript.StrikesBeforeCollection
         int available = oreScript.ResourceCountCurrent
-        oreName = oreScript.ore.GetName()
         int mined = 0
-        if (available == -1)
-            ;DebugTrace("Vein not yet initialized, start mining")
-        else
-            ;DebugTrace("Vein has ore available: " + available)
-        endif
+        oreName = oreScript.ore.GetName()
+        ; do not harvest firehose unless set in config
+        if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
+            if (available == -1)
+                ;DebugTrace("Vein not yet initialized, start mining")
+            else
+                ;DebugTrace("Vein has ore available: " + available)
+            endif
 
-        ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
-        ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-        while (available != 0 && mined < maxMiningItems)
+            ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+            ; in ResourceCount and the remaining amount in ResourceCountCurrent 
+            while (available != 0 && mined < maxMiningItems)
                 ;DebugTrace("Trigger harvesting")
-            oreScript.giveOre()
-            mined += oreScript.ResourceCount
-            ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
-            available = oreScript.ResourceCountCurrent
-            miningStrikes += 1
-        endwhile
-        ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
-        FOSStrikesBeforeFossil = 6
+                oreScript.giveOre()
+                mined += oreScript.ResourceCount
+                ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
+                available = oreScript.ResourceCountCurrent
+                miningStrikes += 1
+            endwhile
+            ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            FOSStrikesBeforeFossil = 6
+        else
+            ;DebugTrace("Ignoring firehose source")
+        endIf
         handled = true
     endif
     ; CACO provides its own mining script, unfortunately not derived from baseline though largely identical
@@ -431,23 +461,29 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 oreName = "gems"
             endif
             int mined = 0
-            if (available == -1)
-                ;DebugTrace("CACO ore vein not yet initialized, start mining")
-            else
-                ;DebugTrace("CACO ore vein has ore available: " + available)
-            endif
+            oreName = oreScript.ore.GetName()
+            ; do not harvest firehose unless set in config
+            if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
+                if (available == -1)
+                    ;DebugTrace("CACO ore vein not yet initialized, start mining")
+                else
+                    ;DebugTrace("CACO ore vein has ore available: " + available)
+                endif
 
-            ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
-            ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-            while (available != 0 && mined < maxMiningItems)
-                ;DebugTrace("Trigger CACO ore harvesting")
-                cacoMinable.giveOre()
-                mined += cacoMinable.ResourceCount
-                ;DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
-                available = cacoMinable.ResourceCountCurrent
-                miningStrikes += 1
-            endwhile
-            ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+                ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+                ; in ResourceCount and the remaining amount in ResourceCountCurrent 
+                while (available != 0 && mined < maxMiningItems)
+                    ;DebugTrace("Trigger CACO ore harvesting")
+                    cacoMinable.giveOre()
+                    mined += cacoMinable.ResourceCount
+                    ;DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
+                    available = cacoMinable.ResourceCountCurrent
+                    miningStrikes += 1
+                endwhile
+                ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            else
+                ;DebugTrace("Ignoring firehose source (CACO)")
+            endIf
             handled = true
         endif
     endif
@@ -472,10 +508,14 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         endif
     endif
 
-    ; Fossil Mining Drop Logic from oreVein per Fos_AttackMineAlias.psc, bypassing the FURN.
-    ; Excludes Hearthfire house materials to mimic FOS_IgnoreList filtering.
-    ; Excludes Fossil Mining DIg Sites, processed in full above
-    if (miningStrikes > 0 && FossilMiningModIndex != 255 && resourceType != resource_VolcanicDigSite && oreName != "Quarried Stone" && oreName != "Clay")
+    if (isOverlyGenerousResource(oreName))
+        ;DebugTrace("Block firehose resource " + akMineable + "/" + akMineable.GetBaseObject() + " until game reload")
+        BlockFirehose(akMineable)
+
+    elseif (miningStrikes > 0 && FossilMiningModIndex != 255 && resourceType != resource_VolcanicDigSite)
+        ; Fossil Mining Drop Logic from oreVein per Fos_AttackMineAlias.psc, bypassing the FURN.
+        ; Excludes Hearthfire house materials (by construction) to mimic FOS_IgnoreList filtering.
+        ; Excludes Fossil Mining DIg Sites, processed in full above
         ;randomize drop of fossil based on number of strikes and vein characteristics
         FOSStrikesBeforeFossil = strikesToCollect * targetResourceTotal
         int dropFactor = Utility.RandomInt(1, FOSStrikesBeforeFossil)

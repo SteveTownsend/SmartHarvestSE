@@ -17,7 +17,7 @@ void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 		{
 			std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(idx));
 			if (keyword)
-				DBG_MESSAGE("%s (%08x)", keyword.value()->GetFormEditorID(), keyword.value()->formID);
+				DBG_MESSAGE("%s (%08x)", FormUtils::SafeGetFormEditorID(keyword.value()).c_str(), keyword.value()->formID);
 		}
 	}
 #endif
