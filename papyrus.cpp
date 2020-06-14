@@ -113,7 +113,7 @@ namespace papyrus
 		return result;
 	}
 
-	float GetSettingToObjectArrayEntry(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, SInt32 index)
+	float GetSettingObjectArrayEntry(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, SInt32 index)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -174,7 +174,7 @@ namespace papyrus
 		ini->PutSetting(first, second, str.c_str(), static_cast<double>(value));
 	}
 
-	void PutSettingObjectArray(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, std::vector<float> value_arr)
+	void PutSettingObjectArrayEntry(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, int index, float value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -183,15 +183,10 @@ namespace papyrus
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return;
 
-		SInt32 index(0);
-		for (auto tmp_value : value_arr)
-		{
-			std::string key = GetObjectTypeName(ObjectType(index));
-			::ToLower(key);
-			DBG_VMESSAGE("Put config setting %d/%d/%s = %f", first, second, key.c_str(), tmp_value);
-			ini->PutSetting(first, second, key.c_str(), static_cast<double>(tmp_value));
-			++index;
-		}
+		std::string key = GetObjectTypeName(ObjectType(index));
+		::ToLower(key);
+		DBG_VMESSAGE("Put config setting (array) %d/%d/%s = %f", first, second, key.c_str(), value);
+		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 
 	bool Reconfigure(RE::StaticFunctionTag* base)
@@ -226,17 +221,24 @@ namespace papyrus
 
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
-		DBG_MESSAGE("Reference Search enabled");
+		REL_MESSAGE("Reference Search enabled");
 		SearchTask::Allow();
 	}
+
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
-		DBG_MESSAGE("Reference Search disabled");
+		REL_MESSAGE("Reference Search disabled");
 		SearchTask::Disallow();
 	}
+
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
 	{
 		return SearchTask::IsAllowed();
+	}
+
+	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
+	{
+		UIState::Instance().ReportGoodToGo(goodToGo, nonce);
 	}
 
 	constexpr int LocationTypeUser = 1;
@@ -381,9 +383,9 @@ namespace papyrus
 		a_vm->RegisterFunction("UnblockEverything", SHSE_PROXY, papyrus::UnblockEverything);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
-		a_vm->RegisterFunction("GetSettingToObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingToObjectArrayEntry);
+		a_vm->RegisterFunction("GetSettingObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingObjectArrayEntry);
 		a_vm->RegisterFunction("PutSetting", SHSE_PROXY, papyrus::PutSetting);
-		a_vm->RegisterFunction("PutSettingObjectArray", SHSE_PROXY, papyrus::PutSettingObjectArray);
+		a_vm->RegisterFunction("PutSettingObjectArrayEntry", SHSE_PROXY, papyrus::PutSettingObjectArrayEntry);
 
 		a_vm->RegisterFunction("GetObjectTypeNameByType", SHSE_PROXY, papyrus::GetObjectTypeNameByType);
 		a_vm->RegisterFunction("GetObjectTypeByName", SHSE_PROXY, papyrus::GetObjectTypeByName);
@@ -408,6 +410,7 @@ namespace papyrus
 		a_vm->RegisterFunction("AllowSearch", SHSE_PROXY, papyrus::AllowSearch);
 		a_vm->RegisterFunction("DisallowSearch", SHSE_PROXY, papyrus::DisallowSearch);
 		a_vm->RegisterFunction("IsSearchAllowed", SHSE_PROXY, papyrus::IsSearchAllowed);
+		a_vm->RegisterFunction("ReportOKToScan", SHSE_PROXY, papyrus::ReportOKToScan);
 		a_vm->RegisterFunction("AddLocationToList", SHSE_PROXY, papyrus::AddLocationToList);
 		a_vm->RegisterFunction("DropLocationFromList", SHSE_PROXY, papyrus::DropLocationFromList);
 

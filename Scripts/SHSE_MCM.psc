@@ -126,12 +126,20 @@ float[] function GetSettingToObjectArray(int section1, int section2)
     int index = 0
     float[] result = New float[32]
     while (index < 32)
-        result[index] = GetSettingToObjectArrayEntry(section1, section2, index)
+        result[index] = GetSettingObjectArrayEntry(section1, section2, index)
         ;DebugTrace("Config setting " + section1 + "/" + section2 + "/" + index + " = " + result[index])
         index += 1
     endWhile
     return result
 endFunction
+
+Function PutSettingObjectArray(int section_first, int section_second, int listLength, float[] values)
+    int index = 1
+    while index < listLength
+        PutSettingObjectArrayEntry(section_first, section_second, index, values[index])
+        index += 1
+    endWhile
+EndFunction
 
 function ApplySettingsFromFile()
     enableHarvest = GetSetting(type_Common, type_Config, "enableHarvest") as bool
@@ -209,9 +217,9 @@ Function ApplySetting()
     PutSetting(type_Common, type_Config, "blackListHotkeyCode", blackListHotkeyCode as float)
     PutSetting(type_Common, type_Config, "preventPopulationCenterLooting", preventPopulationCenterLooting as float)
 
-    PutSetting(type_Harvest, type_Config, "RadiusFeet", radius)
+    PutSetting(type_Harvest, type_Config, "RadiusFeet", radius as float)
     PutSetting(type_Harvest, type_Config, "IntervalSeconds", interval)
-    PutSetting(type_Harvest, type_Config, "IndoorsRadiusFeet", radiusIndoors)
+    PutSetting(type_Harvest, type_Config, "IndoorsRadiusFeet", radiusIndoors as float)
     PutSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds", intervalIndoors)
 
     PutSetting(type_Harvest, type_Config, "questObjectScope", questObjectScope as float)
@@ -231,11 +239,11 @@ Function ApplySetting()
     PutSetting(type_Harvest, type_Config, "disableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
     PutSetting(type_Harvest, type_Config, "disableWhileConcealed", disableWhileConcealed as float)
 
-    PutSettingObjectArray(type_Harvest, type_ItemObject, objectSettingArray)
+    PutSettingObjectArray(type_Harvest, type_ItemObject, 32, objectSettingArray)
 
     PutSetting(type_Harvest, type_Config, "valueWeightDefault", valueWeightDefault as float)
     PutSetting(type_Harvest, type_Config, "maxMiningItems", maxMiningItems as float)
-    PutSettingObjectArray(type_Harvest, type_ValueWeight, valueWeightSettingArray)
+    PutSettingObjectArray(type_Harvest, type_ValueWeight, 32, valueWeightSettingArray)
 
     ; seed looting scan enabled according to configured settings
     bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody || unencumberedInCombat || unencumberedInPlayerHome|| unencumberedIfWeaponDrawn 
@@ -282,6 +290,29 @@ Function AllocateItemCategoryArrays()
 
     id_valueWeightArray = New Int[32]
     valueWeightSettingArray = New float[32]
+EndFunction
+
+Function CheckItemCategoryArrays()
+    int doneInit = g_InitComplete.GetValue() as int
+    if doneInit != 0
+        ; arrays should all be in place, if not it's probably a bad save due to now-fixed bug
+        if !id_objectSettingArray
+            ;DebugTrace("allocate missing id_objectSettingArray")
+            id_objectSettingArray = New Int[32]
+        endif
+        if !objectSettingArray
+            ;DebugTrace("allocate missing objectSettingArray")
+            objectSettingArray = New float[32]
+        endif
+        if !id_valueWeightArray
+            ;DebugTrace("allocate missing id_valueWeightArray")
+            id_valueWeightArray = New Int[32]
+        endif
+        if !valueWeightSettingArray
+            ;DebugTrace("allocate missing valueWeightSettingArray")
+            valueWeightSettingArray = New float[32]
+        endif
+    endIf
 EndFunction
 
 Function SetObjectTypeData()
@@ -436,7 +467,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 25
+    return 26
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -451,6 +482,10 @@ Event OnVersionUpdate(int a_version)
         SetMiscDefaults(false)
         SetObjectTypeData()
     endIf
+    if (a_version >= 26 && CurrentVersion < 26)
+        ;fix up arrays if missed in bad save from prior version
+        CheckItemCategoryArrays()
+    endIF
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
 
@@ -625,12 +660,12 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_ITEM_HARVEST_DEFAULT_HEADER")
         AddMenuOptionST("iniSaveLoad", "$SHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
         AddKeyMapOptionST("pauseHotkeyCode", "$SHSE_PAUSE_KEY", pauseHotkeyCode)
-        AddSliderOptionST("ValueWeightDefault", "$SHSE_VW_DEFAULT", valueWeightDefault)
-        AddSliderOptionST("Radius", "$SHSE_RADIUS", radius, "$SHSE_DISTANCE")
+        AddSliderOptionST("ValueWeightDefault", "$SHSE_VW_DEFAULT", valueWeightDefault as float)
+        AddSliderOptionST("Radius", "$SHSE_RADIUS", radius as float, "$SHSE_DISTANCE")
         AddSliderOptionST("Interval", "$SHSE_INTERVAL", interval, "$SHSE_ELAPSED_TIME")
-        AddSliderOptionST("RadiusIndoors", "$SHSE_RADIUS_INDOORS", radiusIndoors, "$SHSE_DISTANCE")
+        AddSliderOptionST("RadiusIndoors", "$SHSE_RADIUS_INDOORS", radiusIndoors as float, "$SHSE_DISTANCE")
         AddSliderOptionST("IntervalIndoors", "$SHSE_INTERVAL_INDOORS", intervalIndoors, "$SHSE_ELAPSED_TIME")
-        AddSliderOptionST("MaxMiningItems", "$SHSE_MAX_MINING_ITEMS", maxMiningItems)
+        AddSliderOptionST("MaxMiningItems", "$SHSE_MAX_MINING_ITEMS", maxMiningItems as float)
         AddToggleOptionST("unencumberedInCombat", "$SHSE_UNENCUMBERED_COMBAT", unencumberedInCombat)
         AddToggleOptionST("unencumberedInPlayerHome", "$SHSE_UNENCUMBERED_PLAYER_HOME", unencumberedInPlayerHome)
         AddToggleOptionST("unencumberedIfWeaponDrawn", "$SHSE_UNENCUMBERED_IF_WEAPON_DRAWN", unencumberedIfWeaponDrawn)
@@ -1021,20 +1056,20 @@ endState
 
 state Radius
     event OnSliderOpenST()
-        SetSliderDialogStartValue(radius)
-        SetSliderDialogDefaultValue(defaultRadius)
-        SetSliderDialogRange(1, 100)
-        SetSliderDialogInterval(1)
+        SetSliderDialogStartValue(radius as float)
+        SetSliderDialogDefaultValue(defaultRadius as float)
+        SetSliderDialogRange(1.0, 100.0)
+        SetSliderDialogInterval(1.0)
     endEvent
 
     event OnSliderAcceptST(float value)
         radius = value as int
-        SetSliderOptionValueST(radius, "$SHSE_DISTANCE")
+        SetSliderOptionValueST(value, "$SHSE_DISTANCE")
     endEvent
 
     event OnDefaultST()
         radius = defaultRadius
-        SetSliderOptionValueST(radius, "$SHSE_DISTANCE")
+        SetSliderOptionValueST(radius as int, "$SHSE_DISTANCE")
     endEvent
 
     event OnHighlightST()
@@ -1067,20 +1102,20 @@ endState
 
 state RadiusIndoors
     event OnSliderOpenST()
-        SetSliderDialogStartValue(radiusIndoors)
-        SetSliderDialogDefaultValue(defaultRadiusIndoors)
-        SetSliderDialogRange(1, 100)
-        SetSliderDialogInterval(1)
+        SetSliderDialogStartValue(radiusIndoors as float)
+        SetSliderDialogDefaultValue(defaultRadiusIndoors as float)
+        SetSliderDialogRange(1.0, 100.0)
+        SetSliderDialogInterval(1.0)
     endEvent
 
     event OnSliderAcceptST(float value)
         radiusIndoors = value as int
-        SetSliderOptionValueST(radiusIndoors, "$SHSE_DISTANCE")
+        SetSliderOptionValueST(value, "$SHSE_DISTANCE")
     endEvent
 
     event OnDefaultST()
         radiusIndoors = defaultRadiusIndoors
-        SetSliderOptionValueST(radiusIndoors, "$SHSE_DISTANCE")
+        SetSliderOptionValueST(radiusIndoors as float, "$SHSE_DISTANCE")
     endEvent
 
     event OnHighlightST()

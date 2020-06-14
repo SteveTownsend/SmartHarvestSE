@@ -687,6 +687,21 @@ Event OnFlushAddedItems()
     endif
 EndEvent
 
+Event OnCheckOKToScan(int nonce)
+    ; no-op if empty list
+    bool okToScan = true
+    if (Utility.IsInMenuMode())
+        ;DebugTrace("UI has menu open")
+        okToScan = false
+    elseif (!Game.IsActivateControlsEnabled())
+        ;DebugTrace("UI has controls disabled")
+        okToScan = false
+    endIf
+
+    ;DebugTrace("Report UI Good-to-go = " + okToScan + " for request " + nonce)
+    ReportOKToScan(okToScan, nonce)
+EndEvent
+
 Event OnMenuOpen(String MenuName)
     if (MenuName == "Loading Menu")
         UnblockEverything()
