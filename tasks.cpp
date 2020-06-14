@@ -714,7 +714,12 @@ void SearchTask::ScanThread()
 		double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 			m_playerCell && m_playerCell->IsInteriorCell() ?  "IndoorsIntervalSeconds" : "IntervalSeconds"));
 		delay = std::max(MinDelay, delay);
-		if (!UIState::Instance().OKForSearch() || !IsAllowed())
+		if (!EventPublisher::Instance().GoodToGo())
+		{
+			REL_MESSAGE("Event publisher not ready yet");
+			return;
+		}
+		else if (!UIState::Instance().OKForSearch() || !IsAllowed())
 		{
 			DBG_MESSAGE("search disallowed or game loading or menus open");
 			const auto timeNow(std::chrono::high_resolution_clock::now());
@@ -837,12 +842,6 @@ void SearchTask::DoPeriodicSearch()
 		if (!IsAllowed())
 		{
 			DBG_MESSAGE("search disallowed");
-			return;
-		}
-
-		if (!EventPublisher::Instance().GoodToGo())
-		{
-			DBG_MESSAGE("Event publisher not ready yet");
 			return;
 		}
 
