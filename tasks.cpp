@@ -704,7 +704,11 @@ double MinDelay = 0.1;
 void SearchTask::ScanThread()
 {
 	REL_MESSAGE("Starting Loot Scan Thread");
+	// record a message periodically if mod remains idle
+	constexpr std::chrono::milliseconds TellUserIAmIdle(60000LL);
 	m_ini = INIFile::GetInstance();
+	std::chrono::time_point<std::chrono::steady_clock> lastScanEndTime(std::chrono::high_resolution_clock::now());
+	std::chrono::time_point<std::chrono::steady_clock> lastIdleLogTime(lastScanEndTime);
 	while (true)
 	{
 		double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
@@ -713,6 +717,14 @@ void SearchTask::ScanThread()
 		if (!UIState::Instance().OKForSearch() || !IsAllowed())
 		{
 			DBG_MESSAGE("search disallowed or game loading or menus open");
+			const auto timeNow(std::chrono::high_resolution_clock::now());
+			const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
+			const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
+			if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
+			{
+				REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
+				lastIdleLogTime = timeNow;
+			}
 		}
 		else
 		{
@@ -725,6 +737,7 @@ void SearchTask::ScanThread()
 
 			// request added items to be pushed to us while we are sleeping
 			EventPublisher::Instance().TriggerFlushAddedItems();
+			lastScanEndTime = std::chrono::high_resolution_clock::now();
 		}
 		DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
 		auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
@@ -794,9 +807,9 @@ bool SearchTask::IsMagicallyConcealed(RE::MagicTarget* target)
 	return false;
 }
 
-void SearchTask::OnMenuClose()
+void SearchTask::OnGoodToGo()
 {
-	DBG_MESSAGE("console and/or menu(s) closed");
+	REL_MESSAGE("UI/controls now good-to-go");
 	// reset state that might be invalidated by MCM setting updates
 	CheckPerks(true);
 	// reset carry weight - will reinstate correct value if/when scan resumes
@@ -920,12 +933,6 @@ void SearchTask::DoPeriodicSearch()
 		if (RIPPlayer)
 		{
 			DBG_MESSAGE("Player is dead");
-			return;
-		}
-
-		if (!RE::PlayerControls::GetSingleton() || !RE::PlayerControls::GetSingleton()->IsActivateControlsEnabled())
-		{
-			DBG_MESSAGE("player controls disabled");
 			return;
 		}
 
@@ -1377,20 +1384,32 @@ bool SearchTask::Init()
 {
     if (!m_pluginOK)
 	{
-#ifdef _PROFILING
-		WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
-#endif
-		if (!LoadOrder::Instance().Analyze())
+		// Use structured exception handling during game data load
+		REL_MESSAGE("Plugin not synced up - Game Data load executing");
+		__try
 		{
-			REL_ERROR("Load Order unsupportable");
+#ifdef _PROFILING
+			WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
+#endif
+			if (!LoadOrder::Instance().Analyze())
+			{
+				REL_FATALERROR("Load Order unsupportable");
+				return false;
+			}
+			DataCase::GetInstance()->CategorizeLootables();
+			CategorizePopulationCenters();
+			m_pluginOK = true;
+			REL_MESSAGE("Plugin now in sync - Game Data load complete!");
+	}
+		__except (LogStackWalker::LogStack(GetExceptionInformation()))
+		{
+			REL_FATALERROR("Fatal Exception during Game Data load");
 			return false;
 		}
-		DataCase::GetInstance()->CategorizeLootables();
-		CategorizePopulationCenters();
-		m_pluginOK = true;
 	}
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
+	REL_MESSAGE("Restrictions reset for new/loaded game");
 	return true;
 }
 
@@ -1428,7 +1447,7 @@ void SearchTask::CategorizePopulationCenters()
 			if (!keyword.has_value() || !keyword.value())
 				continue;
 
-			std::string keywordName(keyword.value()->GetFormEditorID());
+			std::string keywordName(FormUtils::SafeGetFormEditorID(keyword.value()));
 			const auto matched(sizeByKeyword.find(keywordName));
 			if (matched == sizeByKeyword.cend())
 				continue;

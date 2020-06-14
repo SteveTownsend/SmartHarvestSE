@@ -16,25 +16,32 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 	case SKSE::MessagingInterface::kDataLoaded:
 		DBG_MESSAGE("Loading Papyrus");
 		SKSE::GetPapyrusInterface()->Register(papyrus::RegisterFuncs);
-		DBG_MESSAGE("Loaded Papyrus");
+		REL_MESSAGE("Registered Papyrus functions!");
 		break;
 
 	case SKSE::MessagingInterface::kPreLoadGame:
-		DBG_MESSAGE("Game load starting, disable looting");
 		scanOK = SearchTask::IsAllowed();
+		REL_MESSAGE("Game load starting, scanOK = %d", scanOK);
 		SearchTask::PrepareForReload();
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:
 	case SKSE::MessagingInterface::kPostLoadGame:
-		DBG_MESSAGE("Game load done, initializing Tasks");
+		REL_MESSAGE("Game load done, initializing Tasks");
 		// if checks fail, abort scanning
 		if (!SearchTask::Init())
+		{
+			REL_FATALERROR("SearchTask initialization failed - no looting");
 			return;
-		DBG_MESSAGE("Initialized Tasks, restart looting if allowed");
+		}
 		if (scanOK)
 		{
+			REL_MESSAGE("Initialized SearchTask, looting available");
 			SearchTask::Allow();
+		}
+		else
+		{
+			REL_ERROR("Initialized SearchTask: Looting unavailable");
 		}
 		break;
 	}

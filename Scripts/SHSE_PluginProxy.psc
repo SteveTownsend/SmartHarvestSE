@@ -6,6 +6,7 @@ string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
+Function BlockFirehose(ObjectReference refr)  global native
 Function UnblockEverything() global native
 Form Function GetNthLootableObject(ObjectReference refr, int index) global native
 Function ClearLootableObjects(ObjectReference refr) global native
@@ -14,9 +15,9 @@ string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypeByName(string name) global native
 int Function GetResourceTypeByName(string name) global native
 float Function GetSetting(int m_section_first, int m_section_second, string m_key) global native
-float Function GetSettingToObjectArrayEntry(int m_section_first, int m_section_second, int index) global native
+float Function GetSettingObjectArrayEntry(int m_section_first, int m_section_second, int index) global native
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native
-Function PutSettingObjectArray(int m_section_first, int m_section_second, float[] m_values) global native
+Function PutSettingObjectArrayEntry(int section_first, int section_second, int index, float value) global native
 
 bool Function Reconfigure() global native
 Function LoadIniFile() global native
@@ -27,6 +28,7 @@ Function SetIngredientForCritter(Form critter, Form ingredient) global native
 Function AllowSearch() global native
 Function DisallowSearch() global native
 bool Function IsSearchAllowed() global native
+Function ReportOKToScan(bool goodToGo, int nonce) global native
 
 Function SyncWhiteListWithPlugin() global native
 bool Function SaveWhiteList() global native

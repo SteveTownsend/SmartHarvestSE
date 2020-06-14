@@ -20,7 +20,8 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onMining("OnMining"),
 	m_onLootFromNPC("OnLootFromNPC"),
 	m_onFlushAddedItems("OnFlushAddedItems"),
-	m_onObjectGlow("OnObjectGlow")
+	m_onObjectGlow("OnObjectGlow"),
+	m_onCheckOKToScan("OnCheckOKToScan")
 {
 }
 
@@ -40,14 +41,14 @@ RE::BGSRefAlias* EventPublisher::GetScriptTarget(const char* espName, RE::FormID
 		if (formID != InvalidForm)
 		{
 			RE::TESForm* questForm = RE::TESForm::LookupByID(formID);
-			DBG_MESSAGE("Got Base Form %s", questForm ? questForm->GetFormEditorID() : "nullptr");
+			DBG_MESSAGE("Got Base Form %s", questForm ? FormUtils::SafeGetFormEditorID(questForm).c_str() : "nullptr");
 			quest = questForm ? questForm->As<RE::TESQuest>() : nullptr;
-			DBG_MESSAGE("Got Quest Form %s", quest ? quest->GetFormEditorID() : "nullptr");
+			DBG_MESSAGE("Got Quest Form %s", quest ? FormUtils::SafeGetFormEditorID(quest).c_str() : "nullptr");
 		}
 	}
 	if (quest && quest->IsRunning())
 	{
-		DBG_MESSAGE("Quest %s is running", quest->GetFormEditorID());
+		DBG_MESSAGE("Quest %s is running", FormUtils::SafeGetFormEditorID(quest).c_str());
 		RE::BGSBaseAlias* baseAlias(quest->aliases[0]);
 		if (!baseAlias)
 		{
@@ -90,6 +91,7 @@ void EventPublisher::HookUp()
 	m_onMining.Register(m_eventTarget);
 	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
+	m_onCheckOKToScan.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetCritterIngredient(RE::TESObjectREFR* refr)
@@ -132,4 +134,9 @@ void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* ite
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
 {
 	m_onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
+}
+
+void EventPublisher::TriggerCheckOKToScan(const int nonce)
+{
+	m_onCheckOKToScan.SendEvent(nonce);
 }
