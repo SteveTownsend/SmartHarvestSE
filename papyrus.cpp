@@ -238,7 +238,7 @@ namespace papyrus
 
 	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
 	{
-		UIState::Instance().ReportGoodToGo(goodToGo, nonce);
+		UIState::Instance().ReportVMGoodToGo(goodToGo, nonce);
 	}
 
 	constexpr int LocationTypeUser = 1;
