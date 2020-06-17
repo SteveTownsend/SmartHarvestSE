@@ -185,6 +185,7 @@
     <ClCompile Include="CollectionFactory.cpp" />
     <ClCompile Include="EventPublisher.cpp" />
     <ClCompile Include="Exception.cpp" />
+    <ClCompile Include="ExcludedLocations.cpp" />
     <ClCompile Include="ExtraDataListHelper.cpp" />
     <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="containerLister.cpp" />
@@ -193,12 +194,17 @@
     <ClCompile Include="IHasValueWeight.cpp" />
     <ClCompile Include="InventoryItem.cpp" />
     <ClCompile Include="LoadOrder.cpp" />
+    <ClCompile Include="LocationTracker.cpp" />
     <ClCompile Include="LogStackWalker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Use</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="PlayerCellHelper.cpp" />
+    <ClCompile Include="IRangeChecker.cpp" />
+    <ClCompile Include="PlayerHouses.cpp" />
+    <ClCompile Include="PlayerState.cpp" />
+    <ClCompile Include="PopulationCenters.cpp" />
     <ClCompile Include="RecursiveLock.cpp" />
     <ClCompile Include="SimpleIni.cpp" />
     <ClCompile Include="sound.cpp" />
@@ -234,6 +240,7 @@
     <ClInclude Include="CollectionFactory.h" />
     <ClInclude Include="EventPublisher.h" />
     <ClInclude Include="Exception.h" />
+    <ClInclude Include="ExcludedLocations.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
     <ClInclude Include="basketfile.h" />
     <ClInclude Include="containerLister.h" />
@@ -242,11 +249,16 @@
     <ClInclude Include="IHasValueWeight.h" />
     <ClInclude Include="InventoryItem.h" />
     <ClInclude Include="LoadOrder.h" />
+    <ClInclude Include="LocationTracker.h" />
     <ClInclude Include="LogWrapper.h" />
     <ClInclude Include="LogStackWalker.h" />
     <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h" />
+    <ClInclude Include="PlayerHouses.h" />
+    <ClInclude Include="PlayerState.h" />
+    <ClInclude Include="PopulationCenters.h" />
     <ClInclude Include="PrecompiledHeaders.h" />
+    <ClInclude Include="IRangeChecker.h" />
     <ClInclude Include="RecursiveLock.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="SimpleIni.h" />

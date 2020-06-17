@@ -1,33 +1,12 @@
 #include "PrecompiledHeaders.h"
 
 #include "tasks.h"
+#include "LocationTracker.h"
 #include "PlayerCellHelper.h"
-#include "BoundedList.h"
 
-PlayerCellHelper PlayerCellHelper::m_instance;
-std::vector<RE::TESObjectCELL*> PlayerCellHelper::m_adjacentCells;
-
-bool PlayerCellHelper::WithinLootingRange(const RE::TESObjectREFR* refr) const
+PlayerCellHelper::PlayerCellHelper(BoundedList<RE::TESObjectREFR*>& refs, const IRangeChecker& rangeCheck) :
+	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck)
 {
-	RE::FormID formID(refr->formID);
-	double dx = fabs(refr->GetPositionX() - RE::PlayerCharacter::GetSingleton()->GetPositionX());
-	double dy = fabs(refr->GetPositionY() - RE::PlayerCharacter::GetSingleton()->GetPositionY());
-	double dz = fabs(refr->GetPositionZ() - RE::PlayerCharacter::GetSingleton()->GetPositionZ());
-
-	// don't do Floating Point math if we can trivially see it's too far away
-	if (dx > m_radius || dy > m_radius || dz > m_radius)
-	{
-		// very verbose
-		DBG_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
-			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
-			RE::PlayerCharacter::GetSingleton()->GetPositionX(),
-			RE::PlayerCharacter::GetSingleton()->GetPositionY(),
-			RE::PlayerCharacter::GetSingleton()->GetPositionZ());
-    	return false;
-	}
-	double distance(sqrt((dx*dx) + (dy*dy) + (dz*dz)));
-	DBG_VMESSAGE("REFR 0x%08x is %.2f units away, loot range %.2f units", formID, distance, m_radius);
-	return distance <= m_radius;
 }
 
 /*
@@ -62,7 +41,7 @@ For now, choose to flat-out ignore any REFR to a Dynamic Base - manual looting i
 never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR FormIDs are recycled.
 */
 
-bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
+bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 {
 	// prioritize checks that do not require obtaining a lock
 	if (!refr)
@@ -128,8 +107,8 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// anything out of looting range is skipped
-	if (!WithinLootingRange(refr))
+	// skip anything not in the required distance-to-player range
+	if (!m_rangeCheck.IsValid(refr))
 		return false;
 
 	if (SearchTask::IsLockedForHarvest(refr))
@@ -155,7 +134,7 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
+	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
 		data->BlacklistReference(refr);
@@ -167,8 +146,14 @@ bool PlayerCellHelper::CanLoot(RE::TESObjectREFR* refr) const
 	return true;
 }
 
+void PlayerCellHelper::FindLootableReferences() const
+{
+	m_predicate = std::bind(&PlayerCellHelper::CanLoot, this, std::placeholders::_1);
+	FilterNearbyReferences();
+}
+
 // returns false iff output list is full
-bool PlayerCellHelper::GetCellReferences(BoundedList<RE::TESObjectREFR*>& refs, const RE::TESObjectCELL* cell)
+bool PlayerCellHelper::FilterCellReferences(const RE::TESObjectCELL* cell) const
 {
 	// Do not scan reference list until cell is attached
 	if (!cell->IsAttached())
@@ -179,93 +164,34 @@ bool PlayerCellHelper::GetCellReferences(BoundedList<RE::TESObjectREFR*>& refs, 
 		RE::TESObjectREFR* refr(refptr.get());
 		if (refr)
 		{
-			if (!CanLoot(refr))
+			if (!m_predicate(refr))
 			{
 				++m_eliminated;
 				continue;
 			}
 
-			if (!refs.Add(refr))
+			if (!m_refs.Add(refr))
 				return false;
 		}
 	}
 	return true;
 }
 
-void PlayerCellHelper::GetAdjacentCells(RE::TESObjectCELL* cell)
-{
-	// if this is the same cell we last checked, the list of adjacent cells does not need rebuilding
-	if (m_cell == cell)
-		return;
-
-	m_cell = cell;
-	m_adjacentCells.clear();
-
-	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
-	if (!m_cell->IsInteriorCell())
-	{
-		DBG_MESSAGE("Check for adjacent cells to 0x%08x", m_cell->GetFormID());
-		RE::TESWorldSpace* worldSpace(m_cell->worldSpace);
-		if (worldSpace)
-		{
-			DBG_MESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
-			for (const auto& worldCell : worldSpace->cellMap)
-			{
-				RE::TESObjectCELL* candidateCell(worldCell.second);
-				// skip player cell, handled above
-				if (candidateCell == m_cell)
-				{
-					DBG_MESSAGE("Player cell, already handled");
-					continue;
-				}
-				// do not loot across interior/exterior boundary
-				if (candidateCell->IsInteriorCell())
-				{
-					DBG_MESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
-					continue;
-				}
-				// check for adjacency on the cell grid
-				if (!IsAdjacent(candidateCell))
-				{
-					DBG_MESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
-					continue;
-				}
-				m_adjacentCells.push_back(candidateCell);
-				DBG_MESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
-			}
-		}
-	}
-}
-
-bool PlayerCellHelper::IsAdjacent(RE::TESObjectCELL* cell) const
-{
-	// XCLC data available since both are exterior cells, by construction
-	const auto checkCoordinates(cell->GetCoordinates());
-	const auto myCoordinates(m_cell->GetCoordinates());
-	return std::abs(myCoordinates->cellX - checkCoordinates->cellX) <= 1 &&
-		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
-}
-
-void PlayerCellHelper::GetReferences(BoundedList<RE::TESObjectREFR*>& refs, RE::TESObjectCELL* cell, const double radius)
+void PlayerCellHelper::FilterNearbyReferences() const
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
 #endif
-	if (!cell || !cell->IsAttached())
+	const RE::TESObjectCELL* cell(LocationTracker::Instance().PlayerCell());
+	if (!cell)
 		return;
-
-	m_radius = radius;
-	m_eliminated = 0;
-
-	// find the adjacent cells, we only need to scan those and current player cell
-	GetAdjacentCells(cell);
 
 	// For exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	// If current cell fills the list then ignore others.
-	if (GetCellReferences(refs, m_cell) && !m_cell->IsInteriorCell())
+	if (FilterCellReferences(cell) && !LocationTracker::Instance().IsPlayerIndoors())
 	{
-		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", m_cell->GetFormID());
-		for (const auto& adjacentCell : m_adjacentCells)
+		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", cell->GetFormID());
+		for (const auto& adjacentCell : LocationTracker::Instance().AdjacentCells())
 		{
 			// sanity checks
 			if (!adjacentCell || !adjacentCell->IsAttached())
@@ -274,12 +200,12 @@ void PlayerCellHelper::GetReferences(BoundedList<RE::TESObjectREFR*>& refs, RE::
 				continue;
 			}
 			DBG_VMESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
-			if (!GetCellReferences(refs, adjacentCell)) {
+			if (!FilterCellReferences(adjacentCell)) {
 				// list full
 				break;
 			}
 		}
 	}
 	// Summary of unlootable REFRs
-	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, m_cell->GetFormID());
+	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, cell->GetFormID());
 }

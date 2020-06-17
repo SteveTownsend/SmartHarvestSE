@@ -13,7 +13,7 @@ UIState& UIState::Instance()
 	return *m_instance;
 }
 
-UIState::UIState() : m_effectiveGoodToGo(false), m_nonce(0), m_vmGoodToGo(false), m_vmResponded(false)
+UIState::UIState() : m_goodToGo(false), m_nonce(0), m_vmGoodToGo(false), m_vmResponded(false)
 {
 }
 
@@ -68,32 +68,33 @@ void UIState::ReportVMGoodToGo(const bool goodToGo, const int nonce)
 
 bool UIState::OKForSearch()
 {
-	// By inspection, UI menu stack has steady state size of 1. Opening application and/or inventory adds 1 each,
-	// opening console adds 2. So this appears to be a catch-all for those conditions.
-	RE::UI* ui(RE::UI::GetSingleton());
-	if (!ui)
-	{
-		REL_WARNING("UI inaccessible");
-		return false;
-	}
-	size_t count(ui->menuStack.size());
-	bool pluginUIBad(count > 1);
-	bool pluginControlsBad(!RE::PlayerControls::GetSingleton() || !RE::PlayerControls::GetSingleton()->IsActivateControlsEnabled());
-	bool effectiveGoodToGo(!pluginUIBad && !pluginControlsBad);
+	//  logic from Ryan MacKenzie (RSM)
+	auto ui(RE::UI::GetSingleton());
+	bool uiOK(ui && !ui->GameIsPaused());
+
+	auto controls(RE::ControlMap::GetSingleton());
+	bool controlsOK(controls && controls->AreControlsEnabled(RE::UserEvents::USER_EVENT_FLAG::kActivate));
+
+	bool goodToGo(uiOK && controlsOK);
+	//  end logic from Ryan MacKenzie (RSM)
+
+	// TODO remove this
+	// TEMP for safety, compare plugin decision to script response
 	bool vmGoodToGo(VMGoodToGo());
-	if (vmGoodToGo != effectiveGoodToGo)
+
+	if (vmGoodToGo != goodToGo)
 	{
 		// prefer old-style UI check if they do not match
-		REL_WARNING("plugin UI good-to-go %d (menu count %d, controls disabled %d) does not match VM UI good-to-go %d - trust VM",
-			effectiveGoodToGo, count, pluginControlsBad, vmGoodToGo);
-		effectiveGoodToGo = vmGoodToGo;
+		REL_WARNING("plugin UI good-to-go %d (UI %d, controls %d) does not match VM UI good-to-go %d - trust VM",
+			goodToGo, uiOK, controlsOK, vmGoodToGo);
+		goodToGo = vmGoodToGo;
 	}
 
-	if (effectiveGoodToGo != m_effectiveGoodToGo)
+	if (goodToGo != m_goodToGo)
 	{
 		// record state change
-		m_effectiveGoodToGo = effectiveGoodToGo;
-		if (!effectiveGoodToGo)
+		m_goodToGo = goodToGo;
+		if (!goodToGo)
 		{
 			// State change from search OK -> do not search
 			REL_MESSAGE("UI/controls no longer good-to-go");
@@ -104,12 +105,12 @@ bool UIState::OKForSearch()
 			SearchTask::OnGoodToGo();
 		}
 	}
-	return m_effectiveGoodToGo;
+	return m_goodToGo;
 }
 
 void UIState::Reset()
 {
-	m_effectiveGoodToGo = false;
+	m_goodToGo = false;
 	m_nonce = 0;
 	m_vmGoodToGo = false;
 	m_vmResponded = false;

@@ -39,9 +39,8 @@ KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
 
 	// store keywords to match for this collection. Schema enforces uniqueness in input list.
 	std::vector<std::string> keywordsLeft(keywords);
-	for (const RE::TESForm* form : dhnd->GetFormArray(RE::FormType::Keyword))
+	for (const RE::BGSKeyword* keywordRecord : dhnd->GetFormArray<RE::BGSKeyword>())
 	{
-		const RE::BGSKeyword* keywordRecord(form->As<RE::BGSKeyword>());
 		auto matched(std::find_if(keywordsLeft.begin(), keywordsLeft.end(),
 			[&](const std::string& keyword) -> bool { return FormUtils::SafeGetFormEditorID(keywordRecord) == keyword; }));
 		if (matched != keywordsLeft.end())

@@ -1,11 +1,12 @@
 #include "PrecompiledHeaders.h"
 
+#include <winver.h>
+#include <iostream>
+
 #include "IHasValueWeight.h"
 #include "tasks.h"
 #include "basketfile.h"
-
-#include <winver.h>
-#include <iostream>
+#include "ExcludedLocations.h"
 
 namespace
 {
@@ -248,14 +249,14 @@ namespace papyrus
 	{
 		if (locationType == LocationTypeExcluded)
 		{
-			SearchTask::AddLocationToBlackList(location);
+			ExcludedLocations::Instance().Add(location);
 		}
 	}
 	void DropLocationFromList(RE::StaticFunctionTag* base, const int locationType, const RE::TESForm* location)
 	{
 		if (locationType == LocationTypeExcluded)
 		{
-			SearchTask::DropLocationFromBlackList(location);
+			ExcludedLocations::Instance().Drop(location);
 		}
 	}
 
@@ -289,7 +290,7 @@ namespace papyrus
 
 	void ClearBlackList(RE::StaticFunctionTag* base)
 	{
-		SearchTask::ResetExcludedLocations();
+		ExcludedLocations::Instance().Reset();
 	}
 	void MergeBlackList(RE::StaticFunctionTag* base)
 	{
