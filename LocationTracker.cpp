@@ -1,6 +1,6 @@
 #include "PrecompiledHeaders.h"
 #include "LocationTracker.h"
-#include "ExcludedLocations.h"
+#include "ManagedLists.h"
 #include "PlayerHouses.h"
 #include "PopulationCenters.h"
 #include "tasks.h"
@@ -16,7 +16,7 @@ LocationTracker& LocationTracker::Instance()
 	return *m_instance;
 }
 
-LocationTracker::LocationTracker() : m_playerCell(nullptr), m_playerLocation(nullptr), m_playerCellSelfOwned(false)
+LocationTracker::LocationTracker() : m_playerCell(nullptr), m_playerLocation(nullptr), m_priorLocation(nullptr), m_playerCellSelfOwned(false)
 {
 }
 
@@ -66,11 +66,13 @@ bool LocationTracker::IsCellPlayerOwned(RE::TESObjectCELL* cell) const
 	return false;
 }
 
-void LocationTracker::Reset(void)
+void LocationTracker::Reset(const bool reloaded)
 {
 	RecursiveLockGuard guard(m_locationLock);
 	m_playerCell = nullptr;
 	m_playerCellSelfOwned = false;
+	// track prior location to avoid player house message spam on every menu exit
+	m_priorLocation = reloaded ? nullptr : m_playerLocation;
 	m_playerLocation = nullptr;
 }
 
@@ -105,8 +107,8 @@ void LocationTracker::Refresh()
 		// Player changed location
 		if (m_playerLocation)
 		{
-			// check if it is a player house, and if so whether it is new
-			if (!PlayerHouses::Instance().Contains(m_playerLocation))
+			// check if it is a new player house
+			if (!IsPlayerAtHome())
 			{
 				if (PlayerHouses::Instance().IsValidHouse(m_playerLocation))
 				{
@@ -115,7 +117,8 @@ void LocationTracker::Refresh()
 					PlayerHouses::Instance().Add(m_playerLocation);
 				}
 			}
-			if (IsPlayerAtHome())
+			// notify entry to player home unless this was a menu reset, regardless of whether it's new to us
+			if (!m_priorLocation && IsPlayerAtHome())
 			{
 				static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
 				if (!playerHouseMsg.empty())
@@ -126,7 +129,8 @@ void LocationTracker::Refresh()
 				}
 			}
 			// check if this is a population center excluded from looting and if so, notify we entered it
-			if (LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
+			// skip if this was a menu reset to avoid spam
+			if (!m_priorLocation && LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 			{
 				static RE::BSFixedString populationCenterMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
 				if (!populationCenterMsg.empty())
@@ -137,6 +141,10 @@ void LocationTracker::Refresh()
 				}
 			}
 		}
+
+		// reset sentinel for menu exit reset
+		m_priorLocation = nullptr;
+
 		// check if we moved from a non-lootable location to a free-loot zone
 		if (wasExcluded && !LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 		{
@@ -178,12 +186,23 @@ bool LocationTracker::IsPlayerAtHome() const
 
 bool LocationTracker::IsPlayerInLootablePlace()
 {
+	RecursiveLockGuard guard(m_locationLock);
+	// whitelist overrides all considerations
+	if (IsPlayerInWhitelistedPlace())
+	{
+		DBG_VMESSAGE("Player location is on WhiteList");
+		return true;
+	}
 	if (IsPlayerAtHome())
 	{
 		DBG_VMESSAGE("Player House: no looting");
 		return false;
 	}
-	RecursiveLockGuard guard(m_locationLock);
+	if (IsPlayerInBlacklistedPlace())
+	{
+		DBG_VMESSAGE("Player location is on BlackList");
+		return false;
+	}
 	if (!m_playerCell)
 	{
 		REL_WARNING("Player cell not yet set up");
@@ -264,12 +283,20 @@ const RE::TESObjectCELL* LocationTracker::PlayerCell() const
 	return m_playerCell && m_playerCell->IsAttached() ? m_playerCell : nullptr;
 }
 
+bool LocationTracker::IsPlayerInWhitelistedPlace() const
+{
+	RecursiveLockGuard guard(m_locationLock);
+	// Player Location may be empty e.g. if we are in the wilderness
+	// Player Cell should never be empty
+	return ManagedList::WhiteList().Contains(m_playerLocation) || ManagedList::WhiteList().Contains(m_playerCell);
+}
+
 bool LocationTracker::IsPlayerInBlacklistedPlace() const
 {
 	RecursiveLockGuard guard(m_locationLock);
 	// Player Location may be empty e.g. if we are in the wilderness
 	// Player Cell should never be empty
-	return ExcludedLocations::Instance().Contains(m_playerLocation) || ExcludedLocations::Instance().Contains(m_playerCell);
+	return ManagedList::BlackList().Contains(m_playerLocation) || ManagedList::BlackList().Contains(m_playerCell);
 }
 
 bool LocationTracker::IsPlayerInRestrictedLootSettlement() const
@@ -279,3 +306,12 @@ bool LocationTracker::IsPlayerInRestrictedLootSettlement() const
 		return false;
 	return PopulationCenters::Instance().CannotLoot(m_playerLocation);
 }
+
+RE::TESForm* LocationTracker::CurrentPlayerPlace() const
+{
+	// Prefer location, cell only if in wilderness
+	if (m_playerLocation)
+		return m_playerLocation;
+	return m_playerCell;
+}
+

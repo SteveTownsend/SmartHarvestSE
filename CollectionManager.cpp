@@ -2,6 +2,9 @@
 #include "PrecompiledHeaders.h"
 #include "LogStackWalker.h"
 
+namespace shse
+{
+
 std::unique_ptr<CollectionManager> CollectionManager::m_instance;
 
 CollectionManager& CollectionManager::Instance()
@@ -199,4 +202,4 @@ void CollectionManager::BuildDecisionTrees(void)
 	PrintCollections();
 }
 
-
+}

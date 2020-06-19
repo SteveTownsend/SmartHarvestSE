@@ -73,8 +73,6 @@ public:
 	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
 	inline const std::unordered_set<const RE::TESForm*>& OffLimitsLocations()
 	{
-		if (m_offLimitsLocations.empty())
-			RecordOffLimitsLocations();
 		return m_offLimitsLocations;
 	}
 
@@ -211,6 +209,7 @@ private:
 		}
 	}
 
+	void HandleExceptions(void);
 	ObjectType DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType);
 	void SetObjectTypeByKeywords();
 

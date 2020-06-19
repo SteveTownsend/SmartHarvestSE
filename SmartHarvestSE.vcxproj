@@ -185,9 +185,7 @@
     <ClCompile Include="CollectionFactory.cpp" />
     <ClCompile Include="EventPublisher.cpp" />
     <ClCompile Include="Exception.cpp" />
-    <ClCompile Include="ExcludedLocations.cpp" />
     <ClCompile Include="ExtraDataListHelper.cpp" />
-    <ClCompile Include="basketfile.cpp" />
     <ClCompile Include="containerLister.cpp" />
     <ClCompile Include="debugs.cpp" />
     <ClCompile Include="EnchantmentItemHelper.cpp" />
@@ -200,6 +198,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Use</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="ManagedLists.cpp" />
     <ClCompile Include="PlayerCellHelper.cpp" />
     <ClCompile Include="IRangeChecker.cpp" />
     <ClCompile Include="PlayerHouses.cpp" />
@@ -240,9 +239,7 @@
     <ClInclude Include="CollectionFactory.h" />
     <ClInclude Include="EventPublisher.h" />
     <ClInclude Include="Exception.h" />
-    <ClInclude Include="ExcludedLocations.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
-    <ClInclude Include="basketfile.h" />
     <ClInclude Include="containerLister.h" />
     <ClInclude Include="debugs.h" />
     <ClInclude Include="EnchantmentItemHelper.h" />
@@ -252,6 +249,7 @@
     <ClInclude Include="LocationTracker.h" />
     <ClInclude Include="LogWrapper.h" />
     <ClInclude Include="LogStackWalker.h" />
+    <ClInclude Include="ManagedLists.h" />
     <ClInclude Include="ObjectType.h" />
     <ClInclude Include="PlayerCellHelper.h" />
     <ClInclude Include="PlayerHouses.h" />
@@ -273,6 +271,7 @@
     <ClInclude Include="ArmorHelper.h" />
     <ClInclude Include="UIState.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="versiondb.h" />
     <ClInclude Include="WeaponHelper.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
@@ -296,6 +295,9 @@
     </ProjectReference>
     <ProjectReference Include="..\json\nlohmann-json.vcxproj">
       <Project>{1626aa45-d0e0-401d-b090-298f7a392ead}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
+      <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

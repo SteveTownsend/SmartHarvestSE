@@ -82,6 +82,8 @@ public:
 	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
 	static void MergeBlackList();
+	static void SyncDone(void);
+	static void ToggleCalibration();
 
 	static void Start();
 	static void PrepareForReload();
@@ -90,11 +92,10 @@ public:
 	static bool IsAllowed();
 	static void ResetRestrictions(const bool gameReload);
 	static void DoPeriodicSearch();
-	static void SetPlayerHouseKeyword(RE::BGSKeyword* keyword);
 
 	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
-	bool IsLootingForbidden();
+	bool IsLootingForbidden(const INIFile::SecondaryType targetType);
 	bool IsBookGlowable() const;
 
 	static void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr);
@@ -126,6 +127,7 @@ public:
 	static bool m_searchAllowed;
 	
 	static bool m_pluginSynced;
+
 	static RecursiveLock m_lock;
 	static std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
 
@@ -146,6 +148,17 @@ private:
 	// brief glow for looted objects and other purposes
 	static constexpr int ObjectGlowDurationLootedSeconds = 2;
 
+	// Loot Range calibration settting
+	static bool m_calibrating;
+	static int m_calibrateRadius;
+	static constexpr int CalibrationRangeDelta = 3;
+	static constexpr int MaxCalibrationRange = 100;
+
+	// very short glow for loot range calibration
+	static constexpr int ObjectGlowDurationCalibrationSeconds = 1;
+	// give the debug message time to catch up during calibration
+	static constexpr int CalibrationDelay = 3;
+
 	// allow extended interval before looting if 'leveled list on death' perks apply to player
 	static constexpr int ActorReallyDeadWaitIntervalSeconds = 3;
 	static constexpr int ActorReallyDeadWaitIntervalSecondsLong = 10;
@@ -162,8 +175,9 @@ private:
 			m_glowReason = glowReason;
 	}
 
-	static void TakeNap();
-	static void ScanThread();
+	static bool Load(void);
+	static void TakeNap(void);
+	static void ScanThread(void);
 
 	
 	void GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);

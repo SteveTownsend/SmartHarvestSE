@@ -1,6 +1,9 @@
 #include "PrecompiledHeaders.h"
 
-static std::unique_ptr<CollectionFactory> m_instance;
+namespace shse
+{
+
+std::unique_ptr<CollectionFactory> m_instance;
 
 CollectionFactory& CollectionFactory::Instance()
 {
@@ -89,4 +92,6 @@ std::unique_ptr<Collection> CollectionFactory::ParseCollection(const nlohmann::j
 {
 	return std::make_unique<Collection>(collection["name"].get<std::string>(),
 		collection["description"].get<std::string>(), ParseFilter(collection["rootFilter"], 0));
+}
+
 }

@@ -1,5 +1,6 @@
 #include "PrecompiledHeaders.h"
 #include "PlayerHouses.h"
+#include "PlayerState.h"
 
 #include "tasks.h"
 
@@ -473,7 +474,9 @@ void DataCase::RecordOffLimitsLocations()
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
-		{"Skyrim.esm", 0x32ae7}	// QASMoke
+#if NDEBUG && !defined(_PROFILING)
+		{"Skyrim.esm", 0x32ae7}	// QASMoke - Release build blocks, others allow
+#endif
 	};
 	for (const auto& pluginForm : illegalCells)
 	{
@@ -490,17 +493,6 @@ void DataCase::RecordOffLimitsLocations()
 
 void DataCase::BlockOffLimitsContainers()
 {
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	// on first pass, detect off limits containers to avoid rescan on game reload
-	if (dhnd && m_offLimitsContainers.empty())
-	{
-		DBG_MESSAGE("Pre-emptively block all off-limits containers");
-		ExcludeFactionContainers();
-		ExcludeVendorContainers();
-		ExcludeImmersiveArmorsGodChest();
-		// whitelist Fossil sites
-		IncludeFossilMiningExcavation();
-	}
 	// block all the known off-limits containers - list is invariant during gaming session
 	for (const auto refr : m_offLimitsContainers)
 	{
@@ -924,11 +916,29 @@ void DataCase::CategorizeLootables()
 
 	// Finally, Collections are layered on top of categorized objects
 	REL_MESSAGE("*** LOAD *** Build Collections");
-	CollectionManager::Instance().ProcessDefinitions();
+	shse::CollectionManager::Instance().ProcessDefinitions();
 
 	// Analyze perks that affect looting
 	DBG_MESSAGE("*** LOAD *** Analyze Perks");
 	AnalyzePerks();
+
+	// Handle any special cases based on Load Order, including base game 'known exceptions'
+	REL_MESSAGE("*** LOAD *** Detect and Handle Exceptions");
+	HandleExceptions();
+}
+
+void DataCase::HandleExceptions()
+{
+	// on first pass, detect off limits containers and other special cases to avoid rescan on game reload
+	DBG_MESSAGE("Pre-emptively handle special cases from Load Order");
+	ExcludeFactionContainers();
+	ExcludeVendorContainers();
+	ExcludeImmersiveArmorsGodChest();
+	PlayerState::Instance().ExcludeMountedIfForbidden();
+	RecordOffLimitsLocations();
+
+	// whitelist Fossil sites
+	IncludeFossilMiningExcavation();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)

@@ -5,8 +5,8 @@
 
 #include "IHasValueWeight.h"
 #include "tasks.h"
-#include "basketfile.h"
-#include "ExcludedLocations.h"
+#include "ManagedLists.h"
+#include "LocationTracker.h"
 
 namespace
 {
@@ -242,22 +242,39 @@ namespace papyrus
 		UIState::Instance().ReportVMGoodToGo(goodToGo, nonce);
 	}
 
-	constexpr int LocationTypeUser = 1;
-	constexpr int LocationTypeExcluded = 2;
+	constexpr int WhiteList = 1;
+	constexpr int BlackList = 2;
 
-	void AddLocationToList(RE::StaticFunctionTag* base, const int locationType, const RE::TESForm* location)
+	void ResetList(RE::StaticFunctionTag* base, const bool reloadGame, const int entryType)
 	{
-		if (locationType == LocationTypeExcluded)
+		if (entryType == BlackList)
 		{
-			ExcludedLocations::Instance().Add(location);
+			ManagedList::BlackList().Reset(reloadGame);
+		}
+		else
+		{
+			ManagedList::WhiteList().Reset(reloadGame);
 		}
 	}
-	void DropLocationFromList(RE::StaticFunctionTag* base, const int locationType, const RE::TESForm* location)
+	void AddEntryToList(RE::StaticFunctionTag* base, const int entryType, const RE::TESForm* entry)
 	{
-		if (locationType == LocationTypeExcluded)
+		if (entryType == BlackList)
 		{
-			ExcludedLocations::Instance().Drop(location);
+			ManagedList::BlackList().Add(entry);
 		}
+		else
+		{
+			ManagedList::WhiteList().Add(entry);
+		}
+	}
+	void SyncDone(RE::StaticFunctionTag* base)
+	{
+		SearchTask::SyncDone();
+	}
+
+	RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
+	{
+		return LocationTracker::Instance().CurrentPlayerPlace();
 	}
 
 	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
@@ -268,41 +285,6 @@ namespace papyrus
 	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
 		return DataCase::GetInstance()->BlockFirehoseSource(refr);
-	}
-
-	void UnblockEverything(RE::StaticFunctionTag* base)
-	{
-		static const bool gameReload(false);
-		SearchTask::ResetRestrictions(gameReload);
-	}
-	void SyncWhiteList(RE::StaticFunctionTag* base)
-	{
-		BasketFile::GetSingleton()->SyncList(BasketFile::listnum::WHITELIST);
-	}
-	bool SaveWhiteList(RE::StaticFunctionTag* base)
-	{
-		return BasketFile::GetSingleton()->SaveFile(BasketFile::listnum::WHITELIST, "WhiteList.tsv");
-	}
-	bool LoadWhiteList(RE::StaticFunctionTag* base)
-	{
-		return BasketFile::GetSingleton()->LoadFile(BasketFile::listnum::WHITELIST, "WhiteList.tsv");
-	}
-
-	void ClearBlackList(RE::StaticFunctionTag* base)
-	{
-		ExcludedLocations::Instance().Reset();
-	}
-	void MergeBlackList(RE::StaticFunctionTag* base)
-	{
-		SearchTask::MergeBlackList();
-	}
-	bool SaveBlackList(RE::StaticFunctionTag* base)
-	{
-		return BasketFile::GetSingleton()->SaveFile(BasketFile::listnum::BLACKLIST, "BlackList.tsv");
-	}
-	bool LoadBlackList(RE::StaticFunctionTag* base)
-	{
-		return BasketFile::GetSingleton()->LoadFile(BasketFile::listnum::BLACKLIST, "BlackList.tsv");
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
@@ -352,7 +334,7 @@ namespace papyrus
 
 	bool CollectionsInUse(RE::StaticFunctionTag* base)
 	{
-		return CollectionManager::Instance().IsReady();
+		return shse::CollectionManager::Instance().IsReady();
 	}
 
 	void FlushAddedItems(RE::StaticFunctionTag* base, std::vector<int> formIDs, std::vector<int> objectTypes, const int itemCount)
@@ -369,7 +351,12 @@ namespace papyrus
 			++formID;
 			++objectType;
 		}
-		CollectionManager::Instance().EnqueueAddedItems(looted);
+		shse::CollectionManager::Instance().EnqueueAddedItems(looted);
+	}
+
+	void ToggleCalibration(RE::StaticFunctionTag* base)
+	{
+		SearchTask::ToggleCalibration();
 	}
 
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
@@ -381,7 +368,6 @@ namespace papyrus
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
 		a_vm->RegisterFunction("BlockFirehose", SHSE_PROXY, papyrus::BlockFirehose);
-		a_vm->RegisterFunction("UnblockEverything", SHSE_PROXY, papyrus::UnblockEverything);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
 		a_vm->RegisterFunction("GetSettingObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingObjectArrayEntry);
@@ -398,22 +384,16 @@ namespace papyrus
 
 		a_vm->RegisterFunction("SetIngredientForCritter", SHSE_PROXY, papyrus::SetIngredientForCritter);
 
-		a_vm->RegisterFunction("SyncWhiteListWithPlugin", SHSE_PROXY, papyrus::SyncWhiteList);
-		a_vm->RegisterFunction("SaveWhiteList", SHSE_PROXY, papyrus::SaveWhiteList);
-		a_vm->RegisterFunction("LoadWhiteList", SHSE_PROXY, papyrus::LoadWhiteList);
-
-		a_vm->RegisterFunction("ClearPluginBlackList", SHSE_PROXY, papyrus::ClearBlackList);
-		a_vm->RegisterFunction("MergePluginBlackList", SHSE_PROXY, papyrus::MergeBlackList);
-		a_vm->RegisterFunction("SaveBlackList", SHSE_PROXY, papyrus::SaveBlackList);
-		a_vm->RegisterFunction("LoadBlackList", SHSE_PROXY, papyrus::LoadBlackList);
+		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
+		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);
+		a_vm->RegisterFunction("SyncDone", SHSE_PROXY, papyrus::SyncDone);
 		a_vm->RegisterFunction("PrintFormID", SHSE_PROXY, papyrus::PrintFormID);
 
 		a_vm->RegisterFunction("AllowSearch", SHSE_PROXY, papyrus::AllowSearch);
 		a_vm->RegisterFunction("DisallowSearch", SHSE_PROXY, papyrus::DisallowSearch);
 		a_vm->RegisterFunction("IsSearchAllowed", SHSE_PROXY, papyrus::IsSearchAllowed);
 		a_vm->RegisterFunction("ReportOKToScan", SHSE_PROXY, papyrus::ReportOKToScan);
-		a_vm->RegisterFunction("AddLocationToList", SHSE_PROXY, papyrus::AddLocationToList);
-		a_vm->RegisterFunction("DropLocationFromList", SHSE_PROXY, papyrus::DropLocationFromList);
+		a_vm->RegisterFunction("GetPlayerPlace", SHSE_PROXY, papyrus::GetPlayerPlace);
 
 		a_vm->RegisterFunction("GetTranslation", SHSE_PROXY, papyrus::GetTranslation);
 		a_vm->RegisterFunction("Replace", SHSE_PROXY, papyrus::Replace);
@@ -421,6 +401,8 @@ namespace papyrus
 
 		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
 		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
+
+		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 
 		return true;
 	}

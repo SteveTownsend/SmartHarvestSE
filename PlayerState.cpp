@@ -21,7 +21,8 @@ PlayerState::PlayerState() :
 	m_carryAdjustedForPlayerHome(false),
 	m_carryAdjustedForDrawnWeapon(false),
 	m_currentCarryWeightChange(0),
-	m_sneaking(false)
+	m_sneaking(false),
+	m_disableWhileMounted(false)
 {
 }
 
@@ -103,6 +104,13 @@ bool PlayerState::CanLoot() const
 		return false;
 	}
 
+	RecursiveLockGuard guard(m_playerLock);
+	if (m_disableWhileMounted && player->IsOnMount())
+	{
+		DBG_MESSAGE("Player is mounted, but mounted autoloot forbidden");
+		return false;
+	}
+
 	INIFile* settings(INIFile::GetInstance());
 	const int disableDuringCombat = static_cast<int>(settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "disableDuringCombat"));
 	if (disableDuringCombat != 0 && RE::PlayerCharacter::GetSingleton()->IsInCombat())
@@ -155,18 +163,23 @@ bool PlayerState::PerksAddLeveledItemsOnDeath() const
 }
 
 // reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
-void PlayerState::ResetCarryWeight()
+void PlayerState::ResetCarryWeight(const bool reloaded)
 {
-	if (m_currentCarryWeightChange != 0)
 	{
+		RecursiveLockGuard guard(m_playerLock);
 		DBG_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
 			m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
-		m_currentCarryWeightChange = 0;
 		m_carryAdjustedForCombat = false;
 		m_carryAdjustedForPlayerHome = false;
 		m_carryAdjustedForDrawnWeapon = false;
-		EventPublisher::Instance().TriggerResetCarryWeight();
+		if (m_currentCarryWeightChange != 0)
+		{
+			m_currentCarryWeightChange = 0;
+			EventPublisher::Instance().TriggerResetCarryWeight();
+		}
 	}
+	// reset location to force proper recalculation
+	LocationTracker::Instance().Reset(reloaded);
 }
 
 // used for PlayerCharacter
@@ -188,4 +201,14 @@ bool PlayerState::IsMagicallyConcealed(RE::MagicTarget* target) const
 bool PlayerState::IsSneaking() const
 {
 	return RE::PlayerCharacter::GetSingleton()->IsSneaking();
+}
+
+void PlayerState::ExcludeMountedIfForbidden(void)
+{
+	// check for 'Convenient Horses' in Load Order
+	if (LoadOrder::Instance().IncludesMod("Convenient Horses.esp"))
+	{
+		REL_MESSAGE("Block looting while mounted: Convenient Horses is active");
+		m_disableWhileMounted = true;
+	}
 }

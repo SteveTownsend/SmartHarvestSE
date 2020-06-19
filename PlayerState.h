@@ -7,11 +7,12 @@ public:
 	PlayerState();
 
 	void Refresh();
-	void ResetCarryWeight();
+	void ResetCarryWeight(const bool reloaded);
 	void CheckPerks(const bool force);
 	bool PerksAddLeveledItemsOnDeath() const;
 	bool CanLoot() const;
 	bool IsSneaking() const;
+	void ExcludeMountedIfForbidden(void);
 
 private:
 	void AdjustCarryWeight();
@@ -30,6 +31,7 @@ private:
 	int m_currentCarryWeightChange;
 
 	bool m_sneaking;
+	bool m_disableWhileMounted;
 
 	mutable RecursiveLock m_playerLock;
 };

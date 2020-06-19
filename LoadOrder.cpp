@@ -55,7 +55,7 @@ RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 	return InvalidForm;
 }
 
-// returns true iff mod loaded
+// returns true iff mod listed, which means it is active by virtue of exclusion of 0xff above
 bool LoadOrder::IncludesMod(const std::string& modName) const
 {
 	return m_formIDMaskByName.find(modName) != m_formIDMaskByName.cend();

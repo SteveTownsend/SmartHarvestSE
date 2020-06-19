@@ -1,5 +1,7 @@
 #pragma once
 
+namespace shse {
+
 class CollectionManager {
 public:
 	static CollectionManager& Instance();
@@ -27,3 +29,5 @@ private:
 	std::unordered_set<RE::FormID> m_checkedItems;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 };
+
+}

@@ -8,6 +8,7 @@ class PlayerCellHelper
 public:
 	PlayerCellHelper(BoundedList<RE::TESObjectREFR*>& refs, const IRangeChecker& rangeCheck);
 	void FindLootableReferences() const;
+	void FindAllCandidates() const;
 
 private:
 	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
@@ -16,6 +17,7 @@ private:
 
 	// predicates supported
 	bool CanLoot(const RE::TESObjectREFR* refr) const;
+	bool IsLootCandidate(const RE::TESObjectREFR* refr) const;
 
 	double m_radius;
 	mutable unsigned int m_eliminated;

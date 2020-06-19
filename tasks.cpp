@@ -1,10 +1,10 @@
 #include "PrecompiledHeaders.h"
+#include "versiondb.h"
 
 #include "tasks.h"
-#include "basketfile.h"
 #include "debugs.h"
 #include "LocationTracker.h"
-#include "ExcludedLocations.h"
+#include "ManagedLists.h"
 #include "PopulationCenters.h"
 #include "PlayerCellHelper.h"
 #include "PlayerHouses.h"
@@ -26,14 +26,14 @@ SearchTask::SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targ
 
 const int HarvestSpamLimit = 10;
 
-bool SearchTask::IsLootingForbidden()
+bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 {
 	bool isForbidden(false);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
 	// Ownership expires with the target, e.g. Francis the Horse from Interesting NPCs was killed by a wolf in Solitude
 	// and becomes lootable thereafter.
 	// For non-dead targets, check law-abiding settings vs criminality of target and player-ownership settings vs ownership
-	if (m_targetType != INIFile::SecondaryType::deadbodies)
+	if (targetType != INIFile::SecondaryType::deadbodies)
 	{
 		// check up to three ownership conditions depending on config
 		bool playerOwned(TESObjectREFRHelper(m_candidate).IsPlayerOwned());
@@ -258,9 +258,9 @@ void SearchTask::Run()
 			return;
 		}
 
-		if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, m_candidate->GetBaseObject()))
+		if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
-			DBG_VMESSAGE("register REFR base form 0x%08x in BlackList", m_candidate->GetBaseObject()->GetFormID());
+			DBG_VMESSAGE("Block BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
 			data->BlockForm(m_candidate->GetBaseObject());
 			return;
 		}
@@ -298,17 +298,12 @@ void SearchTask::Run()
 		}
 
 		// order is important to ensure we glow correctly even if blocked
-		skipLooting = IsLootingForbidden() || skipLooting;
+		bool forbidden(IsLootingForbidden(m_targetType));
+		skipLooting = forbidden || skipLooting;
 
 		if (m_glowReason != GlowReason::None)
 		{
 			GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
-		}
-
-		if (LocationTracker::Instance().IsPlayerInBlacklistedPlace())
-		{
-			DBG_VMESSAGE("Player location is excluded");
-			skipLooting = true;
 		}
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
@@ -323,9 +318,9 @@ void SearchTask::Run()
 		LootingType lootingType(LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str())));
 		if (objType == ObjectType::whitelist)
 		{
-			// whitelisted objects are always looted silently
+			// _legal_ whitelisted objects are always looted silently
 			DBG_VMESSAGE("pick up REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
-			skipLooting = false;
+			skipLooting = forbidden;
 			lootingType = LootingType::LootAlwaysSilent;
 		}
 		else if (objType == ObjectType::blacklist)
@@ -455,14 +450,9 @@ void SearchTask::Run()
 				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
 		}
-		// order is important to ensure we glow correctly even if blocked
-		skipLooting = IsLootingForbidden() || skipLooting;
-
-		if (LocationTracker::Instance().IsPlayerInBlacklistedPlace())
-		{
-			DBG_VMESSAGE("Player location is excluded");
-			skipLooting = true;
-		}
+		// Order is important to ensure we glow correctly even if blocked
+		// Check here is on the container, skip all contents if not looting permitted
+		skipLooting = IsLootingForbidden(m_targetType) || skipLooting;
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
@@ -495,11 +485,15 @@ void SearchTask::Run()
 			if (!target)
 				continue;
 
-			TESFormHelper itemEx(target);
-
-			if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, target))
+			// crime-check this REFR from the container as individual object
+			if (IsLootingForbidden(INIFile::SecondaryType::itemObjects))
 			{
-				DBG_VMESSAGE("block due to BasketFile exclude-list for 0x%08x", target->formID);
+				continue;
+			}
+
+			if (ManagedList::BlackList().Contains(target))
+			{
+				DBG_VMESSAGE("block 0x%08x due to BlackList", target->formID);
 				data->BlockForm(target);
 				continue;
 			}
@@ -527,7 +521,7 @@ void SearchTask::Run()
 				data->BlockForm(target);
 				continue;
 			}
-			else if (LootingDependsOnValueWeight(lootingType, objType) && itemEx.ValueWeightTooLowToLoot(m_ini))
+			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(target).ValueWeightTooLowToLoot(m_ini))
 			{
 				DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
 				data->BlockForm(target);
@@ -535,7 +529,7 @@ void SearchTask::Run()
 			}
 
 			targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
-			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", itemEx.m_form->GetName(), targetItemInfo.Count(),
+			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", TESFormHelper(target).m_form->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
 
@@ -621,7 +615,6 @@ void SearchTask::GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>
 	}
 }
 
-
 void SearchTask::GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
 {
 
@@ -651,6 +644,11 @@ void SearchTask::TakeNap()
 	double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 		LocationTracker::Instance().IsPlayerIndoors() ? "IndoorsIntervalSeconds" : "IntervalSeconds"));
 	delay = std::max(MinDelay, delay);
+	if (m_calibrating)
+	{
+		// use hard-coded delay to make UX comprehensible
+		delay = double(CalibrationDelay);
+	}
 
 	DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
 	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
@@ -677,7 +675,7 @@ void SearchTask::ScanThread()
 		}
 
 		// process any queued added items since last time
-		CollectionManager::Instance().ProcessAddedItems();
+		shse::CollectionManager::Instance().ProcessAddedItems();
 
 		// Player location checked for Cell/Location change on every loop
 		LocationTracker::Instance().Refresh();
@@ -696,31 +694,38 @@ void SearchTask::ScanThread()
 			}
 			continue;
 		}
-		if (!LocationTracker::Instance().IsPlayerInLootablePlace())
+
+		// Skip loot-OK checks if calibrating
+		if (!m_calibrating)
 		{
-			DBG_MESSAGE("Location cannot be looted");
-			continue;
-		}
-		if (!PlayerState::Instance().CanLoot())
-		{
-			DBG_MESSAGE("Player State prevents looting");
-			continue;
-		}
-		if (!IsAllowed())
-		{
-			DBG_MESSAGE("search disallowed");
-			const auto timeNow(std::chrono::high_resolution_clock::now());
-			const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
-			const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
-			if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
+			if (!LocationTracker::Instance().IsPlayerInLootablePlace())
 			{
-				REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
-				lastIdleLogTime = timeNow;
+				DBG_MESSAGE("Location cannot be looted");
+				continue;
 			}
-			continue;
+			if (!PlayerState::Instance().CanLoot())
+			{
+				DBG_MESSAGE("Player State prevents looting");
+				continue;
+			}
+			if (!IsAllowed())
+			{
+				DBG_MESSAGE("search disallowed");
+				const auto timeNow(std::chrono::high_resolution_clock::now());
+				const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
+				const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
+				if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
+				{
+					REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
+					lastIdleLogTime = timeNow;
+				}
+				continue;
+			}
+
+			// re-evaluate perks if timer has popped - no force, and execute scan
+			PlayerState::Instance().CheckPerks(false);
 		}
-		// re-evaluate perks if timer has popped - no force, and execute scan
-		PlayerState::Instance().CheckPerks(false);
+
 		DoPeriodicSearch();
 
 		// request added items to be pushed to us while we are sleeping
@@ -762,13 +767,9 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 	if (gameReload)
 	{
 		// unblock possible player house checks after game reload
-		// TODO is this correct
 		PlayerHouses::Instance().Clear();
 		// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
 		ResetLootedContainers();
-		// reset excluded locations
-		// TODO blacklist has to play nice with this
-		ExcludedLocations::Instance().Reset();
 		// TODO reset Collections State from the saved-game data
 	}
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
@@ -782,8 +783,9 @@ void SearchTask::OnGoodToGo()
 	REL_MESSAGE("UI/controls now good-to-go");
 	// reset state that might be invalidated by MCM setting updates
 	PlayerState::Instance().CheckPerks(true);
-	// reset carry weight - will reinstate correct value if/when scan resumes
-	PlayerState::Instance().ResetCarryWeight();
+	// reset carry weight - will reinstate correct value if/when scan resumes. Not a game reload.
+	static const bool reloaded(false);
+	PlayerState::Instance().ResetCarryWeight(reloaded);
 
 	// update Locked Container last-accessed time
 	DataCase::GetInstance()->UpdateLockedContainers();
@@ -813,6 +815,44 @@ void SearchTask::DoPeriodicSearch()
 				return;
 			}
 		}
+	}
+
+	if (m_calibrating)
+	{
+		// send the message first, it's super-slow compared to scan
+		std::string notificationText;
+		static RE::BSFixedString rangeText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
+		if (!rangeText.empty())
+		{
+			notificationText = rangeText;
+			StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
+			if (!notificationText.empty())
+			{
+				RE::DebugNotification(notificationText.c_str());
+			}
+		}
+
+		// brain dead item scan and brief glow
+		BoundedList<RE::TESObjectREFR*> refrs(MaxREFRSPerPass * 2);
+
+		static const double FEET_PER_DISTANCE_UNIT(0.046875);
+		BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
+			double(m_calibrateRadius - CalibrationRangeDelta) / FEET_PER_DISTANCE_UNIT, CalibrationRangeDelta / FEET_PER_DISTANCE_UNIT);
+
+		PlayerCellHelper(refrs, rangeCheck).FindAllCandidates();
+		for (const auto refr : refrs.Data())
+		{
+			DBG_VMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
+			EventPublisher::Instance().TriggerObjectGlow(refr, ObjectGlowDurationCalibrationSeconds, GlowReason::SimpleTarget);
+		}
+
+		m_calibrateRadius += CalibrationRangeDelta;
+		if (m_calibrateRadius > MaxCalibrationRange)
+		{
+			REL_MESSAGE("Loot range calibration complete");
+			SearchTask::ToggleCalibration();
+		}
+		return;
 	}
 
 	// Retrieve these settings only once
@@ -943,11 +983,9 @@ void SearchTask::PrepareForReload()
 	PlayerState::Instance().CheckPerks(force);
 
 	// reset carry weight and menu-active state
-	PlayerState::Instance().ResetCarryWeight();
+	static const bool reloaded(true);
+	PlayerState::Instance().ResetCarryWeight(reloaded);
 	UIState::Instance().Reset();
-
-	// reset player location - reload may bring us back in a different place and even if not, we should start from scratch
-	LocationTracker::Instance().Reset();
 
 	// Do not scan again until we are in sync with the scripts
 	m_pluginSynced = false;
@@ -1022,15 +1060,10 @@ size_t SearchTask::PendingHarvestNotifications()
 bool SearchTask::m_pluginSynced(false);
 
 // this is the last function called by the scripts when re-syncing state
-void SearchTask::MergeBlackList()
+void SearchTask::SyncDone(void)
 {
 	RecursiveLockGuard guard(m_lock);
-	// Add loaded locations to the list of exclusions
-	BasketFile::GetSingleton()->SyncList(BasketFile::listnum::BLACKLIST);
-	for (const auto exclusion : BasketFile::GetSingleton()->GetList(BasketFile::listnum::BLACKLIST))
-	{
-		ExcludedLocations::Instance().Add(exclusion);
-	}
+
 	// reset blocked lists to allow recheck vs current state
 	static const bool gameReload(true);
 	ResetRestrictions(gameReload);
@@ -1039,27 +1072,63 @@ void SearchTask::MergeBlackList()
 	m_pluginSynced = true;
 }
 
+// this triggers/stops loot range calibration cycle
+bool SearchTask::m_calibrating(false);
+int SearchTask::m_calibrateRadius(SearchTask::CalibrationRangeDelta);
+
+void SearchTask::ToggleCalibration()
+{
+	RecursiveLockGuard guard(m_lock);
+	m_calibrating = !m_calibrating;
+	REL_MESSAGE("Calibration of Looting range %s", m_calibrating ? "started" : "stopped");
+	if (m_calibrating)
+	{
+		m_calibrateRadius = CalibrationRangeDelta;
+	}
+}
+
+bool SearchTask::Load()
+{
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Startup: Load Game Data");
+#endif
+#if _DEBUG
+	VersionDb db;
+
+	// Try to load database of version 1.5.97.0 regardless of running executable version.
+	if (!db.Load(1, 5, 97, 0))
+	{
+		DBG_FATALERROR("Failed to load database for 1.5.97.0!");
+		return false;
+	}
+
+	// Write out a file called offsets-1.5.97.0.txt where each line is the ID and offset.
+	db.Dump("offsets-1.5.97.0.txt");
+	DBG_MESSAGE("Dumped offsets for 1.5.97.0");
+#endif
+	if (!LoadOrder::Instance().Analyze())
+	{
+		REL_FATALERROR("Load Order unsupportable");
+		return false;
+	}
+	DataCase::GetInstance()->CategorizeLootables();
+	PopulationCenters::Instance().Categorize();
+	m_pluginOK = true;
+	REL_MESSAGE("Plugin now in sync - Game Data load complete!");
+	return true;
+}
+
 bool SearchTask::Init()
 {
     if (!m_pluginOK)
 	{
-		// Use structured exception handling during game data load
-		REL_MESSAGE("Plugin not synced up - Game Data load executing");
 		__try
 		{
-#ifdef _PROFILING
-			WindowsUtils::ScopedTimer elapsed("Categorize Lootables");
-#endif
-			if (!LoadOrder::Instance().Analyze())
-			{
-				REL_FATALERROR("Load Order unsupportable");
+			// Use structured exception handling during game data load
+			REL_MESSAGE("Plugin not synced up - Game Data load executing");
+			if (!Load())
 				return false;
 			}
-			DataCase::GetInstance()->CategorizeLootables();
-			PopulationCenters::Instance().Categorize();
-			m_pluginOK = true;
-			REL_MESSAGE("Plugin now in sync - Game Data load complete!");
-	}
 		__except (LogStackWalker::LogStack(GetExceptionInformation()))
 		{
 			REL_FATALERROR("Fatal Exception during Game Data load");
