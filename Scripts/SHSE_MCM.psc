@@ -35,12 +35,10 @@ bool unencumberedInCombat
 bool unencumberedInPlayerHome
 bool unencumberedIfWeaponDrawn
 
-bool pushLocationToExcludeList
-bool pushCellToExcludeList
-
 int pauseHotkeyCode
 int whiteListHotkeyCode
 int blackListHotkeyCode
+
 int preventPopulationCenterLooting
 string[] s_populationCenterArray
 
@@ -55,10 +53,6 @@ float intervalIndoors
 
 int iniSaveLoad
 string[] s_iniSaveLoadArray
-int whiteListSaveLoad
-string[] s_whiteListSaveLoadArray
-int blackListSaveLoad
-string[] s_blackListSaveLoadArray
 int questObjectScope
 string[] s_questObjectScopeArray
 int crimeCheckNotSneaking
@@ -173,11 +167,9 @@ function ApplySettingsFromFile()
     enchantItemGlow = GetSetting(type_Harvest, type_Config, "enchantItemGlow") as bool
     playerBelongingsLoot = GetSetting(type_Harvest, type_Config, "playerBelongingsLoot") as int
     playContainerAnimation = GetSetting(type_Harvest, type_Config, "PlayContainerAnimation") as int
-    ;DebugTrace("ApplySettingsFromFile - playContainerAnimation " + playContainerAnimation)
 
     manualLootTargetNotify = GetSetting(type_Harvest, type_Config, "manualLootTargetNotify") as bool
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "valueWeightDefault") as int
-    ;DebugTrace("ApplySettingsFromFile - vw default " + valueWeightDefault)
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "maxMiningItems") as int)
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
@@ -201,7 +193,7 @@ function CheckFirstTimeEver()
 endFunction
 
 ; push current settings to plugin and event handler script
-Function ApplySetting()
+Function ApplySetting(bool reload)
 
     ;DebugTrace("  MCM ApplySetting start")
 
@@ -263,7 +255,7 @@ Function ApplySetting()
     eventScript.RemoveCarryWeightDelta()
     ; hard code for oreVein pickup type, yuck
     ;DebugTrace("oreVein setting " + objectSettingArray[31] as int)
-    eventScript.ApplySetting(objectSettingArray[31] as int)
+    eventScript.ApplySetting(reload, objectSettingArray[31] as int)
 
     ; do this last so plugin state is in sync   
     if (isEnabled)
@@ -406,16 +398,6 @@ Event OnConfigInit()
     s_iniSaveLoadArray[1] = "$SHSE_PRESET_RESTORE"
     s_iniSaveLoadArray[2] = "$SHSE_PRESET_STORE"
 
-    s_whiteListSaveLoadArray = New String[3]
-    s_whiteListSaveLoadArray[0] = "$SHSE_PRESET_DO_NOTHING"
-    s_whiteListSaveLoadArray[1] = "$SHSE_WHITELIST_RESTORE"
-    s_whiteListSaveLoadArray[2] = "$SHSE_WHITELIST_STORE"
-
-    s_blackListSaveLoadArray = New String[3]
-    s_blackListSaveLoadArray[0] = "$SHSE_PRESET_DO_NOTHING"
-    s_blackListSaveLoadArray[1] = "$SHSE_BLACKLIST_RESTORE"
-    s_blackListSaveLoadArray[2] = "$SHSE_BLACKLIST_STORE"
-
     s_populationCenterArray = New String[4]
     s_populationCenterArray[0] = "$SHSE_POPULATION_ALLOW_IN_ALL"
     s_populationCenterArray[1] = "$SHSE_POPULATION_DISALLOW_IN_SETTLEMENTS"
@@ -455,9 +437,6 @@ Event OnConfigInit()
 
     eventScript.whitelist_form = Game.GetFormFromFile(0x0333C, "SmartHarvestSE.esp") as Formlist
     eventScript.blacklist_form = Game.GetFormFromFile(0x0333D, "SmartHarvestSE.esp") as Formlist
-    
-    pushLocationToExcludeList = false
-    pushCellToExcludeList= false
 
     SetOreVeinChoices()
     SetMiscDefaults(true)
@@ -499,7 +478,7 @@ Event OnGameReload()
     endif
     gameReloadLock = true
 
-    ApplySetting()
+    ApplySetting(true)
     
     ;DebugTrace("* OnGameReload finished *")
     gameReloadLock = false
@@ -543,16 +522,9 @@ Event OnConfigOpen()
         
         index = 0
         while(index < max_size)
-
-            ;DebugTrace("   " + index)
-        
             blacklist_form_array[index] = eventScript.blacklist_form.GetAt(index)
             blackList_name_array[index] = GetNameForListForm(blacklist_form_array[index])
             blackList_flag_array[index] = true
-
-            ;DebugTrace(blackList_name_array[index])
-
-            
             index += 1
         endWhile
     endif
@@ -590,42 +562,7 @@ Event OnConfigClose()
     TidyListUp(eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
 
     iniSaveLoad = 0
-    eventScript.SyncWhiteList()
-    whiteListSaveLoad = 0
-    
-    
-    ;--- BlackList File operation --------------------
-    if (blackListSaveLoad == 1) ; load/restore
-        bool result = LoadBlackList()
-        if (result)
-            Debug.Notification("$SHSE_BLACKLIST_RESTORE_MSG")
-        endif
-    elseif (blackListSaveLoad == 2) ; save/store
-        bool result = SaveBlackList()
-        if (result)
-            Debug.Notification("$SHSE_BLACKLIST_STORE_MSG")
-        endif
-    endif
-    eventScript.SyncBlackList()
-    blackListSaveLoad = 0
-    
-    if (pushLocationToExcludeList)
-        form locForm = player.GetCurrentLocation() as form
-        if (locForm)
-            eventScript.ManageBlackList(locForm)
-        endif
-        pushLocationToExcludeList = false
-    endif
-
-    if (pushCellToExcludeList)
-        form cellForm = player.GetParentCell() as form
-        if (cellForm)
-            eventScript.ManageBlackList(cellForm)
-        endif
-        pushCellToExcludeList = false
-    endif
-
-    ApplySetting()
+    ApplySetting(false)
 endEvent
 
 event OnPageReset(string currentPage)
@@ -691,25 +628,7 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_LIST_MANAGEMENT_HEADER")
 
         AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode)
-        ; TODO do we need file support here?
-        ;AddMenuOptionST("whiteListSaveLoad", "$SHSE_WHITELIST_FILE_OPERATION", s_whiteListSaveLoadArray[whiteListSaveLoad])
-        Form locForm = player.GetCurrentLocation() as Form
-        int flagLocation = OPTION_FLAG_NONE
-        if (!locForm)
-            flagLocation = OPTION_FLAG_DISABLED
-        endif
-        AddToggleOptionST("pushLocationToExcludeList", "$SHSE_LOCATION_TO_BLACKLIST", pushLocationToExcludeList, flagLocation)
-
-        Form cellForm = player.GetParentCell() as Form
-        int flagCell = OPTION_FLAG_NONE
-        if (!cellForm)
-            flagCell = OPTION_FLAG_DISABLED
-        endif
-        
-        AddToggleOptionST("pushCellToExcludeList", "$SHSE_CELL_TO_BLACKLIST", pushCellToExcludeList, flagCell)
         AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode)
-        ; TODO do we need file support here?
-        ;AddMenuOptionST("blackListSaveLoad", "$SHSE_BLACKLIST_FILE_OPERATION", s_blackListSaveLoadArray[blackListSaveLoad])
         
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -925,38 +844,6 @@ event OnOptionHighlight(int a_option)
     endif
 endEvent
 
-state pushLocationToExcludeList
-    event OnSelectST()
-        pushLocationToExcludeList = !(pushLocationToExcludeList as bool)
-        SetToggleOptionValueST(pushLocationToExcludeList)
-    endEvent
-
-    event OnDefaultST()
-        pushLocationToExcludeList = false
-        SetToggleOptionValueST(pushLocationToExcludeList)
-    endEvent
-
-    event OnHighlightST()
-        SetInfoText(GetTranslation("$SHSE_DESC_LOCATION_TO_BLACKLIST"))
-    endEvent
-endState
-
-state pushCellToExcludeList
-    event OnSelectST()
-        pushCellToExcludeList = !(pushCellToExcludeList as bool)
-        SetToggleOptionValueST(pushCellToExcludeList)
-    endEvent
-
-    event OnDefaultST()
-        pushCellToExcludeList = false
-        SetToggleOptionValueST(pushCellToExcludeList)
-    endEvent
-
-    event OnHighlightST()
-        SetInfoText(GetTranslation("$SHSE_DESC_CELL_TO_BLACKLIST"))
-    endEvent
-endState
-
 state enableHarvest
     event OnSelectST()
         enableHarvest = !(enableHarvest as bool)
@@ -972,7 +859,6 @@ state enableHarvest
         SetInfoText(GetTranslation("$SHSE_DESC_ENABLE_HARVEST"))
     endEvent
 endState
-
 
 state enableLootContainer
     event OnSelectST()
@@ -1156,13 +1042,11 @@ state ValueWeightDefault
 
     event OnSliderAcceptST(float value)
         valueWeightDefault = value as int
-        ;DebugTrace("OnSliderAcceptST - vw default " + valueWeightDefault)
         SetSliderOptionValueST(valueWeightDefault)
     endEvent
 
     event OnDefaultST()
         valueWeightDefault = valueWeightDefaultDefault
-        ;DebugTrace("OnDefaultST - vw default " + valueWeightDefault)
         SetSliderOptionValueST(valueWeightDefault)
     endEvent
 
@@ -1181,13 +1065,11 @@ state MaxMiningItems
 
     event OnSliderAcceptST(float value)
         updateMaxMiningItems(value as int)
-        ;DebugTrace("OnSliderAcceptST: MaxMiningItems set to " + maxMiningItems)
         SetSliderOptionValueST(maxMiningItems)
     endEvent
 
     event OnDefaultST()
         updateMaxMiningItems(maxMiningItemsDefault)
-        ;DebugTrace("OnDefaultST: MaxMiningItems set to " + maxMiningItems)
         SetSliderOptionValueST(maxMiningItems)
     endEvent
 
@@ -1282,87 +1164,6 @@ state iniSaveLoad
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_FILE_OPERATION"))
-    endEvent
-endState
-
-state whiteListSaveLoad
-    event OnMenuOpenST()
-        SetMenuDialogStartIndex(whiteListSaveLoad)
-        SetMenuDialogDefaultIndex(0)
-        SetMenuDialogOptions(s_whiteListSaveLoadArray)
-    endEvent
-
-    event OnMenuAcceptST(int index)
-        string list_warning
-        if (index == 1)
-            list_warning = "$SHSE_LOAD_WARNING_MSG"
-        elseif (index == 2)
-            list_warning = "$SHSE_SAVE_WARNING_MSG"
-        else
-            return
-        endif
-        bool continue = ShowMessage(list_warning, true, "$SHSE_OK", "$SHSE_CANCEL")
-        if (continue)
-            whiteListSaveLoad = index
-            SetMenuOptionValueST(s_whiteListSaveLoadArray[whiteListSaveLoad])
-
-            ;--- WhiteList File operation --------------------
-            if (whiteListSaveLoad == 1) ; load/restore
-                bool result = LoadWhiteList()
-                if (result)
-                    Debug.Notification("$SHSE_WHITELIST_RESTORE_MSG")
-                endif
-            elseif (whiteListSaveLoad == 2) ; save/store
-                bool result = SaveWhiteList()
-                if (result)
-                    Debug.Notification("$SHSE_WHITELIST_STORE_MSG")
-                endif
-            endif
-        endif
-    endEvent
-
-    event OnDefaultST()
-        whiteListSaveLoad = 0
-        SetMenuOptionValueST(s_whiteListSaveLoadArray[whiteListSaveLoad])
-    endEvent
-
-    event OnHighlightST()
-        SetInfoText(GetTranslation("$SHSE_DESC_WHITELIST_FILE_OPERATION"))
-    endEvent
-endState
-
-state blackListSaveLoad
-    event OnMenuOpenST()
-        SetMenuDialogStartIndex(blackListSaveLoad)
-        SetMenuDialogDefaultIndex(0)
-        SetMenuDialogOptions(s_blackListSaveLoadArray)
-    endEvent
-
-    event OnMenuAcceptST(int index)
-        if (index == 0)
-            return
-        endif
-        
-        string list_warning
-        if (index == 1)
-            list_warning = "$SHSE_LOAD_WARNING_MSG"
-        elseif (index == 2)
-            list_warning = "$SHSE_SAVE_WARNING_MSG"
-        endif
-        bool continue = ShowMessage(list_warning, true, "$SHSE_OK", "$SHSE_CANCEL")
-        if (continue)
-            blackListSaveLoad = index
-            SetMenuOptionValueST(s_blackListSaveLoadArray[blackListSaveLoad])
-        endif
-    endEvent
-
-    event OnDefaultST()
-        blackListSaveLoad = 0
-        SetMenuOptionValueST(s_blackListSaveLoadArray[blackListSaveLoad])
-    endEvent
-
-    event OnHighlightST()
-        SetInfoText(GetTranslation("$SHSE_DESC_BLACKLIST_FILE_OPERATION"))
     endEvent
 endState
 

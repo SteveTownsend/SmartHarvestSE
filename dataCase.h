@@ -71,6 +71,10 @@ public:
 	}
 
 	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
+	inline const std::unordered_set<const RE::TESForm*>& OffLimitsLocations()
+	{
+		return m_offLimitsLocations;
+	}
 
 private:
 	std::unordered_map<std::string, std::string> m_translations;
@@ -78,6 +82,7 @@ private:
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
 	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
+	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
 	std::unordered_set<RE::TESObjectREFR*> m_offLimitsContainers;
 	std::unordered_set<RE::TESForm*> m_offLimitsForms;
 	std::unordered_set<RE::FormID> m_userBlockedForm;
@@ -99,6 +104,7 @@ private:
 
 	bool GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName);
 
+	void RecordOffLimitsLocations(void);
 	void BlockOffLimitsContainers(void);
 	void GetAmmoData(void);
 
@@ -147,18 +153,17 @@ private:
 		if (!dhnd)
 			return;
 
-		for (RE::TESForm* form : dhnd->GetFormArray(T::FORMTYPE))
+		for (T* target : dhnd->GetFormArray<T>())
 		{
-			T* target(form->As<T>());
-			if (!target || !target->GetFullNameLength())
+			if (!target->GetFullNameLength())
 				continue;
 			const char * targetName(target->GetFullName());
-			DBG_VMESSAGE("Checking target %s/0x%08x", targetName, form->formID);
+			DBG_VMESSAGE("Checking target %s/0x%08x", targetName, target->GetFormID());
 
 			const RE::TESBoundObject* ingredient(target->produceItem);
 			if (!ingredient)
 			{
-				REL_WARNING("No ingredient for %s/0x%08x", targetName, form->formID);
+				REL_WARNING("No ingredient for %s/0x%08x", targetName, target->GetFormID());
 				continue;
 			}
 
@@ -167,7 +172,7 @@ private:
 			const RE::TESLevItem* leveledItem(ingredient->As<RE::TESLevItem>());
 			if (leveledItem)
 			{
-				DBG_VMESSAGE("%s/0x%08x ingredient is Leveled Item", targetName, form->formID);
+				DBG_VMESSAGE("%s/0x%08x ingredient is Leveled Item", targetName, target->GetFormID());
 				ProduceFormCategorizer(target, leveledItem, targetName).CategorizeContents();
 			}
 			else
@@ -176,9 +181,9 @@ private:
 				storedType = GetObjectTypeForForm(ingredient);
 				if (storedType != ObjectType::unknown)
 				{
-					DBG_VMESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, form->formID,
-						ingredient->GetName(), ingredient->formID, GetObjectTypeName(storedType).c_str());
-					SetLootableForProducer(form, const_cast<RE::TESBoundObject*>(ingredient));
+					DBG_VMESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, target->GetFormID(),
+						ingredient->GetName(), ingredient->GetFormID(), GetObjectTypeName(storedType).c_str());
+					SetLootableForProducer(target, const_cast<RE::TESBoundObject*>(ingredient));
 				}
 				else
 				{
@@ -187,23 +192,24 @@ private:
 				if (storedType != ObjectType::unknown)
 				{ 
 					// Store mapping of Produce holder to ingredient - this is the most correct type for this item producer
-					if (SetObjectTypeForForm(form->formID, storedType))
+					if (SetObjectTypeForForm(target->GetFormID(), storedType))
 					{
-						DBG_VMESSAGE("Target %s/0x%08x stored as type %s", targetName, form->formID, GetObjectTypeName(storedType).c_str());
+						DBG_VMESSAGE("Target %s/0x%08x stored as type %s", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
 					}
 					else
 					{
-						REL_WARNING("Target %s/0x%08x (%s) already stored, check data", targetName, form->formID, GetObjectTypeName(storedType).c_str());
+						REL_WARNING("Target %s/0x%08x (%s) already stored, check data", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
 					}
 				}
 				else
 				{
-					DBG_VMESSAGE("Target %s/0x%08x not stored", targetName, form->formID);
+					DBG_VMESSAGE("Target %s/0x%08x not stored", targetName, target->GetFormID());
 				}
 			}
 		}
 	}
 
+	void HandleExceptions(void);
 	ObjectType DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType);
 	void SetObjectTypeByKeywords();
 
@@ -222,32 +228,25 @@ private:
 		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 		if (!dhnd)
 			return;
-		for (RE::TESForm* form : dhnd->GetFormArray(T::FORMTYPE))
+		for (T* consumable : dhnd->GetFormArray<T>())
 		{
-			T* consumable(form->As<T>());
-			if (!consumable)
-			{
-				DBG_VMESSAGE("Skipping non-consumable form 0x%08x", form->formID);
-				continue;
-			}
-
-			RE::TESFullName* pFullName = form->As<RE::TESFullName>();
+			RE::TESFullName* pFullName = consumable->As<RE::TESFullName>();
 			if (!pFullName || pFullName->GetFullNameLength() == 0)
 			{
-				DBG_VMESSAGE("Skipping unnamed form 0x%08x", form->formID);
+				DBG_VMESSAGE("Skipping unnamed form 0x%08x", consumable->GetFormID());
 				continue;
 			}
 
 			std::string formName(pFullName->GetFullName());
-			if (GetFormObjectType(form->formID) != ObjectType::unknown)
+			if (GetFormObjectType(consumable->GetFormID()) != ObjectType::unknown)
 			{
-				DBG_VMESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), form->formID);
+				DBG_VMESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), consumable->GetFormID());
 				continue;
 			}
 
 			ObjectType objectType(ConsumableObjectType<T>(consumable));
-			DBG_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), form->formID, GetObjectTypeName(objectType).c_str());
-			m_objectTypeByForm[form->formID] = objectType;
+			DBG_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), consumable->GetFormID(), GetObjectTypeName(objectType).c_str());
+			m_objectTypeByForm[consumable->GetFormID()] = objectType;
 		}
 	}
 
@@ -294,22 +293,21 @@ private:
 			return;
 
 		// use keywords from preference
-		for (RE::TESForm* form : dhnd->GetFormArray(T::FORMTYPE))
+		for (T* typedForm : dhnd->GetFormArray<T>())
 		{
-			T* typedForm(form->As<T>());
-			if (!typedForm || !typedForm->GetFullNameLength())
+			if (!typedForm->GetFullNameLength())
 				continue;
 			const char* formName(typedForm->GetFullName());
-			DBG_VMESSAGE("Categorizing %s/0x%08x", formName, form->formID);
-			if ((form->formFlags & T::RecordFlags::kNonPlayable) == T::RecordFlags::kNonPlayable)
+			DBG_VMESSAGE("Categorizing %s/0x%08x", formName, typedForm->GetFormID());
+			if ((typedForm->formFlags & T::RecordFlags::kNonPlayable) == T::RecordFlags::kNonPlayable)
 			{
-				DBG_VMESSAGE("%s/0x%08x is NonPlayable", formName, form->formID);
+				DBG_VMESSAGE("%s/0x%08x is NonPlayable", formName, typedForm->GetFormID());
 				continue;
 			}
-			RE::BGSKeywordForm* keywordForm(form->As<RE::BGSKeywordForm>());
+			RE::BGSKeywordForm* keywordForm(typedForm->As<RE::BGSKeywordForm>());
 			if (!keywordForm)
 			{
-				DBG_WARNING("%s/0x%08x Not a Keyword", formName, form->formID);
+				DBG_WARNING("%s/0x%08x Not a Keyword", formName, typedForm->GetFormID());
 				continue;
 			}
 
@@ -320,7 +318,7 @@ private:
 				std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
 				if (!keyword)
 					continue;
-				const auto matched(m_objectTypeByForm.find(keyword.value()->formID));
+				const auto matched(m_objectTypeByForm.find(keyword.value()->GetFormID()));
 				if (matched != m_objectTypeByForm.cend())
 				{
 					// if default type, postpone storage in case there is a more specific match
@@ -330,7 +328,7 @@ private:
 					}
 					else if (correctType != ObjectType::unknown)
 					{
-						REL_WARNING("%s/0x%08x mapped to %s already stored with keyword %s, check data", formName, form->formID,
+						REL_WARNING("%s/0x%08x mapped to %s already stored with keyword %s, check data", formName, typedForm->GetFormID(),
 							GetObjectTypeName(matched->second).c_str(), GetObjectTypeName(correctType).c_str());
 					}
 					else
@@ -345,36 +343,36 @@ private:
 			}
 			else
 			{
-				correctType = OverrideIfBadChoice<T>(form, correctType);
+				correctType = OverrideIfBadChoice<T>(typedForm, correctType);
 			}
 			if (correctType != ObjectType::unknown)
 			{
-				if (SetObjectTypeForForm(form->formID, correctType))
+				if (SetObjectTypeForForm(typedForm->GetFormID(), correctType))
 				{
-					DBG_VMESSAGE("%s/0x%08x stored as %s", formName, form->formID, GetObjectTypeName(correctType).c_str());
+					DBG_VMESSAGE("%s/0x%08x stored as %s", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
 				}
 				else
 				{
-					REL_WARNING("%s/0x%08x (%s) already stored, check data", formName, form->formID, GetObjectTypeName(correctType).c_str());
+					REL_WARNING("%s/0x%08x (%s) already stored, check data", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
 				}
 				continue;
 			}
 
 			// fail-safe is to check if the form has value and store as clutter if so
 			// Also, check model path for - you guessed it - clutter. Some base game MISC objects lack keywords.
-			if (typedForm->value > 0 || CheckObjectModelPath(form, "clutter"))
+			if (typedForm->value > 0 || CheckObjectModelPath(typedForm, "clutter"))
 			{
-				if (SetObjectTypeForForm(form->formID, ObjectType::clutter))
+				if (SetObjectTypeForForm(typedForm->GetFormID(), ObjectType::clutter))
 				{
-					DBG_VMESSAGE("%s/0x%08x with value %d stored as clutter", formName, form->formID, std::max(typedForm->value, SInt32(0)));
+					DBG_VMESSAGE("%s/0x%08x with value %d stored as clutter", formName, typedForm->GetFormID(), std::max(typedForm->value, SInt32(0)));
 				}
 				else
 				{
-					REL_WARNING("%s/0x%08x (defaulting as clutter) already stored, check data", formName, form->formID);
+					REL_WARNING("%s/0x%08x (defaulting as clutter) already stored, check data", formName, typedForm->GetFormID());
 				}
 				continue;
 			}
-			DBG_VMESSAGE("%s/0x%08x not mappable", formName, form->formID);
+			DBG_VMESSAGE("%s/0x%08x not mappable", formName, typedForm->GetFormID());
 		}
 	}
 
@@ -382,7 +380,6 @@ private:
 	void ActivationVerbsByType(const char* activationVerbKey, const ObjectType objectType);
 	void StoreActivationVerbs(void);
 	void CategorizeByActivationVerb(void);
-	void BuildCollectionDefinitions(void);
 	void AnalyzePerks(void);
 
 	std::string GetModelPath(const RE::TESForm* thisForm) const;
@@ -395,8 +392,68 @@ private:
 	static constexpr RE::FormID Gold = 0x0F;
 
 	void CategorizeStatics();
-	void ExcludeBrokenVendorContainers();
+	void ExcludeFactionContainers();
+	void ExcludeVendorContainers();
 	void ExcludeImmersiveArmorsGodChest();
+
+	template <typename T>
+	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
+	{
+		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+		if (!dhnd)
+			return nullptr;
+
+		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
+		if (typedForm)
+		{
+			DBG_MESSAGE("Found exact match 0x%08x for %s:0x%06x", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
+		}
+		else
+		{
+			DBG_MESSAGE("No exact match for %s:0x%06x", defaultESP.c_str(), maskedFormID);
+		}
+		return typedForm;
+	}
+
+	template <typename T>
+	T* FindBestMatch(const std::string& defaultESP, const RE::FormID maskedFormID, const std::string& name)
+	{
+		T* match(FindExactMatch<T>(defaultESP, maskedFormID));
+		// supplied EDID and Name not checked if we match plugin/formID
+		if (match)
+		{
+			DBG_MESSAGE("Returning exact match 0x%08x/%s for %s:0x%06x", match->GetFormID(), match->GetName(),
+				defaultESP.c_str(), maskedFormID);
+			return match;
+		}
+
+		// look for merged form
+		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+		if (!dhnd)
+			return nullptr;
+
+		// Check for match on name. FormID can change if this is in a merge output. Cannot use EDID as it is not loaded.
+		for (T* container : dhnd->GetFormArray<T>())
+		{
+			if (container->GetName() == name)
+			{
+				if (match)
+				{
+					REL_MESSAGE("Ambiguity in best match 0x%08x vs for 0x%08x for %s:0x%06x/%s",
+						match->GetFormID(), container->GetFormID(), defaultESP.c_str(), maskedFormID, name);
+					return nullptr;
+				}
+				else
+				{
+					REL_MESSAGE("Found best match 0x%08x for %s:0x%06x", container->GetFormID(),
+						defaultESP.c_str(), maskedFormID, name);
+					match = container;
+				}
+			}
+		}
+		return match;
+	}
+
 	void IncludeFossilMiningExcavation();
 	DataCase(void);
 };

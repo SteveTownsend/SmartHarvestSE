@@ -16,7 +16,7 @@ private:
 	bool VMGoodToGo();
 
 	static std::unique_ptr<UIState> m_instance;
-	bool m_effectiveGoodToGo;
+	bool m_goodToGo;
 	int m_nonce;
 	std::condition_variable m_uiReport;
 	std::mutex m_uiLock;

@@ -7,9 +7,6 @@ string Function GetTextObjectType(Form thisForm) global native
 
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
 Function BlockFirehose(ObjectReference refr)  global native
-Function UnblockEverything() global native
-Form Function GetNthLootableObject(ObjectReference refr, int index) global native
-Function ClearLootableObjects(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypeByName(string name) global native
@@ -30,17 +27,10 @@ Function DisallowSearch() global native
 bool Function IsSearchAllowed() global native
 Function ReportOKToScan(bool goodToGo, int nonce) global native
 
-Function SyncWhiteListWithPlugin() global native
-bool Function SaveWhiteList() global native
-bool Function LoadWhiteList() global native
-Function ClearPluginBlackList() global native
-Function MergePluginBlackList() global native
-bool Function SaveBlackList() global native
-bool Function LoadBlackList() global native
+Function ResetList(bool reload, int listNum) global native
+Function AddEntryToList(int entryType, Form entry) global native
+Function SyncDone() global native
 String Function PrintFormID(int formID) global native
-
-Function AddLocationToList(int locationType, Form location) global native
-Function DropLocationFromList(int locationType, Form location) global native
 
 String Function GetTranslation(String key) global native
 String Function Replace(String str, String target, String replacement) global native
@@ -49,6 +39,8 @@ String Function ReplaceArray(String str, String[] targets, String[] replacements
 ;Collection Management
 bool Function CollectionsInUse() global native
 Function FlushAddedItems(int[] formIDs, int[] objectTypes, int itemCount) global native
+Function ToggleCalibration() global native
+Form Function GetPlayerPlace() global native
 
 int location_type_whitelist = 1
 int location_type_blacklist = 2

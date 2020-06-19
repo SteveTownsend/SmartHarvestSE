@@ -1,5 +1,8 @@
 #include "PrecompiledHeaders.h"
 
+namespace shse
+{
+
 Condition::Condition() {}
 Condition::~Condition() {}
 
@@ -25,9 +28,9 @@ nlohmann::json PluginCondition::MakeJSON() const
 	return nlohmann::json(*this);
 }
 
-void to_json(nlohmann::json& j, const PluginCondition& condition)
+void PluginCondition::AsJSON(nlohmann::json& j) const
 {
-	j["plugin"] = condition.m_plugin;
+	j["plugin"] = m_plugin;
 }
 
 // This is O(n) in KYWD record count but only happens during startup, and there are not THAT many of them
@@ -39,9 +42,8 @@ KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
 
 	// store keywords to match for this collection. Schema enforces uniqueness in input list.
 	std::vector<std::string> keywordsLeft(keywords);
-	for (const RE::TESForm* form : dhnd->GetFormArray(RE::FormType::Keyword))
+	for (const RE::BGSKeyword* keywordRecord : dhnd->GetFormArray<RE::BGSKeyword>())
 	{
-		const RE::BGSKeyword* keywordRecord(form->As<RE::BGSKeyword>());
 		auto matched(std::find_if(keywordsLeft.begin(), keywordsLeft.end(),
 			[&](const std::string& keyword) -> bool { return FormUtils::SafeGetFormEditorID(keywordRecord) == keyword; }));
 		if (matched != keywordsLeft.end())
@@ -82,10 +84,10 @@ nlohmann::json KeywordsCondition::MakeJSON() const
 	return nlohmann::json(*this);
 }
 
-void to_json(nlohmann::json& j, const KeywordsCondition& condition)
+void KeywordsCondition::AsJSON(nlohmann::json& j) const
 {
 	j["keywords"] = nlohmann::json::array();
-	for (const auto keyword : condition.m_keywords)
+	for (const auto keyword : m_keywords)
 	{
 		j["keywords"].push_back(FormUtils::SafeGetFormEditorID(keyword));
 	}
@@ -128,10 +130,10 @@ nlohmann::json SignaturesCondition::MakeJSON() const
 	return nlohmann::json(*this);
 }
 
-void to_json(nlohmann::json& j, const SignaturesCondition& condition)
+void SignaturesCondition::AsJSON(nlohmann::json& j) const
 {
 	j["signatures"] = nlohmann::json::array();
-	for (const auto formType : condition.m_formTypes)
+	for (const auto formType : m_formTypes)
 	{
 		j["signatures"].push_back(static_cast<int>(formType));
 	}
@@ -176,10 +178,10 @@ nlohmann::json LootCategoriesCondition::MakeJSON() const
 	return nlohmann::json(*this);
 }
 
-void to_json(nlohmann::json& j, const LootCategoriesCondition& condition)
+void LootCategoriesCondition::AsJSON(nlohmann::json& j) const
 {
 	j["lootCategories"] = nlohmann::json::array();
-	for (const auto category : condition.m_categories)
+	for (const auto category : m_categories)
 	{
 		j["lootCategories"].push_back(GetObjectTypeName(category));
 	}
@@ -220,17 +222,44 @@ nlohmann::json ConditionTree::MakeJSON() const
 	return nlohmann::json(*this);
 }
 
-void to_json(nlohmann::json& j, const ConditionTree& condition)
+void ConditionTree::AsJSON(nlohmann::json& j) const
 {
-	j["operator"] = std::string(condition.m_operator == ConditionTree::Operator::And ? "AND" : "OR");
+	j["operator"] = std::string(m_operator == shse::ConditionTree::Operator::And ? "AND" : "OR");
 	j["conditions"] = nlohmann::json::array();
-	for (const auto& condition : condition.m_conditions)
+	for (const auto& condition : m_conditions)
 	{
 		j["conditions"].push_back(condition->MakeJSON());
 	}
 }
 
-std::ostream& operator<<(std::ostream& os, const Condition& condition)
+void to_json(nlohmann::json& j, const PluginCondition& condition)
+{
+	condition.AsJSON(j);
+}
+
+void to_json(nlohmann::json& j, const KeywordsCondition& condition)
+{
+	condition.AsJSON(j);
+}
+
+void to_json(nlohmann::json& j, const SignaturesCondition& condition)
+{
+	condition.AsJSON(j);
+}
+
+void to_json(nlohmann::json& j, const LootCategoriesCondition& condition)
+{
+	condition.AsJSON(j);
+}
+
+void to_json(nlohmann::json& j, const ConditionTree& condition)
+{
+	condition.AsJSON(j);
+}
+
+}
+
+std::ostream& operator<<(std::ostream& os, const shse::Condition& condition)
 {
 	os << condition.MakeJSON().dump(2);
 	return os;

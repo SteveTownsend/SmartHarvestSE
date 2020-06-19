@@ -6,6 +6,7 @@ constexpr RE::FormID ClothKeyword = 0x06BBE8;
 constexpr RE::FormID CurrentFollowerFaction = 0x0005C84E;
 constexpr RE::FormID InvalidForm = 0x0;
 constexpr RE::FormID ESPMask = 0xFF000000;
+constexpr RE::FormID RawMask = 0x00FFFFFF;
 constexpr RE::FormID ESPFETypeMask = 0xFE000000;
 constexpr RE::FormID ESPFEMask = 0xFEFFF000;
 
@@ -72,11 +73,17 @@ namespace PluginUtils
 		RE::FormID result(formID & ESPMask);
 		return result == ESPFETypeMask ? (formID & ESPFEMask) : result;
 	}
+	inline bool FormIDsAppearsEqual(const RE::FormID rawID, const RE::FormID target)
+	{
+		return (rawID & RawMask) == (target & RawMask);
+	}
 }
 
 namespace FormUtils
 {
-	// this can be blank, e.g. "Elementary Destruction.esp" FormID 0x31617, Github issue #28
+	// This can be missing, e.g. "Elementary Destruction.esp" FormID 0x31617, Github issue #28
+	// Certain forms such as CONT do not load this at runtime, see 
+	// https://github.com/Ryan-rsm-McKenzie/CommonLibSSE/issues/20
 	inline std::string SafeGetFormEditorID(const RE::TESForm* form)
 	{
 		const char* edid(form->GetFormEditorID());
