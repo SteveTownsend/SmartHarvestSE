@@ -40,9 +40,6 @@
     <ClCompile Include="FormHelper.cpp">
       <Filter>FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="basketfile.cpp">
-      <Filter>Data</Filter>
-    </ClCompile>
     <ClCompile Include="dataCase.cpp">
       <Filter>Data</Filter>
     </ClCompile>
@@ -91,10 +88,28 @@
     <ClCompile Include="Collection.cpp">
       <Filter>Collections</Filter>
     </ClCompile>
-    <ClCompile Include="UIState.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="IRangeChecker.cpp">
+      <Filter>Utilities</Filter>
     </ClCompile>
     <ClCompile Include="EventPublisher.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="UIState.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="LocationTracker.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="PopulationCenters.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerState.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerHouses.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="ManagedLists.cpp">
       <Filter>Looting</Filter>
     </ClCompile>
   </ItemGroup>
@@ -136,9 +151,6 @@
     </ClInclude>
     <ClInclude Include="FormHelper.h">
       <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="basketfile.h">
-      <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="dataCase.h">
       <Filter>Data</Filter>
@@ -197,14 +209,35 @@
     <ClInclude Include="LogWrapper.h">
       <Filter>Utilities</Filter>
     </ClInclude>
-    <ClInclude Include="UIState.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="EventPublisher.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
     <ClInclude Include="BoundedList.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="IRangeChecker.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="EventPublisher.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="UIState.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="LocationTracker.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="PopulationCenters.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerState.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerHouses.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="versiondb.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="ManagedLists.h">
+      <Filter>Looting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

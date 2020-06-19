@@ -76,7 +76,7 @@ inline bool IsValueWeightExempt(ObjectType objectType)
 		objectType == ObjectType::septims;
 }
 
-inline bool IsLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
+inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
 {
 	// Allow auto - mining in settlements, which Mines mostly are. No picks for you!
 	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.

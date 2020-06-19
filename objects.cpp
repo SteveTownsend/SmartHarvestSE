@@ -1,9 +1,9 @@
 #include "PrecompiledHeaders.h"
 
 #include "utils.h"
-#include "basketfile.h"
 #include "containerLister.h"
 #include "ExtraDataListHelper.h"
+#include "ManagedLists.h"
 
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {
@@ -270,11 +270,11 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 	if (!baseForm)
 		return ObjectType::unknown;
 
-	if (!ignoreWhiteList && BasketFile::GetSingleton()->IsinList(BasketFile::listnum::WHITELIST, baseForm))
+	if (!ignoreWhiteList && ManagedList::WhiteList().Contains(baseForm))
 	{
 		return ObjectType::whitelist;
 	}
-	if (BasketFile::GetSingleton()->IsinList(BasketFile::listnum::BLACKLIST, baseForm))
+	if (ManagedList::BlackList().Contains(baseForm))
 	{
 		return ObjectType::blacklist;
 	}

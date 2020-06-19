@@ -75,26 +75,30 @@ Function SetPlayer(Actor playerref)
     player = playerref
 EndFunction
 
-Function SyncWhiteList()
-    SyncWhiteListWithPlugin()
-endFunction
-
-; there are two sources of excluded locations- basket file and the script form. Merge these as best we can.
-Function SyncBlackList()
-    ClearPluginBlackList()
-    ; ensure locations in the BlackList Form are present in the plugin's list
-    int index = blacklist_form.GetSize()
+; merge FormList with plugin data
+Function SyncList(bool reload, int listNum, FormList forms)
+    ; plugin resets to fixed baseline
+    ResetList(reload, listNum)
+    ; ensure user locations/items in the BlackList/WhiteList are present in the plugin's list
+    int index = forms.GetSize()
     int current = 0
     while (current < index)
-        Form nextLocation = blacklist_form.GetAt(current)
-        if (nextLocation)
-            AddLocationToList(location_type_blacklist, nextLocation)
+        Form nextEntry = forms.GetAt(current)
+        if (nextEntry)
+            AddEntryToList(listNum, nextEntry)
         endif
         current += 1
     endwhile
-    MergePluginBlackList()
 endFunction
 
+; merge FormList with plugin data
+Function SyncLists(bool reload)
+    SyncList(reload, location_type_whitelist, whitelist_form)
+    SyncList(reload, location_type_blacklist, blacklist_form)
+    SyncDone()
+endFunction
+
+; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
 function ManageList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
     if (!m_list || !m_item)
         return
@@ -109,7 +113,6 @@ function ManageList(Formlist m_list, Form m_item, int location_type, string tran
             endif
         endif
         m_list.RemoveAddedForm(m_item)
-        DropLocationFromList(location_type, m_item)
     else
         string translation = GetTranslation(trans_add)
         if (translation)
@@ -119,40 +122,45 @@ function ManageList(Formlist m_list, Form m_item, int location_type, string tran
             endif
         endif
         m_list.AddForm(m_item)
-        AddLocationToList(location_type, m_item)
     endif
 endFunction
 
-function ManageWhiteList(Form itemForm)
-    ManageList(whitelist_form, itemForm, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
-endFunction
-
-function MoveFromBlackToWhiteList(Form itemForm)
-    if (blacklist_form.find(itemForm) != -1)
-        int result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_WHITELIST", "{ITEMNAME}", GetNameForListForm(itemForm))
+function MoveFromBlackToWhiteList(Form target, bool confirm)
+    if (blacklist_form.find(target) != -1)
+        int result = 0
+        if confirm
+            result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_WHITELIST", "{ITEMNAME}", GetNameForListForm(target))
+        endif
         if (result == 0)
-            blacklist_form.removeAddedForm(itemForm)
+            blacklist_form.removeAddedForm(target)
         else
             return
         endif
     endif
-    ManageWhiteList(itemForm)
+    ManageWhiteList(target)
 endFunction
 
-function MoveFromWhiteToBlackList(Form itemForm)
-    if (whitelist_form.find(itemForm) != -1)
-        int result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_BLACKLIST", "{ITEMNAME}", GetNameForListForm(itemForm))
+function ManageWhiteList(Form target)
+    ManageList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
+endFunction
+
+function MoveFromWhiteToBlackList(Form target, bool confirm)
+    if (whitelist_form.find(target) != -1)
+        int result = 0
+        if confirm
+            result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_BLACKLIST", "{ITEMNAME}", GetNameForListForm(target))
+        endif
         if (result == 0)
-            whitelist_form.removeAddedForm(itemForm)
+            whitelist_form.removeAddedForm(target)
         else
             return
         endif
     endif
-    ManageBlackList(itemForm)
+    ManageBlackList(target)
 endFunction
 
-function ManageBlackList(Form itemForm)
-    ManageList(blacklist_form, itemForm, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
+function ManageBlackList(Form target)
+    ManageList(blacklist_form, target, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
 endFunction
 
 ; must line up with enumerations from C++
@@ -206,8 +214,7 @@ Function ResetAddedItems()
     currentAddedItem = 0
 EndFunction
 
-Function ApplySetting(int oreMining)
-
+Function ApplySetting(bool reload, int oreMining)
     ;DebugTrace("eventScript ApplySetting start")
     oreMiningOption = oreMining
     ;DebugTrace("oreMiningOption = " + oreMiningOption)
@@ -251,11 +258,8 @@ Function ApplySetting(int oreMining)
         FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
     endif
 
-    ;DebugTrace("eventScript ApplySetting start")
-
-    SyncWhiteList()
-    SyncBlackList()
     ResetAddedItems()
+    SyncLists(reload)
 
     utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
@@ -304,11 +308,43 @@ Event OnKeyUp(Int keyCode, Float holdTime)
         return
     endif
 
+    int blackKey = GetConfig_BlackListKey()
+    int whiteKey = GetConfig_WhiteListKey()
+    bool sameHotKey = whiteKey == blackKey
+
     if (!Utility.IsInMenumode())
         if (keyCode == GetConfig_Pausekey())
-            Pause()
+            if holdTime > 3.0
+                ToggleCalibration()
+            else
+                Pause()
+            endif
+        elseif keyCode == whiteKey || keyCode == blackKey
+            ; Location/cell blacklist whitelist toggle in worldspace
+            Form place = GetPlayerPlace()
+            if (!place)
+                string msg = "$SHSE_whitelist_form_ERROR"
+                Debug.Notification(msg)
+                return
+            endif
+            int result = -1
+            if sameHotKey
+                result = ShowMessage(whitelist_message, "$SHSE_REGISTER_LIST", "{ITEMNAME}", GetNameForListForm(place))
+            elseif keyCode == whiteKey
+                result = 0
+            else ; blacklist key
+                result = 1
+            endif
+
+            if (result == 0)
+                MoveFromBlackToWhiteList(place, false)
+            elseIf (result == 1)
+                MoveFromWhiteToBlackList(place, false)
+            EndIf
+            SyncLists(false)    ; not a reload
         endif
-    else
+    ; menu open - only actionable on our blacklist/whitelist keys
+    elseif keyCode == whiteKey || keyCode == blackKey
         string s_menuName = none
         if (UI.IsMenuOpen("InventoryMenu"))
             s_menuName = "InventoryMenu"
@@ -322,28 +358,24 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             if (!itemForm)
                 string msg = "$SHSE_whitelist_form_ERROR"
                 Debug.Notification(msg)
-                ;DebugTrace(msg)
                 return
             endif
 
             int result = -1
-            if (GetConfig_WhiteListKey() == GetConfig_BlackListKey())
+            if sameHotKey
                 result = ShowMessage(whitelist_message, "$SHSE_REGISTER_LIST", "{ITEMNAME}", GetNameForListForm(itemForm))
-            elseif (keyCode == GetConfig_WhiteListKey())
+            elseif keyCode == whiteKey
                 result = 0
-            elseif (keyCode == GetConfig_BlackListKey())
+            else ; blacklist key
                 result = 1
-            else
-                return
             endif
             
             if (result == 0)
-                MoveFromBlackToWhiteList(itemForm)
+                MoveFromBlackToWhiteList(itemForm, true)
             elseIf (result == 1)
-                MoveFromWhiteToBlackList(itemForm)
+                MoveFromWhiteToBlackList(itemForm, true)
             EndIf
-            SyncBlackList()
-            SyncWhiteList()
+            SyncLists(false)    ; not a reload
         endif
     endif
 endEvent
@@ -701,9 +733,3 @@ Event OnCheckOKToScan(int nonce)
     ;DebugTrace("Report UI Good-to-go = " + okToScan + " for request " + nonce)
     ReportOKToScan(okToScan, nonce)
 EndEvent
-
-Event OnMenuOpen(String MenuName)
-    if (MenuName == "Loading Menu")
-        UnblockEverything()
-    endif
-endEvent

@@ -1,5 +1,8 @@
 #pragma once
 
+namespace shse
+{
+
 class CollectionFactory {
 public:
 	static CollectionFactory& Instance();
@@ -14,3 +17,5 @@ private:
 
 	std::unique_ptr<CollectionFactory> m_factory;
 };
+
+}

@@ -1,7 +1,6 @@
 ﻿#include "PrecompiledHeaders.h"
 
 #include "tasks.h"
-#include "PlayerCellHelper.h"
 #include "version.h"
 
 #include <shlobj.h>
@@ -85,7 +84,6 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	DBG_MESSAGE("*** Function addresses START");
 	utils::LogFunctionAddress(&SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
 	utils::LogFunctionAddress(&SearchTask::Run, "SearchTask::Run");
-	utils::LogFunctionAddress(&PlayerCellHelper::GetReferences, "PlayerCellHelper::GetReferences");
 	DBG_MESSAGE("*** Function addresses END");
 
 	return true;

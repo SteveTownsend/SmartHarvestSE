@@ -82,7 +82,7 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	if (m_targetType == INIFile::SecondaryType::containers)
 	{
 		// safe to handle here - record the item for Collection correlation before moving
-		CollectionManager::Instance().EnqueueAddedItem(BoundObject()->GetFormID(), m_objectType);
+		shse::CollectionManager::Instance().EnqueueAddedItem(BoundObject()->GetFormID(), m_objectType);
 		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else

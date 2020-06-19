@@ -1,22 +1,27 @@
 #pragma once
 
+#include "BoundedList.h"
+#include "IRangeChecker.h"
+
 class PlayerCellHelper
 {
 public:
-	static PlayerCellHelper& GetInstance() { return m_instance; }
-	void GetReferences(BoundedList<RE::TESObjectREFR*>& refs, RE::TESObjectCELL* cell, const double radius);
-	PlayerCellHelper() : m_cell(nullptr), m_radius(0.), m_eliminated(0) {}
+	PlayerCellHelper(BoundedList<RE::TESObjectREFR*>& refs, const IRangeChecker& rangeCheck);
+	void FindLootableReferences() const;
+	void FindAllCandidates() const;
 
 private:
-	bool CanLoot(RE::TESObjectREFR* refr) const;
-	bool WithinLootingRange(const RE::TESObjectREFR* refr) const;
-	bool GetCellReferences(BoundedList<RE::TESObjectREFR*>& refs, const RE::TESObjectCELL* cell);
-	void GetAdjacentCells(RE::TESObjectCELL* cell);
-	bool IsAdjacent(RE::TESObjectCELL* cell) const;
+	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
+	void FilterNearbyReferences() const;
+	bool FilterCellReferences(const RE::TESObjectCELL* cell) const;
 
-	RE::TESObjectCELL* m_cell;
+	// predicates supported
+	bool CanLoot(const RE::TESObjectREFR* refr) const;
+	bool IsLootCandidate(const RE::TESObjectREFR* refr) const;
+
 	double m_radius;
-	unsigned int m_eliminated;
-	static PlayerCellHelper m_instance;
-	static std::vector<RE::TESObjectCELL*> m_adjacentCells;
+	mutable unsigned int m_eliminated;
+	BoundedList<RE::TESObjectREFR*>& m_refs;
+	mutable REFRPredicate m_predicate;
+	const IRangeChecker& m_rangeCheck;
 };
