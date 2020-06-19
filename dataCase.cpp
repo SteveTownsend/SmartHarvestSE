@@ -1102,34 +1102,6 @@ template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::In
 	return ObjectType::ingredient;
 }
 
-
-// ingredient nullptr indicates this Producer is pending resolution
-bool DataCase::SetLootableForProducer(RE::TESForm* producer, RE::TESForm* lootable)
-{
-	RecursiveLockGuard guard(m_producerIngredientLock);
-	if (!lootable)
-	{
-		DBG_VMESSAGE("Producer %s/0x%08x needs resolving to lootable", producer->GetName(), producer->formID);
-		// return value signals entry pending resolution found/not found
-		return m_producerLootable.insert(std::make_pair(producer, nullptr)).second;
-	}
-	else
-	{
-		DBG_VMESSAGE("Producer %s/0x%08x has lootable %s/0x%08x", producer->GetName(), producer->formID, lootable->GetName(), lootable->formID);
-		m_producerLootable[producer] = lootable;
-		return true;
-	}
-}
-
-RE::TESForm* DataCase::GetLootableForProducer(RE::TESForm* producer) const
-{
-	RecursiveLockGuard guard(m_producerIngredientLock);
-	const auto matched(m_producerLootable.find(producer));
-	if (matched != m_producerLootable.cend())
-		return matched->second;
-	return nullptr;
-}
-
 bool DataCase::PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const
 {
 	const auto deathPerk = std::find_if(m_leveledItemOnDeathPerks.cbegin(), m_leveledItemOnDeathPerks.cend(),

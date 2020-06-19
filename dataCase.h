@@ -3,6 +3,8 @@
 #include <mutex>
 #include <chrono>
 
+#include "ProducerLootables.h"
+
 class DataCase
 {
 public:
@@ -62,9 +64,6 @@ public:
 	void ListsClear(const bool gameReload);
 	bool SkipAmmoLooting(RE::TESObjectREFR* refr);
 
-	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
-	RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
-
 	inline bool IsBookGlowableKeyword(RE::BGSKeyword* keyword) const
 	{
 		return keyword && m_glowableBookKeywords.find(keyword->GetFormID()) != m_glowableBookKeywords.cend();
@@ -98,9 +97,7 @@ private:
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
 
-	mutable RecursiveLock m_producerIngredientLock;
 	mutable RecursiveLock m_blockListLock;
-	std::unordered_map<RE::TESForm*, RE::TESForm*> m_producerLootable;
 
 	bool GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName);
 
@@ -183,7 +180,7 @@ private:
 				{
 					DBG_VMESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, target->GetFormID(),
 						ingredient->GetName(), ingredient->GetFormID(), GetObjectTypeName(storedType).c_str());
-					SetLootableForProducer(target, const_cast<RE::TESBoundObject*>(ingredient));
+					ProducerLootables::Instance().SetLootableForProducer(target, const_cast<RE::TESBoundObject*>(ingredient));
 				}
 				else
 				{

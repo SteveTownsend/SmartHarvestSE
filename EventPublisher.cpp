@@ -13,7 +13,7 @@ EventPublisher& EventPublisher::Instance()
 }
 
 EventPublisher::EventPublisher() : m_eventTarget(nullptr),
-	m_onGetCritterIngredient("OnGetCritterIngredient"),
+	m_onGetProducerLootable("OnGetProducerLootable"),
 	m_onCarryWeightDelta("OnCarryWeightDelta"),
 	m_onResetCarryWeight("OnResetCarryWeight"),
 	m_onHarvest("OnHarvest"),
@@ -31,16 +31,9 @@ RE::BGSRefAlias* EventPublisher::GetScriptTarget(const char* espName, RE::FormID
 	static RE::BGSRefAlias* alias(nullptr);
 	if (!quest)
 	{
-		RE::FormID formID = InvalidForm;
-		std::optional<UInt8> idx = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(espName);
-		if (idx.has_value())
+		RE::TESForm* questForm(RE::TESDataHandler::GetSingleton()->LookupForm(questID, espName));
+		if (questForm)
 		{
-			formID = (idx.value() << 24) | questID;
-			DBG_MESSAGE("Got formID for questID %08.2x", questID);
-		}
-		if (formID != InvalidForm)
-		{
-			RE::TESForm* questForm = RE::TESForm::LookupByID(formID);
 			DBG_MESSAGE("Got Base Form %s", questForm ? FormUtils::SafeGetFormEditorID(questForm).c_str() : "nullptr");
 			quest = questForm ? questForm->As<RE::TESQuest>() : nullptr;
 			DBG_MESSAGE("Got Quest Form %s", quest ? FormUtils::SafeGetFormEditorID(quest).c_str() : "nullptr");
@@ -83,7 +76,7 @@ bool EventPublisher::GoodToGo()
 
 void EventPublisher::HookUp()
 {
-	m_onGetCritterIngredient.Register(m_eventTarget);
+	m_onGetProducerLootable.Register(m_eventTarget);
 	m_onCarryWeightDelta.Register(m_eventTarget);
 	m_onResetCarryWeight.Register(m_eventTarget);
 	m_onObjectGlow.Register(m_eventTarget);
@@ -94,9 +87,9 @@ void EventPublisher::HookUp()
 	m_onCheckOKToScan.Register(m_eventTarget);
 }
 
-void EventPublisher::TriggerGetCritterIngredient(RE::TESObjectREFR* refr)
+void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
 {
-	m_onGetCritterIngredient.SendEvent(refr);
+	m_onGetProducerLootable.SendEvent(refr);
 }
 
 void EventPublisher::TriggerCarryWeightDelta(const int delta)

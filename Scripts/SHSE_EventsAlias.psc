@@ -371,25 +371,25 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             endif
             
             if (result == 0)
-                MoveFromBlackToWhiteList(itemForm, true)
+                MoveFromBlackToWhiteList(itemForm, false)
             elseIf (result == 1)
-                MoveFromWhiteToBlackList(itemForm, true)
+                MoveFromWhiteToBlackList(itemForm, false)
             EndIf
             SyncLists(false)    ; not a reload
         endif
     endif
 endEvent
 
-int Function ShowMessage(Message m_msg, string m_trans, string m_target_text = "", string m_replace_text = "")
-    if (!m_msg)
+int Function ShowMessage(Message msg, string trans, string target_text = "", string replace_text = "")
+    if (!msg)
         return -1
     endif
-    string str = GetTranslation(m_trans)
-    if (m_target_text != "" && m_replace_text != "")
-        str = Replace(str, m_target_text, m_replace_text)
+    string str = GetTranslation(trans)
+    if (target_text != "" && replace_text != "")
+        str = Replace(str, target_text, replace_text)
     endif
     list_nametag.setName(str)
-    int result = m_msg.Show()
+    int result = msg.Show()
     list_nametag.setName("dummy_name")
     return result
 endFunction
@@ -643,14 +643,41 @@ Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int 
     RecordItem(akForm, itemType)
 endEvent
 
-Event OnGetCritterIngredient(ObjectReference akTarget)
-    ;DebugTrace("OnGetCritterIngredient " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
+Event OnGetProducerLootable(ObjectReference akTarget)
+    ;DebugTrace("OnGetProducerLootable " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
+    Form baseForm = akTarget.GetBaseObject()
     Critter thisCritter = akTarget as Critter
-    if (thisCritter)
-        ;DebugTrace("setting ingredient " + thisCritter.lootable.GetName() + " for critter " + baseForm.GetName())
-        form baseForm = akTarget.GetBaseObject()
-        SetIngredientForCritter(baseForm, thisCritter.lootable)
-    endif
+    if thisCritter
+        if thisCritter.nonIngredientLootable
+            ; Salmon and other fish - FormList, 0-1 elements seen so far - make a log if > 1
+            int lootableCount = thisCritter.nonIngredientLootable.GetSize()
+            if lootableCount > 1
+                AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " has " + lootableCount + "nonIngredientLootable entries")
+            elseif lootableCount == 1
+                SetLootableForProducer(baseForm, thisCritter.nonIngredientLootable.GetAt(0))
+            else
+                ; blacklist empty vessel
+                SetLootableForProducer(baseForm, None)
+            endif
+        else
+            ; everything else - simple ingredient
+            SetLootableForProducer(baseForm, thisCritter.lootable)
+        endIf
+        return
+    endIf
+    FXfakeCritterScript fakeCritter = akTarget as FXfakeCritterScript
+    if fakeCritter
+        ; Activation may produce 0-2 items, return the most valuable
+        if fakeCritter.myIngredient
+            SetLootableForProducer(baseForm, fakeCritter.myIngredient)
+        elseif fakeCritter.myFood
+            SetLootableForProducer(baseForm, fakeCritter.myFood)
+        else
+            AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " has neither myFood nor myIngredient")
+            SetLootableForProducer(baseForm, None)
+        endif
+        return
+    endIf
 endEvent
 
 Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
