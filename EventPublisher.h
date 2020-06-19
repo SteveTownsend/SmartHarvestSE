@@ -22,7 +22,7 @@ public:
 	EventPublisher();
 	bool GoodToGo();
 
-	void TriggerGetCritterIngredient(RE::TESObjectREFR* refr);
+	void TriggerGetProducerLootable(RE::TESObjectREFR* refr);
 	void TriggerCarryWeightDelta(const int delta);
 	void TriggerResetCarryWeight();
 	void TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify);
@@ -39,7 +39,7 @@ private:
 	static std::unique_ptr<EventPublisher> m_instance;
 	RE::BGSRefAlias* m_eventTarget;
 
-	SKSE::RegistrationSet<RE::TESObjectREFR*> m_onGetCritterIngredient;
+	SKSE::RegistrationSet<RE::TESObjectREFR*> m_onGetProducerLootable;
 	SKSE::RegistrationSet<int> m_onCarryWeightDelta;
 	SKSE::RegistrationSet<> m_onResetCarryWeight;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool> m_onHarvest;

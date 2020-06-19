@@ -204,6 +204,7 @@
     <ClCompile Include="PlayerHouses.cpp" />
     <ClCompile Include="PlayerState.cpp" />
     <ClCompile Include="PopulationCenters.cpp" />
+    <ClCompile Include="ProducerLootables.cpp" />
     <ClCompile Include="RecursiveLock.cpp" />
     <ClCompile Include="SimpleIni.cpp" />
     <ClCompile Include="sound.cpp" />
@@ -257,6 +258,7 @@
     <ClInclude Include="PopulationCenters.h" />
     <ClInclude Include="PrecompiledHeaders.h" />
     <ClInclude Include="IRangeChecker.h" />
+    <ClInclude Include="ProducerLootables.h" />
     <ClInclude Include="RecursiveLock.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="SimpleIni.h" />

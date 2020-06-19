@@ -112,6 +112,9 @@
     <ClCompile Include="ManagedLists.cpp">
       <Filter>Looting</Filter>
     </ClCompile>
+    <ClCompile Include="ProducerLootables.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
@@ -237,6 +240,9 @@
       <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="ManagedLists.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="ProducerLootables.h">
       <Filter>Looting</Filter>
     </ClInclude>
   </ItemGroup>
