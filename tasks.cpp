@@ -9,6 +9,7 @@
 #include "PlayerCellHelper.h"
 #include "PlayerHouses.h"
 #include "PlayerState.h"
+#include "ProducerLootables.h"
 #include "LogStackWalker.h"
 
 #include <chrono>
@@ -211,24 +212,27 @@ void SearchTask::Run()
 	{
 		ObjectType objType = refrEx.GetObjectType();
 		std::string typeName = refrEx.GetTypeName();
-		// Various form types contain an ingredient that is the final lootable item - resolve here
-		RE::TESForm* lootable(DataCase::GetInstance()->GetLootableForProducer(m_candidate->GetBaseObject()));
-		if (lootable)
+		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
+		if (objType == ObjectType::critter)
 		{
-			DBG_VMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
-				lootable->GetName(), lootable->formID);
-			refrEx.SetLootable(lootable);
-		}
-		else if (objType == ObjectType::critter)
-		{
-			// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
-			// only trigger if not already pending
-			DBG_VMESSAGE("resolve critter %s/0x%08x to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-			if (DataCase::GetInstance()->SetLootableForProducer(m_candidate->GetBaseObject(), nullptr))
+			RE::TESForm* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
+			if (lootable)
 			{
-				EventPublisher::Instance().TriggerGetCritterIngredient(m_candidate);
+				DBG_VMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
+					lootable->GetName(), lootable->formID);
+				refrEx.SetLootable(lootable);
 			}
-			return;
+			else
+			{
+				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
+				// only trigger if not already pending
+				DBG_VMESSAGE("resolve critter %s/0x%08x to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				if (ProducerLootables::Instance().SetLootableForProducer(m_candidate->GetBaseObject(), nullptr))
+				{
+					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
+				}
+				return;
+			}
 		}
 
 		if (objType == ObjectType::unknown)

@@ -7,6 +7,7 @@
 #include "tasks.h"
 #include "ManagedLists.h"
 #include "LocationTracker.h"
+#include "ProducerLootables.h"
 
 namespace
 {
@@ -49,6 +50,12 @@ namespace papyrus
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
 		DBG_MESSAGE("%s", str);
+	}
+
+	// available in release build for important output
+	void AlwaysTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
+	{
+		REL_MESSAGE("%s", str);
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -215,9 +222,9 @@ namespace papyrus
 		INIFile::GetInstance()->SaveFile();
 	}
 
-	void SetIngredientForCritter(RE::StaticFunctionTag* base, RE::TESForm* critter, RE::TESForm* ingredient)
+	void SetLootableForProducer(RE::StaticFunctionTag* base, RE::TESForm* critter, RE::TESForm* lootable)
 	{
-		DataCase::GetInstance()->SetLootableForProducer(critter, ingredient);
+		ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
 	}
 
 	void AllowSearch(RE::StaticFunctionTag* base)
@@ -362,6 +369,7 @@ namespace papyrus
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	{
 		a_vm->RegisterFunction("DebugTrace", SHSE_PROXY, papyrus::DebugTrace);
+		a_vm->RegisterFunction("AlwaysTrace", SHSE_PROXY, papyrus::AlwaysTrace);
 		a_vm->RegisterFunction("GetPluginName", SHSE_PROXY, papyrus::GetPluginName);
 		a_vm->RegisterFunction("GetPluginVersion", SHSE_PROXY, papyrus::GetPluginVersion);
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
@@ -382,7 +390,7 @@ namespace papyrus
 		a_vm->RegisterFunction("LoadIniFile", SHSE_PROXY, papyrus::LoadIniFile);
 		a_vm->RegisterFunction("SaveIniFile", SHSE_PROXY, papyrus::SaveIniFile);
 
-		a_vm->RegisterFunction("SetIngredientForCritter", SHSE_PROXY, papyrus::SetIngredientForCritter);
+		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);

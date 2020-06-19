@@ -1,6 +1,7 @@
 scriptname SHSE_PluginProxy
 
 Function DebugTrace(string str) global native
+Function AlwaysTrace(string str) global native
 string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
@@ -20,7 +21,7 @@ bool Function Reconfigure() global native
 Function LoadIniFile() global native
 Function SaveIniFile() global native
 
-Function SetIngredientForCritter(Form critter, Form ingredient) global native
+Function SetLootableForProducer(Form producer, Form lootable) global native
 
 Function AllowSearch() global native
 Function DisallowSearch() global native
