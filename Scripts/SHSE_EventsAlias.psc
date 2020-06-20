@@ -193,12 +193,12 @@ Function SyncNativeDataTypes()
     infiniteWeight = 100000
 
     ; must line up with shaders defined in ESP/ESM file
-    lootedShader = Game.GetFormFromFile(0xa9e1, "SmartHarvestSE.esp") as EffectShader   ; white
-    enchantedShader = Game.GetFormFromFile(0xa9dc, "SmartHarvestSE.esp") as EffectShader    ; blue
-    lockedShader = Game.GetFormFromFile(0xa9df, "SmartHarvestSE.esp") as EffectShader   ; red
-    bossShader = Game.GetFormFromFile(0xa9e2, "SmartHarvestSE.esp") as EffectShader     ; gold
-    questShader = Game.GetFormFromFile(0xa9de, "SmartHarvestSE.esp") as EffectShader        ; purple
-    ownedShader = Game.GetFormFromFile(0xa9dd, "SmartHarvestSE.esp") as EffectShader        ; green
+    lootedShader = Game.GetFormFromFile(0x80f, "SmartHarvestSE.esp") as EffectShader   ; white
+    enchantedShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader    ; blue
+    lockedShader = Game.GetFormFromFile(0x80e, "SmartHarvestSE.esp") as EffectShader   ; red
+    bossShader = Game.GetFormFromFile(0x810, "SmartHarvestSE.esp") as EffectShader     ; gold
+    questShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader        ; purple
+    ownedShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader        ; green
 endFunction
 
 Function ResetAddedItems()
