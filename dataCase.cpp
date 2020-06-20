@@ -442,6 +442,28 @@ void DataCase::ExcludeVendorContainers()
 			DBG_MESSAGE("Ignoring non-Vendor Container %s/0x%08x", container->GetName(), container->GetFormID());
 		}
 	}
+
+	// mod-added Containers to avoid looting
+	std::vector<std::tuple<std::string, RE::FormID>> modContainers = {
+		// LoTD Museum Shipments
+		{"LegacyoftheDragonborn.esm", 0x1772a6},	// Incoming
+		{"LegacyoftheDragonborn.esm", 0x1772a7}		// Outgoing
+	};
+	for (const auto& container : modContainers)
+	{
+		std::string espName(std::get<0>(container));
+		RE::FormID formID(std::get<1>(container));
+		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
+		if (chestForm)
+		{
+			REL_MESSAGE("CONT %s:0x%08x added to Mod Blacklist", espName.c_str(), chestForm->GetFormID());
+			m_offLimitsForms.insert(chestForm);
+		}
+		else
+		{
+			DBG_MESSAGE("CONT %s/0x%08x for mod not found", espName.c_str(), formID);
+		}
+	}
 }
 
 void DataCase::ExcludeImmersiveArmorsGodChest()

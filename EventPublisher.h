@@ -14,7 +14,7 @@ enum class GlowReason {
 	None
 };
 
-constexpr RE::FormID QuestAliasFormID = 0x1D8C;
+constexpr RE::FormID QuestAliasFormID = 0x800;
 
 class EventPublisher{
 public:
