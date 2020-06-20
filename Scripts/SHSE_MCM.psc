@@ -435,8 +435,8 @@ Event OnConfigInit()
     s_behaviorArray[3] = "$SHSE_PICK_UP_V/W_W/O_MSG"
     s_behaviorArray[4] = "$SHSE_PICK_UP_V/W_W/MSG"
 
-    eventScript.whitelist_form = Game.GetFormFromFile(0x0333C, "SmartHarvestSE.esp") as Formlist
-    eventScript.blacklist_form = Game.GetFormFromFile(0x0333D, "SmartHarvestSE.esp") as Formlist
+    eventScript.whitelist_form = Game.GetFormFromFile(0x801, "SmartHarvestSE.esp") as Formlist
+    eventScript.blacklist_form = Game.GetFormFromFile(0x802, "SmartHarvestSE.esp") as Formlist
 
     SetOreVeinChoices()
     SetMiscDefaults(true)
