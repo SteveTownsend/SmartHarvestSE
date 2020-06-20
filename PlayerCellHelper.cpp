@@ -148,7 +148,7 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 	}
 	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
-		DBG_VMESSAGE("skip blocked REFR base form 0x%08x", refr->formID);
+		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
 		return false;
 	}
 
