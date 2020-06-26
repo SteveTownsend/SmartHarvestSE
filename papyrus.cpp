@@ -274,9 +274,9 @@ namespace papyrus
 			ManagedList::WhiteList().Add(entry);
 		}
 	}
-	void SyncDone(RE::StaticFunctionTag* base)
+	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		SearchTask::SyncDone();
+		SearchTask::SyncDone(reload);
 	}
 
 	RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
@@ -341,29 +341,26 @@ namespace papyrus
 
 	bool CollectionsInUse(RE::StaticFunctionTag* base)
 	{
-		return shse::CollectionManager::Instance().IsReady();
+		return shse::CollectionManager::Instance().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag* base, std::vector<int> formIDs, std::vector<int> objectTypes, const int itemCount)
+	void FlushAddedItems(RE::StaticFunctionTag* base, const float gameTime, std::vector<int> formIDs, const int itemCount)
 	{
-		std::vector<std::pair<RE::FormID, ObjectType>> looted;
-		looted.reserve(itemCount);
 		auto formID(formIDs.cbegin());
-		auto objectType(objectTypes.cbegin());
 		int current(0);
+		shse::CollectionManager::Instance().UpdateGameTime(gameTime);
 		while (current < itemCount)
 		{
-			looted.emplace_back(RE::FormID(*formID), ObjectType(*objectType));
+			// checked API
+			shse::CollectionManager::Instance().CheckEnqueueAddedItem(RE::FormID(*formID));
 			++current;
 			++formID;
-			++objectType;
 		}
-		shse::CollectionManager::Instance().EnqueueAddedItems(looted);
 	}
 
-	void ToggleCalibration(RE::StaticFunctionTag* base)
+	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
-		SearchTask::ToggleCalibration();
+		SearchTask::ToggleCalibration(shaderTest);
 	}
 
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)

@@ -90,9 +90,6 @@ void LocationTracker::Refresh()
 	// breaking immersion.
 	if (player->IsDead(true))
 	{
-		// Fire location change logic
-		static const bool gameReload(true);
-		SearchTask::ResetRestrictions(gameReload);
 		return;
 	}
 
@@ -117,27 +114,31 @@ void LocationTracker::Refresh()
 					PlayerHouses::Instance().Add(m_playerLocation);
 				}
 			}
-			// notify entry to player home unless this was a menu reset, regardless of whether it's new to us
-			if (!m_priorLocation && IsPlayerAtHome())
+			// Display messages about location auto-loot restrictions, if set in config
+			if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0)
 			{
-				static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
-				if (!playerHouseMsg.empty())
+				// notify entry to player home unless this was a menu reset, regardless of whether it's new to us
+				if (!m_priorLocation && IsPlayerAtHome())
 				{
-					std::string notificationText(playerHouseMsg);
-					StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
-					RE::DebugNotification(notificationText.c_str());
+					static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
+					if (!playerHouseMsg.empty())
+					{
+						std::string notificationText(playerHouseMsg);
+						StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
+						RE::DebugNotification(notificationText.c_str());
+					}
 				}
-			}
-			// check if this is a population center excluded from looting and if so, notify we entered it
-			// skip if this was a menu reset to avoid spam
-			if (!m_priorLocation && LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
-			{
-				static RE::BSFixedString populationCenterMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
-				if (!populationCenterMsg.empty())
+				// check if this is a population center excluded from looting and if so, notify we entered it
+				// skip if this was a menu reset to avoid spam
+				if (!m_priorLocation && LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 				{
-					std::string notificationText(populationCenterMsg);
-					StringUtils::Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
-					RE::DebugNotification(notificationText.c_str());
+					static RE::BSFixedString populationCenterMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
+					if (!populationCenterMsg.empty())
+					{
+						std::string notificationText(populationCenterMsg);
+						StringUtils::Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
+						RE::DebugNotification(notificationText.c_str());
+					}
 				}
 			}
 		}
@@ -145,15 +146,19 @@ void LocationTracker::Refresh()
 		// reset sentinel for menu exit reset
 		m_priorLocation = nullptr;
 
-		// check if we moved from a non-lootable location to a free-loot zone
-		if (wasExcluded && !LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
+		// Display messages about location auto-loot restrictions, if set in config
+		if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0)
 		{
-			static RE::BSFixedString populationCenterMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_UNPOPULATED_CHECK")));
-			if (!populationCenterMsg.empty())
+			// check if we moved from a non-lootable location to a free-loot zone
+			if (wasExcluded && !LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 			{
-				std::string notificationText(populationCenterMsg);
-				StringUtils::Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
-				RE::DebugNotification(notificationText.c_str());
+				static RE::BSFixedString populationCenterMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_UNPOPULATED_CHECK")));
+				if (!populationCenterMsg.empty())
+				{
+					std::string notificationText(populationCenterMsg);
+					StringUtils::Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
+					RE::DebugNotification(notificationText.c_str());
+				}
 			}
 		}
 	}

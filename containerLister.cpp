@@ -3,7 +3,18 @@
 #include "ExtraDataListHelper.h"
 #include "containerLister.h"
 
-LootableItems ContainerLister::GetOrCheckContainerForms(bool &hasQuestObject, bool &hasEnchItem)
+ContainerLister::ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget) :
+	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
+	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false), m_hasCollectibleItem(false)
+{
+}
+
+bool ContainerLister::HasAllTypes() const
+{
+	return m_hasQuestItem && m_hasEnchantedItem && m_hasValuableItem && m_hasCollectibleItem;
+}
+
+LootableItems ContainerLister::GetOrCheckContainerForms()
 {
 	LootableItems lootableItems;
 	if (!m_refr)
@@ -40,7 +51,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms(bool &hasQuestObject, bo
 	if (exChanges && exChanges->changes && exChanges->changes->entryList)
 	{
 		for (auto entryData = exChanges->changes->entryList->begin();
-			entryData != exChanges->changes->entryList->end() && (!hasQuestObject || !hasEnchItem); ++entryData)
+			entryData != exChanges->changes->entryList->end() && !HasAllTypes(); ++entryData)
 		{
 			RE::TESBoundObject* item = (*entryData)->object;
 			if (!IsPlayable(item))
@@ -56,25 +67,31 @@ LootableItems ContainerLister::GetOrCheckContainerForms(bool &hasQuestObject, bo
 				continue;
 
 			// Check for enchantment or quest target
-			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
+			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end() && !HasAllTypes(); ++extraList)
 			{
 				if (*extraList)
 				{
 					ExtraDataListHelper exListHelper(*extraList);
-					if (!hasQuestObject)
-						hasQuestObject = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
+					if (!m_hasQuestItem)
+						m_hasQuestItem = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
 
-					if (!hasEnchItem)
-						hasEnchItem = exListHelper.GetEnchantment() != nullptr;
+					if (!m_hasEnchantedItem)
+						m_hasEnchantedItem = exListHelper.GetEnchantment() != nullptr;
 
-					if (!hasEnchItem)
+					TESFormHelper itemEx(item);
+					if (!m_hasEnchantedItem)
 					{
-						TESFormHelper itemEx(item);
-						hasEnchItem = itemEx.GetEnchantment() != nullptr;
+						m_hasEnchantedItem = itemEx.GetEnchantment() != nullptr;
+					}
+					if (!m_hasValuableItem)
+					{
+						m_hasValuableItem = itemEx.IsValuable();
+					}
+					if (!m_hasCollectibleItem)
+					{
+						m_hasCollectibleItem = itemEx.IsCollectible().first;
 					}
 				}
-				if (hasEnchItem && hasQuestObject)
-					break;
 			}
 		}
 	}

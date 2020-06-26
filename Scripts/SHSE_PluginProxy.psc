@@ -30,7 +30,7 @@ Function ReportOKToScan(bool goodToGo, int nonce) global native
 
 Function ResetList(bool reload, int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
-Function SyncDone() global native
+Function SyncDone(bool reload) global native
 String Function PrintFormID(int formID) global native
 
 String Function GetTranslation(String key) global native
@@ -39,8 +39,8 @@ String Function ReplaceArray(String str, String[] targets, String[] replacements
 
 ;Collection Management
 bool Function CollectionsInUse() global native
-Function FlushAddedItems(int[] formIDs, int[] objectTypes, int itemCount) global native
-Function ToggleCalibration() global native
+Function FlushAddedItems(float gameTime, int[] formIDs, int itemCount) global native
+Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 
 int location_type_whitelist = 1

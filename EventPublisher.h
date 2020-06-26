@@ -1,18 +1,9 @@
 #pragma once
 
 #include <deque>
+#include <random>
+#include "Enums.h"
 #include "InventoryItem.h"
-
-// object glow reasons, in descending order of precedence
-enum class GlowReason {
-	BossContainer = 1,
-	QuestObject,
-	EnchantedItem,
-	LockedContainer,
-	PlayerProperty,
-	SimpleTarget,
-	None
-};
 
 constexpr RE::FormID QuestAliasFormID = 0x800;
 
@@ -42,9 +33,9 @@ private:
 	SKSE::RegistrationSet<RE::TESObjectREFR*> m_onGetProducerLootable;
 	SKSE::RegistrationSet<int> m_onCarryWeightDelta;
 	SKSE::RegistrationSet<> m_onResetCarryWeight;
-	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool> m_onHarvest;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool, bool> m_onHarvest;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool> m_onMining;
-	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int> m_onLootFromNPC;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int, bool> m_onLootFromNPC;
 	SKSE::RegistrationSet<> m_onFlushAddedItems;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;

@@ -3,6 +3,7 @@
 
 #include "tasks.h"
 #include "debugs.h"
+#include "ActorTracker.h"
 #include "LocationTracker.h"
 #include "ManagedLists.h"
 #include "PopulationCenters.h"
@@ -127,9 +128,8 @@ RE::FormID SearchTask::LootedDynamicContainerFormID(const RE::TESObjectREFR* ref
 	if (!refr)
 		return false;
 	RecursiveLockGuard guard(m_lock);
-	if (m_lootedDynamicContainers.count(refr) > 0)
-		return m_lootedDynamicContainers[refr];
-	return InvalidForm;
+	const auto looted(m_lootedDynamicContainers.find(refr));
+	return looted != m_lootedDynamicContainers.cend() ? looted->second : InvalidForm;
 }
 
 // forget about dynamic containers we looted when cell changes. This is more aggressive than static container looting
@@ -161,46 +161,14 @@ void SearchTask::ResetLootedContainers()
 {
 	RecursiveLockGuard guard(m_lock);
 	m_lootedContainers.clear();
-	m_actorApparentTimeOfDeath.clear();
 }
 
-// looting during combat is unstable, so if that option is enabled, we store the combat victims and loot them once combat ends, no sooner 
-// than N seconds after their death
 void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 {
+	shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
 	RecursiveLockGuard guard(m_lock);
-	m_actorApparentTimeOfDeath.emplace_back(std::make_pair(refr, std::chrono::high_resolution_clock::now()));
 	// record looting so we don't rescan
 	MarkContainerLooted(refr);
-	DBG_MESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
-}
-
-std::deque<std::pair<RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>>> SearchTask::m_actorApparentTimeOfDeath;
-
-// return false iff output list is full
-bool SearchTask::ReleaseReliablyDeadActors(BoundedList<RE::TESObjectREFR*>& refs)
-{
-	RecursiveLockGuard guard(m_lock);
-	const int interval(PlayerState::Instance().PerksAddLeveledItemsOnDeath() ?
-		ActorReallyDeadWaitIntervalSecondsLong : ActorReallyDeadWaitIntervalSeconds);
-	const auto cutoffPoint(std::chrono::high_resolution_clock::now() - std::chrono::milliseconds(static_cast<long long>(interval * 1000.0)));
-	while (!m_actorApparentTimeOfDeath.empty() && m_actorApparentTimeOfDeath.front().second <= cutoffPoint)
-	{
-		// this actor died long enough ago that we trust actor->GetContainer not to crash, provided the ID is still usable
-		RE::TESObjectREFR* refr(m_actorApparentTimeOfDeath.front().first);
-		if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID()))
-		{
-			DBG_MESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
-		}
-		else
-		{
-			DBG_MESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
-		}
-		m_actorApparentTimeOfDeath.pop_front();
-		if (!refs.Add(refr))
-			return false;
-	}
-	return true;
 }
 
 void SearchTask::Run()
@@ -296,6 +264,34 @@ void SearchTask::Run()
 			UpdateGlowReason(GlowReason::SimpleTarget);
 		}
 
+		const auto collectible(refrEx.IsCollectible());
+		SpecialObjectHandling collectibleAction(collectible.second);
+		if (collectible.first)
+		{
+			DBG_VMESSAGE("Collectible Item 0x%08x", m_candidate->GetBaseObject()->formID);
+			if (collectibleAction == SpecialObjectHandling::GlowTarget)
+			{
+				DBG_VMESSAGE("glow collectible object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				UpdateGlowReason(GlowReason::Collectible);
+			}
+
+			skipLooting = skipLooting || !IsSpecialObjectLootable(collectibleAction);
+		}
+
+		SpecialObjectHandling valuableLoot =
+			SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+		if (refrEx.IsValuable())
+		{
+			DBG_VMESSAGE("Valuable Item 0x%08x", m_candidate->GetBaseObject()->formID);
+			if (valuableLoot == SpecialObjectHandling::GlowTarget)
+			{
+				DBG_VMESSAGE("glow valuable object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				UpdateGlowReason(GlowReason::Valuable);
+			}
+
+			skipLooting = skipLooting || !IsSpecialObjectLootable(valuableLoot);
+		}
+
 		if (objType == ObjectType::ammo)
 		{
 			skipLooting = skipLooting || data->SkipAmmoLooting(m_candidate);
@@ -344,7 +340,7 @@ void SearchTask::Run()
 				data->BlockReference(m_candidate);
 				skipLooting = true;
 			}
-			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_candidate->GetBaseObject()).ValueWeightTooLowToLoot(m_ini))
+			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_candidate->GetBaseObject()).ValueWeightTooLowToLoot())
 			{
 				DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
 				data->BlockForm(m_candidate->GetBaseObject());
@@ -371,9 +367,9 @@ void SearchTask::Run()
 			if (!LockHarvest(m_candidate, isSilent))
 				return;
 			ObjectType effectiveType(objType);
-			if (effectiveType == ObjectType::whitelist)
+			if (IsAlwaysHarvested(objType))
 			{
-				// find lootable type if whitelist were not a factor, for Harvest script
+				// find lootable type if whitelist and collectibles were not a factor, for Harvest script
 				effectiveType = GetREFRObjectType(m_candidate, true);
 			}
 			EventPublisher::Instance().TriggerHarvest(m_candidate, effectiveType, refrEx.GetItemCount(),
@@ -387,11 +383,13 @@ void SearchTask::Run()
 		DumpContainer(refrEx);
 #endif
 		bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0;
-		bool hasQuestObject(false);
-		bool hasEnchantItem(false);
 		bool skipLooting(false);
-		LootableItems lootableItems(
-			ContainerLister(m_targetType, m_candidate, requireQuestItemAsTarget).GetOrCheckContainerForms(hasQuestObject, hasEnchantItem));
+		// INI defaults exclude nudity by not looting armor from dead bodies
+		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
+			DeadBodyLootingFromIniSetting(m_ini->GetSetting(
+				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
+		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget);
+		LootableItems lootableItems(lister.GetOrCheckContainerForms());
 		if (lootableItems.empty())
 		{
 			// Nothing lootable here
@@ -432,7 +430,7 @@ void SearchTask::Run()
 			}
 		}
 
-		if (hasQuestObject)
+		if (lister.HasQuestItem())
 		{
 			SpecialObjectHandling questObjectLoot =
 				SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
@@ -445,7 +443,7 @@ void SearchTask::Run()
 			skipLooting = skipLooting || !IsSpecialObjectLootable(questObjectLoot);
 		}
 
-		if (hasEnchantItem)
+		if (lister.HasEnchantedItem())
 		{
 			SInt32 enchantItemGlow = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "enchantItemGlow"));
 			if (enchantItemGlow == 1)
@@ -453,6 +451,32 @@ void SearchTask::Run()
 				DBG_VMESSAGE("glow container with enchanted object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
+		}
+
+		if (lister.HasValuableItem())
+		{
+			SpecialObjectHandling valuableLoot =
+				SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+			if (valuableLoot == SpecialObjectHandling::GlowTarget)
+			{
+				DBG_VMESSAGE("glow container with valuable object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+				UpdateGlowReason(GlowReason::Valuable);
+			}
+
+			skipLooting = skipLooting || !IsSpecialObjectLootable(valuableLoot);
+		}
+
+		if (lister.HasCollectibleItem())
+		{
+			SpecialObjectHandling collectibleAction =
+				SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CollectibleAction"));
+			if (collectibleAction == SpecialObjectHandling::GlowTarget)
+			{
+				DBG_VMESSAGE("glow container with collectible object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+				UpdateGlowReason(GlowReason::Collectible);
+			}
+
+			skipLooting = skipLooting || !IsSpecialObjectLootable(collectibleAction);
 		}
 		// Order is important to ensure we glow correctly even if blocked
 		// Check here is on the container, skip all contents if not looting permitted
@@ -503,8 +527,14 @@ void SearchTask::Run()
 			}
 
 			ObjectType objType = targetItemInfo.LootObjectType();
-			std::string typeName = GetObjectTypeName(objType);
+			if (excludeArmor && (objType == ObjectType::armor || objType == ObjectType::enchantedArmor))
+			{
+				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update
+				DBG_VMESSAGE("block looting of armor from dead body %s/0x%08x", target->GetName(), target->GetFormID());
+				continue;
+			}
 
+			std::string typeName = GetObjectTypeName(objType);
 			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
 			if (objType == ObjectType::whitelist)
 			{
@@ -525,7 +555,7 @@ void SearchTask::Run()
 				data->BlockForm(target);
 				continue;
 			}
-			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(target).ValueWeightTooLowToLoot(m_ini))
+			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(target).ValueWeightTooLowToLoot())
 			{
 				DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
 				data->BlockForm(target);
@@ -678,12 +708,9 @@ void SearchTask::ScanThread()
 			continue;
 		}
 
-		// process any queued added items since last time
-		shse::CollectionManager::Instance().ProcessAddedItems();
-
 		// Player location checked for Cell/Location change on every loop
 		LocationTracker::Instance().Refresh();
-		PlayerState::Instance().Refresh();
+		shse::PlayerState::Instance().Refresh();
 
 		if (!UIState::Instance().OKForSearch())
 		{
@@ -699,6 +726,9 @@ void SearchTask::ScanThread()
 			continue;
 		}
 
+		// process any queued added items since last time
+		shse::CollectionManager::Instance().ProcessAddedItems();
+
 		// Skip loot-OK checks if calibrating
 		if (!m_calibrating)
 		{
@@ -707,7 +737,7 @@ void SearchTask::ScanThread()
 				DBG_MESSAGE("Location cannot be looted");
 				continue;
 			}
-			if (!PlayerState::Instance().CanLoot())
+			if (!shse::PlayerState::Instance().CanLoot())
 			{
 				DBG_MESSAGE("Player State prevents looting");
 				continue;
@@ -727,13 +757,13 @@ void SearchTask::ScanThread()
 			}
 
 			// re-evaluate perks if timer has popped - no force, and execute scan
-			PlayerState::Instance().CheckPerks(false);
+			shse::PlayerState::Instance().CheckPerks(false);
 		}
 
 		DoPeriodicSearch();
 
 		// request added items to be pushed to us while we are sleeping
-		EventPublisher::Instance().TriggerFlushAddedItems();
+		shse::CollectionManager::Instance().Refresh();
 		lastScanEndTime = std::chrono::high_resolution_clock::now();
 	}
 }
@@ -772,9 +802,12 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 	{
 		// unblock possible player house checks after game reload
 		PlayerHouses::Instance().Clear();
-		// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
+		// reset Actor data
+		shse::ActorTracker::Instance().Reset();
+		// clear list of looted containers
 		ResetLootedContainers();
-		// TODO reset Collections State from the saved-game data
+		// Reset Collections State and reapply the saved-game data
+		shse::CollectionManager::Instance().OnGameReload();
 	}
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
 	m_glowExpiration.clear();
@@ -786,10 +819,10 @@ void SearchTask::OnGoodToGo()
 {
 	REL_MESSAGE("UI/controls now good-to-go");
 	// reset state that might be invalidated by MCM setting updates
-	PlayerState::Instance().CheckPerks(true);
+	shse::PlayerState::Instance().CheckPerks(true);
 	// reset carry weight - will reinstate correct value if/when scan resumes. Not a game reload.
 	static const bool reloaded(false);
-	PlayerState::Instance().ResetCarryWeight(reloaded);
+	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
 
 	// update Locked Container last-accessed time
 	DataCase::GetInstance()->UpdateLockedContainers();
@@ -824,15 +857,26 @@ void SearchTask::DoPeriodicSearch()
 	if (m_calibrating)
 	{
 		// send the message first, it's super-slow compared to scan
-		std::string notificationText;
-		static RE::BSFixedString rangeText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
-		if (!rangeText.empty())
+		if (m_glowDemo)
 		{
-			notificationText = rangeText;
-			StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
-			if (!notificationText.empty())
+			m_nextGlow = CycleGlow(m_nextGlow);
+			std::ostringstream glowText;
+			glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 3 seconds to terminate";
+			RE::DebugNotification(glowText.str().c_str());
+		}
+		else
+		{
+			static RE::BSFixedString rangeText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
+			if (!rangeText.empty())
 			{
-				RE::DebugNotification(notificationText.c_str());
+				std::string notificationText("Range: ");
+				notificationText.append(rangeText);
+				StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
+				notificationText.append(", hold Pause key for 3 seconds to terminate");
+				if (!notificationText.empty())
+				{
+					RE::DebugNotification(notificationText.c_str());
+				}
 			}
 		}
 
@@ -841,27 +885,32 @@ void SearchTask::DoPeriodicSearch()
 
 		static const double FEET_PER_DISTANCE_UNIT(0.046875);
 		BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
-			double(m_calibrateRadius - CalibrationRangeDelta) / FEET_PER_DISTANCE_UNIT, CalibrationRangeDelta / FEET_PER_DISTANCE_UNIT);
+			(double(m_calibrateRadius) - double(m_calibrateDelta)) / FEET_PER_DISTANCE_UNIT, m_calibrateDelta / FEET_PER_DISTANCE_UNIT);
 
 		PlayerCellHelper(refrs, rangeCheck).FindAllCandidates();
 		for (const auto refr : refrs.Data())
 		{
 			DBG_VMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
-			EventPublisher::Instance().TriggerObjectGlow(refr, ObjectGlowDurationCalibrationSeconds, GlowReason::SimpleTarget);
+			EventPublisher::Instance().TriggerObjectGlow(refr, ObjectGlowDurationCalibrationSeconds,
+				m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
 		}
 
-		m_calibrateRadius += CalibrationRangeDelta;
-		if (m_calibrateRadius > MaxCalibrationRange)
+		// shader test runs forever at the same radius
+		if (!m_glowDemo)
 		{
-			REL_MESSAGE("Loot range calibration complete");
-			SearchTask::ToggleCalibration();
+			m_calibrateRadius += m_calibrateDelta;
+			if (m_calibrateRadius > MaxCalibrationRange)
+			{
+				REL_MESSAGE("Loot range calibration complete");
+				SearchTask::ToggleCalibration(false);
+			}
 		}
 		return;
 	}
 
 	// Retrieve these settings only once
 	m_crimeCheck = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
-		PlayerState::Instance().IsSneaking() ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
+		shse::PlayerState::Instance().IsSneaking() ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
 	m_belongingsCheck = SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
 
 	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
@@ -870,7 +919,7 @@ void SearchTask::DoPeriodicSearch()
 	// one pass.
 	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
 	BoundedList<RE::TESObjectREFR*> refrs(MaxREFRSPerPass);
-	if (ReleaseReliablyDeadActors(refrs))
+	if (shse::ActorTracker::Instance().ReleaseIfReliablyDead(refrs))
 	{
 	    // space remains to process loot after corpses checked
 		AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), LocationTracker::Instance().IsPlayerIndoors() ?
@@ -919,7 +968,9 @@ void SearchTask::DoPeriodicSearch()
 			RE::Actor* actor(nullptr);
 			if ((actor = refr->GetBaseObject()->As<RE::Actor>()) || refr->GetBaseObject()->As<RE::TESNPC>())
 			{
-				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableLootDeadbody") == 0.0 || !refr->IsDead(true))
+				if (!refr->IsDead(true) ||
+					DeadBodyLootingFromIniSetting(m_ini->GetSetting(
+						INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
 					continue;
 
 				if (actor)
@@ -934,7 +985,8 @@ void SearchTask::DoPeriodicSearch()
 
 				lootTargetType = INIFile::SecondaryType::deadbodies;
 				// Delay looting exactly once. We only return here after required time since death has expired.
-				if (!HasDynamicData(refr) && !IsLootedContainer(refr))
+				// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
+				if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) && !IsLootedContainer(refr))
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);
@@ -949,7 +1001,9 @@ void SearchTask::DoPeriodicSearch()
 			}
 			else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
 			{
-				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableLootDeadbody") == 0.0)
+				DeadBodyLooting lootBodies(DeadBodyLootingFromIniSetting(
+					m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")));
+				if (lootBodies == DeadBodyLooting::DoNotLoot)
 					continue;
 				lootTargetType = INIFile::SecondaryType::deadbodies;
 				// Delay looting exactly once. We only return here after required time since death has expired.
@@ -984,11 +1038,11 @@ void SearchTask::PrepareForReload()
 
 	// force recheck Perks and reset carry weight
 	static const bool force(true);
-	PlayerState::Instance().CheckPerks(force);
+	shse::PlayerState::Instance().CheckPerks(force);
 
 	// reset carry weight and menu-active state
 	static const bool reloaded(true);
-	PlayerState::Instance().ResetCarryWeight(reloaded);
+	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
 	UIState::Instance().Reset();
 
 	// Do not scan again until we are in sync with the scripts
@@ -1052,7 +1106,7 @@ bool SearchTask::UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilen
 bool SearchTask::IsLockedForHarvest(const RE::TESObjectREFR* refr)
 {
 	RecursiveLockGuard guard(m_lock);
-	return (refr && m_HarvestLock.count(refr));
+	return m_HarvestLock.contains(refr);
 }
 
 size_t SearchTask::PendingHarvestNotifications()
@@ -1064,13 +1118,13 @@ size_t SearchTask::PendingHarvestNotifications()
 bool SearchTask::m_pluginSynced(false);
 
 // this is the last function called by the scripts when re-syncing state
-void SearchTask::SyncDone(void)
+void SearchTask::SyncDone(const bool reload)
 {
 	RecursiveLockGuard guard(m_lock);
 
 	// reset blocked lists to allow recheck vs current state
-	static const bool gameReload(true);
-	ResetRestrictions(gameReload);
+	ResetRestrictions(reload);
+	REL_MESSAGE("Restrictions reset, new/loaded game = %s", reload ? "true" : "false");
 
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
@@ -1079,15 +1133,35 @@ void SearchTask::SyncDone(void)
 // this triggers/stops loot range calibration cycle
 bool SearchTask::m_calibrating(false);
 int SearchTask::m_calibrateRadius(SearchTask::CalibrationRangeDelta);
+int SearchTask::m_calibrateDelta(SearchTask::CalibrationRangeDelta);
+bool SearchTask::m_glowDemo(false);
+GlowReason SearchTask::m_nextGlow(GlowReason::SimpleTarget);
 
-void SearchTask::ToggleCalibration()
+void SearchTask::ToggleCalibration(const bool shaderTest)
 {
 	RecursiveLockGuard guard(m_lock);
 	m_calibrating = !m_calibrating;
-	REL_MESSAGE("Calibration of Looting range %s", m_calibrating ? "started" : "stopped");
+	REL_MESSAGE("Calibration of Looting range %s, test shaders %s",	m_calibrating ? "started" : "stopped", m_glowDemo ? "true" : "false");
 	if (m_calibrating)
 	{
-		m_calibrateRadius = CalibrationRangeDelta;
+		m_glowDemo = shaderTest;
+		m_calibrateDelta = m_glowDemo ? ShaderTestRange : CalibrationRangeDelta;
+		m_calibrateRadius = m_glowDemo ? ShaderTestRange : CalibrationRangeDelta;
+		m_nextGlow = GlowReason::SimpleTarget;
+	}
+	else
+	{
+		if (m_glowDemo)
+		{
+			std::string glowText("Glow demo stopped");
+			RE::DebugNotification(glowText.c_str());
+		}
+		else
+		{
+			std::string rangeText("Range Calibration stopped");
+			RE::DebugNotification(rangeText.c_str());
+		}
+		m_glowDemo = false;
 	}
 }
 
@@ -1110,13 +1184,18 @@ bool SearchTask::Load()
 	db.Dump("offsets-1.5.97.0.txt");
 	DBG_MESSAGE("Dumped offsets for 1.5.97.0");
 #endif
-	if (!LoadOrder::Instance().Analyze())
+	if (!shse::LoadOrder::Instance().Analyze())
 	{
 		REL_FATALERROR("Load Order unsupportable");
 		return false;
 	}
 	DataCase::GetInstance()->CategorizeLootables();
 	PopulationCenters::Instance().Categorize();
+
+	// Collections are layered on top of categorized objects
+	REL_MESSAGE("*** LOAD *** Build Collections");
+	shse::CollectionManager::Instance().ProcessDefinitions();
+
 	m_pluginOK = true;
 	REL_MESSAGE("Plugin now in sync - Game Data load complete!");
 	return true;
@@ -1139,9 +1218,6 @@ bool SearchTask::Init()
 			return false;
 		}
 	}
-	static const bool gameReload(true);
-	ResetRestrictions(gameReload);
-	REL_MESSAGE("Restrictions reset for new/loaded game");
 	return true;
 }
 

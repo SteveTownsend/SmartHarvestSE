@@ -1,5 +1,8 @@
 #pragma once
 
+namespace shse
+{
+
 class PlayerState
 {
 public:
@@ -35,3 +38,5 @@ private:
 
 	mutable RecursiveLock m_playerLock;
 };
+
+}

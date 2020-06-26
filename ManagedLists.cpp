@@ -51,5 +51,5 @@ void ManagedList::Drop(const RE::TESForm* entry)
 bool ManagedList::Contains(const RE::TESForm* location) const
 {
 	RecursiveLockGuard guard(m_listLock);
-	return m_members.count(location) > 0;
+	return m_members.contains(location);
 }

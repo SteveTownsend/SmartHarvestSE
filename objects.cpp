@@ -126,7 +126,19 @@ const RE::TESContainer* TESObjectREFRHelper::GetContainer() const
 	return container;
 }
 
-bool TESObjectREFRHelper::IsPlayerOwned()
+std::pair<bool, SpecialObjectHandling> TESObjectREFRHelper::IsCollectible(void) const
+{
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	return itemEx.IsCollectible();
+}
+
+bool TESObjectREFRHelper::IsValuable() const
+{
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	return itemEx.IsValuable();
+}
+
+bool TESObjectREFRHelper::IsPlayerOwned() const
 {
 	const RE::TESForm* owner = m_ref->GetOwner();
 	if (owner)
@@ -159,7 +171,7 @@ void TESObjectREFRHelper::SetLootable(RE::TESForm* lootable)
 	m_lootable = lootable;
 }
 
-double TESObjectREFRHelper::GetWorth(void) const
+double TESObjectREFRHelper::CalculateWorth(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
 	return itemEx.GetWorth();
@@ -270,6 +282,12 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 	if (!baseForm)
 		return ObjectType::unknown;
 
+	ObjectType objectType(data->GetObjectTypeForForm(baseForm));
+	if (!ignoreWhiteList && shse::CollectionManager::Instance().IsCollectible(baseForm).first)
+	{
+		// May not be looted if configured to glow
+		return ObjectType::collectible;
+	}
 	if (!ignoreWhiteList && ManagedList::WhiteList().Contains(baseForm))
 	{
 		return ObjectType::whitelist;
@@ -279,7 +297,6 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 		return ObjectType::blacklist;
 	}
 
-	ObjectType objectType(data->GetObjectTypeForForm(baseForm));
 	if (objectType != ObjectType::unknown)
 	{
     	return objectType;
@@ -358,9 +375,9 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::manualLoot, "manualloot"}
 	});
 
-std::string GetObjectTypeName(ObjectType type)
+std::string GetObjectTypeName(ObjectType objectType)
 {
-	const auto result(nameByType.find(type));
+	const auto result(nameByType.find(objectType));
 	if (result != nameByType.cend())
 		return result->second;
 	return "unknown";

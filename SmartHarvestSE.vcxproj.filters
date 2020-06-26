@@ -115,6 +115,9 @@
     <ClCompile Include="ProducerLootables.cpp">
       <Filter>Looting</Filter>
     </ClCompile>
+    <ClCompile Include="ActorTracker.cpp">
+      <Filter>Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="papyrus.h" />
@@ -245,6 +248,12 @@
     <ClInclude Include="ProducerLootables.h">
       <Filter>Looting</Filter>
     </ClInclude>
+    <ClInclude Include="ActorTracker.h">
+      <Filter>Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="Enums.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -277,6 +286,9 @@
     <Filter Include="Utilities">
       <UniqueIdentifier>{3d5515fb-a938-4b89-89c8-a9bdc2656b3b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Edit Scripts">
+      <UniqueIdentifier>{e43f4006-6e90-4531-b6b3-7e142c27e962}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
@@ -300,11 +312,17 @@
     <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
     </None>
-    <None Include="Config\CollectionDefinition.json">
-      <Filter>Config</Filter>
-    </None>
     <None Include="Config\Schema.json">
       <Filter>Config</Filter>
+    </None>
+    <None Include="Config\CollectionDefinition.LoTD.json">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="Config\CollectionDefinition.Samples.json">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas">
+      <Filter>Edit Scripts</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

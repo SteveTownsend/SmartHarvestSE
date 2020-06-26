@@ -28,7 +28,6 @@ int objType_skillBookRead
 
 Actor player
 int[] addedItemIDs
-int[] addedItemTypes
 int maxAddedItems
 
 int currentAddedItem
@@ -43,12 +42,14 @@ LeveledItem FOS_LItemFossilTierOneyum
 LeveledItem FOS_LItemFossilTierOneVolcanicDigSite
 LeveledItem FOS_LItemFossilTierTwoVolcanic
 
-EffectShader lootedShader    ; white
-EffectShader bossShader      ; flames
-EffectShader lockedShader    ; red
-EffectShader questShader     ; purple
-EffectShader enchantedShader ; blue
-EffectShader ownedShader     ; green
+EffectShader lockedShader       ; red
+EffectShader bossShader         ; flames
+EffectShader questShader        ; purple
+EffectShader collectibleShader  ; silver
+EffectShader enchantedShader    ; blue
+EffectShader richShader         ; gold
+EffectShader ownedShader        ; green
+EffectShader lootedShader       ; silver
 
 ; FormType from CommonLibSSE - this is core Game data, so invariant
 int getType_kFlora = 39
@@ -64,10 +65,12 @@ int oreMiningTakeAll
 
 int infiniteWeight
 
+int glowReasonLockedContainer
 int glowReasonBossContainer
 int glowReasonQuestObject
-int glowReasonLockedContainer
+int glowReasonCollectible
 int glowReasonEnchantedItem
+int glowReasonHighValue
 int glowReasonPlayerProperty
 int glowReasonSimpleTarget
 
@@ -95,7 +98,7 @@ endFunction
 Function SyncLists(bool reload)
     SyncList(reload, location_type_whitelist, whitelist_form)
     SyncList(reload, location_type_blacklist, blacklist_form)
-    SyncDone()
+    SyncDone(reload)
 endFunction
 
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
@@ -163,6 +166,18 @@ function ManageBlackList(Form target)
     ManageList(blacklist_form, target, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
 endFunction
 
+Function SetShaders()
+    ; must line up with shaders defined in ESP/ESM file
+    lockedShader = Game.GetFormFromFile(0x80e, "SmartHarvestSE.esp") as EffectShader        ; red
+    bossShader = Game.GetFormFromFile(0x810, "SmartHarvestSE.esp") as EffectShader          ; flames
+    questShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader         ; purple
+    collectibleShader = Game.GetFormFromFile(0x814, "SmartHarvestSE.esp") as EffectShader   ; copper
+    enchantedShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader     ; blue
+    richShader = Game.GetFormFromFile(0xd74, "SmartHarvestSE.esp") as EffectShader          ; gold
+    ownedShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader         ; green
+    lootedShader = Game.GetFormFromFile(0x813, "SmartHarvestSE.esp") as EffectShader        ; silver
+EndFunction
+
 ; must line up with enumerations from C++
 Function SyncNativeDataTypes()
     objType_Flora = GetObjectTypeByName("flora")
@@ -178,12 +193,14 @@ Function SyncNativeDataTypes()
     resource_Volcanic = GetResourceTypeByName("Volcanic")
     resource_VolcanicDigSite = GetResourceTypeByName("VolcanicDigSite")
 
-    glowReasonBossContainer = 1
-    glowReasonQuestObject = 2
-    glowReasonEnchantedItem = 3
-    glowReasonLockedContainer = 4
-    glowReasonPlayerProperty = 5
-    glowReasonSimpleTarget = 6
+    glowReasonLockedContainer = 1
+    glowReasonBossContainer = 2
+    glowReasonQuestObject = 3
+    glowReasonCollectible = 4
+    glowReasonHighValue = 5
+    glowReasonEnchantedItem = 6
+    glowReasonPlayerProperty = 7
+    glowReasonSimpleTarget = 8
 
     location_type_whitelist = 1
     location_type_blacklist = 2
@@ -192,24 +209,17 @@ Function SyncNativeDataTypes()
 
     infiniteWeight = 100000
 
-    ; must line up with shaders defined in ESP/ESM file
-    lootedShader = Game.GetFormFromFile(0x80f, "SmartHarvestSE.esp") as EffectShader   ; white
-    enchantedShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader    ; blue
-    lockedShader = Game.GetFormFromFile(0x80e, "SmartHarvestSE.esp") as EffectShader   ; red
-    bossShader = Game.GetFormFromFile(0x810, "SmartHarvestSE.esp") as EffectShader     ; gold
-    questShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader        ; purple
-    ownedShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader        ; green
+    SetShaders()
 endFunction
 
-Function ResetAddedItems()
+Function ResetCollections()
     ;prepare for collection management, if configured
     collectionsInUse = CollectionsInUse()
     if !collectionsInUse
         return
     endIf
-    ;DebugTrace("eventScript.ResetAddedItems")
+    ;DebugTrace("eventScript.ResetCollections")
     addedItemIDs = New Int[128]
-    addedItemTypes = New Int[128]
     maxAddedItems = 128
     currentAddedItem = 0
 EndFunction
@@ -258,7 +268,10 @@ Function ApplySetting(bool reload, int oreMining)
         FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
     endif
 
-    ResetAddedItems()
+    if reload
+        ; only need to check Collections requisite data structure on reload, not MCM close
+        ResetCollections()
+    endIf
     SyncLists(reload)
 
     utility.waitMenumode(0.1)
@@ -315,7 +328,8 @@ Event OnKeyUp(Int keyCode, Float holdTime)
     if (!Utility.IsInMenumode())
         if (keyCode == GetConfig_Pausekey())
             if holdTime > 3.0
-                ToggleCalibration()
+                ; trigger shader test on really long press
+                ToggleCalibration(holdTime > 10.0)
             else
                 Pause()
             endif
@@ -403,7 +417,7 @@ bool Function IsBookObject(int type)
     return type >= objType_Book && type <= objType_skillBookRead
 endFunction
 
-Function RecordItem(Form akBaseItem, int objectType)
+Function RecordItem(Form akBaseItem)
     ;register item received in the 'collection pending' list
     ;DebugTrace("RecordItem " + akBaseItem)
     if !collectionsInUse
@@ -411,11 +425,10 @@ Function RecordItem(Form akBaseItem, int objectType)
     endIf
     if currentAddedItem == maxAddedItems
         ; list is full, flush to the plugin
-    FlushAddedItems(addedItemIDs, addedItemTypes, currentAddedItem)
-    currentAddedItem = 0
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItemIDs, currentAddedItem)
+        currentAddedItem = 0
     endif
     addedItemIDs[currentAddedItem] = akBaseItem.GetFormID()
-    addedItemTypes[currentAddedItem] = objectType
     currentAddedItem += 1
 EndFunction
 
@@ -571,7 +584,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
 EndEvent
 
-Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify)
+Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify, bool collectible)
     ;DebugTrace("OnHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
     ;DebugTrace("item type: " + itemType + ", do not notify: " + silent + "notify for manual loot: " + manualLootNotify)
     bool notify = false
@@ -579,7 +592,9 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)
-        RecordItem(baseForm, itemType)
+        if collectible
+            RecordItem(baseForm)
+        endIf
 
         notify = !silent
     elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
@@ -601,7 +616,9 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
         elseif (ActivateEx(akTarget, player, true) && !silent)
             notify = true
         endif
-        RecordItem(baseForm, itemType)
+        if collectible
+            RecordItem(baseForm)
+        endIf
         ;DebugTrace("OnHarvest:Activated:" + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
     endif
     if (notify)
@@ -631,7 +648,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 endEvent
 
 ; NPC looting appears to have thread safety issues requiring script to perform
-Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int itemType)
+Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int itemType, bool collectible)
     ;DebugTrace("OnLootFromNPC: " + akContainerRef.GetDisplayName() + " " + akForm.GetName() + "(" + count + ")")
     if (!akContainerRef)
         return
@@ -640,7 +657,9 @@ Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int 
     endif
 
     akContainerRef.RemoveItem(akForm, count, true, player)
-    RecordItem(akForm, itemType)
+    if collectible
+        RecordItem(akForm)
+    endIf
 endEvent
 
 Event OnGetProducerLootable(ObjectReference akTarget)
@@ -682,20 +701,23 @@ endEvent
 
 Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     EffectShader effShader
-    if (reason == glowReasonBossContainer)
+    if (reason == glowReasonLockedContainer)
+        effShader = lockedShader
+    elseif (reason == glowReasonBossContainer)
         effShader = bossShader
     elseif (reason == glowReasonQuestObject)
         effShader = questShader
+    elseif (reason == glowReasonCollectible)
+        effShader = collectibleShader
+    elseif (reason == glowReasonHighValue)
+        effShader = richShader
     elseif (reason == glowReasonEnchantedItem)
         effShader = enchantedShader
-    elseif (reason == glowReasonLockedContainer)
-        effShader = lockedShader
     elseif (reason == glowReasonPlayerProperty)
         effShader = ownedShader
     else
         effShader = lootedShader
     endif
-
     if (effShader)
         ; play for requested duration - C++ code will tidy up when out of range
         ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
@@ -739,11 +761,9 @@ EndEvent
 
 Event OnFlushAddedItems()
     ;DebugTrace("Request to flush added items")
-    ; no-op if empty list
-    if currentAddedItem > 0
-        FlushAddedItems(addedItemIDs, addedItemTypes, currentAddedItem)
-        currentAddedItem = 0
-    endif
+    ; always respond to poll so plugin DLL keeps in sync with game-time
+    FlushAddedItems(Utility.GetCurrentGameTime(), addedItemIDs, currentAddedItem)
+    currentAddedItem = 0
 EndEvent
 
 Event OnCheckOKToScan(int nonce)

@@ -29,7 +29,8 @@ int objType_WhiteList
 
 bool enableHarvest
 bool enableLootContainer
-bool enableLootDeadbody
+int enableLootDeadbody
+string[] s_lootDeadBodyArray
 
 bool unencumberedInCombat
 bool unencumberedInPlayerHome
@@ -41,6 +42,7 @@ int blackListHotkeyCode
 
 int preventPopulationCenterLooting
 string[] s_populationCenterArray
+bool notifyLocationChange
 
 int defaultRadius
 float defaultInterval
@@ -83,6 +85,15 @@ int valueWeightDefault
 int valueWeightDefaultDefault
 int maxMiningItems
 int maxMiningItemsDefault
+
+int valuableItemLoot
+int valuableItemThreshold
+
+bool collectionsEnabled
+int collectibleAction
+bool collectionAddNotify
+bool collectDuplicates
+
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -136,44 +147,53 @@ Function PutSettingObjectArray(int section_first, int section_second, int listLe
 EndFunction
 
 function ApplySettingsFromFile()
-    enableHarvest = GetSetting(type_Common, type_Config, "enableHarvest") as bool
-    enableLootContainer = GetSetting(type_Common, type_Config, "enableLootContainer") as bool
-    enableLootDeadbody = GetSetting(type_Common, type_Config, "enableLootDeadbody") as bool
-    unencumberedInCombat = GetSetting(type_Common, type_Config, "unencumberedInCombat") as bool
-    unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "unencumberedInPlayerHome") as bool
-    unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "unencumberedIfWeaponDrawn") as bool
+    enableHarvest = GetSetting(type_Common, type_Config, "EnableHarvest") as bool
+    enableLootContainer = GetSetting(type_Common, type_Config, "EnableLootContainer") as bool
+    enableLootDeadbody = GetSetting(type_Common, type_Config, "EnableLootDeadbody") as int
+    unencumberedInCombat = GetSetting(type_Common, type_Config, "UnencumberedInCombat") as bool
+    unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "UnencumberedInPlayerHome") as bool
+    unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "UnencumberedIfWeaponDrawn") as bool
     ;DebugTrace("ApplySettingsFromFile - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
-    pauseHotkeyCode = GetSetting(type_Common, type_Config, "pauseHotkeyCode") as int
-    whiteListHotkeyCode = GetSetting(type_Common, type_Config, "whiteListHotkeyCode") as int
-    blackListHotkeyCode = GetSetting(type_Common, type_Config, "blackListHotkeyCode") as int
-    preventPopulationCenterLooting = GetSetting(type_Common, type_Config, "preventPopulationCenterLooting") as int
+    pauseHotkeyCode = GetSetting(type_Common, type_Config, "PauseHotkeyCode") as int
+    whiteListHotkeyCode = GetSetting(type_Common, type_Config, "WhiteListHotkeyCode") as int
+    blackListHotkeyCode = GetSetting(type_Common, type_Config, "BlackListHotkeyCode") as int
+    preventPopulationCenterLooting = GetSetting(type_Common, type_Config, "PreventPopulationCenterLooting") as int
+    notifyLocationChange = GetSetting(type_Common, type_Config, "NotifyLocationChange") as bool
 
     radius = GetSetting(type_Harvest, type_Config, "RadiusFeet") as int
     interval = GetSetting(type_Harvest, type_Config, "IntervalSeconds") as float
     radiusIndoors = GetSetting(type_Harvest, type_Config, "IndoorsRadiusFeet") as int
     intervalIndoors = GetSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds") as float
 
-    disableDuringCombat = GetSetting(type_Harvest, type_Config, "disableDuringCombat") as bool
-    disableWhileWeaponIsDrawn = GetSetting(type_Harvest, type_Config, "disableWhileWeaponIsDrawn") as bool
-    disableWhileConcealed = GetSetting(type_Harvest, type_Config, "disableWhileConcealed") as bool
+    disableDuringCombat = GetSetting(type_Harvest, type_Config, "DisableDuringCombat") as bool
+    disableWhileWeaponIsDrawn = GetSetting(type_Harvest, type_Config, "DisableWhileWeaponIsDrawn") as bool
+    disableWhileConcealed = GetSetting(type_Harvest, type_Config, "DisableWhileConcealed") as bool
 
-    crimeCheckNotSneaking = GetSetting(type_Harvest, type_Config, "crimeCheckNotSneaking") as int
-    crimeCheckSneaking = GetSetting(type_Harvest, type_Config, "crimeCheckSneaking") as int
+    crimeCheckNotSneaking = GetSetting(type_Harvest, type_Config, "CrimeCheckNotSneaking") as int
+    crimeCheckSneaking = GetSetting(type_Harvest, type_Config, "CrimeCheckSneaking") as int
 
-    questObjectLoot = GetSetting(type_Harvest, type_Config, "questObjectLoot") as int
-    questObjectScope = GetSetting(type_Harvest, type_Config, "questObjectScope") as int
-    lockedChestLoot = GetSetting(type_Harvest, type_Config, "lockedChestLoot") as int
-    bossChestLoot = GetSetting(type_Harvest, type_Config, "bossChestLoot") as int
-    enchantItemGlow = GetSetting(type_Harvest, type_Config, "enchantItemGlow") as bool
-    playerBelongingsLoot = GetSetting(type_Harvest, type_Config, "playerBelongingsLoot") as int
+    questObjectLoot = GetSetting(type_Harvest, type_Config, "QuestObjectLoot") as int
+    questObjectScope = GetSetting(type_Harvest, type_Config, "QuestObjectScope") as int
+    lockedChestLoot = GetSetting(type_Harvest, type_Config, "LockedChestLoot") as int
+    bossChestLoot = GetSetting(type_Harvest, type_Config, "BossChestLoot") as int
+    enchantItemGlow = GetSetting(type_Harvest, type_Config, "EnchantItemGlow") as bool
+    valuableItemLoot = GetSetting(type_Harvest, type_Config, "valuableItemLoot") as int
+    valuableItemThreshold = GetSetting(type_Harvest, type_Config, "ValuableItemThreshold") as int
+    playerBelongingsLoot = GetSetting(type_Harvest, type_Config, "PlayerBelongingsLoot") as int
     playContainerAnimation = GetSetting(type_Harvest, type_Config, "PlayContainerAnimation") as int
 
-    manualLootTargetNotify = GetSetting(type_Harvest, type_Config, "manualLootTargetNotify") as bool
-    valueWeightDefault = GetSetting(type_Harvest, type_Config, "valueWeightDefault") as int
-    updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "maxMiningItems") as int)
+    manualLootTargetNotify = GetSetting(type_Harvest, type_Config, "ManualLootTargetNotify") as bool
+    valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
+    updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
+
+    collectionsEnabled = GetSetting(type_Common, type_Config, "CollectionsEnabled") as bool
+    collectibleAction = GetSetting(type_Harvest, type_Config, "CollectibleAction") as int
+    collectionAddNotify = GetSetting(type_Harvest, type_Config, "CollectionAddNotify") as bool
+    collectDuplicates = GetSetting(type_Harvest, type_Config, "CollectDuplicates") as bool
+
 endFunction
 
 ;Seed defaults from the INI file, first time only - not repeated when user starts new game
@@ -197,49 +217,57 @@ Function ApplySetting(bool reload)
 
     ;DebugTrace("  MCM ApplySetting start")
 
-    PutSetting(type_Common, type_Config, "enableHarvest", enableHarvest as float)
-    PutSetting(type_Common, type_Config, "enableLootContainer", enableLootContainer as float)
-    PutSetting(type_Common, type_Config, "enableLootDeadbody", enableLootDeadbody as float)
-    PutSetting(type_Common, type_Config, "unencumberedInCombat", unencumberedInCombat as float)
-    PutSetting(type_Common, type_Config, "unencumberedInPlayerHome", unencumberedInPlayerHome as float)
-    PutSetting(type_Common, type_Config, "unencumberedIfWeaponDrawn", unencumberedIfWeaponDrawn as float)
+    PutSetting(type_Common, type_Config, "EnableHarvest", enableHarvest as float)
+    PutSetting(type_Common, type_Config, "EnableLootContainer", enableLootContainer as float)
+    PutSetting(type_Common, type_Config, "EnableLootDeadbody", enableLootDeadbody as float)
+    PutSetting(type_Common, type_Config, "UnencumberedInCombat", unencumberedInCombat as float)
+    PutSetting(type_Common, type_Config, "UnencumberedInPlayerHome", unencumberedInPlayerHome as float)
+    PutSetting(type_Common, type_Config, "UnencumberedIfWeaponDrawn", unencumberedIfWeaponDrawn as float)
 
     PutSetting(type_Common, type_Config, "PauseHotkeyCode", pauseHotkeyCode as float)
-    PutSetting(type_Common, type_Config, "whiteListHotkeyCode", whiteListHotkeyCode as float)
-    PutSetting(type_Common, type_Config, "blackListHotkeyCode", blackListHotkeyCode as float)
-    PutSetting(type_Common, type_Config, "preventPopulationCenterLooting", preventPopulationCenterLooting as float)
+    PutSetting(type_Common, type_Config, "WhiteListHotkeyCode", whiteListHotkeyCode as float)
+    PutSetting(type_Common, type_Config, "BlackListHotkeyCode", blackListHotkeyCode as float)
+    PutSetting(type_Common, type_Config, "PreventPopulationCenterLooting", preventPopulationCenterLooting as float)
+    PutSetting(type_Common, type_Config, "NotifyLocationChange", notifyLocationChange as float)
 
     PutSetting(type_Harvest, type_Config, "RadiusFeet", radius as float)
     PutSetting(type_Harvest, type_Config, "IntervalSeconds", interval)
     PutSetting(type_Harvest, type_Config, "IndoorsRadiusFeet", radiusIndoors as float)
     PutSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds", intervalIndoors)
 
-    PutSetting(type_Harvest, type_Config, "questObjectScope", questObjectScope as float)
-    PutSetting(type_Harvest, type_Config, "crimeCheckNotSneaking", crimeCheckNotSneaking as float)
-    PutSetting(type_Harvest, type_Config, "crimeCheckSneaking", crimeCheckSneaking as float)
-    PutSetting(type_Harvest, type_Config, "playerBelongingsLoot", playerBelongingsLoot as float)
+    PutSetting(type_Harvest, type_Config, "QuestObjectScope", questObjectScope as float)
+    PutSetting(type_Harvest, type_Config, "CrimeCheckNotSneaking", crimeCheckNotSneaking as float)
+    PutSetting(type_Harvest, type_Config, "CrimeCheckSneaking", crimeCheckSneaking as float)
+    PutSetting(type_Harvest, type_Config, "PlayerBelongingsLoot", playerBelongingsLoot as float)
     PutSetting(type_Harvest, type_Config, "PlayContainerAnimation", playContainerAnimation as float)
 
-    PutSetting(type_Harvest, type_Config, "questObjectLoot", questObjectLoot as float)
-    PutSetting(type_Harvest, type_Config, "enchantItemGlow", enchantItemGlow as float)
+    PutSetting(type_Harvest, type_Config, "QuestObjectLoot", questObjectLoot as float)
+    PutSetting(type_Harvest, type_Config, "EnchantItemGlow", enchantItemGlow as float)
+    PutSetting(type_Harvest, type_Config, "valuableItemLoot", valuableItemLoot as float)
+    PutSetting(type_Harvest, type_Config, "ValuableItemThreshold", valuableItemThreshold as float)
+    PutSetting(type_Harvest, type_Config, "LockedChestLoot", lockedChestLoot as float)
+    PutSetting(type_Harvest, type_Config, "BossChestLoot", bossChestLoot as float)
+    PutSetting(type_Harvest, type_Config, "ManualLootTargetNotify", manualLootTargetNotify as float)
 
-    PutSetting(type_Harvest, type_Config, "lockedChestLoot", lockedChestLoot as float)
-    PutSetting(type_Harvest, type_Config, "bossChestLoot", bossChestLoot as float)
-    PutSetting(type_Harvest, type_Config, "manualLootTargetNotify", manualLootTargetNotify as float)
-
-    PutSetting(type_Harvest, type_Config, "disableDuringCombat", disableDuringCombat as float)
-    PutSetting(type_Harvest, type_Config, "disableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
-    PutSetting(type_Harvest, type_Config, "disableWhileConcealed", disableWhileConcealed as float)
+    PutSetting(type_Harvest, type_Config, "DisableDuringCombat", disableDuringCombat as float)
+    PutSetting(type_Harvest, type_Config, "DisableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
+    PutSetting(type_Harvest, type_Config, "DisableWhileConcealed", disableWhileConcealed as float)
 
     PutSettingObjectArray(type_Harvest, type_ItemObject, 32, objectSettingArray)
 
-    PutSetting(type_Harvest, type_Config, "valueWeightDefault", valueWeightDefault as float)
-    PutSetting(type_Harvest, type_Config, "maxMiningItems", maxMiningItems as float)
+    PutSetting(type_Harvest, type_Config, "ValueWeightDefault", valueWeightDefault as float)
+    PutSetting(type_Harvest, type_Config, "MaxMiningItems", maxMiningItems as float)
     PutSettingObjectArray(type_Harvest, type_ValueWeight, 32, valueWeightSettingArray)
 
+    PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
+    PutSetting(type_Harvest, type_Config, "CollectibleAction", collectibleAction as float)
+    PutSetting(type_Harvest, type_Config, "CollectionAddNotify", collectionAddNotify as float)
+    PutSetting(type_Harvest, type_Config, "CollectDuplicates", collectDuplicates as float)
+
     ; seed looting scan enabled according to configured settings
-    bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody || unencumberedInCombat || unencumberedInPlayerHome|| unencumberedIfWeaponDrawn 
-    ;DebugTrace("result " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
+    bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome|| unencumberedIfWeaponDrawn || collectionsEnabled
+    ;DebugTrace("isEnabled? " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
+    ;DebugTrace("Collections enabled? " + " collectionsEnabled)
     if (isEnabled)
         g_LootingEnabled.SetValue(1)
         eventScript.SetScanActive()
@@ -274,6 +302,13 @@ Function SetOreVeinChoices()
     s_behaviorToggleArray[0] = "$SHSE_DONT_PICK_UP"
     s_behaviorToggleArray[1] = "$SHSE_PICK_UP_IF_NOT_BYOH"
     s_behaviorToggleArray[2] = "$SHSE_PICK_UP"
+EndFunction
+
+Function SetDeadBodyChoices()
+    s_lootDeadBodyArray = New String[3]
+    s_lootDeadBodyArray[0] = "$SHSE_DONT_PICK_UP"
+    s_lootDeadBodyArray[1] = "$SHSE_EXCLUDING_ARMOR"
+    s_lootDeadBodyArray[2] = "$SHSE_PICK_UP"
 EndFunction
 
 Function AllocateItemCategoryArrays()
@@ -343,18 +378,6 @@ Function SetObjectTypeData()
     s_objectTypeNameArray[30] = "$SHSE_DRINK"
     s_objectTypeNameArray[31] = "$SHSE_OREVEIN"
     s_objectTypeNameArray[32] = "$SHSE_WHITELIST"
-
-    ; update script variables needing sync to native
-    objType_Flora = GetObjectTypeByName("flora")
-    objType_Critter = GetObjectTypeByName("critter")
-    objType_Septim = GetObjectTypeByName("septims")
-    objType_LockPick = GetObjectTypeByName("lockpick")
-    objType_Soulgem = GetObjectTypeByName("soulgem")
-    objType_Key = GetObjectTypeByName("key")
-    objType_Ammo = GetObjectTypeByName("ammo")
-    objType_Mine = GetObjectTypeByName("orevein")
-    objType_WhiteList = GetObjectTypeByName("whitelist")
-    eventScript.SyncNativeDataTypes()
 EndFunction
 
 Function SetMiscDefaults(bool firstTime)
@@ -377,6 +400,18 @@ Function SetMiscDefaults(bool firstTime)
 
     maxMiningItemsDefault = 8
     eventScript.UpdateMaxMiningItems(maxMiningItems)
+
+    notifyLocationChange = false
+    valuableItemLoot = 2
+    valuableItemThreshold = 500
+    InstallCollections()
+EndFunction
+
+Function InstallCollections()
+    collectionsEnabled = false
+    collectibleAction = 2
+    collectionAddNotify = true
+    collectDuplicates = false
 EndFunction
 
 ; called when new game started or mod installed mid-playthrough
@@ -439,6 +474,7 @@ Event OnConfigInit()
     eventScript.blacklist_form = Game.GetFormFromFile(0x802, "SmartHarvestSE.esp") as Formlist
 
     SetOreVeinChoices()
+    SetDeadBodyChoices()
     SetMiscDefaults(true)
     SetObjectTypeData()
 
@@ -446,7 +482,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 26
+    return 30
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -465,14 +501,34 @@ Event OnVersionUpdate(int a_version)
         ;fix up arrays if missed in bad save from prior version
         CheckItemCategoryArrays()
     endIF
+    if (a_version >= 30 && CurrentVersion < 30)
+        ;defaults for all new settings
+        notifyLocationChange = false
+        valuableItemLoot = 2
+        valuableItemThreshold = 500
+        InstallCollections()
+        SetDeadBodyChoices()
+	
+    	; update script variables needing sync to native
+    	objType_Flora = GetObjectTypeByName("flora")
+    	objType_Critter = GetObjectTypeByName("critter")
+    	objType_Septim = GetObjectTypeByName("septims")
+    	objType_LockPick = GetObjectTypeByName("lockpick")
+    	objType_Soulgem = GetObjectTypeByName("soulgem")
+    	objType_Key = GetObjectTypeByName("key")
+    	objType_Ammo = GetObjectTypeByName("ammo")
+    	objType_Mine = GetObjectTypeByName("orevein")
+    	objType_WhiteList = GetObjectTypeByName("whitelist")
+    	
+    	eventScript.SyncNativeDataTypes()
+        eventScript.SetShaders()
+    endIF
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
 Event OnGameReload()
     parent.OnGameReload()
-    ;DebugTrace("OnGameReload - vw default " + valueWeightDefault)
-
     if (gameReloadLock)
         return
     endif
@@ -583,11 +639,12 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_LOOTING_RULES_HEADER")
         AddToggleOptionST("enableHarvest", "$SHSE_ENABLE_HARVEST", enableHarvest)
         AddToggleOptionST("enableLootContainer", "$SHSE_ENABLE_LOOT_CONTAINER", enableLootContainer)
-        AddToggleOptionST("enableLootDeadbody", "$SHSE_ENABLE_LOOT_DEADBODY", enableLootDeadbody)
+        AddTextOptionST("enableLootDeadbody", "$SHSE_ENABLE_LOOT_DEADBODY", s_lootDeadBodyArray[enableLootDeadbody])
         AddToggleOptionST("disableDuringCombat", "$SHSE_DISABLE_DURING_COMBAT", disableDuringCombat)
         AddToggleOptionST("disableWhileWeaponIsDrawn", "$SHSE_DISABLE_IF_WEAPON_DRAWN", disableWhileWeaponIsDrawn)
         AddToggleOptionST("disableWhileConcealed", "$SHSE_DISABLE_IF_CONCEALED", disableWhileConcealed)
         AddTextOptionST("preventPopulationCenterLooting", "$SHSE_POPULATION_CENTER_PREVENTION", s_populationCenterArray[preventPopulationCenterLooting])
+        AddToggleOptionST("notifyLocationChange", "$SHSE_NOTIFY_LOCATION_CHANGE", notifyLocationChange)
         AddTextOptionST("crimeCheckNotSneaking", "$SHSE_CRIME_CHECK_NOT_SNEAKING", s_crimeCheckNotSneakingArray[crimeCheckNotSneaking])
         AddTextOptionST("crimeCheckSneaking", "$SHSE_CRIME_CHECK_SNEAKING", s_crimeCheckSneakingArray[crimeCheckSneaking])
 
@@ -619,6 +676,8 @@ event OnPageReset(string currentPage)
         AddTextOptionST("bossChestLoot", "$SHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
         AddTextOptionST("playerBelongingsLoot", "$SHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
         AddToggleOptionST("enchantItemGlow", "$SHSE_ENCHANTITEM_GLOW", enchantItemGlow)
+        AddTextOptionST("valuableItemLoot", "$SHSE_VALUABLE_ITEM_LOOT", s_specialObjectHandlingArray[valuableItemLoot])
+        AddSliderOptionST("valuableItemThreshold", "$SHSE_VALUABLE_ITEM_THRESHOLD", valuableItemThreshold as float, "$SHSE_MONEY")
         AddToggleOptionST("manualLootTargetNotify", "$SHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
         AddTextOptionST("playContainerAnimation", "$SHSE_PLAY_CONTAINER_ANIMATION", s_playContainerAnimationArray[playContainerAnimation])
 
@@ -629,7 +688,17 @@ event OnPageReset(string currentPage)
 
         AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode)
         AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode)
-        
+
+        AddHeaderOption("$SHSE_COLLECTIONS_HEADER")
+        int flags = OPTION_FLAG_DISABLED
+        if collectionsEnabled
+            flags = OPTION_FLAG_NONE
+        endif
+        AddToggleOptionST("collectionsEnabled", "$SHSE_COLLECTIONS_ENABLED", collectionsEnabled)
+        AddTextOptionST("collectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_specialObjectHandlingArray[collectibleAction], flags)
+        AddToggleOptionST("collectionAddNotify", "$SHSE_COLLECTION_ADD_NOTIFY", collectionAddNotify, flags)
+        AddToggleOptionST("collectDuplicates", "$SHSE_COLLECT_DUPLICATES", collectDuplicates, flags)
+
     elseif (currentPage == Pages[2]) ; object harvester
         
 ;   ======================== LEFT ========================
@@ -878,13 +947,14 @@ endState
 
 state enableLootDeadbody
     event OnSelectST()
-        enableLootDeadbody = !(enableLootDeadbody as bool)
-        SetToggleOptionValueST(enableLootDeadbody)
+        int size = s_lootDeadBodyArray.length
+        enableLootDeadbody = CycleInt(enableLootDeadbody, size)
+        SetTextOptionValueST(s_lootDeadBodyArray[enableLootDeadbody])
     endEvent
 
     event OnDefaultST()
-        enableLootDeadbody = true
-        SetToggleOptionValueST(enableLootDeadbody)
+        enableLootDeadbody = 1
+        SetTextOptionValueST(s_lootDeadBodyArray[enableLootDeadbody])
     endEvent
 
     event OnHighlightST()
@@ -1270,6 +1340,46 @@ state enchantItemGlow
     endEvent
 endState
 
+state valuableItemLoot
+    event OnSelectST()
+        int size = s_specialObjectHandlingArray.length
+        valuableItemLoot = CycleInt(valuableItemLoot, size)
+        SetTextOptionValueST(s_specialObjectHandlingArray[valuableItemLoot])
+    endEvent
+
+    event OnDefaultST()
+        valuableItemLoot = 2
+        SetTextOptionValueST(s_specialObjectHandlingArray[valuableItemLoot])
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_VALUABLE_ITEM_LOOT"))
+    endEvent
+endState
+
+state valuableItemThreshold
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(valuableItemThreshold)
+        SetSliderDialogDefaultValue(500)
+        SetSliderDialogRange(0, 5000)
+        SetSliderDialogInterval(100)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        valuableItemThreshold = value as int
+        SetSliderOptionValueST(valuableItemThreshold)
+    endEvent
+
+    event OnDefaultST()
+        valuableItemThreshold = 500
+        SetSliderOptionValueST(valuableItemThreshold)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_VALUABLE_ITEM_THRESHOLD"))
+    endEvent
+endState
+
 state lockedChestLoot
     event OnSelectST()
         int size = s_specialObjectHandlingArray.length
@@ -1401,5 +1511,104 @@ state preventPopulationCenterLooting
     event OnHighlightST()
         string trans = GetTranslation("$SHSE_DESC_POPULATION_CENTER_PREVENTION")
         SetInfoText(trans)
+    endEvent
+endState
+
+state notifyLocationChange
+    event OnSelectST()
+        notifyLocationChange = !notifyLocationChange
+        SetToggleOptionValueST(notifyLocationChange)
+    endEvent
+
+    event OnDefaultST()
+        notifyLocationChange = false
+        SetToggleOptionValueST(notifyLocationChange)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_NOTIFY_LOCATION_CHANGE"))
+    endEvent
+endState
+
+Function SyncCollectionsUI()
+    if collectionsEnabled
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "collectibleAction")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "collectionAddNotify")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "collectDuplicates")
+    else
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "collectibleAction")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "collectionAddNotify")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "collectDuplicates")
+    endif
+EndFunction
+
+state collectionsEnabled
+    event OnSelectST()
+        collectionsEnabled = !collectionsEnabled
+        SetToggleOptionValueST(collectionsEnabled)
+        SyncCollectionsUI()
+    endEvent
+
+    event OnDefaultST()
+        collectionsEnabled = false
+        SetToggleOptionValueST(collectionsEnabled)
+        SyncCollectionsUI()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_COLLECTIONS_ENABLED"))
+        SyncCollectionsUI()
+    endEvent
+endState
+
+state collectibleAction
+    event OnSelectST()
+        int size = s_specialObjectHandlingArray.length
+        collectibleAction = CycleInt(collectibleAction, size)
+        SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction])
+    endEvent
+
+    event OnDefaultST()
+        collectibleAction = 2
+        SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction])
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_COLLECTIBLE_ACTION"))
+        SyncCollectionsUI()
+    endEvent
+endState
+
+state collectionAddNotify
+    event OnSelectST()
+        collectionAddNotify = !collectionAddNotify
+        SetToggleOptionValueST(collectionAddNotify)
+    endEvent
+
+    event OnDefaultST()
+        collectionAddNotify = false
+        SetToggleOptionValueST(collectionAddNotify)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_COLLECTION_ADD_NOTIFY"))
+        SyncCollectionsUI()
+    endEvent
+endState
+
+state collectDuplicates
+    event OnSelectST()
+        collectDuplicates = !collectDuplicates
+        SetToggleOptionValueST(collectDuplicates)
+    endEvent
+
+    event OnDefaultST()
+        collectDuplicates = false
+        SetToggleOptionValueST(collectDuplicates)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_COLLECT_DUPLICATES"))
+        SyncCollectionsUI()
     endEvent
 endState

@@ -4,7 +4,7 @@
   "title": "Smart Harvest SE",
   "type": "object",
   "properties": {
-    "collections": {
+    "collection": {
       "type": "array",
       "minItems": 0,
       "maxItems": 128,
@@ -18,37 +18,65 @@
       "enum": [ "AND", "OR" ]
     },
 
+    "formIDType": {
+      "type": "object",
+      "required": [ "listPlugin", "formID" ],
+      "properties": {
+        "listPlugin": {
+          "type": "string"
+        },
+        "formID": {
+          "type": "string",
+          "pattern": "[0-9 a-f A-F]{8}"
+        }
+      }
+    },
+
     "signatureType": {
       "type": "string",
-      "enum": [ "ALCH", "BOOK", "ARMO", "INGR", "KEYM", "MISC", "SLGM", "WEAP" ]
+      "enum": [ "ALCH", "ARMO", "BOOK", "INGR", "KEYM", "MISC", "SLGM", "WEAP" ]
     },
 
-    "lootCategoryType": {
-      "$comment": "restricted to deterministic loot categories",
+    "actionType": {
       "type": "string",
-      "enum": [ "book", "clutter", "critter", "drink", "food", "ingredient", "key", "skillbook", "spellbook" ]
+      "enum": [ "leave", "take", "glow" ]
     },
 
-    "conditionsType": {
+    "conditionType": {
       "type": "object",
-      "$comment": "we need 'signatures' or 'lootCategories' in a leaf node as they are highly restrictive, or 'subFilters' which defers the decision",
+      "$comment": "we need 'signature', 'plugin', 'formList' (FLST form ID) in a leaf node as they are highly restrictive, or 'subFilter' which defers the decision",
       "oneOf": [
         {
-          "required": [ "signatures" ]
+          "required": [ "plugin" ]
         },
         {
-          "required": [ "lootCategories" ]
+          "required": [ "formList" ]
         },
         {
-          "required": [ "subFilters" ]
+          "required": [ "signature" ]
+        },
+        {
+          "required": [ "subFilter" ]
         }
       ],
       "properties": {
         "plugin": {
-          "type": "string",
-          "description": "Filename of mod plugin that defines Collection member Forms"
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Filename of mod plugin that defines Collection member Forms or FLST"
         },
-        "keywords": {
+        "formList": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/formIDType" },
+          "description": "Form IDs of FLST that uniquely identify the FLST in a load order"
+        },
+        "keyword": {
           "type": "array",
           "minItems": 1,
           "maxItems": 16,
@@ -56,7 +84,7 @@
           "items": { "type": "string" },
           "description": "TESV Object must have KWDA that contains KYWD with EditorID from this list"
         },
-        "signatures": {
+        "signature": {
           "type": "array",
           "minItems": 1,
           "maxItems": 16,
@@ -64,15 +92,7 @@
           "items": { "$ref": "#/definitions/signatureType" },
           "description": "TESV Object must have RecordHeader.Signature in this list"
         },
-        "lootCategories": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 16,
-          "uniqueItems": true,
-          "items": { "$ref": "#/definitions/lootCategoryType" },
-          "description": "TESV Object must have RecordHeader.Signature in this list"
-        },
-        "subFilters": {
+        "subFilter": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
@@ -82,18 +102,34 @@
       }
     },
 
+    "policyType": {
+      "type": "object",
+      "required": [ "action", "notify", "repeat" ],
+      "properties": {
+        "action": { "$ref": "#/definitions/actionType" },
+        "notify": {
+          "type": "boolean",
+          "description": "Whether user gets a printed message on first pickup"
+        },
+        "repeat": {
+          "type": "boolean",
+          "description": "Whether repeated sightings are considered collectible"
+        }
+      }
+    },
+
     "filterType": {
       "type": "object",
-      "required": [ "operator", "conditions" ],
+      "required": [ "operator", "condition" ],
       "properties": {
         "operator": { "$ref": "#/definitions/operatorType" },
-        "conditions": { "$ref": "#/definitions/conditionsType" }
+        "condition": { "$ref": "#/definitions/conditionType" }
       }
     },
 
     "collectionType": {
       "type": "object",
-      "required": [ "name", "description", "rootFilter" ],
+      "required": [ "name", "description", "policy", "rootFilter" ],
       "properties": {
         "name": {
           "type": "string",
@@ -103,6 +139,7 @@
           "type": "string",
           "description": "Descriptive test for in-game display"
         },
+        "policy": { "$ref": "#/definitions/policyType" },
         "rootFilter": { "$ref": "#/definitions/filterType" }
       }
     }
