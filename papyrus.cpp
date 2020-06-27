@@ -397,6 +397,20 @@ namespace papyrus
 	{
 		return static_cast<int>(shse::CollectionManager::Instance().PolicyAction(groupName, collectionName));
 	}
+	void PutCollectionAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const bool allowRepeats)
+	{
+		shse::CollectionManager::Instance().PolicySetRepeat(groupName, collectionName, allowRepeats);
+	}
+
+	void PutCollectionNotifies(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const bool notifies)
+	{
+		shse::CollectionManager::Instance().PolicySetNotify(groupName, collectionName, notifies);
+	}
+
+	void PutCollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const int action)
+	{
+		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, SpecialObjectHandlingFromIniSetting(double(action)));
+	}
 
 	int CollectionTotal(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
 	{
@@ -466,6 +480,9 @@ namespace papyrus
 		a_vm->RegisterFunction("CollectionAction", SHSE_PROXY, papyrus::CollectionAction);
 		a_vm->RegisterFunction("CollectionTotal", SHSE_PROXY, papyrus::CollectionTotal);
 		a_vm->RegisterFunction("CollectionObtained", SHSE_PROXY, papyrus::CollectionObtained);
+		a_vm->RegisterFunction("PutCollectionAllowsRepeats", SHSE_PROXY, papyrus::PutCollectionAllowsRepeats);
+		a_vm->RegisterFunction("PutCollectionNotifies", SHSE_PROXY, papyrus::PutCollectionNotifies);
+		a_vm->RegisterFunction("PutCollectionAction", SHSE_PROXY, papyrus::PutCollectionAction);
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 

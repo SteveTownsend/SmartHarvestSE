@@ -371,6 +371,39 @@ SpecialObjectHandling CollectionManager::PolicyAction(const std::string& groupNa
 	return SpecialObjectHandling::DoNotLoot;
 }
 
+void CollectionManager::PolicySetRepeat(const std::string& groupName, const std::string& collectionName, const bool allowRepeats)
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		matched->second->Policy().SetRepeat(allowRepeats);
+	}
+}
+
+void CollectionManager::PolicySetNotify(const std::string& groupName, const std::string& collectionName, const bool notify)
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->Policy().SetNotify(notify);
+	}
+}
+
+void CollectionManager::PolicySetAction(const std::string& groupName, const std::string& collectionName, const SpecialObjectHandling action)
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		matched->second->Policy().SetAction(action);
+	}
+}
+
 size_t CollectionManager::TotalItems(const std::string& groupName, const std::string& collectionName) const
 {
 	const std::string label(MakeLabel(groupName, collectionName));

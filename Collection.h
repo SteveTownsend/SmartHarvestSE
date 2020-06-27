@@ -26,6 +26,9 @@ public:
 	inline SpecialObjectHandling Action() const { return m_action; }
 	inline bool Notify() const { return m_notify; }
 	inline bool Repeat() const { return m_repeat; }
+	inline void SetAction(const SpecialObjectHandling action) { m_action = action; }
+	inline void SetNotify(const bool notify) { m_notify = notify; }
+	inline void SetRepeat(const bool repeat) { m_repeat = repeat; }
 
 	void AsJSON(nlohmann::json& j) const;
 

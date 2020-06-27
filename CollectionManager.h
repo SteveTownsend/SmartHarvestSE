@@ -27,6 +27,9 @@ public:
 	bool PolicyRepeat(const std::string& groupName, const std::string& collectionName) const;
 	bool PolicyNotify(const std::string& groupName, const std::string& collectionName) const;
 	SpecialObjectHandling PolicyAction(const std::string& groupName, const std::string& collectionName) const;
+	void PolicySetRepeat(const std::string& groupName, const std::string& collectionName, const bool allowRepeats);
+	void PolicySetNotify(const std::string& groupName, const std::string& collectionName, const bool notify);
+	void PolicySetAction(const std::string& groupName, const std::string& collectionName, const SpecialObjectHandling action);
 	size_t TotalItems(const std::string& groupName, const std::string& collectionName) const;
 	size_t ItemsObtained(const std::string& groupName, const std::string& collectionName) const;
 

@@ -48,6 +48,9 @@ String Function CollectionNameByIndexInGroup(String groupName, int collectionInd
 bool Function CollectionAllowsRepeats(String groupName, String collectionName) global native
 bool Function CollectionNotifies(String groupName, String collectionName) global native
 int Function CollectionAction(String groupName, String collectionName) global native
+Function PutCollectionAllowsRepeats(String groupName, String collectionName, bool allowRepeats) global native
+Function PutCollectionNotifies(String groupName, String collectionName, bool notifies) global native
+Function PutCollectionAction(String groupName, String collectionName, int action) global native
 int Function CollectionTotal(String groupName, String collectionName) global native
 int Function CollectionObtained(String groupName, String collectionName) global native
 

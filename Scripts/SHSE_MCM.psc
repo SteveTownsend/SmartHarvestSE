@@ -1723,11 +1723,13 @@ state collectibleAction
         int size = s_specialObjectHandlingArray.length
         collectibleAction = CycleInt(collectibleAction, size)
         SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction])
+        PutCollectionAction(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectibleAction)
     endEvent
 
     event OnDefaultST()
         collectibleAction = 2
         SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction])
+        PutCollectionAction(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectibleAction)
     endEvent
 
     event OnHighlightST()
@@ -1739,11 +1741,13 @@ state collectionAddNotify
     event OnSelectST()
         collectionAddNotify = !collectionAddNotify
         SetToggleOptionValueST(collectionAddNotify)
+        PutCollectionNotifies(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectionAddNotify)
     endEvent
 
     event OnDefaultST()
         collectionAddNotify = false
         SetToggleOptionValueST(collectionAddNotify)
+        PutCollectionNotifies(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectionAddNotify)
     endEvent
 
     event OnHighlightST()
@@ -1755,11 +1759,13 @@ state collectDuplicates
     event OnSelectST()
         collectDuplicates = !collectDuplicates
         SetToggleOptionValueST(collectDuplicates)
+        PutCollectionAllowsRepeats(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectDuplicates)
     endEvent
 
     event OnDefaultST()
         collectDuplicates = false
         SetToggleOptionValueST(collectDuplicates)
+        PutCollectionAllowsRepeats(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectDuplicates)
     endEvent
 
     event OnHighlightST()
