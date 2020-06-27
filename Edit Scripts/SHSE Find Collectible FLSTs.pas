@@ -22,7 +22,7 @@ begin
   legalTypes.Add('SLGM');
   legalTypes.Add('WEAP');
 
-  collectionPreamble := '{ "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections", "$schema": "./Schema.json", "collections": [ ';
+  collectionPreamble := '{ "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections", "$schema": "./SHSE.SchemaCollections.json", "collections": [ ';
   collectionTemplate := '{ "name": "{NAME}", "description": "{DESCRIPTION}", "policy": { "action": "take", "notify": true, "repeat": true }, "rootFilter": { "operator": "AND", "condition": { "formList": { "listPlugin": "{PLUGIN}" , "formID": "{FORMID}" } } } },';
   collectionPostscript := ' ] }';
 
@@ -81,8 +81,8 @@ end;
 
 function EncodeAsCollection(e: IInterface; edid, rawName: string): string;
 begin
-	result := DoStringReplace(collectionTemplate, '{NAME}', 'LoTD ' + MakeName(rawName));
-	result := DoStringReplace(result, '{DESCRIPTION}', 'LoTD Display: ' + edid);
+	result := DoStringReplace(collectionTemplate, '{NAME}', MakeName(rawName));
+	result := DoStringReplace(result, '{DESCRIPTION}', 'Display: ' + edid);
 	result := DoStringReplace(result, '{PLUGIN}', GetFileName(e));
 	result := DoStringReplace(result, '{FORMID}', IntToHex(GetLoadOrderFormID(e), 8));
 end;
@@ -108,7 +108,7 @@ function Finalize: integer;
 var
   fname: string;
 begin
-  fname := ProgramPath + 'Edit Scripts\CollectionDefinitions.putnamehere.json';
+  fname := ProgramPath + 'Edit Scripts\SHSE.Collections.PutGroupNameHere.json';
   AddMessage('Saving list to ' + fname);
   formLists.Add(collectionPostscript);
   formLists.SaveToFile(fname);

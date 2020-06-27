@@ -358,6 +358,56 @@ namespace papyrus
 		}
 	}
 
+	int CollectionGroups(RE::StaticFunctionTag* base)
+	{
+		return shse::CollectionManager::Instance().NumberOfFiles();
+	}
+
+	std::string CollectionGroupName(RE::StaticFunctionTag* base, const int fileIndex)
+	{
+		return shse::CollectionManager::Instance().GroupNameByIndex(fileIndex);
+	}
+
+	std::string CollectionGroupFile(RE::StaticFunctionTag* base, const int fileIndex)
+	{
+		return shse::CollectionManager::Instance().GroupFileByIndex(fileIndex);
+	}
+
+	int CollectionsInGroup(RE::StaticFunctionTag* base, const std::string fileName)
+	{
+		return shse::CollectionManager::Instance().NumberOfCollections(fileName);
+	}
+
+	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
+	{
+		return shse::CollectionManager::Instance().NameByGroupIndex(groupName, collectionIndex);
+	}
+
+	bool CollectionAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	{
+		return shse::CollectionManager::Instance().PolicyRepeat(groupName, collectionName);
+	}
+
+	bool CollectionNotifies(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	{
+		return shse::CollectionManager::Instance().PolicyNotify(groupName, collectionName);
+	}
+
+	int CollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	{
+		return static_cast<int>(shse::CollectionManager::Instance().PolicyAction(groupName, collectionName));
+	}
+
+	int CollectionTotal(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	{
+		return static_cast<int>(shse::CollectionManager::Instance().TotalItems(groupName, collectionName));
+	}
+
+	int CollectionObtained(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	{
+		return static_cast<int>(shse::CollectionManager::Instance().ItemsObtained(groupName, collectionName));
+	}
+
 	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
 		SearchTask::ToggleCalibration(shaderTest);
@@ -406,6 +456,16 @@ namespace papyrus
 
 		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
 		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
+		a_vm->RegisterFunction("CollectionGroups", SHSE_PROXY, papyrus::CollectionGroups);
+		a_vm->RegisterFunction("CollectionGroupName", SHSE_PROXY, papyrus::CollectionGroupName);
+		a_vm->RegisterFunction("CollectionGroupFile", SHSE_PROXY, papyrus::CollectionGroupFile);
+		a_vm->RegisterFunction("CollectionsInGroup", SHSE_PROXY, papyrus::CollectionsInGroup);
+		a_vm->RegisterFunction("CollectionNameByIndexInGroup", SHSE_PROXY, papyrus::CollectionNameByIndexInGroup);
+		a_vm->RegisterFunction("CollectionAllowsRepeats", SHSE_PROXY, papyrus::CollectionAllowsRepeats);
+		a_vm->RegisterFunction("CollectionNotifies", SHSE_PROXY, papyrus::CollectionNotifies);
+		a_vm->RegisterFunction("CollectionAction", SHSE_PROXY, papyrus::CollectionAction);
+		a_vm->RegisterFunction("CollectionTotal", SHSE_PROXY, papyrus::CollectionTotal);
+		a_vm->RegisterFunction("CollectionObtained", SHSE_PROXY, papyrus::CollectionObtained);
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 

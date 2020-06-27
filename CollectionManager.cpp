@@ -87,7 +87,7 @@ void CollectionManager::ProcessAddedItems()
 	const auto nowTime(std::chrono::high_resolution_clock::now());
 	if (nowTime - m_lastInventoryCheck >= InventoryReconciliationIntervalMillis)
 	{
-		DBG_MESSAGE("Inventory reconcilation required");
+		DBG_MESSAGE("Inventory reconciliation required");
 		m_lastInventoryCheck = nowTime;
 		const auto inventoryAdds(ReconcileInventory());
 		if (!inventoryAdds.empty())
@@ -189,7 +189,7 @@ std::vector<RE::FormID> CollectionManager::ReconcileInventory()
 }
 
 bool CollectionManager::LoadCollectionsFromFile(
-	const std::filesystem::path& defFile, nlohmann::json_schema::json_validator& validator)
+	const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator)
 {
 	try {
 		std::ifstream collectionFile(defFile);
@@ -198,7 +198,8 @@ bool CollectionManager::LoadCollectionsFromFile(
 		}
 		nlohmann::json collectionDefinitions(nlohmann::json::parse(collectionFile));
 		validator.validate(collectionDefinitions);
-		BuildDecisionTrees(collectionDefinitions);
+		BuildDecisionTrees(collectionDefinitions, groupName);
+		m_fileNamesByGroupName.insert(std::make_pair(groupName, defFile.string()));
 		return true;
 	}
 	catch (const std::exception& e) {
@@ -210,7 +211,7 @@ bool CollectionManager::LoadCollectionsFromFile(
 bool CollectionManager::LoadData(void)
 {
 	// Validate the schema
-	const std::string schemaFileName("Schema.json");
+	const std::string schemaFileName("SHSE.SchemaCollections.json");
 	std::string filePath(FileUtils::GetPluginPath() + schemaFileName);
 	nlohmann::json_schema::json_validator validator;
 	try {
@@ -229,7 +230,7 @@ bool CollectionManager::LoadData(void)
 	REL_MESSAGE("JSON Schema %s parsed and validated", filePath.c_str());
 
 	// Find and Load Collection Definitions using the validated schema
-	const std::regex collectionsFilePattern("CollectionDefinition\\..*\\.json");
+	const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json");
 	for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
 	{
 		if (!std::filesystem::is_regular_file(nextFile))
@@ -237,14 +238,18 @@ bool CollectionManager::LoadData(void)
 			DBG_MESSAGE("Skip %s, not a regular file", nextFile.path().generic_string().c_str());
 			continue;
 		}
-		if (!std::regex_match(nextFile.path().filename().generic_string(), collectionsFilePattern))
+		std::string fileName(nextFile.path().filename().generic_string());
+		std::smatch matches;
+		if (!std::regex_search(fileName, matches, collectionsFilePattern))
 		{
-			DBG_MESSAGE("Skip %s, does not match Collections filename pattern", nextFile.path().generic_string().c_str());
+			DBG_MESSAGE("Skip %s, does not match Collections filename pattern", fileName.c_str());
 				continue;
 		}
-		if (LoadCollectionsFromFile(nextFile, validator))
+		// capture string at index 1 is the Collection Name, always present after a regex match
+		REL_MESSAGE("Load JSON Collection Definitions %s for Group %s", fileName.c_str(), matches[1].str().c_str());
+		if (LoadCollectionsFromFile(nextFile, matches[1].str(), validator))
 		{
-			REL_MESSAGE("JSON Collection Definitions %s parsed and validated", nextFile.path().generic_string().c_str());
+			REL_MESSAGE("JSON Collection Definitions %s/%s parsed and validated", fileName.c_str(), matches[1].str().c_str());
 		}
 	}
 	PrintDefinitions();
@@ -254,7 +259,7 @@ bool CollectionManager::LoadData(void)
 
 void CollectionManager::PrintDefinitions(void) const
 {
-	for (const auto& collection : m_collectionByName)
+	for (const auto& collection : m_allCollectionsByLabel)
 	{
 		REL_MESSAGE("Collection %s:\n%s", collection.first.c_str(), collection.second->PrintDefinition().c_str());
 	}
@@ -262,26 +267,149 @@ void CollectionManager::PrintDefinitions(void) const
 
 void CollectionManager::PrintMembership(void) const
 {
-	for (const auto& collection : m_collectionByName)
+	for (const auto& collection : m_allCollectionsByLabel)
 	{
 		REL_MESSAGE("Collection %s:\n%s", collection.first.c_str(), collection.second->PrintMembers().c_str());
 	}
 }
 
-void CollectionManager::BuildDecisionTrees(nlohmann::json& collectionDefinitions)
+int CollectionManager::NumberOfFiles(void) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	return static_cast<int>(m_fileNamesByGroupName.size());
+}
+
+std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	size_t index(0);
+	for (const auto& group : m_fileNamesByGroupName)
+	{
+		if (index == fileIndex)
+			return group.first;
+		++index;
+	}
+	return std::string();
+}
+
+std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	size_t index(0);
+	for (const auto& group : m_fileNamesByGroupName)
+	{
+		if (index == fileIndex)
+			return group.second;
+		++index;
+	}
+	return std::string();
+}
+
+int CollectionManager::NumberOfCollections(const std::string& groupName) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	return static_cast<int>(m_collectionsByGroupName.count(groupName));
+}
+
+std::string CollectionManager::NameByGroupIndex(const std::string& groupName, const int collectionIndex) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matches(m_collectionsByGroupName.equal_range(groupName));
+	size_t index(0);
+	for (auto group = matches.first; group != matches.second; ++group)
+	{
+		if (index == collectionIndex)
+		{
+			// strip the group name and separator
+			return group->second.substr(groupName.length() + 1);
+		}
+		++index;
+	}
+	return std::string();
+}
+
+std::string CollectionManager::MakeLabel(const std::string& groupName, const std::string& collectionName)
+{
+	std::ostringstream labelStream;
+	labelStream << groupName << '/' << collectionName;
+	return labelStream.str();
+}
+
+bool CollectionManager::PolicyRepeat(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->Policy().Repeat();
+	}
+	return false;
+}
+
+bool CollectionManager::PolicyNotify(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->Policy().Notify();
+	}
+	return false;
+}
+
+SpecialObjectHandling CollectionManager::PolicyAction(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->Policy().Action();
+	}
+	return SpecialObjectHandling::DoNotLoot;
+}
+
+size_t CollectionManager::TotalItems(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->Count();
+	}
+	return 0;
+}
+
+size_t CollectionManager::ItemsObtained(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->Observed();
+	}
+	return 0;
+}
+
+void CollectionManager::BuildDecisionTrees(nlohmann::json& collectionDefinitions, const std::string& groupName)
 {
 	for (const auto& definition : collectionDefinitions["collections"])
 	{
 		try {
 			std::shared_ptr<Collection> filter(CollectionFactory::Instance().ParseCollection(definition));
-			std::string name(definition["name"].get<std::string>());
-			if (m_collectionByName.insert(std::make_pair(name, filter)).second)
+			const std::string label(MakeLabel(groupName, definition["name"].get<std::string>()));
+			if (m_allCollectionsByLabel.insert(std::make_pair(label, filter)).second)
 			{
-				REL_MESSAGE("Decision Tree built for Collection %s", name.c_str());
+				REL_MESSAGE("Decision Tree built for Collection %s", label.c_str());
+				m_collectionsByGroupName.insert(std::make_pair(groupName, label));
 			}
 			else
 			{
-				REL_WARNING("Discarded Decision Tree for duplicate Collection %s", name.c_str());
+				REL_WARNING("Discarded Decision Tree for duplicate Collection %s", label.c_str());
 			}
 		}
 		catch (const std::exception& exc) {
@@ -296,7 +424,7 @@ void CollectionManager::ResolveMembership(void)
 	{
 		for (const auto form : RE::TESDataHandler::GetSingleton()->GetFormArray(signature.second))
 		{
-			for (const auto& collection : m_collectionByName)
+			for (const auto& collection : m_allCollectionsByLabel)
 			{
 				// record collection membership for any that match this object - ignore whitelist
 				if (collection.second->MatchesFilter(form))
@@ -327,7 +455,7 @@ void CollectionManager::OnGameReload()
 	{
 		// TODO load Collections data from saved game
 		// Flush membership state to allow testing
-		for (auto collection : m_collectionByName)
+		for (auto collection : m_allCollectionsByLabel)
 		{
 			collection.second->Reset();
 		}

@@ -312,17 +312,17 @@
     <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
     </None>
-    <None Include="Config\Schema.json">
-      <Filter>Config</Filter>
-    </None>
-    <None Include="Config\CollectionDefinition.LoTD.json">
-      <Filter>Config</Filter>
-    </None>
-    <None Include="Config\CollectionDefinition.Samples.json">
-      <Filter>Config</Filter>
-    </None>
     <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas">
       <Filter>Edit Scripts</Filter>
+    </None>
+    <None Include="Config\SHSE.Collections.LoTD.json">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="Config\SHSE.Collections.Samples.json">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="Config\SHSE.SchemaCollections.json">
+      <Filter>Config</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

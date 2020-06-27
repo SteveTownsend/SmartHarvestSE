@@ -45,6 +45,9 @@ public:
 	bool IsCollectibleFor(const RE::TESForm* form) const;
 	bool AddMemberID(const RE::TESForm* form) const;
 	inline const CollectionPolicy& Policy() const { return m_policy; }
+	inline CollectionPolicy& Policy() { return m_policy; }
+	inline size_t Count() { return m_members.size(); }
+	inline size_t Observed() { return m_observed.size(); }
 	void RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place);
 	void Reset();
 	nlohmann::json MakeJSON() const;

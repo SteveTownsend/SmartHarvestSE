@@ -5,13 +5,9 @@
 
 ContainerLister::ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
-	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false), m_hasCollectibleItem(false)
+	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false),
+	m_hasCollectibleItem(false), m_collectibleAction(SpecialObjectHandling::DoNotLoot)
 {
-}
-
-bool ContainerLister::HasAllTypes() const
-{
-	return m_hasQuestItem && m_hasEnchantedItem && m_hasValuableItem && m_hasCollectibleItem;
 }
 
 LootableItems ContainerLister::GetOrCheckContainerForms()
@@ -51,7 +47,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 	if (exChanges && exChanges->changes && exChanges->changes->entryList)
 	{
 		for (auto entryData = exChanges->changes->entryList->begin();
-			entryData != exChanges->changes->entryList->end() && !HasAllTypes(); ++entryData)
+			entryData != exChanges->changes->entryList->end(); ++entryData)
 		{
 			RE::TESBoundObject* item = (*entryData)->object;
 			if (!IsPlayable(item))
@@ -67,7 +63,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 				continue;
 
 			// Check for enchantment or quest target
-			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end() && !HasAllTypes(); ++extraList)
+			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 			{
 				if (*extraList)
 				{
@@ -87,9 +83,12 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 					{
 						m_hasValuableItem = itemEx.IsValuable();
 					}
-					if (!m_hasCollectibleItem)
+					const auto collectible(itemEx.IsCollectible());
+					if (collectible.first)
 					{
-						m_hasCollectibleItem = itemEx.IsCollectible().first;
+						// use the most permissive action
+						m_hasCollectibleItem = true;
+						m_collectibleAction = UpdateSpecialObjectHandling(m_collectibleAction, collectible.second);
 					}
 				}
 			}

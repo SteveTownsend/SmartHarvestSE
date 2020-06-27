@@ -91,7 +91,7 @@ void ParseCollection(const nlohmann::json& collection)
 int main(int argc, const char** argv)
 {
 	// Validate the schema
-	const std::string schemaFileName("Schema.json");
+	const std::string schemaFileName("SHSE.SchemaCollections.json");
     std::ifstream schemaFile(schemaFileName);
 	nlohmann::json_schema::json_validator validator;
 	try {
@@ -105,7 +105,7 @@ int main(int argc, const char** argv)
 	std::cout << "JSON Schema " << schemaFileName << " parsed and validated\n";
 
 	// Find and Load Collection Definitions using the validated schema
-	const std::regex collectionsFilePattern(".*\\CollectionDefinition\\..*\\.json");
+	const std::regex collectionsFilePattern(".*\\SHSE.Collections\\..*\\.json");
 	for (const auto& nextFile : std::filesystem::directory_iterator("."))
 	{
 		std::string collectionFileName(nextFile.path().generic_string());

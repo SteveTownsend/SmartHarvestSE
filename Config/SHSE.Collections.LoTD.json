@@ -1,10 +1,10 @@
 {
   "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections",
-  "$schema": "./Schema.json",
+  "$schema": "./SHSE.SchemaCollections.json",
   "collections": [
     {
-      "name": "LoTD NS Gemstone",
-      "description": "LoTD Display: DBM_SectionNSGemstoneItems",
+      "name": "NS Gemstone",
+      "description": "Display: DBM_SectionNSGemstoneItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -15,14 +15,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07415118"
+            "formID": "08415118"
           }
         }
       }
     },
     {
-      "name": "LoTD NS Shells",
-      "description": "LoTD Display: DBM_SectionNSShellsItems",
+      "name": "NS Shells",
+      "description": "Display: DBM_SectionNSShellsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -33,14 +33,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0733D88C"
+            "formID": "0833D88C"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Cultureand Arts",
-      "description": "LoTD Display: DBM_SectionHOHCultureandArtsItems",
+      "name": "HOH Cultureand Arts",
+      "description": "Display: DBM_SectionHOHCultureandArtsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -51,14 +51,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161D32"
+            "formID": "08161D32"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Steel",
-      "description": "LoTD Display: DBM_SectionArmorySteelItems",
+      "name": "Armory Steel",
+      "description": "Display: DBM_SectionArmorySteelItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -69,14 +69,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF7"
+            "formID": "08161CF7"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Stalhrim",
-      "description": "LoTD Display: DBM_SectionArmoryStalhrimItems",
+      "name": "Armory Stalhrim",
+      "description": "Display: DBM_SectionArmoryStalhrimItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -87,14 +87,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF6"
+            "formID": "08161CF6"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Snow Elf",
-      "description": "LoTD Display: DBM_SectionArmorySnowElfItems",
+      "name": "Armory Snow Elf",
+      "description": "Display: DBM_SectionArmorySnowElfItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -105,14 +105,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF5"
+            "formID": "08161CF5"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Orcish",
-      "description": "LoTD Display: DBM_SectionArmoryOrcishItems",
+      "name": "Armory Orcish",
+      "description": "Display: DBM_SectionArmoryOrcishItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -123,14 +123,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF4"
+            "formID": "08161CF4"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Nordic",
-      "description": "LoTD Display: DBM_SectionArmoryNordicItems",
+      "name": "Armory Nordic",
+      "description": "Display: DBM_SectionArmoryNordicItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -141,14 +141,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF3"
+            "formID": "08161CF3"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Iron",
-      "description": "LoTD Display: DBM_SectionArmoryIronItems",
+      "name": "Armory Iron",
+      "description": "Display: DBM_SectionArmoryIronItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -159,14 +159,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF2"
+            "formID": "08161CF2"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Glass",
-      "description": "LoTD Display: DBM_SectionArmoryGlassItems",
+      "name": "Armory Glass",
+      "description": "Display: DBM_SectionArmoryGlassItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -177,14 +177,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF1"
+            "formID": "08161CF1"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Forsworn",
-      "description": "LoTD Display: DBM_SectionArmoryForswornItems",
+      "name": "Armory Forsworn",
+      "description": "Display: DBM_SectionArmoryForswornItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -195,14 +195,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CF0"
+            "formID": "08161CF0"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Falmer",
-      "description": "LoTD Display: DBM_SectionArmoryFalmerItems",
+      "name": "Armory Falmer",
+      "description": "Display: DBM_SectionArmoryFalmerItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -213,14 +213,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CEF"
+            "formID": "08161CEF"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Extra Displays",
-      "description": "LoTD Display: DBM_SectionArmoryExtraDisplaysItems",
+      "name": "Armory Extra Displays",
+      "description": "Display: DBM_SectionArmoryExtraDisplaysItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -231,14 +231,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CEE"
+            "formID": "08161CEE"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Elven",
-      "description": "LoTD Display: DBM_SectionArmoryElvenItems",
+      "name": "Armory Elven",
+      "description": "Display: DBM_SectionArmoryElvenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -249,14 +249,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CED"
+            "formID": "08161CED"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Ebony",
-      "description": "LoTD Display: DBM_SectionArmoryEbonyItems",
+      "name": "Armory Ebony",
+      "description": "Display: DBM_SectionArmoryEbonyItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -267,14 +267,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CEC"
+            "formID": "08161CEC"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Dwarven",
-      "description": "LoTD Display: DBM_SectionArmoryDwarvenItems",
+      "name": "Armory Dwarven",
+      "description": "Display: DBM_SectionArmoryDwarvenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -285,14 +285,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CEB"
+            "formID": "08161CEB"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Dragon",
-      "description": "LoTD Display: DBM_SectionArmoryDragonItems",
+      "name": "Armory Dragon",
+      "description": "Display: DBM_SectionArmoryDragonItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -303,14 +303,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CEA"
+            "formID": "08161CEA"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Dawnguard",
-      "description": "LoTD Display: DBM_SectionArmoryDawnguardItems",
+      "name": "Armory Dawnguard",
+      "description": "Display: DBM_SectionArmoryDawnguardItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -321,14 +321,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CE9"
+            "formID": "08161CE9"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Daedric",
-      "description": "LoTD Display: DBM_SectionArmoryDaedricItems",
+      "name": "Armory Daedric",
+      "description": "Display: DBM_SectionArmoryDaedricItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -339,14 +339,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CE8"
+            "formID": "08161CE8"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Blades",
-      "description": "LoTD Display: DBM_SectionArmoryBladesItems",
+      "name": "Armory Blades",
+      "description": "Display: DBM_SectionArmoryBladesItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -357,14 +357,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CE7"
+            "formID": "08161CE7"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Ancient Nord",
-      "description": "LoTD Display: DBM_SectionArmoryAncientNordItems",
+      "name": "Armory Ancient Nord",
+      "description": "Display: DBM_SectionArmoryAncientNordItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -375,14 +375,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CE6"
+            "formID": "08161CE6"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Thane Weapons",
-      "description": "LoTD Display: DBM_SectionArmoryThaneWeaponsItems",
+      "name": "Armory Thane Weapons",
+      "description": "Display: DBM_SectionArmoryThaneWeaponsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -393,14 +393,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07161CE1"
+            "formID": "08161CE1"
           }
         }
       }
     },
     {
-      "name": "LoTD HOS Displays",
-      "description": "LoTD Display: DBM_SectionHOSDisplaysItems",
+      "name": "HOS Displays",
+      "description": "Display: DBM_SectionHOSDisplaysItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -411,14 +411,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0715CBC4"
+            "formID": "0815CBC4"
           }
         }
       }
     },
     {
-      "name": "LoTD Natural Science Animals",
-      "description": "LoTD Display: DBM_SectionNaturalScienceAnimalsItems",
+      "name": "Natural Science Animals",
+      "description": "Display: DBM_SectionNaturalScienceAnimalsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -429,14 +429,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0715CBC2"
+            "formID": "0815CBC2"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall Achievements",
-      "description": "LoTD Display: DBM_SectionDBHallAchievementsItems",
+      "name": "DB Hall Achievements",
+      "description": "Display: DBM_SectionDBHallAchievementsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -447,14 +447,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07152948"
+            "formID": "08152948"
           }
         }
       }
     },
     {
-      "name": "LoTD HOO Main Floor",
-      "description": "LoTD Display: DBM_SectionHOOMainFloorItems",
+      "name": "HOO Main Floor",
+      "description": "Display: DBM_SectionHOOMainFloorItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -465,14 +465,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07152944"
+            "formID": "08152944"
           }
         }
       }
     },
     {
-      "name": "LoTD HOLE Main Floor",
-      "description": "LoTD Display: DBM_SectionHOLEMainFloorItems",
+      "name": "HOLE Main Floor",
+      "description": "Display: DBM_SectionHOLEMainFloorItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -483,14 +483,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0714D7DB"
+            "formID": "0814D7DB"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Ground Floor Right",
-      "description": "LoTD Display: DBM_SectionHOHGroundFloorRightItems",
+      "name": "HOH Ground Floor Right",
+      "description": "Display: DBM_SectionHOHGroundFloorRightItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -501,14 +501,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0714CEF2"
+            "formID": "0814CEF2"
           }
         }
       }
     },
     {
-      "name": "LoTD Daedric Gallery",
-      "description": "LoTD Display: DBM_SectionDaedricGalleryItems",
+      "name": "Daedric Gallery",
+      "description": "Display: DBM_SectionDaedricGalleryItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -519,14 +519,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "071484A0"
+            "formID": "081484A0"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Reception Hall",
-      "description": "LoTD Display: DBM_SectionHOHReceptionHallItems",
+      "name": "HOH Reception Hall",
+      "description": "Display: DBM_SectionHOHReceptionHallItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -537,14 +537,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0713D917"
+            "formID": "0813D917"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Jewelry",
-      "description": "LoTD Display: DBM_SectionHOHJewelryItems",
+      "name": "HOH Jewelry",
+      "description": "Display: DBM_SectionHOHJewelryItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -555,14 +555,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0713D915"
+            "formID": "0813D915"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Upper Gallery",
-      "description": "LoTD Display: DBM_SectionHOHUpperGalleryItems",
+      "name": "HOH Upper Gallery",
+      "description": "Display: DBM_SectionHOHUpperGalleryItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -573,14 +573,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0713D911"
+            "formID": "0813D911"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Ground Floor Left",
-      "description": "LoTD Display: DBM_SectionHOHGroundFloorLeftItems",
+      "name": "HOH Ground Floor Left",
+      "description": "Display: DBM_SectionHOHGroundFloorLeftItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -591,14 +591,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "071387AD"
+            "formID": "081387AD"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Masks And Claws",
-      "description": "LoTD Display: DBM_SectionHOHMasksAndClawsItems",
+      "name": "HOH Masks And Claws",
+      "description": "Display: DBM_SectionHOHMasksAndClawsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -609,14 +609,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "071387AB"
+            "formID": "081387AB"
           }
         }
       }
     },
     {
-      "name": "LoTD HOLE Upper Ring",
-      "description": "LoTD Display: DBM_SectionHOLEUpperRingItems",
+      "name": "HOLE Upper Ring",
+      "description": "Display: DBM_SectionHOLEUpperRingItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -627,14 +627,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "071387A5"
+            "formID": "081387A5"
           }
         }
       }
     },
     {
-      "name": "LoTD Library Maps",
-      "description": "LoTD Display: DBM_SectionLibraryMapsItems",
+      "name": "Library Maps",
+      "description": "Display: DBM_SectionLibraryMapsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -645,14 +645,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "071387A4"
+            "formID": "081387A4"
           }
         }
       }
     },
     {
-      "name": "LoTD Library Lower Floor Left",
-      "description": "LoTD Display: DBM_SectionLibraryLowerFloorLeftItems",
+      "name": "Library Lower Floor Left",
+      "description": "Display: DBM_SectionLibraryLowerFloorLeftItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -663,14 +663,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "071387A1"
+            "formID": "081387A1"
           }
         }
       }
     },
     {
-      "name": "LoTD Library Rare Books",
-      "description": "LoTD Display: DBM_SectionLibraryRareBooksItems",
+      "name": "Library Rare Books",
+      "description": "Display: DBM_SectionLibraryRareBooksItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -681,14 +681,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0713879F"
+            "formID": "0813879F"
           }
         }
       }
     },
     {
-      "name": "LoTD Library Upper Floor",
-      "description": "LoTD Display: DBM_SectionLibraryUpperFloorItems",
+      "name": "Library Upper Floor",
+      "description": "Display: DBM_SectionLibraryUpperFloorItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -699,14 +699,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0713879D"
+            "formID": "0813879D"
           }
         }
       }
     },
     {
-      "name": "LoTD Library Lower Floor Right",
-      "description": "LoTD Display: DBM_SectionLibraryLowerFloorRightItems",
+      "name": "Library Lower Floor Right",
+      "description": "Display: DBM_SectionLibraryLowerFloorRightItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -717,14 +717,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0713879B"
+            "formID": "0813879B"
           }
         }
       }
     },
     {
-      "name": "LoTD Store Room Reserve Vintages",
-      "description": "LoTD Display: DBM_SectionStoreRoomReserveVintagesItems",
+      "name": "Store Room Reserve Vintages",
+      "description": "Display: DBM_SectionStoreRoomReserveVintagesItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -735,14 +735,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "070AE79D"
+            "formID": "080AE79D"
           }
         }
       }
     },
     {
-      "name": "LoTD Tool Storage",
-      "description": "LoTD Display: DBM_SectionToolStorageItems",
+      "name": "Tool Storage",
+      "description": "Display: DBM_SectionToolStorageItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -753,14 +753,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "07099DA4"
+            "formID": "08099DA4"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Guard Armor Display",
-      "description": "LoTD Display: DBM_SectionArmoryGuardArmorDisplayItems",
+      "name": "Armory Guard Armor Display",
+      "description": "Display: DBM_SectionArmoryGuardArmorDisplayItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -771,14 +771,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0708F99E"
+            "formID": "0808F99E"
           }
         }
       }
     },
     {
-      "name": "LoTD Guildhouse",
-      "description": "LoTD Display: DBM_SectionGuildhouseItems",
+      "name": "Guildhouse",
+      "description": "Display: DBM_SectionGuildhouseItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -789,14 +789,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LegacyoftheDragonborn.esm",
-            "formID": "0706642A"
+            "formID": "0806642A"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall BS Heartland",
-      "description": "LoTD Display: DBM_SectionDBHallBSHeartlandItems",
+      "name": "HOH Relic Hunter Addon",
+      "description": "Display: DBM_SectionHOHRelicHunterAddonItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -806,15 +806,33 @@
         "operator": "AND",
         "condition": {
           "formList": {
+            "listPlugin": "DBM_RelicHunter.esp",
+            "formID": "A6000801"
+          }
+        }
+      }
+    },
+    {
+      "name": "DB Hall BS Heartland",
+      "description": "Display: DBM_SectionDBHallBSHeartlandItems",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0026A4"
+            "formID": "C10026A4"
           }
         }
       }
     },
     {
-      "name": "LoTD DBMDG Dragonborn Hall Midwood Isle",
-      "description": "LoTD Display: DBM_SectionDBMDGDragonbornHallMidwoodIsleItems",
+      "name": "DBMDG Dragonborn Hall Midwood Isle",
+      "description": "Display: DBM_SectionDBMDGDragonbornHallMidwoodIsleItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -825,14 +843,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00269C"
+            "formID": "C100269C"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Jewelry TOK",
-      "description": "LoTD Display: DBM_SectionHOHJewelryTOKItems",
+      "name": "HOH Jewelry TOK",
+      "description": "Display: DBM_SectionHOHJewelryTOKItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -843,14 +861,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002618"
+            "formID": "C1002618"
           }
         }
       }
     },
     {
-      "name": "LoTD HOHTOK",
-      "description": "LoTD Display: DBM_SectionHOHTOKItems",
+      "name": "HOHTOK",
+      "description": "Display: DBM_SectionHOHTOKItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -861,14 +879,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00260C"
+            "formID": "C100260C"
           }
         }
       }
     },
     {
-      "name": "LoTD HOLETOK",
-      "description": "LoTD Display: DBM_SectionHOLETOKItems",
+      "name": "HOLETOK",
+      "description": "Display: DBM_SectionHOLETOKItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -879,14 +897,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0025F3"
+            "formID": "C10025F3"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall Helgen",
-      "description": "LoTD Display: DBM_SectionDBHallHelgenItems",
+      "name": "DB Hall Helgen",
+      "description": "Display: DBM_SectionDBHallHelgenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -897,14 +915,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00257F"
+            "formID": "C100257F"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall Moonpath",
-      "description": "LoTD Display: DBM_SectionDBHallMoonpathItems",
+      "name": "DB Hall Moonpath",
+      "description": "Display: DBM_SectionDBHallMoonpathItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -915,14 +933,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002533"
+            "formID": "C1002533"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Jaysus Swords",
-      "description": "LoTD Display: DBM_SectionArmoryJaysusSwordsItems",
+      "name": "Armory Jaysus Swords",
+      "description": "Display: DBM_SectionArmoryJaysusSwordsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -933,14 +951,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002475"
+            "formID": "C1002475"
           }
         }
       }
     },
     {
-      "name": "LoTD NS Fossils",
-      "description": "LoTD Display: DBM_SectionNSFossilsItems",
+      "name": "NS Fossils",
+      "description": "Display: DBM_SectionNSFossilsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -951,14 +969,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00225E"
+            "formID": "C100225E"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory DGA",
-      "description": "LoTD Display: DBM_SectionArmoryDGAItems",
+      "name": "Armory DGA",
+      "description": "Display: DBM_SectionArmoryDGAItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -969,14 +987,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002259"
+            "formID": "C1002259"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Silver",
-      "description": "LoTD Display: DBM_SectionArmoryHASilverItems",
+      "name": "Armory HA Silver",
+      "description": "Display: DBM_SectionArmoryHASilverItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -987,14 +1005,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002247"
+            "formID": "C1002247"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Imperial",
-      "description": "LoTD Display: DBM_SectionArmoryHAImperialItems",
+      "name": "Armory HA Imperial",
+      "description": "Display: DBM_SectionArmoryHAImperialItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1005,14 +1023,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002245"
+            "formID": "C1002245"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Nord Hero",
-      "description": "LoTD Display: DBM_SectionArmoryHANordHeroItems",
+      "name": "Armory HA Nord Hero",
+      "description": "Display: DBM_SectionArmoryHANordHeroItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1023,14 +1041,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002232"
+            "formID": "C1002232"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Heavy Armory",
-      "description": "LoTD Display: DBM_SectionArmoryHeavyArmoryItems",
+      "name": "Armory Heavy Armory",
+      "description": "Display: DBM_SectionArmoryHeavyArmoryItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1041,14 +1059,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00222F"
+            "formID": "C100222F"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Dawnguard",
-      "description": "LoTD Display: DBM_SectionArmoryHADawnguardItems",
+      "name": "Armory HA Dawnguard",
+      "description": "Display: DBM_SectionArmoryHADawnguardItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1059,14 +1077,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00222A"
+            "formID": "C100222A"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Ebony",
-      "description": "LoTD Display: DBM_SectionArmoryHAEbonyItems",
+      "name": "Armory HA Ebony",
+      "description": "Display: DBM_SectionArmoryHAEbonyItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1077,14 +1095,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002228"
+            "formID": "C1002228"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Blades",
-      "description": "LoTD Display: DBM_SectionArmoryHABladesItems",
+      "name": "Armory HA Blades",
+      "description": "Display: DBM_SectionArmoryHABladesItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1095,14 +1113,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002226"
+            "formID": "C1002226"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Orcish",
-      "description": "LoTD Display: DBM_SectionArmoryHAOrcishItems",
+      "name": "Armory HA Orcish",
+      "description": "Display: DBM_SectionArmoryHAOrcishItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1113,14 +1131,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002224"
+            "formID": "C1002224"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Glass",
-      "description": "LoTD Display: DBM_SectionArmoryHAGlassItems",
+      "name": "Armory HA Glass",
+      "description": "Display: DBM_SectionArmoryHAGlassItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1131,14 +1149,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002222"
+            "formID": "C1002222"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Elven",
-      "description": "LoTD Display: DBM_SectionArmoryHAElvenItems",
+      "name": "Armory HA Elven",
+      "description": "Display: DBM_SectionArmoryHAElvenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1149,14 +1167,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002220"
+            "formID": "C1002220"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Nordic",
-      "description": "LoTD Display: DBM_SectionArmoryHANordicItems",
+      "name": "Armory HA Nordic",
+      "description": "Display: DBM_SectionArmoryHANordicItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1167,14 +1185,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00221E"
+            "formID": "C100221E"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Falmer",
-      "description": "LoTD Display: DBM_SectionArmoryHAFalmerItems",
+      "name": "Armory HA Falmer",
+      "description": "Display: DBM_SectionArmoryHAFalmerItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1185,14 +1203,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00221C"
+            "formID": "C100221C"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Iron",
-      "description": "LoTD Display: DBM_SectionArmoryHAIronItems",
+      "name": "Armory HA Iron",
+      "description": "Display: DBM_SectionArmoryHAIronItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1203,14 +1221,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00221A"
+            "formID": "C100221A"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Steel",
-      "description": "LoTD Display: DBM_SectionArmoryHASteelItems",
+      "name": "Armory HA Steel",
+      "description": "Display: DBM_SectionArmoryHASteelItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1221,14 +1239,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002218"
+            "formID": "C1002218"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Dwarven",
-      "description": "LoTD Display: DBM_SectionArmoryHADwarvenItems",
+      "name": "Armory HA Dwarven",
+      "description": "Display: DBM_SectionArmoryHADwarvenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1239,14 +1257,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002216"
+            "formID": "C1002216"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Ancient Nordic",
-      "description": "LoTD Display: DBM_SectionArmoryHAAncientNordicItems",
+      "name": "Armory HA Ancient Nordic",
+      "description": "Display: DBM_SectionArmoryHAAncientNordicItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1257,14 +1275,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002214"
+            "formID": "C1002214"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Forsworn",
-      "description": "LoTD Display: DBM_SectionArmoryHAForswornItems",
+      "name": "Armory HA Forsworn",
+      "description": "Display: DBM_SectionArmoryHAForswornItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1275,14 +1293,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002212"
+            "formID": "C1002212"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Stalhrim",
-      "description": "LoTD Display: DBM_SectionArmoryHAStalhrimItems",
+      "name": "Armory HA Stalhrim",
+      "description": "Display: DBM_SectionArmoryHAStalhrimItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1293,14 +1311,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002210"
+            "formID": "C1002210"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Daedric",
-      "description": "LoTD Display: DBM_SectionArmoryHADaedricItems",
+      "name": "Armory HA Daedric",
+      "description": "Display: DBM_SectionArmoryHADaedricItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1311,14 +1329,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00220E"
+            "formID": "C100220E"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory HA Dragon",
-      "description": "LoTD Display: DBM_SectionArmoryHADragonItems",
+      "name": "Armory HA Dragon",
+      "description": "Display: DBM_SectionArmoryHADragonItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1329,14 +1347,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00220C"
+            "formID": "C100220C"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Armors Blades",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveArmorsBladesItems",
+      "name": "Armory Immersive Armors Blades",
+      "description": "Display: DBM_SectionArmoryImmersiveArmorsBladesItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1347,14 +1365,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002170"
+            "formID": "C1002170"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Armors CW",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveArmorsCWItems",
+      "name": "Armory Immersive Armors CW",
+      "description": "Display: DBM_SectionArmoryImmersiveArmorsCWItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1365,14 +1383,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00216E"
+            "formID": "C100216E"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Armors Dragon",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveArmorsDragonItems",
+      "name": "Armory Immersive Armors Dragon",
+      "description": "Display: DBM_SectionArmoryImmersiveArmorsDragonItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1383,14 +1401,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00216C"
+            "formID": "C100216C"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Immersive Armors Unique",
-      "description": "LoTD Display: DBM_SectionHOHImmersiveArmorsUniqueItems",
+      "name": "HOH Immersive Armors Unique",
+      "description": "Display: DBM_SectionHOHImmersiveArmorsUniqueItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1401,14 +1419,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0020FB"
+            "formID": "C10020FB"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall Forgotten City",
-      "description": "LoTD Display: DBM_SectionDBHallForgottenCityItems",
+      "name": "DB Hall Forgotten City",
+      "description": "Display: DBM_SectionDBHallForgottenCityItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1419,14 +1437,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E002073"
+            "formID": "C1002073"
           }
         }
       }
     },
     {
-      "name": "LoTD HOLE Lull",
-      "description": "LoTD Display: DBM_SectionHOLELullItems",
+      "name": "HOLE Lull",
+      "description": "Display: DBM_SectionHOLELullItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1437,14 +1455,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001FE9"
+            "formID": "C1001FE9"
           }
         }
       }
     },
     {
-      "name": "LoTD Daedric Gallery AOB Alt",
-      "description": "LoTD Display: DBM_SectionDaedricGalleryAOBAltItems",
+      "name": "Daedric Gallery AOB Alt",
+      "description": "Display: DBM_SectionDaedricGalleryAOBAltItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1455,14 +1473,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001F65"
+            "formID": "C1001F65"
           }
         }
       }
     },
     {
-      "name": "LoTD HOHAOB",
-      "description": "LoTD Display: DBM_SectionHOHAOBItems",
+      "name": "HOHAOB",
+      "description": "Display: DBM_SectionHOHAOBItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1473,14 +1491,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001F61"
+            "formID": "C1001F61"
           }
         }
       }
     },
     {
-      "name": "LoTD Daedric Gallery AOB",
-      "description": "LoTD Display: DBM_SectionDaedricGalleryAOBItems",
+      "name": "Daedric Gallery AOB",
+      "description": "Display: DBM_SectionDaedricGalleryAOBItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1491,14 +1509,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001F50"
+            "formID": "C1001F50"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall Clockwork",
-      "description": "LoTD Display: DBM_SectionDBHallClockworkItems",
+      "name": "DB Hall Clockwork",
+      "description": "Display: DBM_SectionDBHallClockworkItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1509,14 +1527,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001F11"
+            "formID": "C1001F11"
           }
         }
       }
     },
     {
-      "name": "LoTD HOOSUT",
-      "description": "LoTD Display: DBM_SectionHOOSUTItems",
+      "name": "HOOSUT",
+      "description": "Display: DBM_SectionHOOSUTItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1527,14 +1545,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001D5B"
+            "formID": "C1001D5B"
           }
         }
       }
     },
     {
-      "name": "LoTD Library Maps NTH",
-      "description": "LoTD Display: DBM_SectionLibraryMapsNTHItems",
+      "name": "Library Maps NTH",
+      "description": "Display: DBM_SectionLibraryMapsNTHItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1545,14 +1563,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001B91"
+            "formID": "C1001B91"
           }
         }
       }
     },
     {
-      "name": "LoTD HOO Wyrmstooth",
-      "description": "LoTD Display: DBM_SectionHOOWyrmstoothItems",
+      "name": "HOO Wyrmstooth",
+      "description": "Display: DBM_SectionHOOWyrmstoothItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1563,14 +1581,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001AF9"
+            "formID": "C1001AF9"
           }
         }
       }
     },
     {
-      "name": "LoTD Library TGCON",
-      "description": "LoTD Display: DBM_SectionLibraryTGCONItems",
+      "name": "Library TGCON",
+      "description": "Display: DBM_SectionLibraryTGCONItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1581,14 +1599,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001A9A"
+            "formID": "C1001A9A"
           }
         }
       }
     },
     {
-      "name": "LoTD Daedric Gallery Gray Cowl",
-      "description": "LoTD Display: DBM_SectionDaedricGalleryGrayCowlItems",
+      "name": "Daedric Gallery Gray Cowl",
+      "description": "Display: DBM_SectionDaedricGalleryGrayCowlItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1599,14 +1617,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001A83"
+            "formID": "C1001A83"
           }
         }
       }
     },
     {
-      "name": "LoTD DBH Gray Cowl",
-      "description": "LoTD Display: DBM_SectionDBHGrayCowlItems",
+      "name": "DBH Gray Cowl",
+      "description": "Display: DBM_SectionDBHGrayCowlItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1617,14 +1635,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001A67"
+            "formID": "C1001A67"
           }
         }
       }
     },
     {
-      "name": "LoTD Safehouse Cloaks",
-      "description": "LoTD Display: DBM_SectionSafehouseCloaksItems",
+      "name": "Safehouse Cloaks",
+      "description": "Display: DBM_SectionSafehouseCloaksItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1635,14 +1653,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001740"
+            "formID": "C1001740"
           }
         }
       }
     },
     {
-      "name": "LoTD DBHKA",
-      "description": "LoTD Display: DBM_SectionDBHKAItems",
+      "name": "DBHKA",
+      "description": "Display: DBM_SectionDBHKAItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1653,14 +1671,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E001586"
+            "formID": "C1001586"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall Falskaar",
-      "description": "LoTD Display: DBM_SectionDBHallFalskaarItems",
+      "name": "DB Hall Falskaar",
+      "description": "Display: DBM_SectionDBHallFalskaarItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1671,14 +1689,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0014AA"
+            "formID": "C10014AA"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall MAS",
-      "description": "LoTD Display: DBM_SectionDBHallMASItems",
+      "name": "DB Hall MAS",
+      "description": "Display: DBM_SectionDBHallMASItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1689,14 +1707,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00148C"
+            "formID": "C100148C"
           }
         }
       }
     },
     {
-      "name": "LoTD Ho H Wintersun",
-      "description": "LoTD Display: DBM_SectionHoHWintersunItems",
+      "name": "Ho H Wintersun",
+      "description": "Display: DBM_SectionHoHWintersunItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1707,14 +1725,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0013E6"
+            "formID": "C10013E6"
           }
         }
       }
     },
     {
-      "name": "LoTD DB Hall AHO",
-      "description": "LoTD Display: DBM_SectionDBHallAHOItems",
+      "name": "DB Hall AHO",
+      "description": "Display: DBM_SectionDBHallAHOItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1725,14 +1743,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00118A"
+            "formID": "C100118A"
           }
         }
       }
     },
     {
-      "name": "LoTD HOS Royal Armory",
-      "description": "LoTD Display: DBM_SectionHOSRoyalArmoryItems",
+      "name": "HOS Royal Armory",
+      "description": "Display: DBM_SectionHOSRoyalArmoryItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1743,14 +1761,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0010FE"
+            "formID": "C10010FE"
           }
         }
       }
     },
     {
-      "name": "LoTD HOO Vigilant",
-      "description": "LoTD Display: DBM_SectionHOOVigilantItems",
+      "name": "HOO Vigilant",
+      "description": "Display: DBM_SectionHOOVigilantItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1761,14 +1779,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00103A"
+            "formID": "C100103A"
           }
         }
       }
     },
     {
-      "name": "LoTD NSBG Fish",
-      "description": "LoTD Display: DBM_SectionNSBGFishItems",
+      "name": "NSBG Fish",
+      "description": "Display: DBM_SectionNSBGFishItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1779,14 +1797,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000E47"
+            "formID": "C1000E47"
           }
         }
       }
     },
     {
-      "name": "LoTD NSBG Fariy",
-      "description": "LoTD Display: DBM_SectionNSBGFariyItems",
+      "name": "NSBG Fariy",
+      "description": "Display: DBM_SectionNSBGFariyItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1797,14 +1815,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000E45"
+            "formID": "C1000E45"
           }
         }
       }
     },
     {
-      "name": "LoTD HOOBG Jars",
-      "description": "LoTD Display: DBM_SectionHOOBGJarsItems",
+      "name": "HOOBG Jars",
+      "description": "Display: DBM_SectionHOOBGJarsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1815,14 +1833,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0009C1"
+            "formID": "C10009C1"
           }
         }
       }
     },
     {
-      "name": "LoTD HOSBG Heads",
-      "description": "LoTD Display: DBM_SectionHOSBGHeadsItems",
+      "name": "HOSBG Heads",
+      "description": "Display: DBM_SectionHOSBGHeadsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1833,14 +1851,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0009BF"
+            "formID": "C10009BF"
           }
         }
       }
     },
     {
-      "name": "LoTD HOLE Aetherium",
-      "description": "LoTD Display: DBM_SectionHOLEAetheriumItems",
+      "name": "HOLE Aetherium",
+      "description": "Display: DBM_SectionHOLEAetheriumItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1851,14 +1869,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000DE9"
+            "formID": "C1000DE9"
           }
         }
       }
     },
     {
-      "name": "LoTD HOHOAP",
-      "description": "LoTD Display: DBM_SectionHOHOAPItems",
+      "name": "HOHOAP",
+      "description": "Display: DBM_SectionHOHOAPItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1869,14 +1887,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000D3B"
+            "formID": "C1000D3B"
           }
         }
       }
     },
     {
-      "name": "LoTD HOHOAP Jewelry",
-      "description": "LoTD Display: DBM_SectionHOHOAPJewelryItems",
+      "name": "HOHOAP Jewelry",
+      "description": "Display: DBM_SectionHOHOAPJewelryItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1887,14 +1905,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000D3A"
+            "formID": "C1000D3A"
           }
         }
       }
     },
     {
-      "name": "LoTD Daedric Gallery Immersive Weapons",
-      "description": "LoTD Display: DBM_SectionDaedricGalleryImmersiveWeaponsItems",
+      "name": "Daedric Gallery Immersive Weapons",
+      "description": "Display: DBM_SectionDaedricGalleryImmersiveWeaponsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1905,14 +1923,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008B4"
+            "formID": "C10008B4"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Wolf",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsWolfItems",
+      "name": "Armory Immersive Weapons Wolf",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsWolfItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1923,14 +1941,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008B3"
+            "formID": "C10008B3"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Dawnguard",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsDawnguardItems",
+      "name": "Armory Immersive Weapons Dawnguard",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDawnguardItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1941,14 +1959,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008B1"
+            "formID": "C10008B1"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Falmer",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsFalmerItems",
+      "name": "Armory Immersive Weapons Falmer",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsFalmerItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1959,14 +1977,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008AF"
+            "formID": "C10008AF"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Elven",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsElvenItems",
+      "name": "Armory Immersive Weapons Elven",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsElvenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1977,14 +1995,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008AD"
+            "formID": "C10008AD"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Glass",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsGlassItems",
+      "name": "Armory Immersive Weapons Glass",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsGlassItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -1995,14 +2013,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008AB"
+            "formID": "C10008AB"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Orcish",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsOrcishItems",
+      "name": "Armory Immersive Weapons Orcish",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsOrcishItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2013,14 +2031,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008A9"
+            "formID": "C10008A9"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Blades",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsBladesItems",
+      "name": "Armory Immersive Weapons Blades",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsBladesItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2031,14 +2049,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008A7"
+            "formID": "C10008A7"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Ebony",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsEbonyItems",
+      "name": "Armory Immersive Weapons Ebony",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsEbonyItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2049,14 +2067,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008A5"
+            "formID": "C10008A5"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Dragon",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsDragonItems",
+      "name": "Armory Immersive Weapons Dragon",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDragonItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2067,14 +2085,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008A3"
+            "formID": "C10008A3"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Daedric",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsDaedricItems",
+      "name": "Armory Immersive Weapons Daedric",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDaedricItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2085,14 +2103,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E0008A1"
+            "formID": "C10008A1"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Ancient Nordic",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsAncientNordicItems",
+      "name": "Armory Immersive Weapons Ancient Nordic",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsAncientNordicItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2103,14 +2121,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00089F"
+            "formID": "C100089F"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Dwarven",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsDwarvenItems",
+      "name": "Armory Immersive Weapons Dwarven",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDwarvenItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2121,14 +2139,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00089D"
+            "formID": "C100089D"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Steel",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsSteelItems",
+      "name": "Armory Immersive Weapons Steel",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsSteelItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2139,14 +2157,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E00089B"
+            "formID": "C100089B"
           }
         }
       }
     },
     {
-      "name": "LoTD Armory Immersive Weapons Iron",
-      "description": "LoTD Display: DBM_SectionArmoryImmersiveWeaponsIronItems",
+      "name": "Armory Immersive Weapons Iron",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsIronItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2157,14 +2175,14 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000899"
+            "formID": "C1000899"
           }
         }
       }
     },
     {
-      "name": "LoTD HOH Immersive Weapons",
-      "description": "LoTD Display: DBM_SectionHOHImmersiveWeaponsItems",
+      "name": "HOH Immersive Weapons",
+      "description": "Display: DBM_SectionHOHImmersiveWeaponsItems",
       "policy": {
         "action": "take",
         "notify": true,
@@ -2175,7 +2193,7 @@
         "condition": {
           "formList": {
             "listPlugin": "LoTD Patches Merged.esp",
-            "formID": "3E000801"
+            "formID": "C1000801"
           }
         }
       }

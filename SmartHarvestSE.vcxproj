@@ -281,9 +281,9 @@
     <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\CollectionDefinition.LoTD.json" />
-    <None Include="Config\CollectionDefinition.Samples.json" />
-    <None Include="Config\Schema.json" />
+    <None Include="Config\SHSE.Collections.LoTD.json" />
+    <None Include="Config\SHSE.Collections.Samples.json" />
+    <None Include="Config\SHSE.SchemaCollections.json" />
     <None Include="Config\SmartHarvestSE.ini" />
     <None Include="Config\default\BlackList.tsv" />
     <None Include="Config\default\WhiteList.tsv" />

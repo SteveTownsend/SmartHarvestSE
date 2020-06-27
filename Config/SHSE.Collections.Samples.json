@@ -1,6 +1,6 @@
 {
   "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
-  "$schema": "./Schema.json",
+  "$schema": "./SHSE.SchemaCollections.json",
   "collections": [
     {
       "name": "AHSE Animal Parts",
@@ -13,7 +13,7 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "keyword": [ "VendorItemAnimalParts" ]
+          "keyword": [ "VendorItemAnimalPart" ]
         }
       }
     },

@@ -468,15 +468,13 @@ void SearchTask::Run()
 
 		if (lister.HasCollectibleItem())
 		{
-			SpecialObjectHandling collectibleAction =
-				SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CollectibleAction"));
-			if (collectibleAction == SpecialObjectHandling::GlowTarget)
+			if (lister.CollectibleAction() != SpecialObjectHandling::DoNotLoot)
 			{
 				DBG_VMESSAGE("glow container with collectible object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::Collectible);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(collectibleAction);
+			skipLooting = skipLooting || !IsSpecialObjectLootable(lister.CollectibleAction());
 		}
 		// Order is important to ensure we glow correctly even if blocked
 		// Check here is on the container, skip all contents if not looting permitted
