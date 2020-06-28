@@ -178,11 +178,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="PrecompiledHeaders.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Create</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="src\Collections\Collection.cpp" />
     <ClCompile Include="src\Collections\CollectionFactory.cpp" />
     <ClCompile Include="src\Collections\CollectionManager.cpp" />
@@ -207,11 +202,21 @@
     <ClCompile Include="src\Looting\objects.cpp" />
     <ClCompile Include="src\Looting\ProducerLootables.cpp" />
     <ClCompile Include="src\Looting\tasks.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\PrecompiledHeaders.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\Utilities\debugs.cpp" />
     <ClCompile Include="src\Utilities\Exception.cpp" />
     <ClCompile Include="src\Utilities\LogStackWalker.cpp" />
     <ClCompile Include="src\Utilities\RecursiveLock.cpp" />
-    <ClCompile Include="src\Utilities\StackWalker.cpp" />
+    <ClCompile Include="src\Utilities\StackWalker.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\Utilities\utils.cpp" />
     <ClCompile Include="src\Utilities\version.cpp" />
     <ClCompile Include="src\VM\EventPublisher.cpp" />
@@ -222,7 +227,6 @@
     <ClCompile Include="src\WorldState\PlayerHouses.cpp" />
     <ClCompile Include="src\WorldState\PlayerState.cpp" />
     <ClCompile Include="src\WorldState\PopulationCenters.cpp" />
-    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Collection.h" />
@@ -231,7 +235,6 @@
     <ClInclude Include="include\Condition.h" />
     <ClInclude Include="include\ManagedLists.h" />
     <ClInclude Include="include\ObjectType.h" />
-    <ClInclude Include="PrecompiledHeaders.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
@@ -241,6 +244,7 @@
     <ClInclude Include="src\FormHelpers\ArmorHelper.h" />
     <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h" />
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h" />
+    <ClInclude Include="src\FormHelpers\FormHelper.h" />
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h" />
     <ClInclude Include="src\FormHelpers\PlayerCellHelper.h" />
     <ClInclude Include="src\FormHelpers\sound.h" />
@@ -251,6 +255,7 @@
     <ClInclude Include="src\Looting\objects.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
     <ClInclude Include="src\Looting\tasks.h" />
+    <ClInclude Include="src\PrecompiledHeaders.h" />
     <ClInclude Include="src\Utilities\BoundedList.h" />
     <ClInclude Include="src\Utilities\debugs.h" />
     <ClInclude Include="src\Utilities\Enums.h" />

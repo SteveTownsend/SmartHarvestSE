@@ -1,7 +1,8 @@
 #include "PrecompiledHeaders.h"
 
-#include "ExtraDataListHelper.h"
-#include "containerLister.h"
+#include "FormHelpers/FormHelper.h"
+#include "FormHelpers/ExtraDataListHelper.h"
+#include "Looting/containerLister.h"
 
 ContainerLister::ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),

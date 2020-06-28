@@ -1,5 +1,7 @@
 #include "PrecompiledHeaders.h"
-#include "version.h"
+
+#include "Utilities/version.h"
+#include "Utilities/utils.h"
 
 VersionInfo* VersionInfo::m_instance(nullptr);
 

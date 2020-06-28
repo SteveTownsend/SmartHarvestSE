@@ -1,4 +1,5 @@
 #include "PrecompiledHeaders.h"
+#include "Data/dataCase.h"
 #include "ProducerLootables.h"
 
 std::unique_ptr<ProducerLootables> ProducerLootables::m_instance;

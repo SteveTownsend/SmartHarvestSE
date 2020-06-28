@@ -1,10 +1,12 @@
 #include "PrecompiledHeaders.h"
 
-#include "AlchemyItemHelper.h"
-#include "FormHelper.h"
-#include "ArmorHelper.h"
-#include "WeaponHelper.h"
+#include "Data/DataCase.h"
+#include "FormHelpers/AlchemyItemHelper.h"
+#include "FormHelpers/FormHelper.h"
+#include "FormHelpers/ArmorHelper.h"
+#include "FormHelpers/WeaponHelper.h"
 #include "Collections/CollectionManager.h"
+#include "Looting/objects.h"
 
 TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 {

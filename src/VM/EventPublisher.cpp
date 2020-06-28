@@ -1,6 +1,9 @@
 #include "PrecompiledHeaders.h"
+
 #include "VM/EventPublisher.h"
 #include "Collections/CollectionManager.h"
+#include "Utilities/utils.h"
+#include "Utilities/version.h"
 
 std::unique_ptr<EventPublisher> EventPublisher::m_instance;
 

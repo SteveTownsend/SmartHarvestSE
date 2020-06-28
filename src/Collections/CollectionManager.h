@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Collections/Collection.h"
+
 namespace shse {
 
 class CollectionManager {

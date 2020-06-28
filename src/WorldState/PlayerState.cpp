@@ -1,6 +1,9 @@
 #include "PrecompiledHeaders.h"
-#include "PlayerState.h"
-#include "LocationTracker.h"
+
+#include "WorldState/PlayerState.h"
+#include "Data/DataCase.h"
+#include "Data/LoadOrder.h"
+#include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
 #include "Looting/tasks.h"
 

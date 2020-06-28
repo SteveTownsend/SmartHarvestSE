@@ -1,13 +1,18 @@
 #include "PrecompiledHeaders.h"
-#include "PlayerHouses.h"
-#include "PlayerState.h"
-
-#include "Looting/tasks.h"
 
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+#include "Data/dataCase.h"
+#include "Data/LoadOrder.h"
+#include "Utilities/utils.h"
+#include "Utilities/version.h"
+#include "WorldState/PlayerHouses.h"
+#include "WorldState/PlayerState.h"
+#include "Looting/tasks.h"
+#include "Looting/objects.h"
 
 namespace
 {

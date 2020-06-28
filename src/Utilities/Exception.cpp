@@ -1,5 +1,7 @@
 #include "PrecompiledHeaders.h"
 
+#include "Utilities/Exception.h"
+
 PluginError::PluginError(const char* pluginName) : std::runtime_error(std::string(PluginError::ErrorName) + pluginName)
 {
 }

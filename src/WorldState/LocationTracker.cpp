@@ -1,9 +1,11 @@
 #include "PrecompiledHeaders.h"
-#include "LocationTracker.h"
-#include "ManagedLists.h"
-#include "PlayerHouses.h"
-#include "PopulationCenters.h"
+#include "WorldState/LocationTracker.h"
+#include "Looting/ManagedLists.h"
+#include "WorldState/PlayerHouses.h"
+#include "WorldState/PopulationCenters.h"
 #include "Looting/tasks.h"
+#include "VM/papyrus.h"
+#include "Utilities/utils.h"
 
 std::unique_ptr<LocationTracker> LocationTracker::m_instance;
 

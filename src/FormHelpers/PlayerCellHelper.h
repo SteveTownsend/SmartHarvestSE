@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Utilities/BoundedList.h"
-#include "IRangeChecker.h"
+#include "Looting/IRangeChecker.h"
 
 class PlayerCellHelper
 {

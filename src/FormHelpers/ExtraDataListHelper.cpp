@@ -1,6 +1,6 @@
 #include "PrecompiledHeaders.h"
 
-#include "ExtraDataListHelper.h"
+#include "FormHelpers/ExtraDataListHelper.h"
 
 RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void)
 {

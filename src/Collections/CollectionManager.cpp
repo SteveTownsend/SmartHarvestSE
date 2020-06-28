@@ -3,10 +3,13 @@
 #include <filesystem>
 #include <regex>
 
-#include "LogStackWalker.h"
-#include "LocationTracker.h"
+#include "Utilities/LogStackWalker.h"
+#include "Utilities/Exception.h"
+#include "Utilities/utils.h"
+#include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
 #include "Collections/CollectionManager.h"
+#include "Collections/CollectionFactory.h"
 
 namespace shse
 {

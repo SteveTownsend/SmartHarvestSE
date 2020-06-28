@@ -3,8 +3,9 @@
 #include "CommonLibSSE/include/RE/RTTI.h"
 
 #include "Utilities/utils.h"
-#include "FormHelper.h"
-#include "debugs.h"
+#include "FormHelpers/FormHelper.h"
+#include "Utilities/debugs.h"
+#include "Looting/objects.h"
 
 void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 {

@@ -1,17 +1,25 @@
 #include "PrecompiledHeaders.h"
 #include "Utilities/versiondb.h"
 
+#include "Data/dataCase.h"
+#include "Data/LoadOrder.h"
 #include "Looting/tasks.h"
 #include "Utilities/debugs.h"
+#include "Utilities/utils.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/LocationTracker.h"
 #include "Looting/ManagedLists.h"
+#include "Looting/objects.h"
 #include "WorldState/PopulationCenters.h"
+#include "FormHelpers/FormHelper.h"
 #include "FormHelpers/PlayerCellHelper.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "Looting/ProducerLootables.h"
 #include "Utilities/LogStackWalker.h"
+#include "Collections/CollectionManager.h"
+#include "VM/EventPublisher.h"
+#include "VM/papyrus.h"
 
 #include <chrono>
 #include <thread>

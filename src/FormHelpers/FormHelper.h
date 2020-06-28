@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FormHelpers/IHasValueWeight.h"
+
 class TESFormHelper : public IHasValueWeight
 {
 public:
