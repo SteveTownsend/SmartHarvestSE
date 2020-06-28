@@ -4,6 +4,9 @@
 #include "EventPublisher.h"
 #include "tasks.h"
 
+namespace shse
+{
+
 std::unique_ptr<PlayerState> PlayerState::m_instance;
 
 PlayerState& PlayerState::Instance()
@@ -15,7 +18,7 @@ PlayerState& PlayerState::Instance()
 	return *m_instance;
 }
 
-PlayerState::PlayerState() : 
+PlayerState::PlayerState() :
 	m_perksAddLeveledItemsOnDeath(false),
 	m_carryAdjustedForCombat(false),
 	m_carryAdjustedForPlayerHome(false),
@@ -206,9 +209,11 @@ bool PlayerState::IsSneaking() const
 void PlayerState::ExcludeMountedIfForbidden(void)
 {
 	// check for 'Convenient Horses' in Load Order
-	if (LoadOrder::Instance().IncludesMod("Convenient Horses.esp"))
+	if (shse::LoadOrder::Instance().IncludesMod("Convenient Horses.esp"))
 	{
 		REL_MESSAGE("Block looting while mounted: Convenient Horses is active");
 		m_disableWhileMounted = true;
 	}
+}
+
 }

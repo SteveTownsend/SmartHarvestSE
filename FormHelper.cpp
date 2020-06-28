@@ -4,6 +4,7 @@
 #include "FormHelper.h"
 #include "ArmorHelper.h"
 #include "WeaponHelper.h"
+#include "CollectionManager.h"
 
 TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 {
@@ -64,6 +65,12 @@ UInt32 TESFormHelper::GetGoldValue() const
 	return pValue->value;
 }
 
+std::pair<bool, SpecialObjectHandling> TESFormHelper::IsCollectible(void) const
+{
+	// ignore whitelist - we need the underlying object type
+	return shse::CollectionManager::Instance().IsCollectible(m_form);
+}
+
 double TESFormHelper::GetWeight() const
 {
 	if (!m_form)
@@ -76,7 +83,7 @@ double TESFormHelper::GetWeight() const
 	return pWeight->weight;
 }
 
-double TESFormHelper::GetWorth() const
+double TESFormHelper::CalculateWorth() const
 {
 	if (!m_form)
 		return 0.;

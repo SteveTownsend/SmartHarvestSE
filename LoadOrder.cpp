@@ -1,5 +1,8 @@
 #include "PrecompiledHeaders.h"
 
+namespace shse
+{
+
 std::unique_ptr<LoadOrder> LoadOrder::m_instance;
 
 LoadOrder& LoadOrder::Instance()
@@ -43,7 +46,6 @@ bool LoadOrder::Analyze(void)
 	return true;
 }
 
-
 // returns zero if mod not loaded
 RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 {
@@ -59,5 +61,14 @@ RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 bool LoadOrder::IncludesMod(const std::string& modName) const
 {
 	return m_formIDMaskByName.find(modName) != m_formIDMaskByName.cend();
+}
+
+bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID) const
+{
+	RE::FormID modMask(GetFormIDMask(modName));
+	return (modMask & LightFormIDSentinel) == LightFormIDSentinel ?
+		modMask == (formID & LightFormIDMask) : modMask == (formID & RegularFormIDMask);
+}
+
 }
 

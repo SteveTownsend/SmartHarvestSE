@@ -41,7 +41,8 @@ enum class ObjectType : UInt8
 	container,
 	actor,
 	ashPile,
-	manualLoot
+	manualLoot,
+	collectible
 };
 
 enum class ResourceType : UInt8

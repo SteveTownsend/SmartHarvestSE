@@ -43,7 +43,7 @@ bool PlayerHouses::Remove(const RE::BGSLocation* location)
 bool PlayerHouses::Contains(const RE::BGSLocation* location) const
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return location && m_houses.count(location);
+	return location && m_houses.contains(location);
 }
 
 bool PlayerHouses::IsValidHouse(const RE::BGSLocation* location) const

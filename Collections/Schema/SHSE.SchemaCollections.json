@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$comment": "$id tag not required yet",
+  "title": "Smart Harvest SE",
+  "type": "object",
+  "properties": {
+    "collection": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 128,
+      "items": { "$ref": "#/definitions/collectionType" }
+    }
+  },
+  "definitions": {
+    "operatorType": {
+      "type": "string",
+      "$comment": "TODO do we need a NOT operator?",
+      "enum": [ "AND", "OR" ]
+    },
+
+    "formIDType": {
+      "type": "object",
+      "required": [ "listPlugin", "formID" ],
+      "properties": {
+        "listPlugin": {
+          "type": "string"
+        },
+        "formID": {
+          "type": "string",
+          "pattern": "[0-9 a-f A-F]{8}"
+        }
+      }
+    },
+
+    "signatureType": {
+      "type": "string",
+      "enum": [ "ALCH", "ARMO", "BOOK", "INGR", "KEYM", "MISC", "SLGM", "WEAP" ]
+    },
+
+    "actionType": {
+      "type": "string",
+      "enum": [ "leave", "take", "glow" ]
+    },
+
+    "conditionType": {
+      "type": "object",
+      "$comment": "we need 'signature', 'plugin', 'formList' (FLST form ID) in a leaf node as they are highly restrictive, or 'subFilter' which defers the decision",
+      "oneOf": [
+        {
+          "required": [ "plugin" ]
+        },
+        {
+          "required": [ "formList" ]
+        },
+        {
+          "required": [ "signature" ]
+        },
+        {
+          "required": [ "subFilter" ]
+        }
+      ],
+      "properties": {
+        "plugin": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "Filename of mod plugin that defines Collection member Forms or FLST"
+        },
+        "formList": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/formIDType" },
+          "description": "Form IDs of FLST that uniquely identify the FLST in a load order"
+        },
+        "keyword": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string" },
+          "description": "TESV Object must have KWDA that contains KYWD with EditorID from this list"
+        },
+        "signature": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/signatureType" },
+          "description": "TESV Object must have RecordHeader.Signature in this list"
+        },
+        "subFilter": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/definitions/filterType" },
+          "description": "Nested filters must also match"
+        }
+      }
+    },
+
+    "policyType": {
+      "type": "object",
+      "required": [ "action", "notify", "repeat" ],
+      "properties": {
+        "action": { "$ref": "#/definitions/actionType" },
+        "notify": {
+          "type": "boolean",
+          "description": "Whether user gets a printed message on first pickup"
+        },
+        "repeat": {
+          "type": "boolean",
+          "description": "Whether repeated sightings are considered collectible"
+        }
+      }
+    },
+
+    "filterType": {
+      "type": "object",
+      "required": [ "operator", "condition" ],
+      "properties": {
+        "operator": { "$ref": "#/definitions/operatorType" },
+        "condition": { "$ref": "#/definitions/conditionType" }
+      }
+    },
+
+    "collectionType": {
+      "type": "object",
+      "required": [ "name", "description", "policy", "rootFilter" ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the collection for in-game display"
+        },
+        "description": {
+          "type": "string",
+          "description": "Descriptive test for in-game display"
+        },
+        "policy": { "$ref": "#/definitions/policyType" },
+        "rootFilter": { "$ref": "#/definitions/filterType" }
+      }
+    }
+  }
+}

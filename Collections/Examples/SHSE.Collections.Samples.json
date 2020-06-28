@@ -1,0 +1,235 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "collections": [
+    {
+      "name": "AHSE Animal Parts",
+      "description": "Animal Parts Collection per AutoHarvest SE",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "keyword": [ "VendorItemAnimalPart" ]
+        }
+      }
+    },
+
+    {
+      "name": "Bad Gremlins",
+      "description": "Items added by Bad Gremlins Collectables",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "BGCollectables.esp" ],
+          "signature": [ "BOOK", "MISC" ]
+        }
+      }
+    },
+
+    {
+      "name": "Skyrim's Unique Treasures",
+      "description": "Items added by Skyrim's Unique Treasures",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "SkyrimsUniqueTreasures.esp" ],
+          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Palaeontologist",
+      "description": "All the fossils added by Fossil Mining",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Fossilsyum.esp" ],
+          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Daedric Wielder",
+      "description": "Every Daedric Artifact",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "signature": [ "ARMO", "BOOK", "MISC", "SLGM", "WEAP" ],
+          "keyword": [ "VendorItemDaedricArtifact" ]
+        }
+      }
+    },
+
+    {
+      "name": "A Hot Meal",
+      "description": "Every Cooked Food Item",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Complete Alchemy & Cooking Overhaul.esp" ],
+          "keyword": [ "VendorItemFoodCooked" ]
+        }
+      }
+    },
+
+    {
+      "name": "Cloaking Device",
+      "description": "Every Cloak",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Cloaks.esp", "Cloaks - Dawnguard.esp" ],
+          "signature": [ "ARMO" ],
+          "keyword": [ "VendorItemClothing" ]
+        }
+      }
+    },
+
+    {
+      "name": "Baggage Handler",
+      "description": "Every Pouch and Carrier",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": "Weapons Armor Clothing & Clutter Fixes.esp",
+          "signature": [ "ARMO" ],
+          "keyword": [ "WAF_ClothingPouch" ]
+        }
+      }
+    },
+
+    {
+      "name": "Keys to the City",
+      "description": "Every Key in the Forgotten City",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "ForgottenCity.esp" ],
+          "subFilter": [
+            {
+              "operator": "OR",
+              "condition": {
+                "signature": [ "KEYM" ],
+                "keyword": [ "VendorItemKey" ]
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Witch's Brew",
+      "description": "Every Ingredient in the game",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "signature": [ "INGR" ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid Plugin",
+      "description": "Demonstrates load resilient to unknown plugin",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": "Wibble.esp",
+          "signature": [ "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid FormList FormID",
+      "description": "Demonstrates load resilient to malformed FormID",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "LoTD Patches Merged.esp" ],
+          "formList": [ "C100174G" ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid Keyword",
+      "description": "Demonstrates load resilient to invalid KYWD",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Skyrim.esm" ],
+          "signature": [ "WEAP" ],
+          "keyword": [ "this is invalid" ]
+        }
+      }
+    }
+  ]
+}

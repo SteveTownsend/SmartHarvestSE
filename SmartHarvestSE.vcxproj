@@ -178,6 +178,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ActorTracker.cpp" />
     <ClCompile Include="AlchemyItemHelper.cpp" />
     <ClCompile Include="Collection.cpp" />
     <ClCompile Include="CollectionManager.cpp" />
@@ -232,12 +233,14 @@
     <ClCompile Include="version.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ActorTracker.h" />
     <ClInclude Include="AlchemyItemHelper.h" />
     <ClInclude Include="BoundedList.h" />
     <ClInclude Include="Collection.h" />
     <ClInclude Include="Condition.h" />
     <ClInclude Include="CollectionManager.h" />
     <ClInclude Include="CollectionFactory.h" />
+    <ClInclude Include="Enums.h" />
     <ClInclude Include="EventPublisher.h" />
     <ClInclude Include="Exception.h" />
     <ClInclude Include="ExtraDataListHelper.h" />
@@ -278,11 +281,13 @@
     <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\CollectionDefinition.json" />
-    <None Include="Config\Schema.json" />
+    <None Include="Config\SHSE.Collections.LoTD.json" />
+    <None Include="Config\SHSE.Collections.Samples.json" />
+    <None Include="Config\SHSE.SchemaCollections.json" />
     <None Include="Config\SmartHarvestSE.ini" />
     <None Include="Config\default\BlackList.tsv" />
     <None Include="Config\default\WhiteList.tsv" />
+    <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="exports.def" />
     <None Include="Scripts\SmartHarvestSE.psc" />
     <None Include="Scripts\SmartHarvestSE_Events_Alias.psc" />

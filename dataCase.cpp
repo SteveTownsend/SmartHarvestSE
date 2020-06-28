@@ -409,7 +409,7 @@ void DataCase::ExcludeVendorContainers()
 		}
 	}
 	size_t expectedFromMods(std::count_if(modVendorGoldLVLI.cbegin(), modVendorGoldLVLI.cend(),
-		[&](const auto& espForm) -> bool { return LoadOrder::Instance().IncludesMod(std::get<0>(espForm)); }));
+		[&](const auto& espForm) -> bool { return shse::LoadOrder::Instance().IncludesMod(std::get<0>(espForm)); }));
 	if (vendorGoldForms.size() - interimSize != modVendorGoldLVLI.size())
 	{
 		REL_ERROR("LVLI count %d (mods) for Vendor Gold inconsistent with expected %d",
@@ -597,7 +597,7 @@ bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_blockRefr.count(refr->GetFormID()) > 0;
+	return m_blockRefr.contains(refr->GetFormID());
 }
 
 void DataCase::ClearBlockedReferences(const bool gameReload)
@@ -652,7 +652,7 @@ bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_blacklistRefr.count(refr->GetFormID()) > 0;
+	return m_blacklistRefr.contains(refr->GetFormID());
 }
 
 void DataCase::ClearReferenceBlacklist()
@@ -753,7 +753,7 @@ bool DataCase::IsFormBlocked(const RE::TESForm* form)
 	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_blockForm.count(form) > 0;
+	return m_blockForm.contains(form);
 }
 
 void DataCase::ResetBlockedForms()
@@ -855,7 +855,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	}
 
 	RecursiveLockGuard guard(m_blockListLock);
-	if (m_arrowCheck.count(refr) == 0)
+	if (!m_arrowCheck.contains(refr))
 	{
 		DBG_VMESSAGE("pick %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
 		m_arrowCheck.insert(std::make_pair(refr, pos));
@@ -936,10 +936,6 @@ void DataCase::CategorizeLootables()
 	}
 #endif
 
-	// Finally, Collections are layered on top of categorized objects
-	REL_MESSAGE("*** LOAD *** Build Collections");
-	shse::CollectionManager::Instance().ProcessDefinitions();
-
 	// Analyze perks that affect looting
 	DBG_MESSAGE("*** LOAD *** Analyze Perks");
 	AnalyzePerks();
@@ -956,7 +952,7 @@ void DataCase::HandleExceptions()
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();
 	ExcludeImmersiveArmorsGodChest();
-	PlayerState::Instance().ExcludeMountedIfForbidden();
+	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 
 	// whitelist Fossil sites

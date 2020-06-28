@@ -1,5 +1,6 @@
 #include "PrecompiledHeaders.h"
 #include "EventPublisher.h"
+#include "CollectionManager.h"
 
 std::unique_ptr<EventPublisher> EventPublisher::m_instance;
 
@@ -111,7 +112,8 @@ void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType r
 void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType objType, int itemCount, const bool isSilent, const bool manualLootNotify)
 {
 	// We always lock the REFR from more harvesting before firing this
-	m_onHarvest.SendEvent(refr, static_cast<int>(objType), itemCount, isSilent, manualLootNotify);
+	m_onHarvest.SendEvent(refr, static_cast<int>(objType), itemCount, isSilent, manualLootNotify,
+		shse::CollectionManager::Instance().IsCollectible(refr->GetBaseObject()).first);
 }
 
 void EventPublisher::TriggerFlushAddedItems()
@@ -121,7 +123,7 @@ void EventPublisher::TriggerFlushAddedItems()
 
 void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType)
 {
-	m_onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType));
+	m_onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType), shse::CollectionManager::Instance().IsCollectible(item).first);
 }
 
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
