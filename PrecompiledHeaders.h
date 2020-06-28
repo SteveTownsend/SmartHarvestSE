@@ -10,7 +10,6 @@
 #include "CommonLibSSE/include/SKSE/RegistrationSet.h"
 
 #include "CommonLibSSE/include/RE/Skyrim.h"
-#include "LogWrapper.h"
 
 #include "nlohmann/json.hpp"
 #include "nlohmann/json-schema.hpp"
@@ -21,6 +20,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#if 0
+#include "include/LogWrapper.h"
 #include "version.h"
 #include "ObjectType.h"
 #include "iniSettings.h"
@@ -37,3 +38,4 @@
 #include "Collection.h"
 #include "CollectionFactory.h"
 #include "CollectionManager.h"
+#endif
