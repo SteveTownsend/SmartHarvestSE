@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FormHelpers/IHasValueWeight.h"
+
 inline bool IsBookObject(ObjectType objType)
 {
 	return objType >= ObjectType::book && objType <= ObjectType::skillbookRead;

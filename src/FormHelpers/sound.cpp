@@ -1,6 +1,7 @@
 #include "PrecompiledHeaders.h"
 
-#include "sound.h"
+#include "FormHelpers/sound.h"
+#include "Utilities/utils.h"
 
 RE::BGSSoundDescriptorForm* _GetSoundDescriptorForm(RE::FormID formId)
 {

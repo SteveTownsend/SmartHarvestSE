@@ -1,7 +1,10 @@
 ﻿#include "PrecompiledHeaders.h"
 
 #include "Looting/tasks.h"
-#include "version.h"
+#include "Utilities/utils.h"
+#include "Utilities/version.h"
+#include "VM/papyrus.h"
+#include "Data/dataCase.h"
 
 #include <shlobj.h>
 #include <sstream>

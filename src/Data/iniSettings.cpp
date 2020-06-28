@@ -1,6 +1,7 @@
 #include "PrecompiledHeaders.h"
 
-#include "iniSettings.h"
+#include "Data/iniSettings.h"
+#include "Utilities/utils.h"
 
 INIFile* INIFile::s_instance = nullptr;
 namespace

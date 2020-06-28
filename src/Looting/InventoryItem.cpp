@@ -1,6 +1,9 @@
 #include "PrecompiledHeaders.h"
-#include "InventoryItem.h"
+
+#include "Looting/objects.h"
+#include "Looting/InventoryItem.h"
 #include "Looting/tasks.h"
+#include "Collections/CollectionManager.h"
 
 InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
 	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count), m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}

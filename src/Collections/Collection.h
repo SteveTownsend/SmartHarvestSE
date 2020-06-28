@@ -1,7 +1,9 @@
 #pragma once
 
 #include <tuple>
-#include "tasks.h"
+
+#include "Looting/tasks.h"
+#include "Collections/Condition.h"
 
 namespace shse {
 

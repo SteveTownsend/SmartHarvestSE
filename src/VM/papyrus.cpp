@@ -3,11 +3,16 @@
 #include <winver.h>
 #include <iostream>
 
+#include "Data/dataCase.h"
 #include "FormHelpers/IHasValueWeight.h"
 #include "Looting/tasks.h"
-#include "ManagedLists.h"
-#include "LocationTracker.h"
-#include "ProducerLootables.h"
+#include "Looting/ManagedLists.h"
+#include "WorldState/LocationTracker.h"
+#include "Looting/ProducerLootables.h"
+#include "Utilities/utils.h"
+#include "Utilities/version.h"
+#include "Looting/objects.h"
+#include "Collections/CollectionManager.h"
 
 namespace
 {

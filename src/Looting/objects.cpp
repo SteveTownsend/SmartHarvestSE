@@ -1,9 +1,13 @@
 #include "PrecompiledHeaders.h"
 
+#include "Data/dataCase.h"
+#include "Looting/objects.h"
 #include "Utilities/utils.h"
-#include "containerLister.h"
-#include "ExtraDataListHelper.h"
-#include "ManagedLists.h"
+#include "Looting/containerLister.h"
+#include "FormHelpers/FormHelper.h"
+#include "FormHelpers/ExtraDataListHelper.h"
+#include "Looting/ManagedLists.h"
+#include "Collections/CollectionManager.h"
 
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {

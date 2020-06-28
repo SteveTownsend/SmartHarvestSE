@@ -1,5 +1,9 @@
 #include "PrecompiledHeaders.h"
-#include "LoadOrder.h"
+
+#include "Data/LoadOrder.h"
+#include "Collections/Condition.h"
+#include "Utilities/Exception.h"
+#include "Utilities/utils.h"
 
 namespace shse
 {

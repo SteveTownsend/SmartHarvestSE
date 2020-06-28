@@ -1,13 +1,11 @@
 #include "PrecompiledHeaders.h"
 
-#if 0
-#include "skse64/GameData.h"
-#endif
-
+#include "Data/dataCase.h"
+#include "Utilities/utils.h"
 #include "Looting/tasks.h"
-#include "ActorTracker.h"
-#include "LocationTracker.h"
-#include "PlayerCellHelper.h"
+#include "WorldState/ActorTracker.h"
+#include "WorldState/LocationTracker.h"
+#include "FormHelpers/PlayerCellHelper.h"
 
 PlayerCellHelper::PlayerCellHelper(BoundedList<RE::TESObjectREFR*>& refs, const IRangeChecker& rangeCheck) :
 	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck)

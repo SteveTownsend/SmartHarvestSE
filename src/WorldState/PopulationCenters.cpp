@@ -1,5 +1,7 @@
 #include "PrecompiledHeaders.h"
-#include "PopulationCenters.h"
+#include "WorldState/PopulationCenters.h"
+#include "Data/iniSettings.h"
+#include "Utilities/utils.h"
 
 std::unique_ptr<PopulationCenters> PopulationCenters::m_instance;
 

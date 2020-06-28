@@ -1,6 +1,8 @@
 #include "PrecompiledHeaders.h"
 
-#include "Collection.h"
+#include "Collections/Collection.h"
+#include "Utilities/utils.h"
+#include "VM/papyrus.h"
 
 namespace shse
 {

@@ -1,6 +1,7 @@
 #include "PrecompiledHeaders.h"
 
-#include "WeaponHelper.h"
+#include "FormHelpers/FormHelper.h"
+#include "FormHelpers/WeaponHelper.h"
 
 UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 {
