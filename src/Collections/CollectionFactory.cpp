@@ -1,5 +1,8 @@
 #include "PrecompiledHeaders.h"
 
+#include "ConditionTree.h"
+#include "CollectionFactory.h"
+
 namespace shse
 {
 

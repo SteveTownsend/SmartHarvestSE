@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Data/iniSettings.h"
+
 class InventoryItem
 {
 public:

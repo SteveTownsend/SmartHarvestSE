@@ -1,5 +1,7 @@
 #include "PrecompiledHeaders.h"
 
+#include "FormHelpers/IHasValueWeight.h"
+
 ObjectType IHasValueWeight::GetObjectType() const
 {
 	return m_objectType;

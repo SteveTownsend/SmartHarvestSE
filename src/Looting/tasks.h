@@ -1,9 +1,9 @@
 #pragma once
 
 #include "containerLister.h"
-#include "BoundedList.h"
-#include "EventPublisher.h"
-#include "UIState.h"
+#include "Utilities/BoundedList.h"
+#include "VM/EventPublisher.h"
+#include "VM/UIState.h"
 
 #include <mutex>
 

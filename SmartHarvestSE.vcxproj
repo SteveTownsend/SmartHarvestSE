@@ -178,16 +178,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="EventPublisher.cpp" />
-    <ClCompile Include="Exception.cpp" />
-    <ClCompile Include="debugs.cpp" />
-    <ClCompile Include="LogStackWalker.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Use</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="IRangeChecker.cpp" />
-    <ClCompile Include="RecursiveLock.cpp" />
     <ClCompile Include="PrecompiledHeaders.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -232,35 +222,17 @@
     <ClCompile Include="src\WorldState\PlayerHouses.cpp" />
     <ClCompile Include="src\WorldState\PlayerState.cpp" />
     <ClCompile Include="src\WorldState\PopulationCenters.cpp" />
-    <ClCompile Include="StackWalker.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="UIState.cpp" />
-    <ClCompile Include="utils.cpp" />
-    <ClCompile Include="version.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BoundedList.h" />
-    <ClInclude Include="Enums.h" />
-    <ClInclude Include="EventPublisher.h" />
-    <ClInclude Include="Exception.h" />
-    <ClInclude Include="debugs.h" />
-    <ClInclude Include="include\LogStackWalker.h" />
+    <ClInclude Include="include\Collection.h" />
+    <ClInclude Include="include\CollectionFactory.h" />
+    <ClInclude Include="include\CollectionManager.h" />
+    <ClInclude Include="include\Condition.h" />
     <ClInclude Include="include\ManagedLists.h" />
-    <ClInclude Include="include\RecursiveLock.h" />
-    <ClInclude Include="include\StackWalker.h" />
-    <ClInclude Include="LogWrapper.h" />
+    <ClInclude Include="include\ObjectType.h" />
     <ClInclude Include="PrecompiledHeaders.h" />
-    <ClInclude Include="IRangeChecker.h" />
     <ClInclude Include="resource1.h" />
-    <ClInclude Include="src\Collections\Collection.h" />
-    <ClInclude Include="src\Collections\CollectionFactory.h" />
-    <ClInclude Include="src\Collections\CollectionManager.h" />
-    <ClInclude Include="src\Collections\Condition.h" />
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
     <ClInclude Include="src\Data\LoadOrder.h" />
@@ -269,7 +241,6 @@
     <ClInclude Include="src\FormHelpers\ArmorHelper.h" />
     <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h" />
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h" />
-    <ClInclude Include="src\FormHelpers\FormHelper.h" />
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h" />
     <ClInclude Include="src\FormHelpers\PlayerCellHelper.h" />
     <ClInclude Include="src\FormHelpers\sound.h" />
@@ -278,7 +249,6 @@
     <ClInclude Include="src\Looting\InventoryItem.h" />
     <ClInclude Include="src\Looting\IRangeChecker.h" />
     <ClInclude Include="src\Looting\objects.h" />
-    <ClInclude Include="src\Looting\ObjectType.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
     <ClInclude Include="src\Looting\tasks.h" />
     <ClInclude Include="src\Utilities\BoundedList.h" />
@@ -300,11 +270,6 @@
     <ClInclude Include="src\WorldState\PlayerHouses.h" />
     <ClInclude Include="src\WorldState\PlayerState.h" />
     <ClInclude Include="src\WorldState\PopulationCenters.h" />
-    <ClInclude Include="papyrus.h" />
-    <ClInclude Include="UIState.h" />
-    <ClInclude Include="utils.h" />
-    <ClInclude Include="versiondb.h" />
-    <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Config\SHSE.Collections.LoTD.json" />

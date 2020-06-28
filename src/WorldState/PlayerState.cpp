@@ -1,8 +1,8 @@
 #include "PrecompiledHeaders.h"
 #include "PlayerState.h"
 #include "LocationTracker.h"
-#include "EventPublisher.h"
-#include "tasks.h"
+#include "VM/EventPublisher.h"
+#include "Looting/tasks.h"
 
 namespace shse
 {

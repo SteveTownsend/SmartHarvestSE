@@ -5,7 +5,8 @@
 
 #include "LogStackWalker.h"
 #include "LocationTracker.h"
-#include "EventPublisher.h"
+#include "VM/EventPublisher.h"
+#include "Collections/CollectionManager.h"
 
 namespace shse
 {

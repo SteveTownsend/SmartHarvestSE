@@ -2,8 +2,8 @@
 
 #include <deque>
 #include <random>
-#include "Enums.h"
-#include "InventoryItem.h"
+
+#include "Looting/InventoryItem.h"
 
 constexpr RE::FormID QuestAliasFormID = 0x800;
 

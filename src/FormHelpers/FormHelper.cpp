@@ -4,7 +4,7 @@
 #include "FormHelper.h"
 #include "ArmorHelper.h"
 #include "WeaponHelper.h"
-#include "CollectionManager.h"
+#include "Collections/CollectionManager.h"
 
 TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
 {
