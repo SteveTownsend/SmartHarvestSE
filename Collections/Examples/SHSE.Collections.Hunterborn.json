@@ -1,0 +1,22 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "collections": [
+    {
+      "name": "Hunterborn Tokens",
+      "description": "Prevent SHSE from messing up Hunterborn Tokens",
+      "policy": {
+        "action": "leave",
+        "notify": false,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Hunterborn.esp" ],
+          "keyword": [ "_DS_KW_MonsterToken", "_DS_KW_AnimalToken", "_DS_KW_Token" ]
+        }
+      }
+    }
+  ]
+}
