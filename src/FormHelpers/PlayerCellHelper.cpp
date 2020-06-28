@@ -4,7 +4,7 @@
 #include "skse64/GameData.h"
 #endif
 
-#include "tasks.h"
+#include "Looting/tasks.h"
 #include "ActorTracker.h"
 #include "LocationTracker.h"
 #include "PlayerCellHelper.h"

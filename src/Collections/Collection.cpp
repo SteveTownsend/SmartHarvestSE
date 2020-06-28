@@ -1,5 +1,7 @@
 #include "PrecompiledHeaders.h"
 
+#include "Collection.h"
+
 namespace shse
 {
 

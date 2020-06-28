@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vector>
-#include "Enums.h"
-
 inline bool IsBookObject(ObjectType objType)
 {
 	return objType >= ObjectType::book && objType <= ObjectType::skillbookRead;

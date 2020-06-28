@@ -1,7 +1,5 @@
 #pragma once
 
-#include "RecursiveLock.h"
-
 #include "CommonLibSSE/include/SKSE/Impl/PCH.h"
 
 #include "CommonLibSSE/include/SKSE/API.h"
@@ -20,22 +18,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#if 0
-#include "include/LogWrapper.h"
-#include "version.h"
-#include "ObjectType.h"
-#include "iniSettings.h"
-#include "utils.h"
-#include "dataCase.h"
-#include "IHasValueWeight.h"
-#include "objects.h"
-#include "FormHelper.h"
-#include "papyrus.h"
-
-#include "Exception.h"
-#include "LoadOrder.h"
-#include "Condition.h"
-#include "Collection.h"
-#include "CollectionFactory.h"
-#include "CollectionManager.h"
-#endif
+#include "Utilities/RecursiveLock.h"
+#include "Utilities/LogWrapper.h"
+#include "Looting/ObjectType.h"
+#include "Utilities/Enums.h"

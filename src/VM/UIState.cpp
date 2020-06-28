@@ -1,6 +1,6 @@
 #include "PrecompiledHeaders.h"
-#include "UIState.h"
-#include "tasks.h"
+#include "VM/UIState.h"
+#include "Looting/tasks.h"
 
 std::unique_ptr<UIState> UIState::m_instance;
 

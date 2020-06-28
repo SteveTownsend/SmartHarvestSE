@@ -1,5 +1,7 @@
 #include "PrecompiledHeaders.h"
 
+#include "LoadOrder.h"
+
 namespace shse
 {
 

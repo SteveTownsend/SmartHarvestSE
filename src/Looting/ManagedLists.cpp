@@ -1,5 +1,6 @@
 #include "PrecompiledHeaders.h"
-#include "ManagedLists.h"
+
+#include "Looting/ManagedLists.h"
 
 std::unique_ptr<ManagedList> ManagedList::m_blackList;
 std::unique_ptr<ManagedList> ManagedList::m_whiteList;

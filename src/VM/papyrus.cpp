@@ -3,8 +3,8 @@
 #include <winver.h>
 #include <iostream>
 
-#include "IHasValueWeight.h"
-#include "tasks.h"
+#include "FormHelpers/IHasValueWeight.h"
+#include "Looting/tasks.h"
 #include "ManagedLists.h"
 #include "LocationTracker.h"
 #include "ProducerLootables.h"

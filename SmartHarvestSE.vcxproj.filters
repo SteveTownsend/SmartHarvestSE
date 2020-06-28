@@ -2,38 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="debugs.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
     <ClCompile Include="PrecompiledHeaders.cpp" />
-    <ClCompile Include="version.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="StackWalker.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="LogStackWalker.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="RecursiveLock.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="utils.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="Exception.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="IRangeChecker.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="EventPublisher.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
-    <ClCompile Include="UIState.cpp">
-      <Filter>Utilities</Filter>
-    </ClCompile>
     <ClCompile Include="src\Collections\Collection.cpp">
       <Filter>src\Collections</Filter>
     </ClCompile>
@@ -118,6 +87,18 @@
     <ClCompile Include="src\Data\SimpleIni.cpp">
       <Filter>src\Data</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\IRangeChecker.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VM\EventPublisher.cpp">
+      <Filter>src\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VM\papyrus.cpp">
+      <Filter>src\VM</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VM\UIState.cpp">
+      <Filter>src\VM</Filter>
+    </ClCompile>
     <ClCompile Include="src\Utilities\debugs.cpp">
       <Filter>src\Utilities</Filter>
     </ClCompile>
@@ -139,69 +120,10 @@
     <ClCompile Include="src\Utilities\version.cpp">
       <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="src\Looting\IRangeChecker.cpp">
-      <Filter>src\Looting</Filter>
-    </ClCompile>
-    <ClCompile Include="src\VM\EventPublisher.cpp">
-      <Filter>src\VM</Filter>
-    </ClCompile>
-    <ClCompile Include="src\VM\papyrus.cpp">
-      <Filter>src\VM</Filter>
-    </ClCompile>
-    <ClCompile Include="src\VM\UIState.cpp">
-      <Filter>src\VM</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="papyrus.h" />
-    <ClInclude Include="debugs.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="PrecompiledHeaders.h" />
-    <ClInclude Include="version.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="utils.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
     <ClInclude Include="resource1.h">
       <Filter>resources</Filter>
-    </ClInclude>
-    <ClInclude Include="Exception.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="LogWrapper.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="BoundedList.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="IRangeChecker.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="EventPublisher.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="UIState.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="versiondb.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="Enums.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Collections\Collection.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Collections\CollectionFactory.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Collections\CollectionManager.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Collections\Condition.h">
-      <Filter>src\Collections</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\AlchemyItemHelper.h">
       <Filter>src\FormHelpers</Filter>
@@ -213,9 +135,6 @@
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h">
-      <Filter>src\FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\FormHelpers\FormHelper.h">
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h">
@@ -254,9 +173,6 @@
     <ClInclude Include="src\Looting\objects.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
-    <ClInclude Include="src\Looting\ObjectType.h">
-      <Filter>src\Looting</Filter>
-    </ClInclude>
     <ClInclude Include="src\Looting\ProducerLootables.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
@@ -275,6 +191,37 @@
     <ClInclude Include="src\Data\SimpleIni.h">
       <Filter>src\Data</Filter>
     </ClInclude>
+    <ClInclude Include="src\Looting\IRangeChecker.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VM\EventPublisher.h">
+      <Filter>src\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VM\papyrus.h">
+      <Filter>src\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VM\UIState.h">
+      <Filter>src\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Collection.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="include\CollectionFactory.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="include\CollectionManager.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Condition.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ObjectType.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ManagedLists.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="PrecompiledHeaders.h" />
     <ClInclude Include="src\Utilities\BoundedList.h">
       <Filter>src\Utilities</Filter>
     </ClInclude>
@@ -308,30 +255,6 @@
     <ClInclude Include="src\Utilities\versiondb.h">
       <Filter>src\Utilities</Filter>
     </ClInclude>
-    <ClInclude Include="src\Looting\IRangeChecker.h">
-      <Filter>src\Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="src\VM\EventPublisher.h">
-      <Filter>src\VM</Filter>
-    </ClInclude>
-    <ClInclude Include="src\VM\papyrus.h">
-      <Filter>src\VM</Filter>
-    </ClInclude>
-    <ClInclude Include="src\VM\UIState.h">
-      <Filter>src\VM</Filter>
-    </ClInclude>
-    <ClInclude Include="include\LogStackWalker.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\RecursiveLock.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\StackWalker.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ManagedLists.h">
-      <Filter>include</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -348,9 +271,6 @@
     </Filter>
     <Filter Include="Papyrus Source">
       <UniqueIdentifier>{80326a15-e29b-42fa-ab74-00049edf6fd7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Utilities">
-      <UniqueIdentifier>{3d5515fb-a938-4b89-89c8-a9bdc2656b3b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Edit Scripts">
       <UniqueIdentifier>{e43f4006-6e90-4531-b6b3-7e142c27e962}</UniqueIdentifier>
@@ -373,14 +293,14 @@
     <Filter Include="src\Data">
       <UniqueIdentifier>{b9bba89f-6191-4fa6-8e68-03bb0cd20112}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Utilities">
-      <UniqueIdentifier>{9e248e1a-5377-4a36-89ec-6c481b5ad215}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\VM">
       <UniqueIdentifier>{3a928258-4bb6-4b6f-b2eb-9c8fdc327acc}</UniqueIdentifier>
     </Filter>
     <Filter Include="include">
       <UniqueIdentifier>{13a573f9-b2ab-4f9b-8c62-491f9907b4ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Utilities">
+      <UniqueIdentifier>{08d9c783-62e2-4fe7-b6be-272995f8b358}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

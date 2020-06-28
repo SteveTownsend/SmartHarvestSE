@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Looting/ObjectType.h"
+
 // object glow reasons, in descending order of precedence
 enum class GlowReason {
 	LockedContainer = 1,

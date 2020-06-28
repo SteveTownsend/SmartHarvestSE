@@ -3,7 +3,7 @@
 #include "ManagedLists.h"
 #include "PlayerHouses.h"
 #include "PopulationCenters.h"
-#include "tasks.h"
+#include "Looting/tasks.h"
 
 std::unique_ptr<LocationTracker> LocationTracker::m_instance;
 
