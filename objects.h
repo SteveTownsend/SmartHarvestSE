@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "Enums.h"
 
 inline bool IsBookObject(ObjectType objType)
 {
@@ -18,17 +19,19 @@ public:
 	double GetPosValue(void);
 	const RE::TESContainer* GetContainer() const;
 	std::vector<RE::TESObjectREFR*> GetLinkedRefs(RE::BGSKeyword* keyword);
-	bool IsPlayerOwned(void);
+	bool IsPlayerOwned(void) const;
+	std::pair<bool, SpecialObjectHandling> IsCollectible(void) const;
+	bool IsValuable(void) const;
 
 	RE::TESForm* GetLootable() const;
 	void SetLootable(RE::TESForm* lootable);
 	virtual double GetWeight(void) const override;
-	virtual double GetWorth(void) const override;
 	inline const RE::TESObjectREFR* GetReference() const { return m_ref; }
 
 protected:
 	virtual const char* GetName() const;
 	virtual UInt32 GetFormID() const;
+	virtual double CalculateWorth(void) const override;
 
 private:
 	const RE::TESObjectREFR* m_ref;
@@ -56,7 +59,8 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 // this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
 ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList);
 // end link-time misuse guard
-std::string GetObjectTypeName(ObjectType type);
+inline bool IsAlwaysHarvested(ObjectType objectType) { return objectType == ObjectType::whitelist || objectType == ObjectType::collectible; }
+std::string GetObjectTypeName(ObjectType objectType);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
 ResourceType ResourceTypeByName(const std::string& name);
 

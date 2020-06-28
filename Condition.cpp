@@ -1,4 +1,5 @@
 #include "PrecompiledHeaders.h"
+#include "LoadOrder.h"
 
 namespace shse
 {
@@ -6,20 +7,43 @@ namespace shse
 Condition::Condition() {}
 Condition::~Condition() {}
 
-PluginCondition::PluginCondition(const std::string& plugin) : m_plugin(plugin)
+bool CanBeCollected(RE::TESForm* form)
 {
-	m_formIDMask = LoadOrder::Instance().GetFormIDMask(plugin);
-	if (m_formIDMask == InvalidForm)
+	RE::FormType formType(form->GetFormType());
+	return formType == RE::FormType::AlchemyItem ||
+		formType == RE::FormType::Armor ||
+		formType == RE::FormType::Book ||
+		formType == RE::FormType::Ingredient ||
+		formType == RE::FormType::KeyMaster ||
+		formType == RE::FormType::Misc ||
+		formType == RE::FormType::SoulGem ||
+		formType == RE::FormType::Weapon;
+}
+
+PluginCondition::PluginCondition(const std::vector<std::string>& plugins)
+{
+	for (const auto& plugin : plugins)
 	{
-		std::ostringstream err;
-		err << "Unknown plugin: " << plugin;
-		throw PluginError(err.str().c_str());
+		RE::FormID formIDMask(LoadOrder::Instance().GetFormIDMask(plugin));
+		if (formIDMask == InvalidForm)
+		{
+			std::ostringstream err;
+			err << "Unknown plugin: " << plugin;
+			throw PluginError(err.str().c_str());
+		}
+		m_formIDMaskByPlugin.insert(std::make_pair(plugin, formIDMask));
 	}
 }
 
-bool PluginCondition::operator()(const RE::TESForm* form, ObjectType objectType) const
+bool PluginCondition::operator()(const RE::TESForm* form) const
 {
-	// TODO efficiently check if form is in this plugin
+	if (!form)
+		return false;
+	for (const auto plugin : m_formIDMaskByPlugin)
+	{
+		if (LoadOrder::Instance().ModOwnsForm(plugin.first, form->GetFormID()))
+			return true;
+	}
 	return false;
 }
 
@@ -30,11 +54,70 @@ nlohmann::json PluginCondition::MakeJSON() const
 
 void PluginCondition::AsJSON(nlohmann::json& j) const
 {
-	j["plugin"] = m_plugin;
+	j["plugin"] = nlohmann::json::array();
+	for (const auto plugin : m_formIDMaskByPlugin)
+	{
+		j["plugin"].push_back(plugin.first);
+	}
+}
+
+FormListCondition::FormListCondition(const std::string& plugin, const std::string& formListID)
+{
+	// schema enforces 8-char HEX format
+	RE::FormID formID;
+	std::stringstream ss;
+	ss << std::hex << formListID;
+	ss >> formID;
+	RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(PluginUtils::AsRaw(formID), plugin));
+	if (!formList)
+	{
+		REL_ERROR("Collection Condition requires a FormList 0x%08x", formID);
+		return;
+	}
+	DBG_VMESSAGE("Resolved FormList 0x%08x", formID);
+	m_formList = formList;
+	FlattenMembers(m_formList);
+}
+
+void FormListCondition::FlattenMembers(const RE::BGSListForm* formList)
+{
+	if (!formList)
+		return;
+	for (const auto candidate : formList->forms)
+	{
+		if (candidate->GetFormType() == RE::FormType::FormList)
+		{
+			FlattenMembers(candidate->As<RE::BGSListForm>());
+		}
+		else if (CanBeCollected(candidate))
+		{
+			DBG_VMESSAGE("FormList Member found %s/0x%08x", candidate->GetName(), candidate->GetFormID());
+			m_listMembers.insert(candidate);
+		}
+	}
+}
+
+bool FormListCondition::operator()(const RE::TESForm* form) const
+{
+	return m_listMembers.contains(form);
+}
+
+nlohmann::json FormListCondition::MakeJSON() const
+{
+	return nlohmann::json(*this);
+}
+
+void FormListCondition::AsJSON(nlohmann::json& j) const
+{
+	j["formList"] = nlohmann::json();
+	j["listPlugin"] = m_plugin;
+	std::ostringstream formStr;
+	formStr << std::hex << std::setfill('0') << std::setw(8) << m_formList->GetFormID();
+	j["formID"] = formStr.str();
 }
 
 // This is O(n) in KYWD record count but only happens during startup, and there are not THAT many of them
-KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
+KeywordCondition::KeywordCondition(const std::vector<std::string>& keywords)
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	if (!dhnd)
@@ -70,7 +153,7 @@ KeywordsCondition::KeywordsCondition(const std::vector<std::string>& keywords)
 	}
 }
 
-bool KeywordsCondition::operator()(const RE::TESForm* form, ObjectType objectType) const
+bool KeywordCondition::operator()(const RE::TESForm* form) const
 {
 	const RE::BGSKeywordForm* keywordHolder(form->As<RE::BGSKeywordForm>());
 	if (!keywordHolder)
@@ -79,39 +162,38 @@ bool KeywordsCondition::operator()(const RE::TESForm* form, ObjectType objectTyp
 		[=](const RE::BGSKeyword* keyword) -> bool { return keywordHolder->HasKeyword(keyword); }) != m_keywords.cend();
 }
 
-nlohmann::json KeywordsCondition::MakeJSON() const
+nlohmann::json KeywordCondition::MakeJSON() const
 {
 	return nlohmann::json(*this);
 }
 
-void KeywordsCondition::AsJSON(nlohmann::json& j) const
+void KeywordCondition::AsJSON(nlohmann::json& j) const
 {
-	j["keywords"] = nlohmann::json::array();
+	j["keyword"] = nlohmann::json::array();
 	for (const auto keyword : m_keywords)
 	{
-		j["keywords"].push_back(FormUtils::SafeGetFormEditorID(keyword));
+		j["keyword"].push_back(FormUtils::SafeGetFormEditorID(keyword));
 	}
 }
 
+const std::unordered_map<std::string, RE::FormType> SignatureCondition::m_validSignatures = {
+	{"ALCH", RE::FormType::AlchemyItem},
+	{"ARMO", RE::FormType::Armor},
+	{"BOOK", RE::FormType::Book},
+	{"INGR", RE::FormType::Ingredient},
+	{"KEYM", RE::FormType::KeyMaster},
+	{"MISC", RE::FormType::Misc},
+	{"SLGM", RE::FormType::SoulGem},
+	{"WEAP", RE::FormType::Weapon}
+};
+
 // This is O(n) in TESV Record Type count but only happens during startup, and there are not many of them
-SignaturesCondition::SignaturesCondition(const std::vector<std::string>& signatures)
+SignatureCondition::SignatureCondition(const std::vector<std::string>& signatures)
 {
-	// Store Form Types to match for this collection. Schema enforces uniqueness and validity in input list.
-	// The list below must match the JSON schema and CommonLibSSE RE::FormType.
-	std::unordered_map<std::string, RE::FormType> validSignatures = {
-		{"ALCH", RE::FormType::AlchemyItem},
-		{"ARMO", RE::FormType::Armor},
-		{"BOOK", RE::FormType::Book},
-		{"INGR", RE::FormType::Ingredient},
-		{"KEYM", RE::FormType::KeyMaster},
-		{"MISC", RE::FormType::Misc},
-		{"SLGM", RE::FormType::SoulGem},
-		{"WEAP", RE::FormType::Weapon}
-	};
 	for (const auto& signature : signatures)
 	{
-		auto matched(validSignatures.find(signature));
-		if (matched != validSignatures.cend())
+		auto matched(m_validSignatures.find(signature));
+		if (matched != m_validSignatures.cend())
 		{
 			m_formTypes.push_back(matched->second);
 			DBG_VMESSAGE("Record Signature %s mapped to FormType %d", signature.c_str(), static_cast<int>(matched->second));
@@ -119,71 +201,28 @@ SignaturesCondition::SignaturesCondition(const std::vector<std::string>& signatu
 	}
 }
 
-bool SignaturesCondition::operator()(const RE::TESForm* form, ObjectType objectType) const
+bool SignatureCondition::operator()(const RE::TESForm* form) const
 {
 	// short linear scan
 	return std::find(m_formTypes.cbegin(), m_formTypes.cend(), form->GetFormType()) != m_formTypes.cend();
 }
 
-nlohmann::json SignaturesCondition::MakeJSON() const
+const decltype(SignatureCondition::m_validSignatures) SignatureCondition::ValidSignatures()
+{
+	return m_validSignatures;
+}
+
+nlohmann::json SignatureCondition::MakeJSON() const
 {
 	return nlohmann::json(*this);
 }
 
-void SignaturesCondition::AsJSON(nlohmann::json& j) const
+void SignatureCondition::AsJSON(nlohmann::json& j) const
 {
-	j["signatures"] = nlohmann::json::array();
+	j["signature"] = nlohmann::json::array();
 	for (const auto formType : m_formTypes)
 	{
-		j["signatures"].push_back(static_cast<int>(formType));
-	}
-}
-
-// This is O(n) in Loot Categories count but only happens during startup, and there are not many of them
-LootCategoriesCondition::LootCategoriesCondition(const std::vector<std::string>& lootCategories)
-{
-	// Store Form Types to match for this collection. Schema enforces uniqueness and validity in input list.
-	// The list below must match the JSON schema and ObjectType.
-	std::unordered_map<std::string, ObjectType> validCategories = {
-		{"book", ObjectType::book},
-		{"clutter", ObjectType::clutter},
-		{"critter", ObjectType::critter},
-		{"drink", ObjectType::drink},
-		{"food", ObjectType::food},
-		{"ingredient", ObjectType::ingredient},
-		{"key", ObjectType::key},
-		{"skillbook", ObjectType::skillbook},
-		{"spellbook", ObjectType::spellbook}
-	};
-
-	for (const auto& category : lootCategories)
-	{
-		auto matched(validCategories.find(category));
-		if (matched != validCategories.cend())
-		{
-			m_categories.push_back(matched->second);
-			DBG_VMESSAGE("Loot Category %s mapped to %s", category.c_str(), GetObjectTypeName(matched->second).c_str());
-		}
-	}
-}
-
-bool LootCategoriesCondition::operator()(const RE::TESForm* form, ObjectType objectType) const
-{
-	// short linear scan
-	return std::find(m_categories.cbegin(), m_categories.cend(), objectType) != m_categories.cend();
-}
-
-nlohmann::json LootCategoriesCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
-}
-
-void LootCategoriesCondition::AsJSON(nlohmann::json& j) const
-{
-	j["lootCategories"] = nlohmann::json::array();
-	for (const auto category : m_categories)
-	{
-		j["lootCategories"].push_back(GetObjectTypeName(category));
+		j["signature"].push_back(static_cast<int>(formType));
 	}
 }
 
@@ -191,11 +230,11 @@ ConditionTree::ConditionTree(const Operator op, const unsigned int depth) : m_op
 {
 }
 
-bool ConditionTree::operator()(const RE::TESForm* form, ObjectType objectType) const
+bool ConditionTree::operator()(const RE::TESForm* form) const
 {
 	for (const auto& condition : m_conditions)
 	{
-		bool checkThis(condition->operator()(form, objectType));
+		bool checkThis(condition->operator()(form));
 		if (m_operator == Operator::And)
 		{
 			// All must match
@@ -225,10 +264,10 @@ nlohmann::json ConditionTree::MakeJSON() const
 void ConditionTree::AsJSON(nlohmann::json& j) const
 {
 	j["operator"] = std::string(m_operator == shse::ConditionTree::Operator::And ? "AND" : "OR");
-	j["conditions"] = nlohmann::json::array();
+	j["condition"] = nlohmann::json::array();
 	for (const auto& condition : m_conditions)
 	{
-		j["conditions"].push_back(condition->MakeJSON());
+		j["condition"].push_back(condition->MakeJSON());
 	}
 }
 
@@ -237,17 +276,17 @@ void to_json(nlohmann::json& j, const PluginCondition& condition)
 	condition.AsJSON(j);
 }
 
-void to_json(nlohmann::json& j, const KeywordsCondition& condition)
+void to_json(nlohmann::json& j, const FormListCondition& condition)
 {
 	condition.AsJSON(j);
 }
 
-void to_json(nlohmann::json& j, const SignaturesCondition& condition)
+void to_json(nlohmann::json& j, const KeywordCondition& condition)
 {
 	condition.AsJSON(j);
 }
 
-void to_json(nlohmann::json& j, const LootCategoriesCondition& condition)
+void to_json(nlohmann::json& j, const SignatureCondition& condition)
 {
 	condition.AsJSON(j);
 }

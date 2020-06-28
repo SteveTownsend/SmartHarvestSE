@@ -5,6 +5,7 @@
 #endif
 
 #include "tasks.h"
+#include "ActorTracker.h"
 #include "LocationTracker.h"
 #include "PlayerCellHelper.h"
 
@@ -82,16 +83,18 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	if (refr->formType == RE::FormType::ActorCharacter)
+	if (refr == RE::PlayerCharacter::GetSingleton())
+	{
+		DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+		return false;
+	}
+
+	if (refr->GetBaseObject()->As<RE::Actor>() || refr->GetBaseObject()->As<RE::TESNPC>())
 	{
 		if (!refr->IsDead(true))
 		{
-			DBG_VMESSAGE("skip living ActorCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-			return false;
-		}
-		if (refr == RE::PlayerCharacter::GetSingleton())
-		{
-			DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+			DBG_VMESSAGE("skip living Actor/NPC %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+			shse::ActorTracker::Instance().RecordLiveSighting(refr);
 			return false;
 		}
 	}
