@@ -385,7 +385,6 @@ Function SetObjectTypeData()
     s_objectTypeNameArray[29] = "$SHSE_FOOD"
     s_objectTypeNameArray[30] = "$SHSE_DRINK"
     s_objectTypeNameArray[31] = "$SHSE_OREVEIN"
-    s_objectTypeNameArray[32] = "$SHSE_WHITELIST"
 EndFunction
 
 Function SetMiscDefaults(bool firstTime)
