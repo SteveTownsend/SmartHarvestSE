@@ -1,0 +1,116 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "collections": [
+    {
+      "name": "Bad Gremlins",
+      "description": "Items added by Bad Gremlins Collectables",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "BGCollectables.esp" ],
+          "signature": [ "BOOK", "MISC" ]
+        }
+      }
+    },
+
+    {
+      "name": "Skyrim's Unique Treasures",
+      "description": "Items added by Skyrim's Unique Treasures",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "SkyrimsUniqueTreasures.esp" ],
+          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Palaeontologist",
+      "description": "All the fossils added by Fossil Mining",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Fossilsyum.esp" ],
+          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "A Hot Meal",
+      "description": "Every Cooked Food Item",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Complete Alchemy & Cooking Overhaul.esp" ],
+          "keyword": [ "VendorItemFoodCooked" ]
+        }
+      }
+    },
+
+    {
+      "name": "Cloaking Device",
+      "description": "Every Cloak of Skyrim",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Cloaks.esp", "Cloaks - Dawnguard.esp" ],
+          "signature": [ "ARMO" ],
+          "keyword": [ "VendorItemClothing" ]
+        }
+      }
+    },
+
+    {
+      "name": "Keys to the City",
+      "description": "Every Key in the Forgotten City",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "ForgottenCity.esp" ],
+          "subFilter": [
+            {
+              "operator": "OR",
+              "condition": {
+                "signature": [ "KEYM" ],
+                "keyword": [ "VendorItemKey" ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

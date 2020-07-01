@@ -178,120 +178,115 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ActorTracker.cpp" />
-    <ClCompile Include="AlchemyItemHelper.cpp" />
-    <ClCompile Include="Collection.cpp" />
-    <ClCompile Include="CollectionManager.cpp" />
-    <ClCompile Include="Condition.cpp" />
-    <ClCompile Include="CollectionFactory.cpp" />
-    <ClCompile Include="EventPublisher.cpp" />
-    <ClCompile Include="Exception.cpp" />
-    <ClCompile Include="ExtraDataListHelper.cpp" />
-    <ClCompile Include="containerLister.cpp" />
-    <ClCompile Include="debugs.cpp" />
-    <ClCompile Include="EnchantmentItemHelper.cpp" />
-    <ClCompile Include="IHasValueWeight.cpp" />
-    <ClCompile Include="InventoryItem.cpp" />
-    <ClCompile Include="LoadOrder.cpp" />
-    <ClCompile Include="LocationTracker.cpp" />
-    <ClCompile Include="LogStackWalker.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Use</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="ManagedLists.cpp" />
-    <ClCompile Include="PlayerCellHelper.cpp" />
-    <ClCompile Include="IRangeChecker.cpp" />
-    <ClCompile Include="PlayerHouses.cpp" />
-    <ClCompile Include="PlayerState.cpp" />
-    <ClCompile Include="PopulationCenters.cpp" />
-    <ClCompile Include="ProducerLootables.cpp" />
-    <ClCompile Include="RecursiveLock.cpp" />
-    <ClCompile Include="SimpleIni.cpp" />
-    <ClCompile Include="sound.cpp" />
-    <ClCompile Include="PrecompiledHeaders.cpp">
+    <ClCompile Include="src\Collections\Collection.cpp" />
+    <ClCompile Include="src\Collections\CollectionFactory.cpp" />
+    <ClCompile Include="src\Collections\CollectionManager.cpp" />
+    <ClCompile Include="src\Collections\Condition.cpp" />
+    <ClCompile Include="src\Data\dataCase.cpp" />
+    <ClCompile Include="src\Data\iniSettings.cpp" />
+    <ClCompile Include="src\Data\LoadOrder.cpp" />
+    <ClCompile Include="src\Data\SimpleIni.cpp" />
+    <ClCompile Include="src\FormHelpers\AlchemyItemHelper.cpp" />
+    <ClCompile Include="src\FormHelpers\ArmorHelper.cpp" />
+    <ClCompile Include="src\FormHelpers\EnchantmentItemHelper.cpp" />
+    <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp" />
+    <ClCompile Include="src\FormHelpers\FormHelper.cpp" />
+    <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp" />
+    <ClCompile Include="src\FormHelpers\PlayerCellHelper.cpp" />
+    <ClCompile Include="src\FormHelpers\sound.cpp" />
+    <ClCompile Include="src\FormHelpers\WeaponHelper.cpp" />
+    <ClCompile Include="src\Looting\containerLister.cpp" />
+    <ClCompile Include="src\Looting\InventoryItem.cpp" />
+    <ClCompile Include="src\Looting\IRangeChecker.cpp" />
+    <ClCompile Include="src\Looting\ManagedLists.cpp" />
+    <ClCompile Include="src\Looting\objects.cpp" />
+    <ClCompile Include="src\Looting\ProducerLootables.cpp" />
+    <ClCompile Include="src\Looting\tasks.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\PrecompiledHeaders.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="StackWalker.cpp">
+    <ClCompile Include="src\Utilities\debugs.cpp" />
+    <ClCompile Include="src\Utilities\Exception.cpp" />
+    <ClCompile Include="src\Utilities\LogStackWalker.cpp" />
+    <ClCompile Include="src\Utilities\RecursiveLock.cpp" />
+    <ClCompile Include="src\Utilities\StackWalker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="tasks.cpp" />
-    <ClCompile Include="FormHelper.cpp" />
-    <ClCompile Include="dataCase.cpp" />
-    <ClCompile Include="iniSettings.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="objects.cpp" />
-    <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="ArmorHelper.cpp" />
-    <ClCompile Include="UIState.cpp" />
-    <ClCompile Include="utils.cpp" />
-    <ClCompile Include="WeaponHelper.cpp" />
-    <ClCompile Include="version.cpp" />
+    <ClCompile Include="src\Utilities\utils.cpp" />
+    <ClCompile Include="src\Utilities\version.cpp" />
+    <ClCompile Include="src\VM\EventPublisher.cpp" />
+    <ClCompile Include="src\VM\papyrus.cpp" />
+    <ClCompile Include="src\VM\UIState.cpp" />
+    <ClCompile Include="src\WorldState\ActorTracker.cpp" />
+    <ClCompile Include="src\WorldState\LocationTracker.cpp" />
+    <ClCompile Include="src\WorldState\PlayerHouses.cpp" />
+    <ClCompile Include="src\WorldState\PlayerState.cpp" />
+    <ClCompile Include="src\WorldState\PopulationCenters.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ActorTracker.h" />
-    <ClInclude Include="AlchemyItemHelper.h" />
-    <ClInclude Include="BoundedList.h" />
-    <ClInclude Include="Collection.h" />
-    <ClInclude Include="Condition.h" />
-    <ClInclude Include="CollectionManager.h" />
-    <ClInclude Include="CollectionFactory.h" />
-    <ClInclude Include="Enums.h" />
-    <ClInclude Include="EventPublisher.h" />
-    <ClInclude Include="Exception.h" />
-    <ClInclude Include="ExtraDataListHelper.h" />
-    <ClInclude Include="containerLister.h" />
-    <ClInclude Include="debugs.h" />
-    <ClInclude Include="EnchantmentItemHelper.h" />
-    <ClInclude Include="IHasValueWeight.h" />
-    <ClInclude Include="InventoryItem.h" />
-    <ClInclude Include="LoadOrder.h" />
-    <ClInclude Include="LocationTracker.h" />
-    <ClInclude Include="LogWrapper.h" />
-    <ClInclude Include="LogStackWalker.h" />
-    <ClInclude Include="ManagedLists.h" />
-    <ClInclude Include="ObjectType.h" />
-    <ClInclude Include="PlayerCellHelper.h" />
-    <ClInclude Include="PlayerHouses.h" />
-    <ClInclude Include="PlayerState.h" />
-    <ClInclude Include="PopulationCenters.h" />
-    <ClInclude Include="PrecompiledHeaders.h" />
-    <ClInclude Include="IRangeChecker.h" />
-    <ClInclude Include="ProducerLootables.h" />
-    <ClInclude Include="RecursiveLock.h" />
+    <ClInclude Include="include\ManagedLists.h" />
     <ClInclude Include="resource1.h" />
-    <ClInclude Include="SimpleIni.h" />
-    <ClInclude Include="sound.h" />
-    <ClInclude Include="StackWalker.h" />
-    <ClInclude Include="tasks.h" />
-    <ClInclude Include="FormHelper.h" />
-    <ClInclude Include="dataCase.h" />
-    <ClInclude Include="iniSettings.h" />
-    <ClInclude Include="objects.h" />
-    <ClInclude Include="papyrus.h" />
-    <ClInclude Include="ArmorHelper.h" />
-    <ClInclude Include="UIState.h" />
-    <ClInclude Include="utils.h" />
-    <ClInclude Include="versiondb.h" />
-    <ClInclude Include="WeaponHelper.h" />
-    <ClInclude Include="version.h" />
+    <ClInclude Include="src\Collections\Collection.h" />
+    <ClInclude Include="src\Collections\CollectionFactory.h" />
+    <ClInclude Include="src\Collections\CollectionManager.h" />
+    <ClInclude Include="src\Collections\Condition.h" />
+    <ClInclude Include="src\Data\dataCase.h" />
+    <ClInclude Include="src\Data\iniSettings.h" />
+    <ClInclude Include="src\Data\LoadOrder.h" />
+    <ClInclude Include="src\Data\SimpleIni.h" />
+    <ClInclude Include="src\FormHelpers\AlchemyItemHelper.h" />
+    <ClInclude Include="src\FormHelpers\ArmorHelper.h" />
+    <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h" />
+    <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h" />
+    <ClInclude Include="src\FormHelpers\FormHelper.h" />
+    <ClInclude Include="src\FormHelpers\IHasValueWeight.h" />
+    <ClInclude Include="src\FormHelpers\PlayerCellHelper.h" />
+    <ClInclude Include="src\FormHelpers\sound.h" />
+    <ClInclude Include="src\FormHelpers\WeaponHelper.h" />
+    <ClInclude Include="src\Looting\containerLister.h" />
+    <ClInclude Include="src\Looting\InventoryItem.h" />
+    <ClInclude Include="src\Looting\IRangeChecker.h" />
+    <ClInclude Include="src\Looting\objects.h" />
+    <ClInclude Include="src\Looting\ObjectType.h" />
+    <ClInclude Include="src\Looting\ProducerLootables.h" />
+    <ClInclude Include="src\Looting\tasks.h" />
+    <ClInclude Include="src\PrecompiledHeaders.h" />
+    <ClInclude Include="src\Utilities\debugs.h" />
+    <ClInclude Include="src\Utilities\Enums.h" />
+    <ClInclude Include="src\Utilities\Exception.h" />
+    <ClInclude Include="src\Utilities\LogStackWalker.h" />
+    <ClInclude Include="src\Utilities\LogWrapper.h" />
+    <ClInclude Include="src\Utilities\RecursiveLock.h" />
+    <ClInclude Include="src\Utilities\StackWalker.h" />
+    <ClInclude Include="src\Utilities\utils.h" />
+    <ClInclude Include="src\Utilities\version.h" />
+    <ClInclude Include="src\Utilities\versiondb.h" />
+    <ClInclude Include="src\VM\EventPublisher.h" />
+    <ClInclude Include="src\VM\papyrus.h" />
+    <ClInclude Include="src\VM\UIState.h" />
+    <ClInclude Include="src\WorldState\ActorTracker.h" />
+    <ClInclude Include="src\WorldState\LocationTracker.h" />
+    <ClInclude Include="src\WorldState\PlayerHouses.h" />
+    <ClInclude Include="src\WorldState\PlayerState.h" />
+    <ClInclude Include="src\WorldState\PopulationCenters.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\SHSE.Collections.LoTD.json" />
-    <None Include="Config\SHSE.Collections.Samples.json" />
-    <None Include="Config\SHSE.SchemaCollections.json" />
+    <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
+    <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
+    <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
+    <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
+    <None Include="Collections\Schema\SHSE.SchemaCollections.json" />
     <None Include="Config\SmartHarvestSE.ini" />
-    <None Include="Config\default\BlackList.tsv" />
-    <None Include="Config\default\WhiteList.tsv" />
     <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="exports.def" />
-    <None Include="Scripts\SmartHarvestSE.psc" />
-    <None Include="Scripts\SmartHarvestSE_Events_Alias.psc" />
-    <None Include="Scripts\SmartHarvestSE_mcm.psc" />
+    <None Include="Scripts\SHSE_EventsAlias.psc" />
+    <None Include="Scripts\SHSE_MCM.psc" />
+    <None Include="Scripts\SHSE_PluginProxy.psc" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CommonLibSSE\CommonLibSSE.vcxproj">
