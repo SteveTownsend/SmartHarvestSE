@@ -7,6 +7,8 @@
 
 #include <mutex>
 
+typedef std::pair<double, RE::TESObjectREFR*> TargetREFR;
+
 class SearchTask
 {
 public:
