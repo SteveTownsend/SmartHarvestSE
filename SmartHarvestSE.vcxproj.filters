@@ -207,9 +207,6 @@
     <ClInclude Include="src\VM\UIState.h">
       <Filter>src\VM</Filter>
     </ClInclude>
-    <ClInclude Include="include\ManagedLists.h">
-      <Filter>src\Looting</Filter>
-    </ClInclude>
     <ClInclude Include="src\Utilities\debugs.h">
       <Filter>src\Utilities</Filter>
     </ClInclude>
@@ -259,6 +256,9 @@
       <Filter>src\Collections</Filter>
     </ClInclude>
     <ClInclude Include="src\Looting\ObjectType.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\ManagedLists.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
   </ItemGroup>
@@ -319,9 +319,6 @@
     <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
     </None>
-    <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas">
-      <Filter>Edit Scripts</Filter>
-    </None>
     <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json">
       <Filter>Collections\Examples</Filter>
     </None>
@@ -345,6 +342,9 @@
     </None>
     <None Include="Collections\Examples\SHSE.Collections.Uniques.json">
       <Filter>Collections\Examples</Filter>
+    </None>
+    <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas">
+      <Filter>Edit Scripts</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
