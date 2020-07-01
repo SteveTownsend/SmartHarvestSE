@@ -25,7 +25,7 @@ double IHasValueWeight::GetWorth(void) const
 	return m_worth;
 }
 
-bool IHasValueWeight::ValueWeightTooLowToLoot() const
+bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 priceOverride) const
 {
 	// valuable objects overrides V/W checks
 	if (IsValuable())
@@ -42,7 +42,13 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 	if (valueWeight > 0.)
 	{
 		double weight = std::max(GetWeight(), 0.);
-		double worth(GetWorth());
+		double worth = 0.;
+		if (priceOverride > 0) {
+			worth = priceOverride;
+		}
+		else {
+			worth = GetWorth();
+		}
 		if (worth > 0. && weight <= 0.)
 		{
 			DBG_VMESSAGE("%s(%08x) has value %0.2f, weightless", GetName(), GetFormID(), worth);

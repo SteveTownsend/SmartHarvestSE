@@ -425,3 +425,17 @@ ResourceType ResourceTypeByName(const std::string& name)
 	}
 	return ResourceType::ore;
 }
+
+RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraDataList*>* extraLists)
+{
+	RE::EnchantmentItem* enchantment = nullptr;
+	if (!extraLists)
+		return enchantment;
+	for (auto extraList = extraLists->begin(); extraList != extraLists->end(); extraList++) {
+		ExtraDataListHelper exListHelper(*extraList);
+		enchantment = exListHelper.GetEnchantment();
+		if (enchantment)
+			break;
+	}
+	return enchantment;
+}

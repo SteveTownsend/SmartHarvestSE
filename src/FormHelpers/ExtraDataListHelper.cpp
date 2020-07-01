@@ -7,7 +7,7 @@ RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void)
 	if (!m_extraData)
 		return false;
 
-	RE::ExtraEnchantment* exEnchant = m_extraData->GetByType<RE::ExtraEnchantment>();
+	auto exEnchant = m_extraData->GetByType<RE::ExtraEnchantment>();
 	return (exEnchant && exEnchant->enchantment) ? exEnchant->enchantment : nullptr;
 }
 
@@ -16,7 +16,7 @@ bool ExtraDataListHelper::IsQuestObject(const bool requireFullQuestFlags)
 	if (!m_extraData)
 		return false;
 
-	RE::ExtraAliasInstanceArray* exAliasArray = m_extraData->GetByType<RE::ExtraAliasInstanceArray>();
+	auto exAliasArray = m_extraData->GetByType<RE::ExtraAliasInstanceArray>();
 	if (!exAliasArray)
 		return false;
 

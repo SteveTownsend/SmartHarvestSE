@@ -63,6 +63,7 @@ ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr, const INIFile::S
 inline bool IsAlwaysHarvested(ObjectType objectType) { return objectType == ObjectType::whitelist || objectType == ObjectType::collectible; }
 std::string GetObjectTypeName(ObjectType objectType);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
+RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraDataList*>* extraLists);
 ResourceType ResourceTypeByName(const std::string& name);
 
 inline bool IsHarvestable(RE::TESBoundObject* target, ObjectType objectType)
