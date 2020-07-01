@@ -82,7 +82,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 					}
 					if (!m_hasValuableItem)
 					{
-						m_hasValuableItem = itemEx.IsValuable();
+						m_hasValuableItem = itemEx.IsValuable(static_cast<SInt32>(itemEx.GetWorth()));
 					}
 					const auto collectible(itemEx.TreatAsCollectible());
 					if (collectible.first)

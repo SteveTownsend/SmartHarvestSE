@@ -558,10 +558,12 @@ void SearchTask::Run()
 				continue;
 			}
 
-			if (objType == ObjectType::weapon || objType == ObjectType::armor || objType == ObjectType::jewelry) {
+			if (objType == ObjectType::weapon || objType == ObjectType::armor || objType == ObjectType::jewelry)
+			{
 				bool hasEnchantment = GetEnchantmentFromExtraLists(targetItemInfo.GetExtraDataLists()) != nullptr;
 				if (hasEnchantment) {
-					DBG_VMESSAGE("%s/0x%08x has player-created enchantment", targetItemInfo.BoundObject()->GetName(), targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("%s/0x%08x has player-created enchantment",
+						targetItemInfo.BoundObject()->GetName(), targetItemInfo.BoundObject()->GetFormID());
 					switch (objType)
 					{
 					case ObjectType::weapon:

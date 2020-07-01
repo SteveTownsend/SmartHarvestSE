@@ -25,10 +25,10 @@ double IHasValueWeight::GetWorth(void) const
 	return m_worth;
 }
 
-bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 priceOverride) const
+bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 itemValue) const
 {
 	// valuable objects overrides V/W checks
-	if (IsValuable())
+	if (IsValuable(itemValue))
 		return false;
 
 	INIFile* settings(INIFile::GetInstance());
@@ -42,26 +42,19 @@ bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 priceOverride) const
 	if (valueWeight > 0.)
 	{
 		double weight = std::max(GetWeight(), 0.);
-		double worth = 0.;
-		if (priceOverride > 0) {
-			worth = priceOverride;
-		}
-		else {
-			worth = GetWorth();
-		}
-		if (worth > 0. && weight <= 0.)
+		if (itemValue > 0. && weight <= 0.)
 		{
-			DBG_VMESSAGE("%s(%08x) has value %0.2f, weightless", GetName(), GetFormID(), worth);
+			DBG_VMESSAGE("%s(%08x) has value %0.2f, weightless", GetName(), GetFormID(), itemValue);
 			return false;
 		}
 
-		if (worth <= 0.)
+		if (itemValue <= 0.)
 		{
 			if (weight <= 0.)
 			{
 				// this may be a scripted activator without special-case handling - one example is Poison Bloom (xx007cda).
 				// Harvest if non v/w criteria say we should do so.
-				DBG_VMESSAGE("%s(%08x) - cannot calculate v/w from weight %0.2f and worth %0.2f", GetName(), GetFormID(), weight, worth);
+				DBG_VMESSAGE("%s(%08x) - cannot calculate v/w from weight %0.2f and value %0.2f", GetName(), GetFormID(), weight, itemValue);
 				return false;
 			}
 			else
@@ -72,7 +65,7 @@ bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 priceOverride) const
 			}
 		}
 
-		double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.0;
+		double vw = (itemValue > 0. && weight > 0.) ? itemValue / weight : 0.0;
 		DBG_VMESSAGE("%s(%08x) item VW %0.2f vs threshold VW %0.2f", GetName(), GetFormID(), vw, valueWeight);
 		// allow small tolerance for floating point uncertainty
 		if (vw < valueWeight - 0.01)
@@ -81,16 +74,15 @@ bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 priceOverride) const
 	return false;
 }
 
-bool IHasValueWeight::IsValuable() const
+bool IHasValueWeight::IsValuable(SInt32 itemValue) const
 {
-	double worth(GetWorth());
-	if (worth > 0.)
+	if (itemValue > 0.)
 	{
 		double minValue(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemThreshold"));
 		// allow small tolerance for floating point uncertainty
-		if (minValue > 0. && worth >= minValue - 0.01)
+		if (minValue > 0. && itemValue >= minValue - 0.01)
 		{
-			DBG_VMESSAGE("%s(%08x) has value %0.2f vs threshold, Valuable", GetName(), GetFormID(), worth, minValue);
+			DBG_VMESSAGE("%s(%08x) has value %0.2f vs threshold, Valuable", GetName(), GetFormID(), itemValue, minValue);
 			return true;
 		}
 	}

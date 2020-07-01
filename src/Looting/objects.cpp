@@ -139,7 +139,7 @@ std::pair<bool, SpecialObjectHandling> TESObjectREFRHelper::TreatAsCollectible(v
 bool TESObjectREFRHelper::IsValuable() const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.IsValuable();
+	return itemEx.IsValuable(static_cast<SInt32>(GetWorth()));
 }
 
 bool TESObjectREFRHelper::IsPlayerOwned() const
@@ -428,14 +428,15 @@ ResourceType ResourceTypeByName(const std::string& name)
 
 RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraDataList*>* extraLists)
 {
-	RE::EnchantmentItem* enchantment = nullptr;
 	if (!extraLists)
-		return enchantment;
-	for (auto extraList = extraLists->begin(); extraList != extraLists->end(); extraList++) {
+		return nullptr;
+	RE::EnchantmentItem* enchantment = nullptr;
+	for (auto extraList = extraLists->begin(); extraList != extraLists->end(); ++extraList)
+	{
 		ExtraDataListHelper exListHelper(*extraList);
 		enchantment = exListHelper.GetEnchantment();
 		if (enchantment)
-			break;
+			return enchantment;
 	}
-	return enchantment;
+	return nullptr;
 }
