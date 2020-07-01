@@ -25,7 +25,6 @@ int objType_Soulgem
 int objType_LockPick
 int objType_Ammo
 int objType_Mine
-int objType_WhiteList
 
 bool enableHarvest
 bool enableLootContainer
@@ -52,6 +51,11 @@ int radius
 float interval
 int radiusIndoors
 float intervalIndoors
+
+float defaultVerticalRadiusFactor
+float verticalRadiusFactor
+int defaultDoorsPreventLooting
+int doorsPreventLooting
 
 int iniSaveLoad
 string[] s_iniSaveLoadArray
@@ -200,6 +204,9 @@ function ApplySettingsFromFile()
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
 
+    verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor") as float
+    doorsPreventLooting = GetSetting(type_Harvest, type_Config, "DoorsPreventLooting") as int
+
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
 
@@ -263,6 +270,9 @@ Function ApplySetting(bool reload)
     PutSetting(type_Harvest, type_Config, "DisableDuringCombat", disableDuringCombat as float)
     PutSetting(type_Harvest, type_Config, "DisableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
     PutSetting(type_Harvest, type_Config, "DisableWhileConcealed", disableWhileConcealed as float)
+
+    PutSetting(type_Harvest, type_Config, "VerticalRadiusFactor", verticalRadiusFactor as float)
+    PutSetting(type_Harvest, type_Config, "DoorsPreventLooting", doorsPreventLooting as float)
 
     PutSettingObjectArray(type_Harvest, type_ItemObject, 32, objectSettingArray)
 
@@ -431,10 +441,17 @@ Function InstallCollections()
     collectDuplicates = false
 EndFunction
 
+Function InstallVerticalRadiusAndDoorRule()
+    defaultVerticalRadiusFactor = 1.0
+    verticalRadiusFactor = defaultVerticalRadiusFactor
+    defaultDoorsPreventLooting = 0
+    doorsPreventLooting = defaultDoorsPreventLooting
+EndFunction
+
 Function InitPages()
     Pages = New String[6]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
-    Pages[1] = "$SHSE_SPECIALS_LISTS_PAGENAME"
+    Pages[1] = "$SHSE_SPECIALS_REALISM_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
     Pages[3] = "$SHSE_WHITELIST_PAGENAME"
     Pages[4] = "$SHSE_BLACKLIST_PAGENAME"
@@ -496,13 +513,14 @@ Event OnConfigInit()
     SetOreVeinChoices()
     SetDeadBodyChoices()
     SetMiscDefaults(true)
+    InstallVerticalRadiusAndDoorRule()
     SetObjectTypeData()
 
     ;DebugTrace("** OnConfigInit finished **")
 endEvent
 
 int function GetVersion()
-    return 30
+    return 31
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -520,7 +538,7 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 26 && CurrentVersion < 26)
         ;fix up arrays if missed in bad save from prior version
         CheckItemCategoryArrays()
-    endIF
+    endIf
     if (a_version >= 30 && CurrentVersion < 30)
         ;defaults for all new settings
         notifyLocationChange = false
@@ -538,11 +556,14 @@ Event OnVersionUpdate(int a_version)
     	objType_Key = GetObjectTypeByName("key")
     	objType_Ammo = GetObjectTypeByName("ammo")
     	objType_Mine = GetObjectTypeByName("orevein")
-    	objType_WhiteList = GetObjectTypeByName("whitelist")
     	
     	eventScript.SyncNativeDataTypes()
         eventScript.SetShaders()
-    endIF
+    endIf
+    if (a_version >= 31 && CurrentVersion < 31)
+        ;defaults for all new settings
+        InstallVerticalRadiusAndDoorRule()
+    endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
 
@@ -761,10 +782,9 @@ event OnPageReset(string currentPage)
 ;   ======================== RIGHT ========================
         SetCursorPosition(1)
 
-        AddHeaderOption("$SHSE_LIST_MANAGEMENT_HEADER")
-
-        AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode)
-        AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode)
+        AddHeaderOption("$SHSE_MORE_REALISM_HEADER")
+        AddSliderOptionST("VerticalRadiusFactorState", "$SHSE_VERTICAL_RADIUS_FACTOR", verticalRadiusFactor as float, "{2}")
+        AddToggleOptionST("DoorsPreventLootingState", "$SHSE_DOORS_PREVENT_LOOTING", doorsPreventLooting as bool)
 
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -791,7 +811,7 @@ event OnPageReset(string currentPage)
         index = 1
         while index < s_objectTypeNameArray.length ; oreVein is the last
             ; do not request V/W for weightless or unhandleable item types
-            if (index == objType_Mine || index == objType_Ammo || index == objType_Septim  || index == objType_Key || index == objType_LockPick || index == objType_WhiteList)
+            if (index == objType_Mine || index == objType_Ammo || index == objType_Septim  || index == objType_Key || index == objType_LockPick)
                 AddEmptyOption()
             else
                 id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W")
@@ -800,6 +820,7 @@ event OnPageReset(string currentPage)
         endWhile
         
     elseif (currentPage == Pages[3]) ; whiteList
+        AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode)
 
         int size = eventScript.whitelist_form.GetSize()
         if (size == 0)
@@ -819,6 +840,8 @@ event OnPageReset(string currentPage)
         endWhile
 
     elseif (currentPage == Pages[4]) ; blacklist
+        AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode)
+
         int size = eventScript.blacklist_form.GetSize()
         if (size == 0)
             return
@@ -1194,6 +1217,67 @@ state IntervalIndoors
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_INTERVAL_INDOORS"))
+    endEvent
+endState
+
+string Function Round(float number, int precision)
+    string result = number as int
+    number -= number as int
+    if precision > 0
+        result += "."
+    endif
+    while precision > 0
+        number *= 10
+        precision -= 1
+        if precision == 0
+            number += 0.5
+        endif
+        result += number as int
+        number -= number as int
+    endwhile
+    return result
+EndFunction
+
+state VerticalRadiusFactorState
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(verticalRadiusFactor)
+        SetSliderDialogDefaultValue(defaultVerticalRadiusFactor)
+        SetSliderDialogRange(0.2, 1.0)
+        SetSliderDialogInterval(0.05)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        verticalRadiusFactor = value
+        SetSliderOptionValueST(value, "{2}")
+        string result = Replace(GetTranslation("$SHSE_MSG_VERTICAL_RADIUS_FACTOR"), "{INDOORS}", Round(radiusIndoors as float * verticalRadiusFactor, 2))
+        ShowMessage(Replace(result, "{OUTDOORS}", Round(radius as float * verticalRadiusFactor, 2)), false)
+    endEvent
+
+    event OnDefaultST()
+        verticalRadiusFactor = defaultVerticalRadiusFactor
+        SetSliderOptionValueST(verticalRadiusFactor, "{2}")
+        string result = Replace(GetTranslation("$SHSE_MSG_VERTICAL_RADIUS_FACTOR"), "{INDOORS}", Round(radiusIndoors as float * verticalRadiusFactor, 2))
+        ShowMessage(Replace(result, "{OUTDOORS}", Round(radius as float * verticalRadiusFactor, 2)), false)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_VERTICAL_RADIUS_FACTOR"))
+    endEvent
+endState
+
+state DoorsPreventLootingState
+    event OnSelectST()
+        doorsPreventLooting = (!(doorsPreventLooting as bool)) as int
+        SetToggleOptionValueST(doorsPreventLooting as bool)
+    endEvent
+
+    event OnDefaultST()
+        doorsPreventLooting = defaultDoorsPreventLooting
+        SetToggleOptionValueST(doorsPreventLooting as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_DOORS_PREVENT_LOOTING"))
     endEvent
 endState
 

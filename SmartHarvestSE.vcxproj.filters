@@ -1,258 +1,265 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="papyrus.cpp" />
-    <ClCompile Include="debugs.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\FormHelpers\AlchemyItemHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="PrecompiledHeaders.cpp" />
-    <ClCompile Include="AlchemyItemHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\FormHelpers\ArmorHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="ExtraDataListHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\FormHelpers\EnchantmentItemHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="EnchantmentItemHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="IHasValueWeight.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\FormHelpers\FormHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerCellHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="version.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\FormHelpers\PlayerCellHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="StackWalker.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\FormHelpers\sound.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="LogStackWalker.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\FormHelpers\WeaponHelper.cpp">
+      <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="ArmorHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\WorldState\ActorTracker.cpp">
+      <Filter>src\WorldState</Filter>
     </ClCompile>
-    <ClCompile Include="WeaponHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\WorldState\LocationTracker.cpp">
+      <Filter>src\WorldState</Filter>
     </ClCompile>
-    <ClCompile Include="FormHelper.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\WorldState\PlayerHouses.cpp">
+      <Filter>src\WorldState</Filter>
     </ClCompile>
-    <ClCompile Include="dataCase.cpp">
-      <Filter>Data</Filter>
+    <ClCompile Include="src\WorldState\PlayerState.cpp">
+      <Filter>src\WorldState</Filter>
     </ClCompile>
-    <ClCompile Include="LoadOrder.cpp">
-      <Filter>Data</Filter>
+    <ClCompile Include="src\WorldState\PopulationCenters.cpp">
+      <Filter>src\WorldState</Filter>
     </ClCompile>
-    <ClCompile Include="containerLister.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Looting\containerLister.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="iniSettings.cpp">
-      <Filter>Data</Filter>
+    <ClCompile Include="src\Looting\InventoryItem.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="InventoryItem.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Looting\ManagedLists.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="objects.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Looting\objects.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="CollectionManager.cpp">
-      <Filter>Collections</Filter>
+    <ClCompile Include="src\Looting\ProducerLootables.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="RecursiveLock.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Looting\tasks.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="SimpleIni.cpp">
-      <Filter>Data</Filter>
+    <ClCompile Include="src\Data\dataCase.cpp">
+      <Filter>src\Data</Filter>
     </ClCompile>
-    <ClCompile Include="sound.cpp">
-      <Filter>FormHelpers</Filter>
+    <ClCompile Include="src\Data\iniSettings.cpp">
+      <Filter>src\Data</Filter>
     </ClCompile>
-    <ClCompile Include="tasks.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Data\LoadOrder.cpp">
+      <Filter>src\Data</Filter>
     </ClCompile>
-    <ClCompile Include="utils.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Data\SimpleIni.cpp">
+      <Filter>src\Data</Filter>
     </ClCompile>
-    <ClCompile Include="Condition.cpp">
-      <Filter>Collections</Filter>
+    <ClCompile Include="src\Looting\IRangeChecker.cpp">
+      <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="Exception.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\VM\EventPublisher.cpp">
+      <Filter>src\VM</Filter>
     </ClCompile>
-    <ClCompile Include="CollectionFactory.cpp">
-      <Filter>Collections</Filter>
+    <ClCompile Include="src\VM\papyrus.cpp">
+      <Filter>src\VM</Filter>
     </ClCompile>
-    <ClCompile Include="Collection.cpp">
-      <Filter>Collections</Filter>
+    <ClCompile Include="src\VM\UIState.cpp">
+      <Filter>src\VM</Filter>
     </ClCompile>
-    <ClCompile Include="IRangeChecker.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Utilities\debugs.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="EventPublisher.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Utilities\Exception.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="UIState.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Utilities\LogStackWalker.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="LocationTracker.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Utilities\RecursiveLock.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="PopulationCenters.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Utilities\StackWalker.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerState.cpp">
-      <Filter>Utilities</Filter>
+    <ClCompile Include="src\Utilities\utils.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="PlayerHouses.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Utilities\version.cpp">
+      <Filter>src\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="ManagedLists.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="ProducerLootables.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\PrecompiledHeaders.cpp">
+      <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="ActorTracker.cpp">
-      <Filter>Looting</Filter>
+    <ClCompile Include="src\Collections\Collection.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Collections\CollectionFactory.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Collections\CollectionManager.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Collections\Condition.cpp">
+      <Filter>src\Collections</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="papyrus.h" />
-    <ClInclude Include="debugs.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="PrecompiledHeaders.h" />
-    <ClInclude Include="version.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="AlchemyItemHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="ExtraDataListHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="EnchantmentItemHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="IHasValueWeight.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="PlayerCellHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="StackWalker.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="LogStackWalker.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="ArmorHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="WeaponHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="FormHelper.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="dataCase.h">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="LoadOrder.h">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="containerLister.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="iniSettings.h">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="InventoryItem.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="objects.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="ObjectType.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="CollectionManager.h">
-      <Filter>Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="RecursiveLock.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
-    <ClInclude Include="SimpleIni.h">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="sound.h">
-      <Filter>FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="tasks.h">
-      <Filter>Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="utils.h">
-      <Filter>Utilities</Filter>
-    </ClInclude>
     <ClInclude Include="resource1.h">
       <Filter>resources</Filter>
     </ClInclude>
-    <ClInclude Include="Condition.h">
-      <Filter>Collections</Filter>
+    <ClInclude Include="src\FormHelpers\AlchemyItemHelper.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="Exception.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\FormHelpers\ArmorHelper.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="CollectionFactory.h">
-      <Filter>Collections</Filter>
+    <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="Collection.h">
-      <Filter>Collections</Filter>
+    <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="LogWrapper.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\FormHelpers\IHasValueWeight.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="BoundedList.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\FormHelpers\PlayerCellHelper.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="IRangeChecker.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\FormHelpers\sound.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="EventPublisher.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\FormHelpers\WeaponHelper.h">
+      <Filter>src\FormHelpers</Filter>
     </ClInclude>
-    <ClInclude Include="UIState.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\WorldState\ActorTracker.h">
+      <Filter>src\WorldState</Filter>
     </ClInclude>
-    <ClInclude Include="LocationTracker.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\WorldState\LocationTracker.h">
+      <Filter>src\WorldState</Filter>
     </ClInclude>
-    <ClInclude Include="PopulationCenters.h">
-      <Filter>Looting</Filter>
+    <ClInclude Include="src\WorldState\PlayerHouses.h">
+      <Filter>src\WorldState</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerState.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\WorldState\PlayerState.h">
+      <Filter>src\WorldState</Filter>
     </ClInclude>
-    <ClInclude Include="PlayerHouses.h">
-      <Filter>Looting</Filter>
+    <ClInclude Include="src\WorldState\PopulationCenters.h">
+      <Filter>src\WorldState</Filter>
     </ClInclude>
-    <ClInclude Include="versiondb.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\Looting\containerLister.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
-    <ClInclude Include="ManagedLists.h">
-      <Filter>Looting</Filter>
+    <ClInclude Include="src\Looting\InventoryItem.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
-    <ClInclude Include="ProducerLootables.h">
-      <Filter>Looting</Filter>
+    <ClInclude Include="src\Looting\objects.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
-    <ClInclude Include="ActorTracker.h">
-      <Filter>Looting</Filter>
+    <ClInclude Include="src\Looting\ProducerLootables.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
-    <ClInclude Include="Enums.h">
-      <Filter>Utilities</Filter>
+    <ClInclude Include="src\Looting\tasks.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Data\dataCase.h">
+      <Filter>src\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Data\iniSettings.h">
+      <Filter>src\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Data\LoadOrder.h">
+      <Filter>src\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Data\SimpleIni.h">
+      <Filter>src\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\IRangeChecker.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VM\EventPublisher.h">
+      <Filter>src\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VM\papyrus.h">
+      <Filter>src\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VM\UIState.h">
+      <Filter>src\VM</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ManagedLists.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\debugs.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\Enums.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\Exception.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\LogStackWalker.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\LogWrapper.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\RecursiveLock.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\StackWalker.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\utils.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\version.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Utilities\versiondb.h">
+      <Filter>src\Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PrecompiledHeaders.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FormHelpers\FormHelper.h">
+      <Filter>src\FormHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\Collection.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\CollectionFactory.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\CollectionManager.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\Condition.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\ObjectType.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -262,52 +269,52 @@
     <Filter Include="Config">
       <UniqueIdentifier>{b875b5fc-c381-473b-9a72-57e3f75fee2b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Config\TSV">
-      <UniqueIdentifier>{b5922a93-b69b-49fd-9386-b964f03bb6bd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Localization">
       <UniqueIdentifier>{20fe0740-4b0b-4fcb-99a0-149f2b234449}</UniqueIdentifier>
     </Filter>
     <Filter Include="Papyrus Source">
       <UniqueIdentifier>{80326a15-e29b-42fa-ab74-00049edf6fd7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Data">
-      <UniqueIdentifier>{7c36c054-5d9a-46f0-8b9c-8cbb7d462f76}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Looting">
-      <UniqueIdentifier>{4b2ddf86-624b-4574-a70f-8ab10729627e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Collections">
-      <UniqueIdentifier>{f52345d8-cfb8-48ce-8990-78ed81d5fe28}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="FormHelpers">
-      <UniqueIdentifier>{71f0c7fc-4d62-413e-afdf-5872914dd97c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Utilities">
-      <UniqueIdentifier>{3d5515fb-a938-4b89-89c8-a9bdc2656b3b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Edit Scripts">
       <UniqueIdentifier>{e43f4006-6e90-4531-b6b3-7e142c27e962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{a2be940c-dd1e-42f2-a11a-ff545a7bbc4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Collections">
+      <UniqueIdentifier>{f52345d8-cfb8-48ce-8990-78ed81d5fe28}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\FormHelpers">
+      <UniqueIdentifier>{71f0c7fc-4d62-413e-afdf-5872914dd97c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\WorldState">
+      <UniqueIdentifier>{ab586002-23ae-417c-b55d-c9819b9b8398}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Looting">
+      <UniqueIdentifier>{4b2ddf86-624b-4574-a70f-8ab10729627e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Data">
+      <UniqueIdentifier>{b9bba89f-6191-4fa6-8e68-03bb0cd20112}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\VM">
+      <UniqueIdentifier>{3a928258-4bb6-4b6f-b2eb-9c8fdc327acc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Utilities">
+      <UniqueIdentifier>{08d9c783-62e2-4fe7-b6be-272995f8b358}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections">
+      <UniqueIdentifier>{ebd3eb26-1790-488b-aa4a-c13042aec46a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections\Schema">
+      <UniqueIdentifier>{d90f512a-69bc-44ce-b4fe-7d0e022f8dbe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections\Examples">
+      <UniqueIdentifier>{28f6f8ad-c267-491e-b008-ac1eeab42454}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
       <Filter>resources</Filter>
-    </None>
-    <None Include="Config\default\WhiteList.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\BlackList.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Scripts\SmartHarvestSE.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\SmartHarvestSE_Events_Alias.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\SmartHarvestSE_mcm.psc">
-      <Filter>Papyrus Source</Filter>
     </None>
     <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
@@ -315,14 +322,29 @@
     <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas">
       <Filter>Edit Scripts</Filter>
     </None>
-    <None Include="Config\SHSE.Collections.LoTD.json">
-      <Filter>Config</Filter>
+    <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json">
+      <Filter>Collections\Examples</Filter>
     </None>
-    <None Include="Config\SHSE.Collections.Samples.json">
-      <Filter>Config</Filter>
+    <None Include="Collections\Examples\SHSE.Collections.LoTD.json">
+      <Filter>Collections\Examples</Filter>
     </None>
-    <None Include="Config\SHSE.SchemaCollections.json">
-      <Filter>Config</Filter>
+    <None Include="Collections\Examples\SHSE.Collections.Samples.json">
+      <Filter>Collections\Examples</Filter>
+    </None>
+    <None Include="Collections\Schema\SHSE.SchemaCollections.json">
+      <Filter>Collections\Schema</Filter>
+    </None>
+    <None Include="Scripts\SHSE_EventsAlias.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\SHSE_MCM.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\SHSE_PluginProxy.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Collections\Examples\SHSE.Collections.Uniques.json">
+      <Filter>Collections\Examples</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
