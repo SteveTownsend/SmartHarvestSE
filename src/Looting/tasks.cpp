@@ -968,14 +968,15 @@ void SearchTask::DoPeriodicSearch()
 	PlayerCellHelper helper(targets, rangeCheck);
 	helper.FindLootableReferences();
 	double boundary(helper.DistanceToDoor());
-	if (boundary > 0.)
+	// only use door distance if config indicates, and there is a door nerby
+	if (m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") == 0. || boundary == 0.)
+	{
+		DBG_MESSAGE("Use vanilla loot radius %.2f units", boundary);
+		boundary = radius;
+	}
+	else
 	{
 		DBG_MESSAGE("Nearest Door to player is %.2f units away", boundary);
-	}
-	// only use door distance if config indicates
-	if (m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") == 0.)
-	{
-		boundary = radius;
 	}
 
 	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
@@ -988,9 +989,9 @@ void SearchTask::DoPeriodicSearch()
 	for (auto target = targets.cbegin(); target != endOfRange; ++target)
 	{
 		// exclude REFRs too far away, checking the adjusted radius
-		if (target->first > radius)
+		if (target->first > boundary)
 		{
-			DBG_MESSAGE("REFR 0x%08x distance %.2f exceeds final radius %.2f", target->first, radius);
+			DBG_MESSAGE("REFR 0x%08x distance %.2f exceeds final radius %.2f", target->first, boundary);
 			continue;
 		}
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
