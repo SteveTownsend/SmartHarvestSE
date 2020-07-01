@@ -229,13 +229,12 @@
     <ClCompile Include="src\WorldState\PopulationCenters.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\Collection.h" />
-    <ClInclude Include="include\CollectionFactory.h" />
-    <ClInclude Include="include\CollectionManager.h" />
-    <ClInclude Include="include\Condition.h" />
     <ClInclude Include="include\ManagedLists.h" />
-    <ClInclude Include="include\ObjectType.h" />
     <ClInclude Include="resource1.h" />
+    <ClInclude Include="src\Collections\Collection.h" />
+    <ClInclude Include="src\Collections\CollectionFactory.h" />
+    <ClInclude Include="src\Collections\CollectionManager.h" />
+    <ClInclude Include="src\Collections\Condition.h" />
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
     <ClInclude Include="src\Data\LoadOrder.h" />
@@ -253,10 +252,10 @@
     <ClInclude Include="src\Looting\InventoryItem.h" />
     <ClInclude Include="src\Looting\IRangeChecker.h" />
     <ClInclude Include="src\Looting\objects.h" />
+    <ClInclude Include="src\Looting\ObjectType.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
     <ClInclude Include="src\Looting\tasks.h" />
     <ClInclude Include="src\PrecompiledHeaders.h" />
-    <ClInclude Include="src\Utilities\BoundedList.h" />
     <ClInclude Include="src\Utilities\debugs.h" />
     <ClInclude Include="src\Utilities\Enums.h" />
     <ClInclude Include="src\Utilities\Exception.h" />
@@ -277,17 +276,17 @@
     <ClInclude Include="src\WorldState\PopulationCenters.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\SHSE.Collections.LoTD.json" />
-    <None Include="Config\SHSE.Collections.Samples.json" />
-    <None Include="Config\SHSE.SchemaCollections.json" />
+    <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
+    <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
+    <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
+    <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
+    <None Include="Collections\Schema\SHSE.SchemaCollections.json" />
     <None Include="Config\SmartHarvestSE.ini" />
-    <None Include="Config\default\BlackList.tsv" />
-    <None Include="Config\default\WhiteList.tsv" />
     <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="exports.def" />
-    <None Include="Scripts\SmartHarvestSE.psc" />
-    <None Include="Scripts\SmartHarvestSE_Events_Alias.psc" />
-    <None Include="Scripts\SmartHarvestSE_mcm.psc" />
+    <None Include="Scripts\SHSE_EventsAlias.psc" />
+    <None Include="Scripts\SHSE_MCM.psc" />
+    <None Include="Scripts\SHSE_PluginProxy.psc" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CommonLibSSE\CommonLibSSE.vcxproj">

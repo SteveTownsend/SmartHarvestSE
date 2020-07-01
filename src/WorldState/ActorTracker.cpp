@@ -48,8 +48,7 @@ void ActorTracker::RecordTimeOfDeath(RE::TESObjectREFR* refr)
 	DBG_MESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
 }
 
-// return false iff output list is full
-bool ActorTracker::ReleaseIfReliablyDead(BoundedList<RE::TESObjectREFR*>& refs)
+void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 {
 	RecursiveLockGuard guard(m_actorLock);
 	const int interval(shse::PlayerState::Instance().PerksAddLeveledItemsOnDeath() ? ReallyDeadWaitIntervalSecondsLong : ReallyDeadWaitIntervalSeconds);
@@ -67,10 +66,9 @@ bool ActorTracker::ReleaseIfReliablyDead(BoundedList<RE::TESObjectREFR*>& refs)
 			DBG_MESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
 		}
 		m_apparentTimeOfDeath.pop_front();
-		if (!refs.Add(refr))
-			return false;
+		// use distance 0. to prioritize looting
+		refs.emplace_back(0., refr);
 	}
-	return true;
 }
 
 }

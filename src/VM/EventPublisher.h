@@ -18,7 +18,7 @@ public:
 	void TriggerResetCarryWeight();
 	void TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify);
 	void TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType objType, int itemCount, const bool isSilent, const bool manualLootNotify);
-	void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType);
+	void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const INIFile::SecondaryType scope);
 	void TriggerFlushAddedItems(void);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void TriggerCheckOKToScan(const int nonce);

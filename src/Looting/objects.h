@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FormHelpers/IHasValueWeight.h"
+#include "Data/iniSettings.h"
 
 inline bool IsBookObject(ObjectType objType)
 {
@@ -10,7 +11,7 @@ inline bool IsBookObject(ObjectType objType)
 class TESObjectREFRHelper : public IHasValueWeight
 {
 public:
-	explicit TESObjectREFRHelper(const RE::TESObjectREFR* ref);
+	explicit TESObjectREFRHelper(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope);
 
 	SInt16 GetItemCount();
 	RE::NiTimeController* GetTimeController(void) const;
@@ -19,7 +20,7 @@ public:
 	const RE::TESContainer* GetContainer() const;
 	std::vector<RE::TESObjectREFR*> GetLinkedRefs(RE::BGSKeyword* keyword);
 	bool IsPlayerOwned(void) const;
-	std::pair<bool, SpecialObjectHandling> IsCollectible(void) const;
+	std::pair<bool, SpecialObjectHandling> TreatAsCollectible(void) const;
 	bool IsValuable(void) const;
 
 	RE::TESForm* GetLootable() const;
@@ -34,6 +35,7 @@ protected:
 
 private:
 	const RE::TESObjectREFR* m_ref;
+	const INIFile::SecondaryType m_scope;
 	RE::TESForm* m_lootable;
 };
 
@@ -53,10 +55,10 @@ bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsContainerLocked(const RE::TESObjectREFR * refr);
-ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList = false);
-ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteList = false);
+ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, const INIFile::SecondaryType scope, bool ignoreWhiteList);
+ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, const INIFile::SecondaryType scope, bool ignoreWhiteList);
 // this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
-ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList);
+ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr, const INIFile::SecondaryType scope, bool ignoreWhiteList);
 // end link-time misuse guard
 inline bool IsAlwaysHarvested(ObjectType objectType) { return objectType == ObjectType::whitelist || objectType == ObjectType::collectible; }
 std::string GetObjectTypeName(ObjectType objectType);

@@ -80,7 +80,7 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = GetBaseFormObjectType(thisForm, true);
+		ObjectType objType = GetBaseFormObjectType(thisForm, INIFile::SecondaryType::NONE2, true);
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 

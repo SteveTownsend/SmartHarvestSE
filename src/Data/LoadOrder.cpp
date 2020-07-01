@@ -58,7 +58,7 @@ RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 	{
 		return matched->second;
 	}
-	return InvalidForm;
+	return InvalidPlugin;
 }
 
 // returns true iff mod listed, which means it is active by virtue of exclusion of 0xff above
@@ -70,6 +70,8 @@ bool LoadOrder::IncludesMod(const std::string& modName) const
 bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID) const
 {
 	RE::FormID modMask(GetFormIDMask(modName));
+	if (modMask == InvalidPlugin)
+		return false;
 	return (modMask & LightFormIDSentinel) == LightFormIDSentinel ?
 		modMask == (formID & LightFormIDMask) : modMask == (formID & RegularFormIDMask);
 }

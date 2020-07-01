@@ -50,6 +50,15 @@ std::unique_ptr<SignatureCondition> CollectionFactory::ParseSignature(const nloh
 	return std::make_unique<SignatureCondition>(signatures);
 }
 
+std::unique_ptr<ScopeCondition> CollectionFactory::ParseScope(const nlohmann::json& scopeRule) const
+{
+	std::vector<std::string> scopes;
+	scopes.reserve(scopeRule.size());
+	std::transform(scopeRule.begin(), scopeRule.end(), std::back_inserter(scopes),
+		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+	return std::make_unique<ScopeCondition>(scopes);
+}
+
 CollectionPolicy CollectionFactory::ParsePolicy(const nlohmann::json& policy) const
 {
 	return CollectionPolicy(ParseSpecialObjectHandling(policy["action"].get<std::string>()),
@@ -92,6 +101,10 @@ std::unique_ptr<ConditionTree> CollectionFactory::ParseFilter(const nlohmann::js
 		else if (condition.key() == std::string("signature"))
 		{
 			root->AddCondition(ParseSignature(condition.value()));
+		}
+		else if (condition.key() == std::string("scope"))
+		{
+			root->AddCondition(ParseScope(condition.value()));
 		}
 	}
 

@@ -7,8 +7,8 @@
 #include "WorldState/LocationTracker.h"
 #include "FormHelpers/PlayerCellHelper.h"
 
-PlayerCellHelper::PlayerCellHelper(BoundedList<RE::TESObjectREFR*>& refs, const IRangeChecker& rangeCheck) :
-	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck)
+PlayerCellHelper::PlayerCellHelper(DistanceToTarget& refs, const IRangeChecker& rangeCheck) :
+	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck), m_nearestDoor(0.)
 {
 }
 
@@ -46,10 +46,16 @@ never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR
 
 bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 {
-	// prioritize checks that do not require obtaining a lock
 	if (!refr)
 	{
 		DBG_VMESSAGE("null REFR");
+		return false;
+	}
+
+	// if 3D not loaded do not measure
+	if (!refr->Is3DLoaded())
+	{
+		DBG_VMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 
@@ -59,7 +65,20 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
+	if (refr->GetBaseObject()->formType == RE::FormType::Furniture ||
+		refr->GetBaseObject()->formType == RE::FormType::Hazard)
+	{
+		DBG_VMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		return false;
+	}
+
 	DataCase* data = DataCase::GetInstance();
+	if (data->IsFormBlocked(refr->GetBaseObject()))
+	{
+		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
+		return false;
+	}
+
 	if (data->IsReferenceBlocked(refr))
 	{
 		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
@@ -74,10 +93,11 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// if 3D not loaded do not measure
-	if (!refr->Is3DLoaded())
+	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
+	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
-		DBG_VMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+		data->BlacklistReference(refr);
+		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
 		return false;
 	}
 
@@ -104,31 +124,24 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	if (refr->GetBaseObject()->formType == RE::FormType::Furniture ||
-		refr->GetBaseObject()->formType == RE::FormType::Hazard ||
-		refr->GetBaseObject()->formType == RE::FormType::Door)
-	{
-		DBG_VMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
-
 	// skip anything not in the required distance-to-player range
 	if (!m_rangeCheck.IsValid(refr))
 		return false;
 
-#if 0
-	// indicate LOS for target
-	UInt8 dummy;
-	bool hasLOS(RE::HasLOS(RE::PlayerCharacter::GetSingleton(), refr, &dummy));
-	DBG_VMESSAGE("player has %sLOS to %s/0x%08x", hasLOS ? "" : "no ", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#elif 0
-	// indicate LOS for target
-	UInt8 dummy;
-	RE::Actor* actor(const_cast<RE::PlayerCharacter*>(RE::PlayerCharacter::GetSingleton()));
-	RE::TESObjectREFR* target(const_cast<RE::TESObjectREFR*>(refr));
-	bool hasLOS(HasLOS(reinterpret_cast<Actor*>(actor), reinterpret_cast<TESObjectREFR*>(target), &dummy));
-	DBG_VMESSAGE("player has %sLOS to %s/0x%08x", hasLOS ? "" : "no ", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-#endif
+	// Looting through Doors not allowed - check distance to this one and record if this is the nearest so far
+	if (refr->GetBaseObject()->formType == RE::FormType::Door)
+	{
+		if (m_nearestDoor == 0. || m_rangeCheck.Distance() < m_nearestDoor)
+		{
+			DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
+			m_nearestDoor = m_rangeCheck.Distance();
+		}
+		else
+		{
+			DBG_VMESSAGE("skip Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
+		}
+		return false;
+	}
 
 	if (SearchTask::IsLockedForHarvest(refr))
 	{
@@ -140,24 +153,12 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
+
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
 	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
-		return false;
-	}
-	if (data->IsFormBlocked(refr->GetBaseObject()))
-	{
-		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
-		return false;
-	}
-
-	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
-	if (!fullName || fullName->GetFullNameLength() == 0)
-	{
-		data->BlacklistReference(refr);
-		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
 		return false;
 	}
 
@@ -167,7 +168,6 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 
 bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 {
-	// prioritize checks that do not require obtaining a lock
 	if (!refr)
 	{
 		DBG_VMESSAGE("null REFR");
@@ -181,13 +181,6 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	}
 
 	DataCase* data = DataCase::GetInstance();
-#if 0
-	if (data->IsReferenceBlocked(refr))
-	{
-		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
-		return false;
-	}
-#endif
 	// check blacklist early - this may be a malformed REFR e.g. GetBaseObject() blank, 0x00000000 FormID
 	// as observed in play testing
 	if (data->IsReferenceOnBlacklist(refr))
@@ -204,13 +197,6 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	}
 	if (refr->formType == RE::FormType::ActorCharacter)
 	{
-#if 0
-		if (!refr->IsDead(true))
-		{
-			DBG_VMESSAGE("skip living ActorCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-			return false;
-		}
-#endif
 		if (refr == RE::PlayerCharacter::GetSingleton())
 		{
 			DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
@@ -218,38 +204,10 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 		}
 	}
 
-#if 0
-	if ((refr->GetBaseObject()->formType == RE::FormType::Flora || refr->GetBaseObject()->formType == RE::FormType::Tree) &&
-		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
-	{
-		DBG_VMESSAGE("skip harvested REFR 0x%08x to Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return false;
-	}
-
-	if (refr->GetBaseObject()->formType == RE::FormType::Furniture ||
-		refr->GetBaseObject()->formType == RE::FormType::Hazard ||
-		refr->GetBaseObject()->formType == RE::FormType::Door)
-	{
-		DBG_VMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
-#endif
 	// skip anything not in the required distance-to-player range
 	if (!m_rangeCheck.IsValid(refr))
 		return false;
 
-#if 0
-	if (SearchTask::IsLockedForHarvest(refr))
-	{
-		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
-	if (SearchTask::IsLootedContainer(refr))
-	{
-		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
-#endif
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
 	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
@@ -257,13 +215,6 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
 		return false;
 	}
-#if 0
-	if (data->IsFormBlocked(refr->GetBaseObject()))
-	{
-		DBG_VMESSAGE("skip blocked REFR base form 0x%08x", refr->formID);
-		return false;
-	}
-#endif
 	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
@@ -288,12 +239,11 @@ void PlayerCellHelper::FindAllCandidates() const
 	FilterNearbyReferences();
 }
 
-// returns false iff output list is full
-bool PlayerCellHelper::FilterCellReferences(const RE::TESObjectCELL* cell) const
+void PlayerCellHelper::FilterCellReferences(const RE::TESObjectCELL* cell) const
 {
 	// Do not scan reference list until cell is attached
 	if (!cell->IsAttached())
-		return true;
+		return;
 
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
@@ -306,11 +256,9 @@ bool PlayerCellHelper::FilterCellReferences(const RE::TESObjectCELL* cell) const
 				continue;
 			}
 
-			if (!m_refs.Add(refr))
-				return false;
+			m_refs.emplace_back(m_rangeCheck.Distance(), refr);
 		}
 	}
-	return true;
 }
 
 void PlayerCellHelper::FilterNearbyReferences() const
@@ -324,7 +272,8 @@ void PlayerCellHelper::FilterNearbyReferences() const
 
 	// For exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	// If current cell fills the list then ignore others.
-	if (FilterCellReferences(cell) && !LocationTracker::Instance().IsPlayerIndoors())
+	FilterCellReferences(cell);
+	if (!LocationTracker::Instance().IsPlayerIndoors())
 	{
 		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", cell->GetFormID());
 		for (const auto& adjacentCell : LocationTracker::Instance().AdjacentCells())
@@ -336,10 +285,7 @@ void PlayerCellHelper::FilterNearbyReferences() const
 				continue;
 			}
 			DBG_VMESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
-			if (!FilterCellReferences(adjacentCell)) {
-				// list full
-				break;
-			}
+			FilterCellReferences(adjacentCell);
 		}
 	}
 	// Summary of unlootable REFRs

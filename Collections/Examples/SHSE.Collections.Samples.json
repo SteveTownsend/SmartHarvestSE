@@ -19,57 +19,6 @@
     },
 
     {
-      "name": "Bad Gremlins",
-      "description": "Items added by Bad Gremlins Collectables",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "BGCollectables.esp" ],
-          "signature": [ "BOOK", "MISC" ]
-        }
-      }
-    },
-
-    {
-      "name": "Skyrim's Unique Treasures",
-      "description": "Items added by Skyrim's Unique Treasures",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "SkyrimsUniqueTreasures.esp" ],
-          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
-        }
-      }
-    },
-
-    {
-      "name": "Palaeontologist",
-      "description": "All the fossils added by Fossil Mining",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": true
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "Fossilsyum.esp" ],
-          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
-        }
-      }
-    },
-
-    {
       "name": "Daedric Wielder",
       "description": "Every Daedric Artifact",
       "policy": {
@@ -82,41 +31,6 @@
         "condition": {
           "signature": [ "ARMO", "BOOK", "MISC", "SLGM", "WEAP" ],
           "keyword": [ "VendorItemDaedricArtifact" ]
-        }
-      }
-    },
-
-    {
-      "name": "A Hot Meal",
-      "description": "Every Cooked Food Item",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "Complete Alchemy & Cooking Overhaul.esp" ],
-          "keyword": [ "VendorItemFoodCooked" ]
-        }
-      }
-    },
-
-    {
-      "name": "Cloaking Device",
-      "description": "Every Cloak",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "Cloaks.esp", "Cloaks - Dawnguard.esp" ],
-          "signature": [ "ARMO" ],
-          "keyword": [ "VendorItemClothing" ]
         }
       }
     },
@@ -135,31 +49,6 @@
           "plugin": "Weapons Armor Clothing & Clutter Fixes.esp",
           "signature": [ "ARMO" ],
           "keyword": [ "WAF_ClothingPouch" ]
-        }
-      }
-    },
-
-    {
-      "name": "Keys to the City",
-      "description": "Every Key in the Forgotten City",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "ForgottenCity.esp" ],
-          "subFilter": [
-            {
-              "operator": "OR",
-              "condition": {
-                "signature": [ "KEYM" ],
-                "keyword": [ "VendorItemKey" ]
-              }
-            }
-          ]
         }
       }
     },
@@ -228,6 +117,23 @@
           "plugin": [ "Skyrim.esm" ],
           "signature": [ "WEAP" ],
           "keyword": [ "this is invalid" ]
+        }
+      }
+    },
+
+    {
+      "name": "Base Game Weapons",
+      "description": "Demonstrates Skyrim.esm usable",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": "Skyrim.esm",
+          "signature": [ "WEAP" ]
         }
       }
     }

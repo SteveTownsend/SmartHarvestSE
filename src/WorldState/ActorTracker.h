@@ -1,8 +1,7 @@
 #pragma once
 
 #include <deque>
-
-#include "Utilities/BoundedList.h"
+#include "Looting/IRangeChecker.h"
 
 namespace shse
 {
@@ -18,7 +17,7 @@ public:
 	bool SeenAlive(const RE::TESObjectREFR* actorRef) const;
 
 	void RecordTimeOfDeath(RE::TESObjectREFR* actorRef);
-	bool ReleaseIfReliablyDead(BoundedList<RE::TESObjectREFR*>& refs);
+	void ReleaseIfReliablyDead(DistanceToTarget& refs);
 
 private:
 	static std::unique_ptr<ActorTracker> m_instance;

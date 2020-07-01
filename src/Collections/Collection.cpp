@@ -3,6 +3,7 @@
 #include "Collections/Collection.h"
 #include "Utilities/utils.h"
 #include "VM/papyrus.h"
+#include "WorldState/PlayerState.h"
 
 namespace shse
 {
@@ -39,20 +40,27 @@ bool Collection::IsMemberOf(const RE::TESForm* form) const
 	return form && m_members.contains(form->GetFormID());
 }
 
-bool Collection::IsCollectibleFor(const RE::TESForm* form) const
+bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 {
-	if (!form)
+	if (!matcher.Form())
 		return false;
 
+	// check Scope - if Collection is scoped, scope for this autoloot check must be valid
+	if (!m_scopes.empty() && std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) == m_scopes.cend())
+	{
+		DBG_VMESSAGE("%s/0x%08x has invalid scope %d", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
+		return false;
+	}
+
 	// if (always collectible OR not observed) AND a member of this collection
-	return (m_policy.Repeat() || !m_observed.contains(form->GetFormID())) && IsMemberOf(form);
+	return (m_policy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
 }
 
-bool Collection::MatchesFilter(const RE::TESForm* form) const
+bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
 {
-	if (form && m_rootFilter->operator()(form))
+	if (matcher.Form() && m_rootFilter->operator()(matcher))
 	{
-		AddMemberID(form);
+		AddMemberID(matcher.Form());
 		return true;
 	}
 	return false;
@@ -61,7 +69,8 @@ bool Collection::MatchesFilter(const RE::TESForm* form) const
 void Collection::RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place)
 {
 	DBG_VMESSAGE("Collect %s/0x%08x in %s", form->GetName(), form->GetFormID(), m_name.c_str());
-	if (m_observed.insert(std::make_pair(itemID, CollectionEntry(form, gameTime, place))).second)
+	if (m_observed.insert(
+		std::make_pair(itemID, CollectionEntry(form, gameTime, place, PlayerState::Instance().GetPosition()))).second)
 	{
 		if (m_policy.Notify())
 		{
@@ -103,6 +112,25 @@ std::string Collection::PrintMembers(void) const
 {
 	std::ostringstream collectionStr;
 	collectionStr << m_members.size() << " members\n";
+	if (!m_scopes.empty())
+	{
+		collectionStr << "Scope: ";
+		size_t scopes(m_scopes.size());
+		for (const auto scope : m_scopes)
+		{
+			std::string scopeStr;
+			INIFile::GetInstance()->GetIsSecondaryTypeString(scope, scopeStr);
+			collectionStr << scopeStr;
+			if (--scopes)
+			{
+				collectionStr << ', ';
+			}
+			else
+			{
+				collectionStr << '\n';
+			}
+		}
+	}
 	for (const auto member : m_members)
 	{
 		collectionStr << "  0x" << std::hex << std::setw(8) << std::setfill('0') << member;

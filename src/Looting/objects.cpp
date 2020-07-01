@@ -64,9 +64,9 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 	return ashHandle.get().get();
 }
 
-TESObjectREFRHelper::TESObjectREFRHelper(const RE::TESObjectREFR* ref) : m_ref(ref), m_lootable(nullptr)
+TESObjectREFRHelper::TESObjectREFRHelper(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_lootable(nullptr), m_scope(scope)
 {
-	m_objectType = GetREFRObjectType(m_ref);
+	m_objectType = GetREFRObjectType(m_ref, scope, false);
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
@@ -130,15 +130,15 @@ const RE::TESContainer* TESObjectREFRHelper::GetContainer() const
 	return container;
 }
 
-std::pair<bool, SpecialObjectHandling> TESObjectREFRHelper::IsCollectible(void) const
+std::pair<bool, SpecialObjectHandling> TESObjectREFRHelper::TreatAsCollectible(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
-	return itemEx.IsCollectible();
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
+	return itemEx.TreatAsCollectible();
 }
 
 bool TESObjectREFRHelper::IsValuable() const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.IsValuable();
 }
 
@@ -177,13 +177,13 @@ void TESObjectREFRHelper::SetLootable(RE::TESForm* lootable)
 
 double TESObjectREFRHelper::CalculateWorth(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.GetWorth();
 }
 
 double TESObjectREFRHelper::GetWeight(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.GetWeight();
 }
 
@@ -255,7 +255,7 @@ bool ActorHelper::IsSummoned(void) const
 }
 
 // this is the pivotal function that maps a REFR to its loot category
-ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList)
+ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, const INIFile::SecondaryType scope, const bool ignoreWhiteList)
 {
 	if (!refr || !refr->GetBaseObject())
 		return ObjectType::unknown;
@@ -275,10 +275,10 @@ ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, bool ignoreWhiteList
 		return ObjectType::ammo;
 	}
 
-	return GetBaseFormObjectType(refr->GetBaseObject(), ignoreWhiteList);
+	return GetBaseFormObjectType(refr->GetBaseObject(), scope, ignoreWhiteList);
 }
 
-ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteList)
+ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, const INIFile::SecondaryType scope, const bool ignoreWhiteList)
 {
 	// Leveled items typically redirect to their contents
 	DataCase* data = DataCase::GetInstance();
@@ -286,8 +286,13 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, bool ignoreWhiteLi
 	if (!baseForm)
 		return ObjectType::unknown;
 
+#if _DEBUG
+	if (!ignoreWhiteList && scope != INIFile::SecondaryType::containers && scope != INIFile::SecondaryType::deadbodies && scope != INIFile::SecondaryType::itemObjects)
+		throw std::runtime_error("Invalid scope");
+#endif
+
 	ObjectType objectType(data->GetObjectTypeForForm(baseForm));
-	if (!ignoreWhiteList && shse::CollectionManager::Instance().IsCollectible(baseForm).first)
+	if (!ignoreWhiteList && shse::CollectionManager::Instance().TreatAsCollectible(shse::ConditionMatcher(baseForm, scope)).first)
 	{
 		// May not be looted if configured to glow
 		return ObjectType::collectible;
@@ -376,7 +381,8 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::container, "container"},
 	{ObjectType::actor, "actor"},
 	{ObjectType::ashPile, "ashpile"},
-	{ObjectType::manualLoot, "manualloot"}
+	{ObjectType::manualLoot, "manualloot"},
+	{ObjectType::collectible, "collectible"}
 	});
 
 std::string GetObjectTypeName(ObjectType objectType)

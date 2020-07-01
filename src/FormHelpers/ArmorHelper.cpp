@@ -8,7 +8,7 @@ UInt32 TESObjectARMOHelper::GetGoldValue() const
 	if (!m_armor)
 		return 0;
 
-	RE::EnchantmentItem* ench = TESFormHelper(m_armor).GetEnchantment();
+	RE::EnchantmentItem* ench = TESFormHelper(m_armor, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (!ench)
 	{
 		return m_armor->value;

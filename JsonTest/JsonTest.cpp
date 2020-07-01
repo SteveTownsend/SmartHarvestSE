@@ -36,6 +36,14 @@ void ParseSignature(const nlohmann::json& signatureRule)
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 }
 
+void ParseScope(const nlohmann::json& scopeRule)
+{
+	std::vector<std::string> scopes;
+	scopes.reserve(scopeRule.size());
+	std::transform(scopeRule.begin(), scopeRule.end(), std::back_inserter(scopes),
+		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+}
+
 void ParseLootCategory(const nlohmann::json& lootCategoryRule)
 {
 	std::vector<std::string> lootCategories;
@@ -78,6 +86,10 @@ void ParseFilter(const nlohmann::json& filter)
 		else if (condition.key() == "signature")
 		{
 			ParseSignature(condition.value());
+		}
+		else if (condition.key() == "scope")
+		{
+			ParseScope(condition.value());
 		}
 	}
 }

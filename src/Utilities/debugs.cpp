@@ -24,13 +24,13 @@ void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 #endif
 }
 
-void DumpKeyword(const RE::TESForm* pForm)
+void DumpKeyword(const RE::TESForm* pForm, const INIFile::SecondaryType scope)
 {
 #if _DEBUG
 	if (!pForm)
 		return;
 
-	TESFormHelper pFormEx(pForm);
+	TESFormHelper pFormEx(pForm, scope);
 	RE::BGSKeywordForm* keywordForm = pFormEx.GetKeywordForm();
 	if (keywordForm)
 		DumpKeywordForm(keywordForm);
@@ -129,16 +129,16 @@ void DumpItemVW(const TESFormHelper& itemEx)
 #endif
 }
 
-void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
+void DumpReference(const TESObjectREFRHelper& refr, const char* typeName, const INIFile::SecondaryType scope)
 {
 #if _DEBUG
 	const RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.GetReference()->GetBaseObject());
 	DBG_VMESSAGE("0x%08x 0x%02x(%02d) [%s] - typename %s", target->formID, target->formType, target->formType, refr.GetReference()->GetName(), typeName);
 
-	TESFormHelper itemEx(target);
+	TESFormHelper itemEx(target, scope);
 	DumpItemVW(itemEx);
 
-	DumpKeyword(target);
+	DumpKeyword(target, scope);
 
 	const RE::ExtraDataList *extraData = &refr.GetReference()->extraList;
 	DumpExtraData(extraData);
@@ -147,7 +147,7 @@ void DumpReference(const TESObjectREFRHelper& refr, const char* typeName)
 #endif
 }
 
-void DumpContainer(const TESObjectREFRHelper& refr)
+void DumpContainer(const TESObjectREFRHelper& refr, const INIFile::SecondaryType scope)
 {
 #if _DEBUG
 	DBG_MESSAGE("%08x %02x(%02d) [%s]", refr.GetReference()->GetBaseObject()->formID, refr.GetReference()->GetBaseObject()->formType,
@@ -159,26 +159,26 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 	if (container)
 	{
 		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
-			TESFormHelper itemEx(entry->obj);
+			TESFormHelper itemEx(entry->obj, scope);
 
-			DBG_MESSAGE("itemType:: %d:(%08x)", itemEx.m_form->formType, itemEx.m_form->formID);
+			DBG_MESSAGE("itemType:: %d:(%08x)", itemEx.Form()->formType, itemEx.Form()->formID);
 
-			if (itemEx.m_form->formType == RE::FormType::LeveledItem)
+			if (itemEx.Form()->formType == RE::FormType::LeveledItem)
 			{
-				DBG_MESSAGE("%08x LeveledItem", itemEx.m_form->formID);
+				DBG_MESSAGE("%08x LeveledItem", itemEx.Form()->formID);
 			}
 			else
 			{
-				bool bPlayable = IsPlayable(itemEx.m_form);
-				const RE::TESFullName* name = itemEx.m_form->As<RE::TESFullName>();
-				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.m_form));
+				bool bPlayable = IsPlayable(itemEx.Form());
+				const RE::TESFullName* name = itemEx.Form()->As<RE::TESFullName>();
+				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form(), scope, false));
 
-				DBG_MESSAGE("%08x [%s] count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
+				DBG_MESSAGE("%08x [%s] count=%d playable=%d  - %s", itemEx.Form()->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
 
-				TESFormHelper refHelper(refr.GetReference()->GetBaseObject());
+				TESFormHelper refHelper(refr.GetReference()->GetBaseObject(), scope);
 				DumpItemVW(refHelper);
 
-				DumpKeyword(refHelper.m_form);
+				DumpKeyword(refHelper.Form(), scope);
 			}
 			return true;
 		});
@@ -191,15 +191,15 @@ void DumpContainer(const TESObjectREFRHelper& refr)
 	{
 		for (const RE::InventoryEntryData* entryData : *exChanges->changes->entryList)
 		{
-			TESFormHelper itemEx(const_cast<RE::InventoryEntryData*>(entryData)->GetObject());
+			TESFormHelper itemEx(const_cast<RE::InventoryEntryData*>(entryData)->GetObject(), scope);
 
-			bool bPlayable = IsPlayable(itemEx.m_form);
-			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.m_form));
-			const RE::TESFullName *name = itemEx.m_form->As<RE::TESFullName>();
-			DBG_MESSAGE("- %08x [%s] %p count=%d playable=%d  - %s", itemEx.m_form->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());
+			bool bPlayable = IsPlayable(itemEx.Form());
+			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form(), scope, false));
+			const RE::TESFullName *name = itemEx.Form()->As<RE::TESFullName>();
+			DBG_MESSAGE("- %08x [%s] %p count=%d playable=%d  - %s", itemEx.Form()->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());
 
 			DumpItemVW(itemEx);
-			DumpKeyword(itemEx.m_form);
+			DumpKeyword(itemEx.Form(), scope);
 
 			if (!entryData->extraLists)
 			{

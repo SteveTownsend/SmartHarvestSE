@@ -115,6 +115,11 @@ double INIFile::GetIndoorsRadius(PrimaryType first)
 	return setting / FEET_PER_DISTANCE_UNIT;
 }
 
+double INIFile::GetVerticalFactor()
+{
+	return GetSetting(PrimaryType::harvest, SecondaryType::config, "VerticalRadiusFactor");
+}
+
 void INIFile::SaveFile(void)
 {
 	SaveAs(GetFileName());

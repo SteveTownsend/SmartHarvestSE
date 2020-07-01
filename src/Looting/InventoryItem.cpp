@@ -6,7 +6,8 @@
 #include "Collections/CollectionManager.h"
 
 InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
-	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count), m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
+	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count),
+	m_objectType(GetBaseFormObjectType(m_entry->GetObject(), targetType, false)) {}
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
 	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
@@ -91,6 +92,6 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	else
 	{
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
-		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
+		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType, m_targetType);
 	}
 }

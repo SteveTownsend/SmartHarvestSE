@@ -29,7 +29,7 @@ PluginCondition::PluginCondition(const std::vector<std::string>& plugins)
 	for (const auto& plugin : plugins)
 	{
 		RE::FormID formIDMask(LoadOrder::Instance().GetFormIDMask(plugin));
-		if (formIDMask == InvalidForm)
+		if (formIDMask == InvalidPlugin)
 		{
 			std::ostringstream err;
 			err << "Unknown plugin: " << plugin;
@@ -39,13 +39,11 @@ PluginCondition::PluginCondition(const std::vector<std::string>& plugins)
 	}
 }
 
-bool PluginCondition::operator()(const RE::TESForm* form) const
+bool PluginCondition::operator()(const ConditionMatcher& matcher) const
 {
-	if (!form)
-		return false;
 	for (const auto plugin : m_formIDMaskByPlugin)
 	{
-		if (LoadOrder::Instance().ModOwnsForm(plugin.first, form->GetFormID()))
+		if (LoadOrder::Instance().ModOwnsForm(plugin.first, matcher.Form()->GetFormID()))
 			return true;
 	}
 	return false;
@@ -65,7 +63,7 @@ void PluginCondition::AsJSON(nlohmann::json& j) const
 	}
 }
 
-FormListCondition::FormListCondition(const std::string& plugin, const std::string& formListID)
+FormListCondition::FormListCondition(const std::string& plugin, const std::string& formListID) : m_formList(nullptr)
 {
 	// schema enforces 8-char HEX format
 	RE::FormID formID;
@@ -101,9 +99,9 @@ void FormListCondition::FlattenMembers(const RE::BGSListForm* formList)
 	}
 }
 
-bool FormListCondition::operator()(const RE::TESForm* form) const
+bool FormListCondition::operator()(const ConditionMatcher& matcher) const
 {
-	return m_listMembers.contains(form);
+	return m_listMembers.contains(matcher.Form());
 }
 
 nlohmann::json FormListCondition::MakeJSON() const
@@ -115,9 +113,12 @@ void FormListCondition::AsJSON(nlohmann::json& j) const
 {
 	j["formList"] = nlohmann::json();
 	j["listPlugin"] = m_plugin;
-	std::ostringstream formStr;
-	formStr << std::hex << std::setfill('0') << std::setw(8) << m_formList->GetFormID();
-	j["formID"] = formStr.str();
+	if (m_formList)
+	{
+		std::ostringstream formStr;
+		formStr << std::hex << std::setfill('0') << std::setw(8) << m_formList->GetFormID();
+		j["formID"] = formStr.str();
+	}
 }
 
 // This is O(n) in KYWD record count but only happens during startup, and there are not THAT many of them
@@ -157,9 +158,9 @@ KeywordCondition::KeywordCondition(const std::vector<std::string>& keywords)
 	}
 }
 
-bool KeywordCondition::operator()(const RE::TESForm* form) const
+bool KeywordCondition::operator()(const ConditionMatcher& matcher) const
 {
-	const RE::BGSKeywordForm* keywordHolder(form->As<RE::BGSKeywordForm>());
+	const RE::BGSKeywordForm* keywordHolder(matcher.Form()->As<RE::BGSKeywordForm>());
 	if (!keywordHolder)
 		return false;
 	return std::find_if(m_keywords.cbegin(), m_keywords.cend(),
@@ -205,10 +206,10 @@ SignatureCondition::SignatureCondition(const std::vector<std::string>& signature
 	}
 }
 
-bool SignatureCondition::operator()(const RE::TESForm* form) const
+bool SignatureCondition::operator()(const ConditionMatcher& matcher) const
 {
 	// short linear scan
-	return std::find(m_formTypes.cbegin(), m_formTypes.cend(), form->GetFormType()) != m_formTypes.cend();
+	return std::find(m_formTypes.cbegin(), m_formTypes.cend(), matcher.Form()->GetFormType()) != m_formTypes.cend();
 }
 
 const decltype(SignatureCondition::m_validSignatures) SignatureCondition::ValidSignatures()
@@ -230,15 +231,63 @@ void SignatureCondition::AsJSON(nlohmann::json& j) const
 	}
 }
 
+const std::unordered_map<std::string, INIFile::SecondaryType> ScopeCondition::m_validScopes = {
+	{"deadBody", INIFile::SecondaryType::deadbodies},
+	{"container", INIFile::SecondaryType::containers},
+	{"looseItem", INIFile::SecondaryType::itemObjects}
+};
+
+ScopeCondition::ScopeCondition(const std::vector<std::string>& scopes)
+{
+	for (const auto& scope : scopes)
+	{
+		auto matched(m_validScopes.find(scope));
+		if (matched != m_validScopes.cend())
+		{
+			m_scopes.push_back(matched->second);
+			std::string target;
+			INIFile::GetInstance()->GetIsSecondaryTypeString(matched->second, target);
+			DBG_VMESSAGE("Scope %s mapped to FormType %d", scope.c_str(), target.c_str());
+		}
+	}
+}
+
+bool ScopeCondition::operator()(const ConditionMatcher& matcher) const
+{
+	// Scope is aggregated during form filtering game-data load, for use in live checking
+	if (matcher.Scope() == INIFile::SecondaryType::NONE2)
+	{
+		for (auto scope : m_scopes)
+			matcher.AddScope(scope);
+		return true;
+	}
+	// very short linear scan
+	return std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) != m_scopes.cend();
+}
+
+nlohmann::json ScopeCondition::MakeJSON() const
+{
+	return nlohmann::json(*this);
+}
+
+void ScopeCondition::AsJSON(nlohmann::json& j) const
+{
+	j["scope"] = nlohmann::json::array();
+	for (const auto scope : m_scopes)
+	{
+		j["scope"].push_back(static_cast<int>(scope));
+	}
+}
+
 ConditionTree::ConditionTree(const Operator op, const unsigned int depth) : m_operator(op), m_depth(depth)
 {
 }
 
-bool ConditionTree::operator()(const RE::TESForm* form) const
+bool ConditionTree::operator()(const ConditionMatcher& matcher) const
 {
 	for (const auto& condition : m_conditions)
 	{
-		bool checkThis(condition->operator()(form));
+		bool checkThis(condition->operator()(matcher));
 		if (m_operator == Operator::And)
 		{
 			// All must match
@@ -295,9 +344,31 @@ void to_json(nlohmann::json& j, const SignatureCondition& condition)
 	condition.AsJSON(j);
 }
 
+void to_json(nlohmann::json& j, const ScopeCondition& condition)
+{
+	condition.AsJSON(j);
+}
+
 void to_json(nlohmann::json& j, const ConditionTree& condition)
 {
 	condition.AsJSON(j);
+}
+
+ConditionMatcher::ConditionMatcher(const RE::TESForm* form) : m_form(form), m_scope(INIFile::SecondaryType::NONE2)
+{
+}
+
+ConditionMatcher::ConditionMatcher(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_scope(scope)
+{
+}
+
+// accumulates scopes seen in ConditionTree during game-data load, to optimize collectible check during periodic REFR scan
+void ConditionMatcher::AddScope(const INIFile::SecondaryType scope) const
+{
+	if (std::find(m_scopesSeen.cbegin(), m_scopesSeen.cend(), scope) == m_scopesSeen.cend())
+	{
+		m_scopesSeen.push_back(scope);
+	}
 }
 
 }

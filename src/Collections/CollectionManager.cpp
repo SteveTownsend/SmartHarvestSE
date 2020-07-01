@@ -128,7 +128,9 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
-		if (collection->second->IsMemberOf(form))
+		// Do not record if the policy indicates to LeaveBehind (blacklist)
+		if (collection->second->Policy().Action() != SpecialObjectHandling::DoNotLoot &&
+			collection->second->IsMemberOf(form))
 		{
 			// record membership
 			collection->second->RecordItem(itemID, form, m_gameTime, LocationTracker::Instance().CurrentPlayerPlace());
@@ -136,35 +138,33 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	}
 }
 
-std::pair<bool, SpecialObjectHandling> CollectionManager::IsCollectible(const RE::TESForm* form)
+std::pair<bool, SpecialObjectHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
 {
-	if (!IsActive() || !form)
+	if (!IsActive() || !matcher.Form())
 		return NotCollectible;
 	RecursiveLockGuard guard(m_collectionLock);
-	if (m_nonCollectionForms.contains(form->GetFormID()))
+	if (m_nonCollectionForms.contains(matcher.Form()->GetFormID()))
 		return NotCollectible;
 
 	// find Collections that match this Form
-	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
+	const auto targets(m_collectionsByFormID.equal_range(matcher.Form()->GetFormID()));
 	if (targets.first == m_collectionsByFormID.cend())
 	{
-		DBG_VMESSAGE("Record %s/0x%08x as non-collectible", form->GetName(), form->GetFormID());
-		m_nonCollectionForms.insert(form->GetFormID());
+		DBG_VMESSAGE("Record %s/0x%08x as non-collectible", matcher.Form()->GetName(), matcher.Form()->GetFormID());
+		m_nonCollectionForms.insert(matcher.Form()->GetFormID());
 		return NotCollectible;
 	}
 
 	// It is in at least one collection. Find the most aggressive action.
 	SpecialObjectHandling action(SpecialObjectHandling::DoNotLoot);
-	bool collect(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
-		if (collection->second->IsCollectibleFor(form))
+		if (collection->second->InScopeAndCollectibleFor(matcher))
 		{
-			collect = true;
 			action = UpdateSpecialObjectHandling(collection->second->Policy().Action(), action);
 		}
 	}
-	return collect ? std::make_pair(true, action) : NotCollectible;
+	return std::make_pair(true, action);
 }
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
@@ -464,8 +464,11 @@ void CollectionManager::ResolveMembership(void)
 			for (const auto& collection : m_allCollectionsByLabel)
 			{
 				// record collection membership for any that match this object - ignore whitelist
-				if (collection.second->MatchesFilter(form))
+				ConditionMatcher matcher(form);
+				if (collection.second->MatchesFilter(matcher))
 				{
+					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
+					collection.second->SetScopes(matcher.ScopesSeen());
 					DBG_VMESSAGE("Record %s/0x%08x as collectible", form->GetName(), form->GetFormID());
 					m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection.second));
 					collection.second->AddMemberID(form);

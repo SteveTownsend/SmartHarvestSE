@@ -2,10 +2,13 @@
 
 namespace shse
 {
+// x, y, z coordinates
+typedef std::tuple<float, float, float> Position;
 
 class PlayerState
 {
 public:
+
 	static PlayerState& Instance();
 	PlayerState();
 
@@ -16,6 +19,7 @@ public:
 	bool CanLoot() const;
 	bool IsSneaking() const;
 	void ExcludeMountedIfForbidden(void);
+	Position GetPosition() const;
 
 private:
 	void AdjustCarryWeight();

@@ -4,12 +4,14 @@
 
 #include "Looting/tasks.h"
 #include "Collections/Condition.h"
+#include "WorldState/PlayerState.h"
 
 namespace shse {
 
 class CollectionEntry {
 public:
-	CollectionEntry(const RE::TESForm* form, const float gameTime, const RE::TESForm* place) : m_form(form), m_gameTime(gameTime), m_place(place)
+	CollectionEntry(const RE::TESForm* form, const float gameTime, const RE::TESForm* place, const Position position) :
+		m_form(form), m_gameTime(gameTime), m_place(place), m_position(position)
 	{
 	}
 
@@ -17,6 +19,7 @@ private:
 	const RE::TESForm* m_form;
 	const float m_gameTime;
 	const RE::TESForm* m_place;
+	const Position m_position;
 };
 
 class CollectionPolicy {
@@ -45,9 +48,9 @@ void to_json(nlohmann::json& j, const CollectionPolicy& collection);
 class Collection {
 public:
 	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy, std::unique_ptr<ConditionTree> filter);
-	bool MatchesFilter(const RE::TESForm* form) const;
+	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
-	bool IsCollectibleFor(const RE::TESForm* form) const;
+	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
 	bool AddMemberID(const RE::TESForm* form) const;
 	inline const CollectionPolicy& Policy() const { return m_policy; }
 	inline CollectionPolicy& Policy() { return m_policy; }
@@ -60,6 +63,7 @@ public:
 	std::string Name(void) const;
 	std::string PrintDefinition(void) const;
 	std::string PrintMembers(void) const;
+	inline void SetScopes(const std::vector<INIFile::SecondaryType>& scopes) { m_scopes = scopes; }
 
 protected:
 	// inputs
@@ -70,6 +74,7 @@ protected:
 	// derived
 	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
 	mutable std::unordered_set<RE::FormID> m_members;
+	std::vector<INIFile::SecondaryType> m_scopes;
 };
 
 void to_json(nlohmann::json& j, const Collection& collection);

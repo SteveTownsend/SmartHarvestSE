@@ -75,7 +75,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 					if (!m_hasEnchantedItem)
 						m_hasEnchantedItem = exListHelper.GetEnchantment() != nullptr;
 
-					TESFormHelper itemEx(item);
+					TESFormHelper itemEx(item, m_targetType);
 					if (!m_hasEnchantedItem)
 					{
 						m_hasEnchantedItem = itemEx.GetEnchantment() != nullptr;
@@ -84,7 +84,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 					{
 						m_hasValuableItem = itemEx.IsValuable();
 					}
-					const auto collectible(itemEx.IsCollectible());
+					const auto collectible(itemEx.TreatAsCollectible());
 					if (collectible.first)
 					{
 						// use the most permissive action

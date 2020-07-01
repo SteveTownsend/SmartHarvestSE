@@ -10,7 +10,7 @@ public:
 
 	CollectionManager();
 	void ProcessDefinitions(void);
-	std::pair<bool, SpecialObjectHandling> IsCollectible(const RE::TESForm* form);
+	std::pair<bool, SpecialObjectHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	void Refresh() const;
 	void UpdateGameTime(const float gameTime);
 	void CheckEnqueueAddedItem(const RE::FormID formID);

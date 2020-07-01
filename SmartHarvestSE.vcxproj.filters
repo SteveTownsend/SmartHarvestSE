@@ -1,18 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="src\Collections\Collection.cpp">
-      <Filter>src\Collections</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Collections\CollectionFactory.cpp">
-      <Filter>src\Collections</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Collections\CollectionManager.cpp">
-      <Filter>src\Collections</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Collections\Condition.cpp">
-      <Filter>src\Collections</Filter>
-    </ClCompile>
     <ClCompile Include="src\FormHelpers\AlchemyItemHelper.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
@@ -124,6 +112,18 @@
     <ClCompile Include="src\PrecompiledHeaders.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Collections\Collection.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Collections\CollectionFactory.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Collections\CollectionManager.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Collections\Condition.cpp">
+      <Filter>src\Collections</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -207,26 +207,8 @@
     <ClInclude Include="src\VM\UIState.h">
       <Filter>src\VM</Filter>
     </ClInclude>
-    <ClInclude Include="include\Collection.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="include\CollectionFactory.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="include\CollectionManager.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="include\Condition.h">
-      <Filter>src\Collections</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ObjectType.h">
-      <Filter>src\Looting</Filter>
-    </ClInclude>
     <ClInclude Include="include\ManagedLists.h">
       <Filter>src\Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Utilities\BoundedList.h">
-      <Filter>src\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="src\Utilities\debugs.h">
       <Filter>src\Utilities</Filter>
@@ -264,6 +246,21 @@
     <ClInclude Include="src\FormHelpers\FormHelper.h">
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
+    <ClInclude Include="src\Collections\Collection.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\CollectionFactory.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\CollectionManager.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Collections\Condition.h">
+      <Filter>src\Collections</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\ObjectType.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -271,9 +268,6 @@
     </Filter>
     <Filter Include="Config">
       <UniqueIdentifier>{b875b5fc-c381-473b-9a72-57e3f75fee2b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Config\TSV">
-      <UniqueIdentifier>{b5922a93-b69b-49fd-9386-b964f03bb6bd}</UniqueIdentifier>
     </Filter>
     <Filter Include="Localization">
       <UniqueIdentifier>{20fe0740-4b0b-4fcb-99a0-149f2b234449}</UniqueIdentifier>
@@ -305,31 +299,22 @@
     <Filter Include="src\VM">
       <UniqueIdentifier>{3a928258-4bb6-4b6f-b2eb-9c8fdc327acc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include">
-      <UniqueIdentifier>{13a573f9-b2ab-4f9b-8c62-491f9907b4ce}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\Utilities">
       <UniqueIdentifier>{08d9c783-62e2-4fe7-b6be-272995f8b358}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections">
+      <UniqueIdentifier>{ebd3eb26-1790-488b-aa4a-c13042aec46a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections\Schema">
+      <UniqueIdentifier>{d90f512a-69bc-44ce-b4fe-7d0e022f8dbe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Collections\Examples">
+      <UniqueIdentifier>{28f6f8ad-c267-491e-b008-ac1eeab42454}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
       <Filter>resources</Filter>
-    </None>
-    <None Include="Config\default\WhiteList.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Config\default\BlackList.tsv">
-      <Filter>Config\TSV</Filter>
-    </None>
-    <None Include="Scripts\SmartHarvestSE.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\SmartHarvestSE_Events_Alias.psc">
-      <Filter>Papyrus Source</Filter>
-    </None>
-    <None Include="Scripts\SmartHarvestSE_mcm.psc">
-      <Filter>Papyrus Source</Filter>
     </None>
     <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
@@ -337,14 +322,29 @@
     <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas">
       <Filter>Edit Scripts</Filter>
     </None>
-    <None Include="Config\SHSE.Collections.LoTD.json">
-      <Filter>Config</Filter>
+    <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json">
+      <Filter>Collections\Examples</Filter>
     </None>
-    <None Include="Config\SHSE.Collections.Samples.json">
-      <Filter>Config</Filter>
+    <None Include="Collections\Examples\SHSE.Collections.LoTD.json">
+      <Filter>Collections\Examples</Filter>
     </None>
-    <None Include="Config\SHSE.SchemaCollections.json">
-      <Filter>Config</Filter>
+    <None Include="Collections\Examples\SHSE.Collections.Samples.json">
+      <Filter>Collections\Examples</Filter>
+    </None>
+    <None Include="Collections\Schema\SHSE.SchemaCollections.json">
+      <Filter>Collections\Schema</Filter>
+    </None>
+    <None Include="Scripts\SHSE_EventsAlias.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\SHSE_MCM.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Scripts\SHSE_PluginProxy.psc">
+      <Filter>Papyrus Source</Filter>
+    </None>
+    <None Include="Collections\Examples\SHSE.Collections.Uniques.json">
+      <Filter>Collections\Examples</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

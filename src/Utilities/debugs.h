@@ -8,5 +8,5 @@ namespace RE
 }
 
 void DumpExtraData(const RE::ExtraDataList * extraData);
-void DumpReference(const TESObjectREFRHelper& refr, const char * typeName);
-void DumpContainer(const TESObjectREFRHelper& ref);
+void DumpReference(const TESObjectREFRHelper& refr, const char * typeName, const INIFile::SecondaryType scope);
+void DumpContainer(const TESObjectREFRHelper& ref, const INIFile::SecondaryType scope);

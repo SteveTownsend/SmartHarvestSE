@@ -5,6 +5,7 @@
 constexpr RE::FormID ClothKeyword = 0x06BBE8;
 constexpr RE::FormID CurrentFollowerFaction = 0x0005C84E;
 constexpr RE::FormID InvalidForm = 0x0;
+constexpr RE::FormID InvalidPlugin = 0xFFFFFFFF;
 constexpr RE::FormID ESPMask = 0xFF000000;
 constexpr RE::FormID FullRawMask = 0x00FFFFFF;
 constexpr RE::FormID ESPFETypeMask = 0xFE000000;

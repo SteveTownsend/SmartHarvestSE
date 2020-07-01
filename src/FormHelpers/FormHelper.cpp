@@ -5,14 +5,15 @@
 #include "FormHelpers/FormHelper.h"
 #include "FormHelpers/ArmorHelper.h"
 #include "FormHelpers/WeaponHelper.h"
+#include "Collections/Collection.h"
 #include "Collections/CollectionManager.h"
 #include "Looting/objects.h"
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form) : m_form(form)
+TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope)
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
-	m_objectType = GetBaseFormObjectType(m_form);
+	m_objectType = GetBaseFormObjectType(form, scope, false);
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
@@ -67,10 +68,10 @@ UInt32 TESFormHelper::GetGoldValue() const
 	return pValue->value;
 }
 
-std::pair<bool, SpecialObjectHandling> TESFormHelper::IsCollectible(void) const
+std::pair<bool, SpecialObjectHandling> TESFormHelper::TreatAsCollectible(void) const
 {
 	// ignore whitelist - we need the underlying object type
-	return shse::CollectionManager::Instance().IsCollectible(m_form);
+	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher);
 }
 
 double TESFormHelper::GetWeight() const

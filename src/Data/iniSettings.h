@@ -72,6 +72,7 @@ public:
 
 	double GetRadius(PrimaryType first);
 	double GetIndoorsRadius(PrimaryType first);
+	double GetVerticalFactor();
 	double GetSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key);
 	void PutSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key, double m_value);
 	void SaveFile(void);

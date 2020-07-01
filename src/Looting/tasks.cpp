@@ -29,8 +29,8 @@ INIFile* SearchTask::m_ini = nullptr;
 RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
-SearchTask::SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType)
-	: m_candidate(candidate), m_targetType(targetType), m_glowReason(GlowReason::None)
+SearchTask::SearchTask(const TargetREFR& target, INIFile::SecondaryType targetType)
+	: m_distance(target.first), m_candidate(target.second), m_targetType(targetType), m_glowReason(GlowReason::None)
 {
 }
 
@@ -46,7 +46,7 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 	if (targetType != INIFile::SecondaryType::deadbodies)
 	{
 		// check up to three ownership conditions depending on config
-		bool playerOwned(TESObjectREFRHelper(m_candidate).IsPlayerOwned());
+		bool playerOwned(TESObjectREFRHelper(m_candidate, targetType).IsPlayerOwned());
 		bool lootingIsCrime(m_candidate->IsOffLimits());
 		if (!lootingIsCrime && (LocationTracker::Instance().IsCellSelfOwned() || playerOwned))
 		{
@@ -182,7 +182,7 @@ void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 void SearchTask::Run()
 {
 	DataCase* data = DataCase::GetInstance();
-	TESObjectREFRHelper refrEx(m_candidate);
+	TESObjectREFRHelper refrEx(m_candidate, m_targetType);
 
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
@@ -245,7 +245,7 @@ void SearchTask::Run()
 			return;
 		}
 #if _DEBUG
-		DumpReference(refrEx, typeName.c_str());
+		DumpReference(refrEx, typeName.c_str(), m_targetType);
 #endif
 		// initially no glow - use synthetic value with highest precedence
 		m_glowReason = GlowReason::None;
@@ -272,7 +272,7 @@ void SearchTask::Run()
 			UpdateGlowReason(GlowReason::SimpleTarget);
 		}
 
-		const auto collectible(refrEx.IsCollectible());
+		const auto collectible(refrEx.TreatAsCollectible());
 		SpecialObjectHandling collectibleAction(collectible.second);
 		if (collectible.first)
 		{
@@ -316,18 +316,31 @@ void SearchTask::Run()
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
-		if (LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() && 
+		if (LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
 			!IsItemLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
 		{
-			DBG_VMESSAGE("Player location is excluded as unpermitted population center");
+			DBG_VMESSAGE("Player location is excluded as a restricted population center");
 			skipLooting = true;
 		}
 
-		LootingType lootingType(LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str())));
-		if (objType == ObjectType::whitelist)
+		LootingType lootingType(LootingType::LeaveBehind);
+		if (collectible.first)
 		{
-			// _legal_ whitelisted objects are always looted silently
-			DBG_VMESSAGE("pick up REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
+			// ** if configured as permitted ** collectible objects are always looted silently
+			DBG_VMESSAGE("check REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
+			skipLooting = forbidden || collectibleAction != SpecialObjectHandling::DoLoot;
+			lootingType = collectibleAction == SpecialObjectHandling::DoLoot ? LootingType::LootAlwaysSilent : LootingType::LeaveBehind;
+			if (lootingType == LootingType::LeaveBehind)
+			{
+				// this is a blacklist collection
+				DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
+				data->BlockForm(m_candidate->GetBaseObject());
+			}
+		}
+		else if (objType == ObjectType::whitelist)
+		{
+			// ** if configured as permitted ** whitelisted objects are always looted silently
+			DBG_VMESSAGE("check REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
 			skipLooting = forbidden;
 			lootingType = LootingType::LootAlwaysSilent;
 		}
@@ -342,13 +355,16 @@ void SearchTask::Run()
 		}
 		else if (!skipLooting)
 		{
+			lootingType = LootingTypeFromIniSetting(
+				m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
 			if (lootingType == LootingType::LeaveBehind)
 			{
 				DBG_VMESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
 				data->BlockReference(m_candidate);
 				skipLooting = true;
 			}
-			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(m_candidate->GetBaseObject()).ValueWeightTooLowToLoot())
+			else if (LootingDependsOnValueWeight(lootingType, objType) &&
+				TESFormHelper(m_candidate->GetBaseObject(), m_targetType).ValueWeightTooLowToLoot())
 			{
 				DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
 				data->BlockForm(m_candidate->GetBaseObject());
@@ -369,7 +385,8 @@ void SearchTask::Run()
 		else
 		{
 			bool isSilent = !LootingRequiresNotification(lootingType);
-			DBG_VMESSAGE("Enqueue SmartHarvest event");
+			DBG_VMESSAGE("SmartHarvest %s/0x%08x for REFR 0x%08x at distance %.2f units",
+				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), m_distance);
 			// don't let the backlog of messages get too large, it's about 1 per second
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!LockHarvest(m_candidate, isSilent))
@@ -378,7 +395,7 @@ void SearchTask::Run()
 			if (IsAlwaysHarvested(objType))
 			{
 				// find lootable type if whitelist and collectibles were not a factor, for Harvest script
-				effectiveType = GetREFRObjectType(m_candidate, true);
+				effectiveType = GetREFRObjectType(m_candidate, INIFile::SecondaryType::NONE2, true);
 			}
 			EventPublisher::Instance().TriggerHarvest(m_candidate, effectiveType, refrEx.GetItemCount(),
 				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify);
@@ -386,9 +403,9 @@ void SearchTask::Run()
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
-		DBG_MESSAGE("scanning container/body %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+		DBG_MESSAGE("scanning container/body %s/0x%08x  at distance %.2f units", m_candidate->GetName(), m_candidate->formID, m_distance);
 #if _DEBUG
-		DumpContainer(refrEx);
+		DumpContainer(refrEx, m_targetType);
 #endif
 		bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0;
 		bool skipLooting(false);
@@ -476,7 +493,7 @@ void SearchTask::Run()
 
 		if (lister.HasCollectibleItem())
 		{
-			if (lister.CollectibleAction() != SpecialObjectHandling::DoNotLoot)
+			if (lister.CollectibleAction() == SpecialObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow container with collectible object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::Collectible);
@@ -493,7 +510,7 @@ void SearchTask::Run()
 		if (m_targetType != INIFile::SecondaryType::deadbodies &&
 			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 		{
-			DBG_VMESSAGE("Player location is excluded as unpermitted population center");
+			DBG_VMESSAGE("Player location is excluded: restricted population center");
 			skipLooting = true;
 		}
 
@@ -540,9 +557,14 @@ void SearchTask::Run()
 				continue;
 			}
 
-			std::string typeName = GetObjectTypeName(objType);
-			LootingType lootingType = LootingTypeFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
-			if (objType == ObjectType::whitelist)
+			LootingType lootingType(LootingType::LeaveBehind);
+			if (objType == ObjectType::collectible)
+			{
+				// collectible objects are always looted silently and notified according to Collection Policy
+				DBG_VMESSAGE("transfer collectible 0x%08x", target->formID);
+				lootingType = LootingType::LootAlwaysSilent;
+			}
+			else if (objType == ObjectType::whitelist)
 			{
 				// whitelisted objects are always looted silently
 				DBG_VMESSAGE("transfer whitelisted 0x%08x", target->formID);
@@ -555,21 +577,29 @@ void SearchTask::Run()
 				data->BlockForm(target);
 				continue;
 			}
-			else if (lootingType == LootingType::LeaveBehind)
+			else
 			{
-				DBG_VMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
-				data->BlockForm(target);
-				continue;
-			}
-			else if (LootingDependsOnValueWeight(lootingType, objType) && TESFormHelper(target).ValueWeightTooLowToLoot())
-			{
-				DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
-				data->BlockForm(target);
-				continue;
+				std::string typeName = GetObjectTypeName(objType);
+				lootingType = LootingTypeFromIniSetting(
+					m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
+
+				if (lootingType == LootingType::LeaveBehind)
+				{
+					DBG_VMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
+					data->BlockForm(target);
+					continue;
+				}
+				else if (LootingDependsOnValueWeight(lootingType, objType) &&
+					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot())
+				{
+					DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
+					data->BlockForm(target);
+					continue;
+				}
 			}
 
 			targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
-			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", TESFormHelper(target).m_form->GetName(), targetItemInfo.Count(),
+			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", target->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
 
@@ -887,17 +917,24 @@ void SearchTask::DoPeriodicSearch()
 		}
 
 		// brain dead item scan and brief glow
-		BoundedList<RE::TESObjectREFR*> refrs(MaxREFRSPerPass * 2);
-
 		static const double FEET_PER_DISTANCE_UNIT(0.046875);
 		BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
 			(double(m_calibrateRadius) - double(m_calibrateDelta)) / FEET_PER_DISTANCE_UNIT, m_calibrateDelta / FEET_PER_DISTANCE_UNIT);
 
-		PlayerCellHelper(refrs, rangeCheck).FindAllCandidates();
-		for (const auto refr : refrs.Data())
+		DistanceToTarget targets;
+		PlayerCellHelper(targets, rangeCheck).FindAllCandidates();
+
+		// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
+		// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
+		// no more than N. std::nth_element does precisely what we need.
+		auto endOfRange(targets.begin() + std::min(MaxREFRSPerPass, targets.size()));
+		std::nth_element(targets.begin(), endOfRange, targets.end(),
+			[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
+		std::sort(targets.begin(), endOfRange,	[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
+		for (auto target = targets.cbegin(); target != endOfRange; ++target)
 		{
-			DBG_VMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
-			EventPublisher::Instance().TriggerObjectGlow(refr, ObjectGlowDurationCalibrationSeconds,
+			DBG_VMESSAGE("Trigger glow for %s/0x%08x at distance %.2f units", target->second->GetName(), target->second->formID, target->first);
+			EventPublisher::Instance().TriggerObjectGlow(target->second, ObjectGlowDurationCalibrationSeconds,
 				m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
 		}
 
@@ -919,22 +956,43 @@ void SearchTask::DoPeriodicSearch()
 		shse::PlayerState::Instance().IsSneaking() ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
 	m_belongingsCheck = SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
 
-	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
-	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly.
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to loot in an orderly fashion than to get it all into inventory on
 	// one pass.
 	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
-	BoundedList<RE::TESObjectREFR*> refrs(MaxREFRSPerPass);
-	if (shse::ActorTracker::Instance().ReleaseIfReliablyDead(refrs))
+	DistanceToTarget targets;
+	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
+	double radius(LocationTracker::Instance().IsPlayerIndoors() ?
+		m_ini->GetIndoorsRadius(INIFile::PrimaryType::harvest) : m_ini->GetRadius(INIFile::PrimaryType::harvest));
+	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, m_ini->GetVerticalFactor());
+
+	PlayerCellHelper helper(targets, rangeCheck);
+	helper.FindLootableReferences();
+	double boundary(helper.DistanceToDoor());
+	if (boundary > 0.)
 	{
-	    // space remains to process loot after corpses checked
-		AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), LocationTracker::Instance().IsPlayerIndoors() ?
-			m_ini->GetIndoorsRadius(INIFile::PrimaryType::harvest) : m_ini->GetRadius(INIFile::PrimaryType::harvest));
-		PlayerCellHelper(refrs, rangeCheck).FindLootableReferences();
+		DBG_MESSAGE("Nearest Door to player is %.2f units away", boundary);
+	}
+	// only use door distance if config indicates
+	if (m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") == 0.)
+	{
+		boundary = radius;
 	}
 
-	for (RE::TESObjectREFR* refr : refrs.Data())
+	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
+	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
+	// no more than N. std::nth_element does precisely what we need.
+	auto endOfRange(targets.begin() + std::min(MaxREFRSPerPass, targets.size()));
+	std::nth_element(targets.begin(), endOfRange, targets.end(),
+		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
+	std::sort(targets.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
+	for (auto target = targets.cbegin(); target != endOfRange; ++target)
 	{
+		// exclude REFRs too far away, checking the adjusted radius
+		if (target->first > radius)
+		{
+			DBG_MESSAGE("REFR 0x%08x distance %.2f exceeds final radius %.2f", target->first, radius);
+			continue;
+		}
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
 		/*
 			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54419 micros
@@ -945,7 +1003,7 @@ void SearchTask::DoPeriodicSearch()
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
 		*/
 		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
-
+		RE::TESObjectREFR* refr(target->second);
 		if (refr->GetFormID() == InvalidForm)
 		{
 			DBG_WARNING("REFR has invalid FormID");
@@ -1033,7 +1091,7 @@ void SearchTask::DoPeriodicSearch()
 				continue;
 			}
 		}
-		SearchTask(refr, lootTargetType).Run();
+		SearchTask(*target, lootTargetType).Run();
 	}
 }
 

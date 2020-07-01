@@ -13,7 +13,7 @@ UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 	static RE::BSFixedString fEnchantmentEffectPointsMult = "fEnchantmentEffectPointsMult";
 	double fEEPM = GetGameSettingFloat(fEnchantmentEffectPointsMult);
 
-	RE::EnchantmentItem* ench = TESFormHelper(m_weapon).GetEnchantment();
+	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (!ench)
 		return m_weapon->value;
 
@@ -26,7 +26,7 @@ SInt16 TESObjectWEAPHelper::GetMaxCharge() const
 {
 	if (!m_weapon)
 		return 0;
-	RE::EnchantmentItem* ench = TESFormHelper(m_weapon).GetEnchantment();
+	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (ench)
         return static_cast<SInt16>(m_weapon->amountofEnchantment);
 	return 0;

@@ -1,19 +1,19 @@
 #pragma once
 
-#include "Utilities/BoundedList.h"
 #include "Looting/IRangeChecker.h"
 
 class PlayerCellHelper
 {
 public:
-	PlayerCellHelper(BoundedList<RE::TESObjectREFR*>& refs, const IRangeChecker& rangeCheck);
+	PlayerCellHelper(DistanceToTarget& refs, const IRangeChecker& rangeCheck);
 	void FindLootableReferences() const;
 	void FindAllCandidates() const;
+	inline double DistanceToDoor() const { return m_nearestDoor; }
 
 private:
 	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
 	void FilterNearbyReferences() const;
-	bool FilterCellReferences(const RE::TESObjectCELL* cell) const;
+	void FilterCellReferences(const RE::TESObjectCELL* cell) const;
 
 	// predicates supported
 	bool CanLoot(const RE::TESObjectREFR* refr) const;
@@ -21,7 +21,8 @@ private:
 
 	double m_radius;
 	mutable unsigned int m_eliminated;
-	BoundedList<RE::TESObjectREFR*>& m_refs;
+	DistanceToTarget& m_refs;
 	mutable REFRPredicate m_predicate;
 	const IRangeChecker& m_rangeCheck;
+	mutable double m_nearestDoor;
 };

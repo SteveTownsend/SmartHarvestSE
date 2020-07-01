@@ -311,7 +311,7 @@ bool LocationTracker::IsPlayerInRestrictedLootSettlement() const
 	RecursiveLockGuard guard(m_locationLock);
 	if (!m_playerLocation)
 		return false;
-	return PopulationCenters::Instance().CannotLoot(m_playerLocation);
+	return !IsPlayerInWhitelistedPlace() && PopulationCenters::Instance().CannotLoot(m_playerLocation);
 }
 
 RE::TESForm* LocationTracker::CurrentPlayerPlace() const

@@ -42,12 +42,20 @@
       "enum": [ "leave", "take", "glow" ]
     },
 
+    "scopeType": {
+      "type": "string",
+      "enum": [ "deadBody", "container", "looseItem" ]
+    },
+
     "conditionType": {
       "type": "object",
-      "$comment": "we need 'signature', 'plugin', 'formList' (FLST form ID) in a leaf node as they are highly restrictive, or 'subFilter' which defers the decision",
+      "$comment": "we need 'signature', 'plugin', 'keyword', 'formList' (FLST form ID) in a leaf node as they are highly restrictive, or 'subFilter' which defers the decision",
       "oneOf": [
         {
           "required": [ "plugin" ]
+        },
+        {
+          "required": [ "keyword" ]
         },
         {
           "required": [ "formList" ]
@@ -91,6 +99,14 @@
           "uniqueItems": true,
           "items": { "$ref": "#/definitions/signatureType" },
           "description": "TESV Object must have RecordHeader.Signature in this list"
+        },
+        "scope": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/scopeType" },
+          "description": "Collection only applicable to targets in this list"
         },
         "subFilter": {
           "type": "array",

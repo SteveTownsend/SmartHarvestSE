@@ -1,7 +1,7 @@
 #pragma once
 
-#include "containerLister.h"
-#include "Utilities/BoundedList.h"
+#include "Looting/containerLister.h"
+#include "Looting/IRangeChecker.h"
 #include "VM/EventPublisher.h"
 #include "VM/UIState.h"
 
@@ -12,7 +12,7 @@ class SearchTask
 public:
 	static constexpr size_t MaxREFRSPerPass = 75;
 
-	SearchTask(RE::TESObjectREFR* candidate, INIFile::SecondaryType targetType);
+	SearchTask(const TargetREFR& target, INIFile::SecondaryType targetType);
 
 	static bool Init(void);
 	void Run();
@@ -21,7 +21,6 @@ public:
 	static size_t PendingHarvestNotifications();
 	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
-	static void MergeBlackList();
 	static void SyncDone(const bool reload);
 	static void ToggleCalibration(const bool shaderTest);
 
@@ -53,6 +52,7 @@ public:
 
 	static INIFile* m_ini;
 
+	double m_distance;
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
 

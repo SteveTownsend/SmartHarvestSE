@@ -116,7 +116,7 @@ void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType ob
 {
 	// We always lock the REFR from more harvesting before firing this
 	m_onHarvest.SendEvent(refr, static_cast<int>(objType), itemCount, isSilent, manualLootNotify,
-		shse::CollectionManager::Instance().IsCollectible(refr->GetBaseObject()).first);
+		shse::CollectionManager::Instance().TreatAsCollectible(shse::ConditionMatcher(refr->GetBaseObject(), INIFile::SecondaryType::itemObjects)).first);
 }
 
 void EventPublisher::TriggerFlushAddedItems()
@@ -124,9 +124,10 @@ void EventPublisher::TriggerFlushAddedItems()
 	m_onFlushAddedItems.SendEvent();
 }
 
-void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType)
+void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const INIFile::SecondaryType scope)
 {
-	m_onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType), shse::CollectionManager::Instance().IsCollectible(item).first);
+	m_onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType),
+		shse::CollectionManager::Instance().TreatAsCollectible(shse::ConditionMatcher(item, scope)).first);
 }
 
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
