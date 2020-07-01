@@ -229,7 +229,6 @@
     <ClCompile Include="src\WorldState\PopulationCenters.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\ManagedLists.h" />
     <ClInclude Include="resource1.h" />
     <ClInclude Include="src\Collections\Collection.h" />
     <ClInclude Include="src\Collections\CollectionFactory.h" />
@@ -251,6 +250,7 @@
     <ClInclude Include="src\Looting\containerLister.h" />
     <ClInclude Include="src\Looting\InventoryItem.h" />
     <ClInclude Include="src\Looting\IRangeChecker.h" />
+    <ClInclude Include="src\Looting\ManagedLists.h" />
     <ClInclude Include="src\Looting\objects.h" />
     <ClInclude Include="src\Looting\ObjectType.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
@@ -276,13 +276,13 @@
     <ClInclude Include="src\WorldState\PopulationCenters.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
     <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
     <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
     <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
     <None Include="Collections\Schema\SHSE.SchemaCollections.json" />
     <None Include="Config\SmartHarvestSE.ini" />
-    <None Include="Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="exports.def" />
     <None Include="Scripts\SHSE_EventsAlias.psc" />
     <None Include="Scripts\SHSE_MCM.psc" />
