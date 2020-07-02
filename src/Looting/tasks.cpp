@@ -47,14 +47,17 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 	{
 		// check up to three ownership conditions depending on config
 		bool playerOwned(TESObjectREFRHelper(m_candidate, targetType).IsPlayerOwned());
+		// Fired arrows are marked as player owned but we don't want to prevent pickup, ever
+		bool firedArrow(m_candidate->formType == RE::FormType::ProjectileArrow);
 		bool lootingIsCrime(m_candidate->IsOffLimits());
-		if (!lootingIsCrime && (LocationTracker::Instance().IsCellSelfOwned() || playerOwned))
+		if (!lootingIsCrime && (LocationTracker::Instance().IsCellSelfOwned() || (playerOwned && !firedArrow)))
 		{
 			// can configure to not loot my own belongings even though it's always legal
 			if (!IsSpecialObjectLootable(m_belongingsCheck))
 			{
-				DBG_VMESSAGE("Player home or player-owned, looting belongings disallowed: %s/0x%08x",
-					m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("Player home %s, player-owned %s, looting belongings disallowed: %s/0x%08x",
+					LocationTracker::Instance().IsCellSelfOwned() ? "true" : "false",
+					playerOwned ? "true" : "false",	m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				isForbidden = true;
 				// Glow if configured
 				if (m_belongingsCheck == SpecialObjectHandling::GlowTarget)
@@ -70,7 +73,7 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 				DBG_VMESSAGE("Crime to loot REFR, cannot loot");
 				isForbidden = true;
 			}
-			else if (m_crimeCheck == 2 && !playerOwned && m_candidate->GetOwner() != nullptr)
+			else if (m_crimeCheck == 2 && !playerOwned && !firedArrow && m_candidate->GetOwner() != nullptr)
 			{
 				// owner is not player, disallow
 				DBG_VMESSAGE("REFR is owned, cannot loot");
@@ -994,15 +997,15 @@ void SearchTask::DoPeriodicSearch()
 	PlayerCellHelper helper(targets, rangeCheck);
 	helper.FindLootableReferences();
 	double boundary(helper.DistanceToDoor());
-	// only use door distance if config indicates, and there is a door nerby
-	if (m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") == 0. || boundary == 0.)
+	// Use door distance if config indicates to do so, and there is a door nearby
+	if (m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0. && boundary > 0.)
 	{
-		DBG_MESSAGE("Use vanilla loot radius %.2f units", boundary);
-		boundary = radius;
+		DBG_MESSAGE("Nearest Door to player is %.2f units away", boundary);
 	}
 	else
 	{
-		DBG_MESSAGE("Nearest Door to player is %.2f units away", boundary);
+		boundary = radius;
+		DBG_MESSAGE("Use vanilla loot radius %.2f units", boundary);
 	}
 
 	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
