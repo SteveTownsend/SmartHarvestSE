@@ -198,6 +198,7 @@
     <ClCompile Include="src\Looting\containerLister.cpp" />
     <ClCompile Include="src\Looting\InventoryItem.cpp" />
     <ClCompile Include="src\Looting\IRangeChecker.cpp" />
+    <ClCompile Include="src\Looting\LootableREFR.cpp" />
     <ClCompile Include="src\Looting\ManagedLists.cpp" />
     <ClCompile Include="src\Looting\objects.cpp" />
     <ClCompile Include="src\Looting\ProducerLootables.cpp" />
@@ -250,6 +251,7 @@
     <ClInclude Include="src\Looting\containerLister.h" />
     <ClInclude Include="src\Looting\InventoryItem.h" />
     <ClInclude Include="src\Looting\IRangeChecker.h" />
+    <ClInclude Include="src\Looting\LootableREFR.h" />
     <ClInclude Include="src\Looting\ManagedLists.h" />
     <ClInclude Include="src\Looting\objects.h" />
     <ClInclude Include="src\Looting\ObjectType.h" />

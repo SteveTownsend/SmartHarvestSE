@@ -7,12 +7,12 @@
 
 InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
 	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count),
-	m_objectType(GetBaseFormObjectType(m_entry->GetObject(), targetType, false)) {}
+	m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
 	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
 // returns number of objects added
-int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target)
+int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool collectible)
 {
 	auto toRemove = m_count;
 	if (toRemove <= 0) {
@@ -72,16 +72,16 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	*/
 	for (auto& elem : queued) {
 		DBG_VMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
-		Remove(container, target, elem.first, elem.second);
+		Remove(container, target, elem.first, elem.second, collectible);
 	}
 	if (toRemove > 0) {
 		DBG_VMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
-		Remove(container, target, nullptr, toRemove);
+		Remove(container, target, nullptr, toRemove, collectible);
 	}
 	return static_cast<int>(toRemove + queued.size());
 }
 
-void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count)
+void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count, const bool collectible)
 {
 	if (m_targetType == INIFile::SecondaryType::containers)
 	{
@@ -92,6 +92,6 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	else
 	{
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
-		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType, m_targetType);
+		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType, collectible);
 	}
 }

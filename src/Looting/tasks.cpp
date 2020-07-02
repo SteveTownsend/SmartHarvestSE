@@ -10,6 +10,7 @@
 #include "WorldState/LocationTracker.h"
 #include "Looting/ManagedLists.h"
 #include "Looting/objects.h"
+#include "Looting/LootableREFR.h"
 #include "WorldState/PopulationCenters.h"
 #include "FormHelpers/FormHelper.h"
 #include "FormHelpers/PlayerCellHelper.h"
@@ -46,7 +47,7 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 	if (targetType != INIFile::SecondaryType::deadbodies)
 	{
 		// check up to three ownership conditions depending on config
-		bool playerOwned(TESObjectREFRHelper(m_candidate, targetType).IsPlayerOwned());
+		bool playerOwned(IsPlayerOwned(m_candidate));
 		// Fired arrows are marked as player owned but we don't want to prevent pickup, ever
 		bool firedArrow(m_candidate->formType == RE::FormType::ProjectileArrow);
 		bool lootingIsCrime(m_candidate->IsOffLimits());
@@ -185,10 +186,10 @@ void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 void SearchTask::Run()
 {
 	DataCase* data = DataCase::GetInstance();
-	TESObjectREFRHelper refrEx(m_candidate, m_targetType);
 
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
+		LootableREFR refrEx(m_candidate, m_targetType);
 		ObjectType objType = refrEx.GetObjectType();
 		std::string typeName = refrEx.GetTypeName();
 		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
@@ -340,14 +341,14 @@ void SearchTask::Run()
 				data->BlockForm(m_candidate->GetBaseObject());
 			}
 		}
-		else if (objType == ObjectType::whitelist)
+		else if (ManagedList::WhiteList().Contains(m_candidate->GetBaseObject()))
 		{
 			// ** if configured as permitted ** whitelisted objects are always looted silently
 			DBG_VMESSAGE("check REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
 			skipLooting = forbidden;
 			lootingType = LootingType::LootAlwaysSilent;
 		}
-		else if (objType == ObjectType::blacklist)
+		else if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
 			// blacklisted objects are never looted
 			DBG_VMESSAGE("block blacklisted base %s/0x%08x for REFR 0x%08x",
@@ -395,21 +396,15 @@ void SearchTask::Run()
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!LockHarvest(m_candidate, isSilent))
 				return;
-			ObjectType effectiveType(objType);
-			if (IsAlwaysHarvested(objType))
-			{
-				// find lootable type if whitelist and collectibles were not a factor, for Harvest script
-				effectiveType = GetREFRObjectType(m_candidate, INIFile::SecondaryType::NONE2, true);
-			}
-			EventPublisher::Instance().TriggerHarvest(m_candidate, effectiveType, refrEx.GetItemCount(),
-				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify);
+			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
+				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify, collectible.first);
 		}
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
 		DBG_MESSAGE("scanning container/body %s/0x%08x  at distance %.2f units", m_candidate->GetName(), m_candidate->formID, m_distance);
 #if _DEBUG
-		DumpContainer(refrEx, m_targetType);
+		DumpContainer(LootableREFR(m_candidate, m_targetType));
 #endif
 		bool requireQuestItemAsTarget = m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0;
 		bool skipLooting(false);
@@ -531,8 +526,8 @@ void SearchTask::Run()
 		// avoid re-looting without a player cell or config change
 		DBG_MESSAGE("block looted container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 		data->BlockReference(m_candidate);
-		// Build list of lootable targets with count and notification flag for each
-		std::vector<std::pair<InventoryItem, bool>> targets;
+		// Build list of lootable targets with notification and collectibility flag for each
+		std::vector<std::tuple<InventoryItem, bool, bool>> targets;
 		targets.reserve(lootableItems.size());
 		for (auto& targetItemInfo : lootableItems)
 		{
@@ -583,23 +578,31 @@ void SearchTask::Run()
 					}
 				}
 			}
-			SInt32 priceOverride = targetItemInfo.GetGoldValue();
-			DBG_VMESSAGE("%s/0x%08x value:%d", targetItemInfo.BoundObject()->GetName(), targetItemInfo.BoundObject()->formID, priceOverride);
 
 			LootingType lootingType(LootingType::LeaveBehind);
-			if (objType == ObjectType::collectible)
+			const auto collectible(shse::CollectionManager::Instance().TreatAsCollectible(
+				shse::ConditionMatcher(targetItemInfo.BoundObject(), m_targetType)));
+			if (collectible.first)
 			{
-				// collectible objects are always looted silently and notified according to Collection Policy
-				DBG_VMESSAGE("transfer collectible 0x%08x", target->formID);
-				lootingType = LootingType::LootAlwaysSilent;
+				if (IsSpecialObjectLootable(collectible.second))
+				{
+					DBG_VMESSAGE("Collectible Item 0x%08x", targetItemInfo.BoundObject()->formID);
+					lootingType = LootingType::LootAlwaysSilent;
+				}
+				else
+				{
+					// blacklisted or 'glow'
+					DBG_VMESSAGE("Collectible Item 0x%08x skipped", targetItemInfo.BoundObject()->formID);
+					continue;
+				}
 			}
-			else if (objType == ObjectType::whitelist)
+			else if (ManagedList::WhiteList().Contains(target))
 			{
 				// whitelisted objects are always looted silently
 				DBG_VMESSAGE("transfer whitelisted 0x%08x", target->formID);
 				lootingType = LootingType::LootAlwaysSilent;
 			}
-			else if (objType == ObjectType::blacklist)
+			else if (ManagedList::BlackList().Contains(target))
 			{
 				// blacklisted objects are never looted
 				DBG_VMESSAGE("block blacklisted target %s/0x%08x", target->GetName(), target->GetFormID());
@@ -619,7 +622,7 @@ void SearchTask::Run()
 					continue;
 				}
 				else if (LootingDependsOnValueWeight(lootingType, objType) &&
-					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot(priceOverride))
+					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot(targetItemInfo.GetGoldValue()))
 				{
 					DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
 					data->BlockForm(target);
@@ -627,7 +630,7 @@ void SearchTask::Run()
 				}
 			}
 
-			targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType)});
+			targets.push_back({targetItemInfo, LootingRequiresNotification(lootingType), collectible.first });
 			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", target->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
@@ -640,7 +643,7 @@ void SearchTask::Run()
 			{
 				if (m_targetType == INIFile::SecondaryType::containers)
 				{
-					if (!refrEx.GetTimeController())
+					if (!GetTimeController(m_candidate))
 					{
 						// no container animation feasible, highlight it instead
 						playContainerAnimation = 2;
@@ -658,7 +661,7 @@ void SearchTask::Run()
 	}
 }
 
-void SearchTask::GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType)
+void SearchTask::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType)
 {
 	if (!m_candidate)
 		return;
@@ -677,11 +680,12 @@ void SearchTask::GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>
 	for (auto& target : targets)
 	{
 		// Play sound first as this uses InventoryItemData on the source container
-		InventoryItem& itemInfo(target.first);
-		bool notify(target.second);
+		InventoryItem& itemInfo(std::get<0>(target));
+		bool notify(std::get<1>(target));
+		bool collectible(std::get<2>(target));
 		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
 		std::string name(itemInfo.BoundObject()->GetName());
-		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton()));
+		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible));
 		if (notify)
 		{
 			std::string notificationText;

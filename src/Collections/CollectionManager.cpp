@@ -155,16 +155,18 @@ std::pair<bool, SpecialObjectHandling> CollectionManager::TreatAsCollectible(con
 		return NotCollectible;
 	}
 
-	// It is in at least one collection. Find the most aggressive action.
+	// It is in at least one collection. Find the most aggressive action for any where we are in scope and a usable member.
 	SpecialObjectHandling action(SpecialObjectHandling::DoNotLoot);
+	bool actionable(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
 		if (collection->second->InScopeAndCollectibleFor(matcher))
 		{
+			actionable = true;
 			action = UpdateSpecialObjectHandling(collection->second->Policy().Action(), action);
 		}
 	}
-	return std::make_pair(true, action);
+	return std::make_pair(actionable, action);
 }
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
@@ -234,7 +236,7 @@ bool CollectionManager::LoadData(void)
 	REL_MESSAGE("JSON Schema %s parsed and validated", filePath.c_str());
 
 	// Find and Load Collection Definitions using the validated schema
-	const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json");
+	const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json$");
 	for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
 	{
 		if (!std::filesystem::is_regular_file(nextFile))

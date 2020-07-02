@@ -118,9 +118,7 @@ std::string Collection::PrintMembers(void) const
 		size_t scopes(m_scopes.size());
 		for (const auto scope : m_scopes)
 		{
-			std::string scopeStr;
-			INIFile::GetInstance()->GetIsSecondaryTypeString(scope, scopeStr);
-			collectionStr << scopeStr;
+			collectionStr << ScopeCondition::SecondaryTypeAsScope(scope);
 			if (--scopes)
 			{
 				collectionStr << ', ';

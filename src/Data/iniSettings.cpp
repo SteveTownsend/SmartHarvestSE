@@ -45,7 +45,7 @@ bool INIFile::CreateSectionString(PrimaryType m_section_first, SecondaryType m_s
 	std::string section[3];
 	if (!IsType(m_section_first) || !IsType(m_section_second))
 		return false;
-	if (!GetIsPrimaryTypeString(m_section_first, section[1]) || !GetIsSecondaryTypeString(m_section_second, section[2]))
+	if ((section[1] = PrimaryTypeString(m_section_first)).empty() || (section[2] = SecondaryTypeString(m_section_second)).empty())
 		return false;
 	m_result = section[1] + ":" + section[2];
 	return true;

@@ -124,6 +124,9 @@
     <ClCompile Include="src\Collections\Condition.cpp">
       <Filter>src\Collections</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\LootableREFR.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -259,6 +262,9 @@
       <Filter>src\Looting</Filter>
     </ClInclude>
     <ClInclude Include="src\Looting\ManagedLists.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\LootableREFR.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
   </ItemGroup>

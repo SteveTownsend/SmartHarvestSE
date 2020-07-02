@@ -27,6 +27,8 @@ double IHasValueWeight::GetWorth(void) const
 
 bool IHasValueWeight::ValueWeightTooLowToLoot(SInt32 itemValue) const
 {
+	DBG_VMESSAGE("Checking value:%d", itemValue);
+
 	// valuable objects overrides V/W checks
 	if (IsValuable(itemValue))
 		return false;

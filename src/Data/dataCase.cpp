@@ -627,7 +627,7 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
 		if (!refr)
 			continue;
-		if (GetBaseFormObjectType(refr->GetBaseObject(), INIFile::SecondaryType::NONE2, true) == ObjectType::oreVein &&
+		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
 			volcanicDigSites.insert(refrID);
@@ -1173,12 +1173,14 @@ bool DataCase::CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg
 void DataCase::CategorizeStatics()
 {
 	// These form types always map to the same Object Type
+	m_objectTypeByFormType[RE::FormType::ActorCharacter] = ObjectType::actor;
 	m_objectTypeByFormType[RE::FormType::Container] = ObjectType::container;
 	m_objectTypeByFormType[RE::FormType::Ingredient] = ObjectType::ingredient;
 	m_objectTypeByFormType[RE::FormType::SoulGem] = ObjectType::soulgem;
 	m_objectTypeByFormType[RE::FormType::KeyMaster] = ObjectType::key;
 	m_objectTypeByFormType[RE::FormType::Scroll] = ObjectType::scroll;
 	m_objectTypeByFormType[RE::FormType::Ammo] = ObjectType::ammo;
+	m_objectTypeByFormType[RE::FormType::ProjectileArrow] = ObjectType::ammo;
 	m_objectTypeByFormType[RE::FormType::Light] = ObjectType::light;
 
 	// Map well-known forms to ObjectType
