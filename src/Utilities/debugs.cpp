@@ -204,7 +204,6 @@ void DumpContainer(const LootableREFR& refr)
 
 			if (!entryData->extraLists)
 			{
-				DBG_MESSAGE("extraLists - not found");
 				continue;
 			}
 
