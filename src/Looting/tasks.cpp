@@ -1063,19 +1063,21 @@ void SearchTask::DoPeriodicSearch()
 #endif
 			if (!refr)
 				continue;
-			RE::Actor* actor(nullptr);
-			if ((actor = refr->GetBaseObject()->As<RE::Actor>()) || refr->GetBaseObject()->As<RE::TESNPC>())
+			if (refr->GetFormType() == RE::FormType::ActorCharacter)
 			{
 				if (!refr->IsDead(true) ||
 					DeadBodyLootingFromIniSetting(m_ini->GetSetting(
 						INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
 					continue;
 
+				RE::Actor* actor(refr->As<RE::Actor>());
 				if (actor)
 				{
 					ActorHelper actorEx(actor);
 					if (actorEx.IsPlayerAlly() || actorEx.IsEssential() || actorEx.IsSummoned())
 					{
+						DBG_VMESSAGE("Block ineligible Actor 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 						data->BlockReference(refr);
 						continue;
 					}

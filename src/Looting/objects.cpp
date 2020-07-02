@@ -95,34 +95,38 @@ RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
 
 bool ActorHelper::IsSneaking() const
 {
-	return (m_actor && m_actor->IsSneaking());
+	return m_actor->IsSneaking();
 }
 
 bool ActorHelper::IsPlayerAlly() const
 {
-	if (!m_actor)
-		return false;
 	if (m_actor->IsPlayerTeammate())
 	{
+		DBG_DMESSAGE("Actor is teammate");
 		return true;
 	}
 	static const RE::TESFaction* followerFaction = RE::TESForm::LookupByID(CurrentFollowerFaction)->As<RE::TESFaction>();
-	return (followerFaction) ? m_actor->IsInFaction(followerFaction) : false;
+	if (followerFaction)
+	{
+		bool result(m_actor->IsInFaction(followerFaction));
+		DBG_DMESSAGE("Actor is follower = %s", result ? "true" : "false");
+		return result;
+	}
+	return false;
 }
 
 bool ActorHelper::IsEssential() const 
 {
-	if (!m_actor)
-		return false;
-	RE::TESActorBaseData* baseData(m_actor->As<RE::TESActorBaseData>());
-	if (!baseData)
-		return false;
-	return baseData->IsEssential();
+	return m_actor->IsEssential();
 }
 
+// applies only if NPC
 bool ActorHelper::IsSummoned(void) const
 {
-	return m_actor ? m_actor->IsSummoned() : false;
+	const RE::TESNPC* npc(m_actor->GetActorBase());
+	bool result(npc && npc->IsSummonable());
+	DBG_DMESSAGE("Actor summoned = %s", result ? "true" : "false");
+	return result;
 }
 
 // this is the pivotal function that maps a REFR to its loot category

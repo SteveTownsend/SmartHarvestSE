@@ -107,7 +107,8 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	if (refr->GetBaseObject()->As<RE::Actor>() || refr->GetBaseObject()->As<RE::TESNPC>())
+	// Actor derives from REFR
+	if (refr->GetFormType() == RE::FormType::ActorCharacter)
 	{
 		if (!refr->IsDead(true))
 		{
