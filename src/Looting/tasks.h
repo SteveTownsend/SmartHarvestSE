@@ -114,6 +114,6 @@ private:
 	static void ScanThread(void);
 
 	
-	void GetLootFromContainer(std::vector<std::pair<InventoryItem, bool>>& targets, const int animationType);
+	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType);
 	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 };

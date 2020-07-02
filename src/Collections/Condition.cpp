@@ -212,6 +212,17 @@ bool SignatureCondition::operator()(const ConditionMatcher& matcher) const
 	return std::find(m_formTypes.cbegin(), m_formTypes.cend(), matcher.Form()->GetFormType()) != m_formTypes.cend();
 }
 
+std::string SignatureCondition::FormTypeAsSignature(const RE::FormType formType)
+{
+	// very short linear scan, for file dump
+	for (const auto validSignature : m_validSignatures)
+	{
+		if (validSignature.second == formType)
+			return validSignature.first;
+	}
+	return "";
+}
+
 const decltype(SignatureCondition::m_validSignatures) SignatureCondition::ValidSignatures()
 {
 	return m_validSignatures;
@@ -227,7 +238,7 @@ void SignatureCondition::AsJSON(nlohmann::json& j) const
 	j["signature"] = nlohmann::json::array();
 	for (const auto formType : m_formTypes)
 	{
-		j["signature"].push_back(static_cast<int>(formType));
+		j["signature"].push_back(FormTypeAsSignature(formType));
 	}
 }
 
@@ -245,8 +256,7 @@ ScopeCondition::ScopeCondition(const std::vector<std::string>& scopes)
 		if (matched != m_validScopes.cend())
 		{
 			m_scopes.push_back(matched->second);
-			std::string target;
-			INIFile::GetInstance()->GetIsSecondaryTypeString(matched->second, target);
+			std::string target(INIFile::GetInstance()->SecondaryTypeString(matched->second));
 			DBG_VMESSAGE("Scope %s mapped to FormType %d", scope.c_str(), target.c_str());
 		}
 	}
@@ -265,6 +275,17 @@ bool ScopeCondition::operator()(const ConditionMatcher& matcher) const
 	return std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) != m_scopes.cend();
 }
 
+std::string ScopeCondition::SecondaryTypeAsScope(const INIFile::SecondaryType scope)
+{
+	// very short linear scan, for file dump
+	for (const auto validScope : m_validScopes)
+	{
+		if (validScope.second == scope)
+			return validScope.first;
+	}
+	return "";
+}
+
 nlohmann::json ScopeCondition::MakeJSON() const
 {
 	return nlohmann::json(*this);
@@ -275,7 +296,7 @@ void ScopeCondition::AsJSON(nlohmann::json& j) const
 	j["scope"] = nlohmann::json::array();
 	for (const auto scope : m_scopes)
 	{
-		j["scope"].push_back(static_cast<int>(scope));
+		j["scope"].push_back(SecondaryTypeAsScope(scope));
 	}
 }
 

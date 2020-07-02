@@ -6,6 +6,7 @@
 #include "FormHelpers/FormHelper.h"
 #include "Utilities/debugs.h"
 #include "Looting/objects.h"
+#include "Looting/LootableREFR.h"
 
 void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 {
@@ -129,7 +130,7 @@ void DumpItemVW(const TESFormHelper& itemEx)
 #endif
 }
 
-void DumpReference(const TESObjectREFRHelper& refr, const char* typeName, const INIFile::SecondaryType scope)
+void DumpReference(const LootableREFR& refr, const char* typeName, const INIFile::SecondaryType scope)
 {
 #if _DEBUG
 	const RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.GetReference()->GetBaseObject());
@@ -147,7 +148,7 @@ void DumpReference(const TESObjectREFRHelper& refr, const char* typeName, const 
 #endif
 }
 
-void DumpContainer(const TESObjectREFRHelper& refr, const INIFile::SecondaryType scope)
+void DumpContainer(const LootableREFR& refr)
 {
 #if _DEBUG
 	DBG_MESSAGE("%08x %02x(%02d) [%s]", refr.GetReference()->GetBaseObject()->formID, refr.GetReference()->GetBaseObject()->formType,
@@ -159,7 +160,7 @@ void DumpContainer(const TESObjectREFRHelper& refr, const INIFile::SecondaryType
 	if (container)
 	{
 		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
-			TESFormHelper itemEx(entry->obj, scope);
+			TESFormHelper itemEx(entry->obj, refr.Scope());
 
 			DBG_MESSAGE("itemType:: %d:(%08x)", itemEx.Form()->formType, itemEx.Form()->formID);
 
@@ -171,14 +172,14 @@ void DumpContainer(const TESObjectREFRHelper& refr, const INIFile::SecondaryType
 			{
 				bool bPlayable = IsPlayable(itemEx.Form());
 				const RE::TESFullName* name = itemEx.Form()->As<RE::TESFullName>();
-				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form(), scope, false));
+				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form()));
 
 				DBG_MESSAGE("%08x [%s] count=%d playable=%d  - %s", itemEx.Form()->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
 
-				TESFormHelper refHelper(refr.GetReference()->GetBaseObject(), scope);
+				TESFormHelper refHelper(refr.GetReference()->GetBaseObject(), refr.Scope());
 				DumpItemVW(refHelper);
 
-				DumpKeyword(refHelper.Form(), scope);
+				DumpKeyword(refHelper.Form(), refr.Scope());
 			}
 			return true;
 		});
@@ -191,15 +192,15 @@ void DumpContainer(const TESObjectREFRHelper& refr, const INIFile::SecondaryType
 	{
 		for (const RE::InventoryEntryData* entryData : *exChanges->changes->entryList)
 		{
-			TESFormHelper itemEx(const_cast<RE::InventoryEntryData*>(entryData)->GetObject(), scope);
+			TESFormHelper itemEx(const_cast<RE::InventoryEntryData*>(entryData)->GetObject(), refr.Scope());
 
 			bool bPlayable = IsPlayable(itemEx.Form());
-			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form(), scope, false));
+			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form()));
 			const RE::TESFullName *name = itemEx.Form()->As<RE::TESFullName>();
 			DBG_MESSAGE("- %08x [%s] %p count=%d playable=%d  - %s", itemEx.Form()->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());
 
 			DumpItemVW(itemEx);
-			DumpKeyword(itemEx.Form(), scope);
+			DumpKeyword(itemEx.Form(), refr.Scope());
 
 			if (!entryData->extraLists)
 			{

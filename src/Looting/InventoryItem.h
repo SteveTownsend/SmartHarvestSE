@@ -9,7 +9,7 @@ public:
 	InventoryItem(const InventoryItem& rhs);
 
 	// returns number of objects added
-	int TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target);
+	int TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool collectible);
 
 	inline RE::BSSimpleList<RE::ExtraDataList*>* GetExtraDataLists() const { return m_entry->extraLists; }
 	inline RE::TESBoundObject* BoundObject() const { return m_entry->GetObject(); }
@@ -18,7 +18,8 @@ public:
 	inline std::ptrdiff_t Count() const { return m_count; }
 
 private:
-	void Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count);
+	void Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList,
+		ptrdiff_t count, const bool collectible);
 
 	const INIFile::SecondaryType m_targetType;
 	mutable std::unique_ptr<RE::InventoryEntryData> m_entry;

@@ -64,87 +64,9 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 	return ashHandle.get().get();
 }
 
-TESObjectREFRHelper::TESObjectREFRHelper(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_lootable(nullptr), m_scope(scope)
+bool IsPlayerOwned(const RE::TESObjectREFR* refr)
 {
-	m_objectType = GetREFRObjectType(m_ref, scope, false);
-	m_typeName = GetObjectTypeName(m_objectType);
-}
-
-double TESObjectREFRHelper::GetPosValue()
-{
-	if (!m_ref)
-		return -1.0;
-	double dx = m_ref->GetPositionX();
-	double dy = m_ref->GetPositionY();
-	double dz = m_ref->GetPositionZ();
-	return (dx*dx + dy*dy + dz*dz);
-}
-
-bool TESObjectREFRHelper::IsQuestItem(const bool requireFullQuestFlags)
-{
-	if (!m_ref)
-		return false;
-
-	RE::RefHandle handle;
-	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(m_ref));
-
-	RE::NiPointer<RE::TESObjectREFR> targetRef;
-	RE::LookupReferenceByHandle(handle, targetRef);
-
-	if (!targetRef)
-		targetRef.reset(const_cast<RE::TESObjectREFR*>(m_ref));
-
-	ExtraDataListHelper extraListEx(&targetRef->extraList);
-	if (!extraListEx.m_extraData)
-		return false;
-
-	return extraListEx.IsQuestObject(requireFullQuestFlags);
-}
-
-std::vector<RE::TESObjectREFR*> TESObjectREFRHelper::GetLinkedRefs(RE::BGSKeyword* keyword)
-{
-	std::vector<RE::TESObjectREFR*> result;
-	const RE::ExtraLinkedRef* exLinkRef(m_ref->extraList.GetByType<RE::ExtraLinkedRef>());
-	if (!exLinkRef)
-		return result;
-
-	for (const auto pair : exLinkRef->linkedRefs)
-	{
-		if (!pair.refr || pair.keyword != keyword)
-			continue;
-		result.push_back(pair.refr);
-	}
-	return result;
-}
-
-const RE::TESContainer* TESObjectREFRHelper::GetContainer() const
-{
-	if (!m_ref->GetBaseObject())
-		return nullptr;
-
-	const RE::TESContainer *container = nullptr;
-	if (m_ref->GetBaseObject()->formType == RE::FormType::Container ||
-	    m_ref->GetBaseObject()->formType == RE::FormType::NPC)
-		container = m_ref->GetBaseObject()->As<RE::TESContainer>();
-
-	return container;
-}
-
-std::pair<bool, SpecialObjectHandling> TESObjectREFRHelper::TreatAsCollectible(void) const
-{
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.TreatAsCollectible();
-}
-
-bool TESObjectREFRHelper::IsValuable() const
-{
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.IsValuable(static_cast<SInt32>(GetWorth()));
-}
-
-bool TESObjectREFRHelper::IsPlayerOwned() const
-{
-	const RE::TESForm* owner = m_ref->GetOwner();
+	const RE::TESForm* owner = refr->GetOwner();
 	if (owner)
 	{
 		if (owner->formType == RE::FormType::NPC)
@@ -165,60 +87,9 @@ bool TESObjectREFRHelper::IsPlayerOwned() const
 	return false;
 }
 
-RE::TESForm* TESObjectREFRHelper::GetLootable() const
+RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
 {
-	return m_lootable;
-}
-
-void TESObjectREFRHelper::SetLootable(RE::TESForm* lootable)
-{
-	m_lootable = lootable;
-}
-
-double TESObjectREFRHelper::CalculateWorth(void) const
-{
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.GetWorth();
-}
-
-double TESObjectREFRHelper::GetWeight(void) const
-{
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.GetWeight();
-}
-
-const char* TESObjectREFRHelper::GetName() const
-{
-	return m_ref->GetName();
-}
-
-UInt32 TESObjectREFRHelper::GetFormID() const
-{
-	return m_ref->GetBaseObject()->formID;
-}
-
-SInt16 TESObjectREFRHelper::GetItemCount()
-{
-	if (!m_ref)
-		return 1;
-	if (!m_ref->GetBaseObject())
-		return 1;
-	if (m_lootable)
-		return 1;
-	if (m_objectType == ObjectType::oreVein)
-	{
-		// limit ore harvesting to constrain Player Home mining
-		return static_cast<SInt16>(INIFile::GetInstance()->GetInstance()->GetSetting(
-			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
-	}
-
-	const RE::ExtraCount* exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
-	return (exCount) ? exCount->count : 1;
-}
-
-RE::NiTimeController* TESObjectREFRHelper::GetTimeController() const
-{
-	const RE::NiAVObject* node = m_ref->Get3D2();
+	const RE::NiAVObject* node = refr->Get3D2();
 	return (node && node->GetControllers()) ? node->GetControllers() : nullptr;
 }
 
@@ -255,30 +126,18 @@ bool ActorHelper::IsSummoned(void) const
 }
 
 // this is the pivotal function that maps a REFR to its loot category
-ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr, const INIFile::SecondaryType scope, const bool ignoreWhiteList)
+ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr)
 {
 	if (!refr || !refr->GetBaseObject())
 		return ObjectType::unknown;
 
-	if (refr->formType == RE::FormType::ActorCharacter)
-	{
-		// derived from REFR directly
-		return ObjectType::actor;
-	}
-	else if (refr->GetBaseObject()->formType == RE::FormType::Activator && HasAshPile(refr))
-	{
+	if (refr->GetBaseObject()->formType == RE::FormType::Activator && HasAshPile(refr))
 		return ObjectType::unknown;
-	}
-	else if (refr->formType == RE::FormType::ProjectileArrow)
-	{
-		// derived from REFR via Projectile
-		return ObjectType::ammo;
-	}
 
-	return GetBaseFormObjectType(refr->GetBaseObject(), scope, ignoreWhiteList);
+	return GetBaseFormObjectType(refr->GetBaseObject());
 }
 
-ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, const INIFile::SecondaryType scope, const bool ignoreWhiteList)
+ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm)
 {
 	// Leveled items typically redirect to their contents
 	DataCase* data = DataCase::GetInstance();
@@ -286,26 +145,7 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm, const INIFile::Sec
 	if (!baseForm)
 		return ObjectType::unknown;
 
-#if _DEBUG
-	if (!ignoreWhiteList && scope != INIFile::SecondaryType::containers && scope != INIFile::SecondaryType::deadbodies && scope != INIFile::SecondaryType::itemObjects)
-		throw std::runtime_error("Invalid scope");
-#endif
-
 	ObjectType objectType(data->GetObjectTypeForForm(baseForm));
-	if (!ignoreWhiteList && shse::CollectionManager::Instance().TreatAsCollectible(shse::ConditionMatcher(baseForm, scope)).first)
-	{
-		// May not be looted if configured to glow
-		return ObjectType::collectible;
-	}
-	if (!ignoreWhiteList && ManagedList::WhiteList().Contains(baseForm))
-	{
-		return ObjectType::whitelist;
-	}
-	if (ManagedList::BlackList().Contains(baseForm))
-	{
-		return ObjectType::blacklist;
-	}
-
 	if (objectType != ObjectType::unknown)
 	{
     	return objectType;
@@ -377,12 +217,9 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::food, "food"},
 	{ObjectType::drink, "drink"},
 	{ObjectType::oreVein, "orevein"},
-	{ObjectType::whitelist, "whitelist"},
 	{ObjectType::container, "container"},
 	{ObjectType::actor, "actor"},
-	{ObjectType::ashPile, "ashpile"},
-	{ObjectType::manualLoot, "manualloot"},
-	{ObjectType::collectible, "collectible"}
+	{ObjectType::manualLoot, "manualloot"}
 	});
 
 std::string GetObjectTypeName(ObjectType objectType)

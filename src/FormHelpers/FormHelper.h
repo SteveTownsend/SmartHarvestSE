@@ -21,8 +21,8 @@ protected:
 	const RE::TESForm* m_form;
 	const shse::ConditionMatcher m_matcher;
 
-	virtual const char* GetName() const;
-	virtual UInt32 GetFormID() const;
+	virtual const char* GetName() const override;
+	virtual UInt32 GetFormID() const override;
 	virtual double CalculateWorth(void) const override;
 };
 

@@ -13,7 +13,7 @@ TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryTy
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
-	m_objectType = GetBaseFormObjectType(form, scope, false);
+	m_objectType = GetBaseFormObjectType(form);
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
