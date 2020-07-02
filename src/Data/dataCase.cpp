@@ -627,7 +627,7 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
 		if (!refr)
 			continue;
-		if (GetBaseFormObjectType(refr->GetBaseObject(), INIFile::SecondaryType::NONE2, true) == ObjectType::oreVein &&
+		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
 			volcanicDigSites.insert(refrID);
@@ -850,11 +850,16 @@ void DataCase::ListsClear(const bool gameReload)
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 {
+	// Moving arrows must be skipped if they are in flight. Bobbing on water or rolling around does not count.
+	// Assume in-flight movement rate at least N feet per loot scan interval.
+	constexpr double FEET_PER_DISTANCE_UNIT(0.046875);
+	constexpr double ArrowInFlightFeet(5. / FEET_PER_DISTANCE_UNIT);
+
 	bool skip(false);
 	RE::NiPoint3 pos = refr->GetPosition();
 	if (pos == RE::NiPoint3())
 	{
-		DBG_VMESSAGE("err %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
+		DBG_VMESSAGE("Arrow position unknown %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
 		BlockReference(refr);
 		skip = true;
 	}
@@ -862,22 +867,25 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	RecursiveLockGuard guard(m_blockListLock);
 	if (!m_arrowCheck.contains(refr))
 	{
-		DBG_VMESSAGE("pick %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
+		DBG_VMESSAGE("Newly detected, save arrow position %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
 		m_arrowCheck.insert(std::make_pair(refr, pos));
 		skip = true;
 	}
 	else
 	{
 		RE::NiPoint3 prev = m_arrowCheck.at(refr);
-		if (prev != pos)
+		double dx(pos.x - prev.x);
+		double dy(pos.y - prev.y);
+		double dz(pos.z - prev.z);
+		if (fabs(dx) > ArrowInFlightFeet || fabs(dy) > ArrowInFlightFeet || fabs(dz) > ArrowInFlightFeet)
 		{
-			DBG_VMESSAGE("moving pos:%0.2f,%0.2f,%0.2f prev:%0.2f %0.2f, %0.2f", pos.x, pos.y, pos.z, prev.x, prev.y, prev.z);
+			DBG_VMESSAGE("In flight, change in arrow position dx=%0.2f,dy=%0.2f,dz=%0.2f", dx, dy, dz);
 			m_arrowCheck[refr] = pos;
 			skip = true;
 		}
 		else
 		{
-			DBG_VMESSAGE("catch %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
+			DBG_VMESSAGE("OK, not in flight, change in arrow position dx=%0.2f,dy=%0.2f,dz=%0.2f", dx, dy, dz);
 			m_arrowCheck.erase(refr);
 		}
 	}
@@ -1165,12 +1173,14 @@ bool DataCase::CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg
 void DataCase::CategorizeStatics()
 {
 	// These form types always map to the same Object Type
+	m_objectTypeByFormType[RE::FormType::ActorCharacter] = ObjectType::actor;
 	m_objectTypeByFormType[RE::FormType::Container] = ObjectType::container;
 	m_objectTypeByFormType[RE::FormType::Ingredient] = ObjectType::ingredient;
 	m_objectTypeByFormType[RE::FormType::SoulGem] = ObjectType::soulgem;
 	m_objectTypeByFormType[RE::FormType::KeyMaster] = ObjectType::key;
 	m_objectTypeByFormType[RE::FormType::Scroll] = ObjectType::scroll;
 	m_objectTypeByFormType[RE::FormType::Ammo] = ObjectType::ammo;
+	m_objectTypeByFormType[RE::FormType::ProjectileArrow] = ObjectType::ammo;
 	m_objectTypeByFormType[RE::FormType::Light] = ObjectType::light;
 
 	// Map well-known forms to ObjectType

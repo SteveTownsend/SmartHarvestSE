@@ -933,14 +933,8 @@ event OnOptionSliderOpen(int a_option)
     index = id_valueWeightArray.find(a_option)
     if (index > -1)
         SetSliderDialogStartValue(valueWeightSettingArray[index])
-        if (index == objType_Ammo)
-            SetSliderDialogRange(0, 30)
-        else
-            SetSliderDialogRange(0, 1000)
-        endif
-        return
+        SetSliderDialogRange(0, 1000)
     endif
-
 endEvent
 
 event OnOptionSliderAccept(int a_option, float a_value)

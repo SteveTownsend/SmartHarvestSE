@@ -69,6 +69,7 @@ namespace shse {
 		static const decltype(m_validSignatures) ValidSignatures();
 		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
+		static std::string FormTypeAsSignature(const RE::FormType formType);
 	};
 
 	class ScopeCondition : public Condition {
@@ -77,6 +78,7 @@ namespace shse {
 		virtual bool operator()(const ConditionMatcher& matcher) const;
 		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
+		static std::string SecondaryTypeAsScope(const INIFile::SecondaryType scope);
 
 	private:
 		std::vector<INIFile::SecondaryType> m_scopes;
@@ -126,4 +128,5 @@ namespace shse {
 	};
 }
 
+std::string SecondaryTypeAsScope(const INIFile::SecondaryType scope);
 std::ostream& operator<<(std::ostream& os, const shse::Condition& condition);

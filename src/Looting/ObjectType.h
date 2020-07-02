@@ -36,13 +36,9 @@ enum class ObjectType : UInt8
 	food,
 	drink,
 	oreVein,
-	whitelist,
-	blacklist,
 	container,
 	actor,
-	ashPile,
-	manualLoot,
-	collectible
+	manualLoot
 };
 
 enum class ResourceType : UInt8
