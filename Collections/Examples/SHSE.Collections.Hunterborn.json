@@ -31,9 +31,10 @@
           "keyword": [
             "VendorItemAnimalPart",
             "VendorItemAnimalHide",
-            "VendorItemFoodRaw"
+            "VendorItemFoodRaw",
+            "VendorItemIngredient"
           ],
-          "scope": [ "looseItem" ]
+          "scope": [ "deadBody" ]
         },
         "operator": "AND"
       }
