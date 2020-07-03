@@ -52,6 +52,7 @@ EffectShader ownedShader        ; green
 EffectShader lootedShader       ; silver
 
 ; FormType from CommonLibSSE - this is core Game data, so invariant
+int getType_kTree = 38
 int getType_kFlora = 39
 
 Formlist Property whitelist_form auto
@@ -432,13 +433,13 @@ Function RecordItem(Form akBaseItem)
     currentAddedItem += 1
 EndFunction
 
-bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool isSilentMessage = false)
+bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage = false)
     bool bShowHUD = Utility.GetINIBool("bShowHUDMessages:Interface")
-    if (bShowHUD && isSilentMessage)
+    if (bShowHUD && suppressMessage)
         Utility.SetINIBool("bShowHUDMessages:Interface", false)
     endif
     bool result = akTarget.Activate(akActivator)
-    if (bShowHUD && isSilentMessage)
+    if (bShowHUD && suppressMessage)
         Utility.SetINIBool("bShowHUDMessages:Interface", true)
     endif
     return result
@@ -589,7 +590,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
     form baseForm = akTarget.GetBaseObject()
 
     ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + baseForm) 
-    ;DebugTrace("item type: " + itemType + ", do not notify: " + silent + "notify for manual loot: " + manualLootNotify)
+    ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ", notify for manual loot: " + manualLootNotify)
 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)
@@ -602,23 +603,33 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
         ; no-op but must still unlock
 
     elseif (!akTarget.IsActivationBlocked())
-        if (itemType == objType_Flora)
-            if (ActivateEx(akTarget, player, silent) && (greenThumbPerk && player.HasPerk(greenThumbPerk)) as bool)
+        if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
+            ActivateEx(akTarget, player, silent)
+
+        elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
+            ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
+            bool applyGreenThumb = (greenThumbPerk && player.HasPerk(greenThumbPerk)) as bool
+            bool suppressMessage = silent || applyGreenThumb
+            ;DebugTrace("Flora " + baseForm.GetName())
+            if ActivateEx(akTarget, player, suppressMessage)
+                ;we must send the message if required default would have been incorrect
+                notify = !silent && applyGreenThumb
                 float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
                 int countPP = ((count * greenThumbValue) - count) as int
                 if (countPP >= 1)
                     player.AddItem(baseForm, countPP, true)
+                    count = count + countPP
                 endif
             endif
-        elseif (itemType == objType_Critter)
-            ActivateEx(akTarget, player, silent)
-        elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
+        ; Critter ACTI REFRs cannot be identified by item type
+        elseif akTarget as Critter || akTarget as FXfakeCritterScript
+            ;DebugTrace("Critter " + baseForm.GetName())
             ActivateEx(akTarget, player, silent)
         elseif ActivateEx(akTarget, player, true)
-            if !silent
-                notify = true
-            endIf
+            notify = !silent
             if count >= 2
+                ; work round for ObjectReference.Activate() known issue
+                ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
                 int toGet = count - 1
                 player.AddItem(baseForm, toGet, true)
                 ;DebugTrace("Add extra count " + toGet + " of " + baseForm)
