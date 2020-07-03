@@ -82,6 +82,14 @@ SInt16 LootableREFR::GetItemCount()
 		return 1;
 	if (!m_ref->GetBaseObject())
 		return 1;
+
+	const RE::ExtraCount* exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
+	if (exCount)
+	{
+		DBG_VMESSAGE("Pick up %d instances of %s/0x%08x", exCount->count,
+			m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID());
+		return exCount->count;
+	}
 	if (m_lootable)
 		return 1;
 	if (m_objectType == ObjectType::oreVein)
@@ -90,7 +98,5 @@ SInt16 LootableREFR::GetItemCount()
 		return static_cast<SInt16>(INIFile::GetInstance()->GetInstance()->GetSetting(
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
 	}
-
-	const RE::ExtraCount* exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
-	return (exCount) ? exCount->count : 1;
+	return 1;
 }

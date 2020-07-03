@@ -585,10 +585,11 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 EndEvent
 
 Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify, bool collectible)
-    ;DebugTrace("OnHarvest:Run: " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" ) 
-    ;DebugTrace("item type: " + itemType + ", do not notify: " + silent + "notify for manual loot: " + manualLootNotify)
     bool notify = false
     form baseForm = akTarget.GetBaseObject()
+
+    ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + baseForm) 
+    ;DebugTrace("item type: " + itemType + ", do not notify: " + silent + "notify for manual loot: " + manualLootNotify)
 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)
@@ -613,8 +614,15 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
             ActivateEx(akTarget, player, silent)
         elseif (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
             ActivateEx(akTarget, player, silent)
-        elseif (ActivateEx(akTarget, player, true) && !silent)
-            notify = true
+        elseif ActivateEx(akTarget, player, true)
+            if !silent
+                notify = true
+            endIf
+            if count >= 2
+                int toGet = count - 1
+                player.AddItem(baseForm, toGet, true)
+                ;DebugTrace("Add extra count " + toGet + " of " + baseForm)
+            endIf
         endif
         if collectible
             RecordItem(baseForm)
