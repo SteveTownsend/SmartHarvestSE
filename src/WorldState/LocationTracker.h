@@ -5,32 +5,31 @@ class LocationTracker
 private:
 	void RecordAdjacentCells(RE::TESObjectCELL* cell);
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
-	bool IsPlayerInWhitelistedPlace() const;
-	bool IsPlayerInBlacklistedPlace() const;
+	bool IsPlayerInBlacklistedPlace(const RE::TESObjectCELL* cell) const;
 
 	static std::unique_ptr<LocationTracker> m_instance;
 	std::vector<RE::TESObjectCELL*> m_adjacentCells;
+	const RE::TESObjectCELL* m_priorCell;
 	RE::TESObjectCELL* m_playerCell;
-	bool m_playerCellSelfOwned;
-	RE::BGSLocation* m_playerLocation;
-	RE::BGSLocation* m_priorLocation;
+	bool m_tellPlayerIfCanLootAfterLoad;
+	const RE::BGSLocation* m_playerLocation;
 	mutable RecursiveLock m_locationLock;
 
 public:
 	static LocationTracker& Instance();
 	LocationTracker();
 
-	bool IsCellSelfOwned() const;
-	RE::TESForm* GetCellOwner(RE::TESObjectCELL* cell) const;
-	bool IsCellPlayerOwned(RE::TESObjectCELL* cell) const;
-	void Reset(const bool reloaded);
-	void Refresh();
+	bool CellOwnedByPlayerOrPlayerFaction(const RE::TESObjectCELL* cell) const;
+	RE::TESForm* GetCellOwner(const RE::TESObjectCELL* cell) const;
+	void Reset();
+	bool Refresh();
 	bool IsPlayerAtHome() const;
-	bool IsPlayerInLootablePlace();
+	bool IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, const bool lootableIfRestricted);
 	decltype(m_adjacentCells) AdjacentCells() const;
 	bool IsPlayerIndoors() const;
-	bool IsPlayerInRestrictedLootSettlement() const;
-	RE::TESForm* CurrentPlayerPlace() const;
+	bool IsPlayerInRestrictedLootSettlement(const RE::TESObjectCELL* cell) const;
+	const RE::TESForm* CurrentPlayerPlace() const;
+	bool IsPlayerInWhitelistedPlace(const RE::TESObjectCELL* cell) const;
 
 	const RE::TESObjectCELL* PlayerCell() const;
 };

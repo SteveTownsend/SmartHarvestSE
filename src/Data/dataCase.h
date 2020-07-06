@@ -452,6 +452,7 @@ private:
 	}
 
 	void IncludeFossilMiningExcavation();
+	void IncludeCorpseCoinage();
 	DataCase(void);
 };
 

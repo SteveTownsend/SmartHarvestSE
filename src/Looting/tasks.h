@@ -10,7 +10,12 @@
 class SearchTask
 {
 public:
+#if _DEBUG
+	// make sure load spike handling works OK
+	static constexpr size_t MaxREFRSPerPass = 10;
+#else
 	static constexpr size_t MaxREFRSPerPass = 75;
+#endif
 
 	SearchTask(const TargetREFR& target, INIFile::SecondaryType targetType);
 
@@ -26,6 +31,7 @@ public:
 
 	static void Start();
 	static void PrepareForReload();
+	static void AfterReload();
 	static void Allow();
 	static void Disallow();
 	static bool IsAllowed();

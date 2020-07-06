@@ -76,5 +76,22 @@ bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID)
 		modMask == (formID & LightFormIDMask) : modMask == (formID & RegularFormIDMask);
 }
 
+void LoadOrder::AsJSON(nlohmann::json& j) const
+{
+	j["order"] = nlohmann::json::array();
+	for (const auto& pluginMask : m_formIDMaskByName)
+	{
+		nlohmann::json entry;
+		entry["name"] = pluginMask.first;
+		entry["formID"] = pluginMask.second;
+		j["order"].push_back(entry);
+	}
+}
+
+void to_json(nlohmann::json& j, const LoadOrder& loadOrder)
+{
+	loadOrder.AsJSON(j);
+}
+
 }
 

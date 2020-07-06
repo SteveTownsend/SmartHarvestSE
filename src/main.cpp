@@ -10,6 +10,98 @@
 #include <sstream>
 #include <KnownFolders.h>
 
+void SaveCallback(SKSE::SerializationInterface* a_intfc)
+{
+	DBG_MESSAGE("Serialization Save hook called");
+	// JSON Initially
+	// then add compression per https://github.com/google/brotli
+	// output LoadOrder
+	// output Collection Defs
+	// output Collection contents
+	// implement and output Location history
+	// implement and output Followers-in-Party history
+#if 0
+	SInt32 num = 42;
+	std::vector<SInt32> arr;
+	for (std::size_t i = 0; i < 10; ++i) {
+		arr.push_back(i);
+	}
+
+	if (!a_intfc->WriteRecord('NUM_', 1, num)) {
+		_ERROR("Failed to serialize num!");
+	}
+
+	if (!a_intfc->OpenRecord('ARR_', 1)) {
+		_ERROR("Failed to open record for arr!");
+	}
+	else {
+		std::size_t size = arr.size();
+		if (!a_intfc->WriteRecordData(size)) {
+			_ERROR("Failed to write size of arr!");
+		}
+		else {
+			for (auto& elem : arr) {
+				if (!a_intfc->WriteRecordData(elem)) {
+					_ERROR("Failed to write data for elem!");
+					break;
+				}
+			}
+		}
+	}
+#endif
+}
+
+
+void LoadCallback(SKSE::SerializationInterface* a_intfc)
+{
+	DBG_MESSAGE("Serialization Load hook called");
+	// JSON Initially, then compressed
+	// read LoadOrder
+	// read Collection Defs
+	// read Collection contents
+	// read Location history
+	// read Followers-in-Party history
+#if 0
+	SInt32 num;
+	std::vector<SInt32> arr;
+
+	UInt32 type;
+	UInt32 version;
+	UInt32 length;
+	while (a_intfc->GetNextRecordInfo(type, version, length)) {
+		switch (type) {
+		case 'NUM_':
+			if (!a_intfc->ReadRecordData(num)) {
+				_ERROR("Failed to load num!");
+			}
+			break;
+		case 'ARR_':
+		{
+			std::size_t size;
+			if (!a_intfc->ReadRecordData(size)) {
+				_ERROR("Failed to load size!");
+				break;
+			}
+
+			for (UInt32 i = 0; i < size; ++i) {
+				SInt32 elem;
+				if (!a_intfc->ReadRecordData(elem)) {
+					_ERROR("Failed to load elem!");
+					break;
+				}
+				else {
+					arr.push_back(elem);
+				}
+			}
+		}
+		break;
+		default:
+			_ERROR("Unrecognized signature type!");
+			break;
+		}
+	}
+#endif
+}
 void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 {
 	static bool scanOK(true);
@@ -39,7 +131,7 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 		if (scanOK)
 		{
 			REL_MESSAGE("Initialized SearchTask, looting available");
-			SearchTask::Allow();
+			SearchTask::AfterReload();
 		}
 		else
 		{
@@ -99,7 +191,11 @@ bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 		return false;
 	}
 	SKSE::GetMessagingInterface()->RegisterListener("SKSE", SKSEMessageHandler);
-	SKSE::GetSerializationInterface()->SetUniqueID('SHSE');
+
+	auto serialization = SKSE::GetSerializationInterface();
+	serialization->SetUniqueID('SHSE');
+	serialization->SetSaveCallback(SaveCallback);
+	serialization->SetSaveCallback(LoadCallback);
 
 	return true;
 }

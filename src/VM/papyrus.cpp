@@ -284,7 +284,7 @@ namespace papyrus
 		SearchTask::SyncDone(reload);
 	}
 
-	RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
+	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
 	{
 		return LocationTracker::Instance().CurrentPlayerPlace();
 	}

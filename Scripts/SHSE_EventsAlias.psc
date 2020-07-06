@@ -748,6 +748,7 @@ Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     DoObjectGlow(akTargetRef, duration, reason)
 endEvent
 
+; event should only fire if we are managing carry weight
 Event OnCarryWeightDelta(int weightDelta)
     player.ModActorValue("CarryWeight", weightDelta as float)
     ;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
@@ -773,6 +774,7 @@ Function RemoveCarryWeightDelta()
     ;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
 
+; event should only fire if we are managing carry weight
 Event OnResetCarryWeight()
     ;DebugTrace("Player carry weight reset request")
     RemoveCarryWeightDelta()
