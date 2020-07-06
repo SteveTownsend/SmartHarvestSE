@@ -230,6 +230,10 @@ function CheckFirstTimeEver()
     ;DebugTrace("FirstTimeEver finished")
 endFunction
 
+bool Function ManagesCarryWeight()
+    return unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn
+endFunction
+
 ; push current settings to plugin and event handler script
 Function ApplySetting(bool reload)
 
@@ -283,7 +287,7 @@ Function ApplySetting(bool reload)
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
 
     ; seed looting scan enabled according to configured settings
-    bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome|| unencumberedIfWeaponDrawn || collectionsEnabled
+    bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn || collectionsEnabled
     ;DebugTrace("isEnabled? " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
     ;DebugTrace("Collections enabled? " + " collectionsEnabled)
     if (isEnabled)
@@ -298,7 +302,10 @@ Function ApplySetting(bool reload)
     ; Do this before plugin becomes aware of player home list
     player = Game.GetPlayer()
     eventScript.SetPlayer(player)
-    eventScript.RemoveCarryWeightDelta()
+    ; Only adjust weight if we are in any way responsible for it
+    if ManagesCarryWeight()
+        eventScript.RemoveCarryWeightDelta()
+    endIf
     ; hard code for oreVein pickup type, yuck
     ;DebugTrace("oreVein setting " + objectSettingArray[31] as int)
     eventScript.ApplySetting(reload, objectSettingArray[31] as int)

@@ -51,13 +51,12 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 		// Fired arrows are marked as player owned but we don't want to prevent pickup, ever
 		bool firedArrow(m_candidate->formType == RE::FormType::ProjectileArrow);
 		bool lootingIsCrime(m_candidate->IsOffLimits());
-		if (!lootingIsCrime && (LocationTracker::Instance().IsCellSelfOwned() || (playerOwned && !firedArrow)))
+		if (!lootingIsCrime && playerOwned && !firedArrow)
 		{
 			// can configure to not loot my own belongings even though it's always legal
 			if (!IsSpecialObjectLootable(m_belongingsCheck))
 			{
-				DBG_VMESSAGE("Player home %s, player-owned %s, looting belongings disallowed: %s/0x%08x",
-					LocationTracker::Instance().IsCellSelfOwned() ? "true" : "false",
+				DBG_VMESSAGE("Player-owned %s, looting belongings disallowed: %s/0x%08x",
 					playerOwned ? "true" : "false",	m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				isForbidden = true;
 				// Glow if configured
@@ -320,10 +319,11 @@ void SearchTask::Run()
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
-		if (LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
+		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
+			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()) &&
 			!IsItemLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
 		{
-			DBG_VMESSAGE("Player location is excluded as a restricted population center");
+			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
 			skipLooting = true;
 		}
 
@@ -367,14 +367,17 @@ void SearchTask::Run()
 				data->BlockReference(m_candidate);
 				skipLooting = true;
 			}
-			else if (LootingDependsOnValueWeight(lootingType, objType) &&
-				TESFormHelper(m_candidate->GetBaseObject(), m_targetType).ValueWeightTooLowToLoot(m_candidate->GetGoldValue()))
+			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
-				DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
-				data->BlockForm(m_candidate->GetBaseObject());
-				skipLooting = true;
+				TESFormHelper helper(m_candidate->GetBaseObject(), m_targetType);
+				if (helper.ValueWeightTooLowToLoot(m_candidate->GetBaseObject()->GetGoldValue()))
+				{
+					DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
+					data->BlockForm(m_candidate->GetBaseObject());
+					skipLooting = true;
+				}
+				DBG_VMESSAGE("%s/0x%08x value:%d", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, int(helper.GetWorth()));
 			}
-			DBG_VMESSAGE("%s/0x%08x value:%d", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, m_candidate->GetGoldValue());
 		}
 
 		if (skipLooting)
@@ -507,9 +510,10 @@ void SearchTask::Run()
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
 		if (m_targetType != INIFile::SecondaryType::deadbodies &&
-			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
+			!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
+			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()))
 		{
-			DBG_VMESSAGE("Player location is excluded: restricted population center");
+			DBG_VMESSAGE("Player location is excluded as restricted population center for this target type");
 			skipLooting = true;
 		}
 
@@ -771,15 +775,21 @@ void SearchTask::ScanThread()
 		// Delay the scan for each loop
 		TakeNap();
 
+		{
+			// narrowly-scoped lock, do not need if this check passes. Go no further if game load is in progress.
+			RecursiveLockGuard guard(m_lock);
+			if (!m_pluginSynced)
+			{
+				REL_MESSAGE("Plugin sync still pending");
+				continue;
+			}
+		}
+
 		if (!EventPublisher::Instance().GoodToGo())
 		{
 			REL_MESSAGE("Event publisher not ready yet");
 			continue;
 		}
-
-		// Player location checked for Cell/Location change on every loop
-		LocationTracker::Instance().Refresh();
-		shse::PlayerState::Instance().Refresh();
 
 		if (!UIState::Instance().OKForSearch())
 		{
@@ -795,13 +805,24 @@ void SearchTask::ScanThread()
 			continue;
 		}
 
+		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
+		if (!LocationTracker::Instance().Refresh())
+		{
+			REL_VMESSAGE("Location or cell not stable yet");
+			continue;
+		}
+
+		shse::PlayerState::Instance().Refresh();
+
 		// process any queued added items since last time
 		shse::CollectionManager::Instance().ProcessAddedItems();
 
 		// Skip loot-OK checks if calibrating
 		if (!m_calibrating)
 		{
-			if (!LocationTracker::Instance().IsPlayerInLootablePlace())
+			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
+			static const bool allowIfRestricted(true);
+			if (!LocationTracker::Instance().IsPlayerInLootablePlace(LocationTracker::Instance().PlayerCell(), allowIfRestricted))
 			{
 				DBG_MESSAGE("Location cannot be looted");
 				continue;
@@ -908,21 +929,6 @@ void SearchTask::DoPeriodicSearch()
 	if (!data)
 		return;
 	bool sneaking(false);
-	{
-#ifdef _PROFILING
-		WindowsUtils::ScopedTimer elapsed("Periodic Search pre-checks");
-#endif
-		{
-			// narrowly-scoped lock, do not need if this check passes
-			RecursiveLockGuard guard(m_lock);
-			if (!m_pluginSynced)
-			{
-				DBG_MESSAGE("Plugin sync still pending");
-				return;
-			}
-		}
-	}
-
 	if (m_calibrating)
 	{
 		// send the message first, it's super-slow compared to scan
@@ -1024,8 +1030,9 @@ void SearchTask::DoPeriodicSearch()
 		// exclude REFRs too far away, checking the adjusted radius
 		if (target->first > boundary)
 		{
+			// exit loop since targets are sorted by proximity
 			DBG_MESSAGE("REFR 0x%08x distance %.2f exceeds final radius %.2f", target->first, boundary);
-			continue;
+			break;
 		}
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
 		/*
@@ -1136,6 +1143,14 @@ void SearchTask::PrepareForReload()
 	// stop scanning
 	Disallow();
 
+	UIState::Instance().Reset();
+
+	// Do not scan again until we are in sync with the scripts
+	m_pluginSynced = false;
+}
+
+void SearchTask::AfterReload()
+{
 	// force recheck Perks and reset carry weight
 	static const bool force(true);
 	shse::PlayerState::Instance().CheckPerks(force);
@@ -1143,10 +1158,8 @@ void SearchTask::PrepareForReload()
 	// reset carry weight and menu-active state
 	static const bool reloaded(true);
 	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
-	UIState::Instance().Reset();
 
-	// Do not scan again until we are in sync with the scripts
-	m_pluginSynced = false;
+	Allow();
 }
 
 void SearchTask::Allow()

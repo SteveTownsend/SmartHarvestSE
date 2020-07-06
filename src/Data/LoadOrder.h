@@ -10,6 +10,7 @@ public:
 	RE::FormID GetFormIDMask(const std::string& modName) const;
 	bool IncludesMod(const std::string& modName) const;
 	bool ModOwnsForm(const std::string& modName, const RE::FormID formID) const;
+	void AsJSON(nlohmann::json& j) const;
 
 private:
 	static constexpr RE::FormID LightFormIDSentinel = 0xfe000000;
@@ -19,5 +20,7 @@ private:
 	static std::unique_ptr<LoadOrder> m_instance;
 	std::unordered_map<std::string, RE::FormID> m_formIDMaskByName;
 };
+
+void to_json(nlohmann::json& j, const LoadOrder& p);
 
 }
