@@ -34,18 +34,25 @@ void ManagedList::Reset(const bool reloadGame)
 		// seed with the always-forbidden
 		m_members = DataCase::GetInstance()->OffLimitsLocations();
 	}
+	else
+	{
+		// whitelist is rebuilt from scratch
+		m_members.clear();
+	}
 }
 
 void ManagedList::Add(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item %s/0x%08x excluded from looting", entry->GetName(), entry->GetFormID());
+	DBG_MESSAGE("Location/cell/item %s/0x%08x %s for looting", entry->GetName(), entry->GetFormID(),
+		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert(entry);
 }
 
 void ManagedList::Drop(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item %s/0x%08x no longer excluded from looting", entry->GetName(), entry->GetFormID());
+	DBG_MESSAGE("Location/cell/item %s/0x%08x no longer %s for looting", entry->GetName(), entry->GetFormID(),
+		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.erase(entry);
 }

@@ -495,6 +495,17 @@ void DataCase::IncludeFossilMiningExcavation()
 	}
 }
 
+void DataCase::IncludeCorpseCoinage()
+{
+	static std::string espName("CorpseToCoinage.esp");
+	static RE::FormID corpseCoinageFormID(0xaa03);
+	RE::TESForm* corpseCoinageForm(RE::TESDataHandler::GetSingleton()->LookupForm(corpseCoinageFormID, espName));
+	if (corpseCoinageForm)
+	{
+		DBG_MESSAGE("Record CorpseToCoinage ACTI %s(0x%08x) as septims", corpseCoinageForm->GetName(), corpseCoinageForm->GetFormID());
+		SetObjectTypeForForm(corpseCoinageForm->GetFormID(), ObjectType::septims);
+	}
+}
 
 void DataCase::RecordOffLimitsLocations()
 {
@@ -970,6 +981,8 @@ void DataCase::HandleExceptions()
 
 	// whitelist Fossil sites
 	IncludeFossilMiningExcavation();
+	// whitelist CorpseToCoinage producer
+	IncludeCorpseCoinage();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)

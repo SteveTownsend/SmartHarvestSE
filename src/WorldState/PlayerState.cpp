@@ -48,11 +48,20 @@ void PlayerState::Refresh()
 
 void PlayerState::AdjustCarryWeight()
 {
-	RecursiveLockGuard guard(m_playerLock);
-
-	int carryWeightChange(m_currentCarryWeightChange);
 	INIFile* settings(INIFile::GetInstance());
-	if (settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInPlayerHome") != 0.0)
+	bool managePlayerHome(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInPlayerHome") != 0.0);
+	bool manageIfWeaponDrawn(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedIfWeaponDrawn") != 0.0);
+	bool manageDuringCombat(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInCombat") != 0.0);
+	// no op if this is not in use at all
+	if (!manageDuringCombat && !manageIfWeaponDrawn && !managePlayerHome)
+	{
+		DBG_DMESSAGE("Carry weight not managed, skip checks");
+		return;
+	}
+
+	RecursiveLockGuard guard(m_playerLock);
+	int carryWeightChange(m_currentCarryWeightChange);
+	if (managePlayerHome)
 	{
 		// when location changes to/from player house, adjust carry weight accordingly
 		bool playerInOwnHouse(LocationTracker::Instance().IsPlayerAtHome());
@@ -63,9 +72,10 @@ void PlayerState::AdjustCarryWeight()
 			DBG_MESSAGE("Carry weight delta after in-player-home adjustment %d", carryWeightChange);
 		}
 	}
-	bool playerInCombat(RE::PlayerCharacter::GetSingleton()->IsInCombat() && !RE::PlayerCharacter::GetSingleton()->IsDead(true));
-	if (settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInCombat") != 0.0)
+
+	if (manageDuringCombat)
 	{
+	    bool playerInCombat(RE::PlayerCharacter::GetSingleton()->IsInCombat() && !RE::PlayerCharacter::GetSingleton()->IsDead(true));
 		// when state changes in/out of combat, adjust carry weight accordingly
 		if (playerInCombat != m_carryAdjustedForCombat)
 		{
@@ -74,9 +84,10 @@ void PlayerState::AdjustCarryWeight()
 			DBG_MESSAGE("Carry weight delta after in-combat adjustment %d", carryWeightChange);
 		}
 	}
-	bool isWeaponDrawn(RE::PlayerCharacter::GetSingleton()->IsWeaponDrawn());
-	if (settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedIfWeaponDrawn") != 0.0)
+
+	if (manageIfWeaponDrawn)
 	{
+	    bool isWeaponDrawn(RE::PlayerCharacter::GetSingleton()->IsWeaponDrawn());
 		// when state changes between drawn/sheathed, adjust carry weight accordingly
 		if (isWeaponDrawn != m_carryAdjustedForDrawnWeapon)
 		{
@@ -171,6 +182,12 @@ bool PlayerState::PerksAddLeveledItemsOnDeath() const
 // reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
 void PlayerState::ResetCarryWeight(const bool reloaded)
 {
+	INIFile* settings(INIFile::GetInstance());
+	bool managePlayerHome(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInPlayerHome") != 0.0);
+	bool manageIfWeaponDrawn(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedIfWeaponDrawn") != 0.0);
+	bool manageDuringCombat(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInCombat") != 0.0);
+	// do not adjust if this is not in use at all
+	if (manageDuringCombat || manageIfWeaponDrawn || managePlayerHome)
 	{
 		RecursiveLockGuard guard(m_playerLock);
 		DBG_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
@@ -184,8 +201,17 @@ void PlayerState::ResetCarryWeight(const bool reloaded)
 			EventPublisher::Instance().TriggerResetCarryWeight();
 		}
 	}
+	else
+	{
+		DBG_VMESSAGE("Reset carry weight skipped, it's not managed");
+	}
+
 	// reset location to force proper recalculation
-	LocationTracker::Instance().Reset(reloaded);
+	// TODO is this still needed?
+	if (reloaded)
+	{
+		LocationTracker::Instance().Reset();
+	}
 }
 
 // used for PlayerCharacter

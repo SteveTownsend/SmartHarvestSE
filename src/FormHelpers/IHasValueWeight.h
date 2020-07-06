@@ -7,8 +7,8 @@ class IHasValueWeight
 public:
 	ObjectType GetObjectType() const;
 	std::string GetTypeName() const;
-	bool ValueWeightTooLowToLoot(SInt32 itemValue) const;
-	bool IsValuable(SInt32 itemValue) const;
+	bool ValueWeightTooLowToLoot(const SInt32 itemValue) const;
+	bool IsValuable(const SInt32 itemValue) const;
 
 	virtual double GetWeight(void) const = 0;
 	double GetWorth(void) const;
