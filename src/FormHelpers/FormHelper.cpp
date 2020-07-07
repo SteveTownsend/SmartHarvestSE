@@ -36,7 +36,7 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 	return false;
 }
 
-UInt32 TESFormHelper::GetGoldValue() const
+SInt32 TESFormHelper::GetGoldValue() const
 {
 	if (!m_form)
 		return 0;
@@ -86,10 +86,10 @@ double TESFormHelper::GetWeight() const
 	return pWeight->weight;
 }
 
-double TESFormHelper::CalculateWorth() const
+SInt32 TESFormHelper::CalculateWorth() const
 {
 	if (!m_form)
-		return 0.;
+		return 0;
 
 	if (m_form->formType == RE::FormType::Ammo)
 	{
@@ -113,7 +113,7 @@ double TESFormHelper::CalculateWorth() const
 	}
 	else
 	{
-		double result(0.);
+		SInt32 result(0);
 		if (m_form->formType == RE::FormType::Weapon)
 		{
 			result = TESObjectWEAPHelper(m_form->As<RE::TESObjectWEAP>()).GetGoldValue();
@@ -130,9 +130,9 @@ double TESFormHelper::CalculateWorth() const
 		{
 			result = AlchemyItemHelper(m_form->As<RE::AlchemyItem>()).GetGoldValue();
 		}
-		return result == 0. ? GetGoldValue() : result;
+		return result == 0 ? GetGoldValue() : result;
 	}
-	return 0.;
+	return 0;
 }
 
 const char* TESFormHelper::GetName() const

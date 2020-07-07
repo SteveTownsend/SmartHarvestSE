@@ -23,7 +23,7 @@ public:
 protected:
 	virtual const char* GetName() const override;
 	virtual UInt32 GetFormID() const override;
-	virtual double CalculateWorth(void) const override;
+	virtual SInt32 CalculateWorth(void) const override;
 
 private:
 	const RE::TESObjectREFR* m_ref;

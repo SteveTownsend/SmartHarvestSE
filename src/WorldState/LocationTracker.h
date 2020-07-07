@@ -3,7 +3,7 @@
 class LocationTracker
 {
 private:
-	void RecordAdjacentCells(RE::TESObjectCELL* cell);
+	void RecordAdjacentCells();
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
 	bool IsPlayerInBlacklistedPlace(const RE::TESObjectCELL* cell) const;
 

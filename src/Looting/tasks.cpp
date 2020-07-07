@@ -370,7 +370,7 @@ void SearchTask::Run()
 			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
 				TESFormHelper helper(m_candidate->GetBaseObject(), m_targetType);
-				if (helper.ValueWeightTooLowToLoot(m_candidate->GetBaseObject()->GetGoldValue()))
+				if (helper.ValueWeightTooLowToLoot())
 				{
 					DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
 					data->BlockForm(m_candidate->GetBaseObject());
@@ -626,7 +626,7 @@ void SearchTask::Run()
 					continue;
 				}
 				else if (LootingDependsOnValueWeight(lootingType, objType) &&
-					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot(targetItemInfo.GetGoldValue()))
+					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot())
 				{
 					DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
 					data->BlockForm(target);
@@ -1025,7 +1025,7 @@ void SearchTask::DoPeriodicSearch()
 	std::nth_element(targets.begin(), endOfRange, targets.end(),
 		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	std::sort(targets.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
-	for (auto target = targets.cbegin(); target != endOfRange; ++target)
+	for (auto target = targets.begin(); target != endOfRange; ++target)
 	{
 		// exclude REFRs too far away, checking the adjusted radius
 		if (target->first > boundary)
@@ -1121,13 +1121,8 @@ void SearchTask::DoPeriodicSearch()
 					continue;
 				}
 				// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
-#if _DEBUG
-				RE::TESObjectREFR* originalRefr(refr);
-#endif
-				refr = GetAshPile(refr);
-#if _DEBUG
-				DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), originalRefr->GetFormID());
-#endif
+				target->second = GetAshPile(refr);
+				DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", target->second->GetFormID(), refr->GetFormID());
 			}
 			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
 			{

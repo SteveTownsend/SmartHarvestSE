@@ -41,7 +41,7 @@ std::pair<bool, SpecialObjectHandling> LootableREFR::TreatAsCollectible(void) co
 bool LootableREFR::IsValuable() const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.IsValuable(static_cast<SInt32>(GetWorth()));
+	return itemEx.IsValuable();
 }
 
 RE::TESForm* LootableREFR::GetLootable() const
@@ -54,7 +54,7 @@ void LootableREFR::SetLootable(RE::TESForm* lootable)
 	m_lootable = lootable;
 }
 
-double LootableREFR::CalculateWorth(void) const
+SInt32 LootableREFR::CalculateWorth(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.GetWorth();

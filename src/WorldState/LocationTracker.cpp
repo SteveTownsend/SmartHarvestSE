@@ -70,6 +70,7 @@ void LocationTracker::Reset()
 	m_tellPlayerIfCanLootAfterLoad = true;
 	m_playerCell = nullptr;
 	m_priorCell = nullptr;
+	m_adjacentCells.clear();
 	m_playerLocation = nullptr;
 }
 
@@ -100,6 +101,7 @@ bool LocationTracker::Refresh()
 		if (m_playerCell)
 		{
 			DBG_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
+			RecordAdjacentCells();
 		}
 		else
 		{
@@ -244,46 +246,42 @@ bool LocationTracker::IsAdjacent(RE::TESObjectCELL* cell) const
 		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
 }
 
-void LocationTracker::RecordAdjacentCells(RE::TESObjectCELL* cell)
+// this is only called when we updated player-cell with a valid value
+void LocationTracker::RecordAdjacentCells()
 {
-	// if this is the same cell we last checked, the list of adjacent cells does not need rebuilding
-	if (m_playerCell == cell)
-		return;
-
-	m_playerCell = cell;
 	m_adjacentCells.clear();
 
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	if (!m_playerCell->IsInteriorCell())
 	{
-		DBG_MESSAGE("Check for adjacent cells to 0x%08x", m_playerCell->GetFormID());
+		DBG_VMESSAGE("Check for adjacent cells to 0x%08x", m_playerCell->GetFormID());
 		RE::TESWorldSpace* worldSpace(m_playerCell->worldSpace);
 		if (worldSpace)
 		{
-			DBG_MESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
+			DBG_VMESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
 			for (const auto& worldCell : worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
 				// skip player cell, handled above
 				if (candidateCell == m_playerCell)
 				{
-					DBG_MESSAGE("Player cell, already handled");
+					DBG_VMESSAGE("Player cell, already handled");
 					continue;
 				}
 				// do not loot across interior/exterior boundary
 				if (candidateCell->IsInteriorCell())
 				{
-					DBG_MESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
+					DBG_VMESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
 					continue;
 				}
 				// check for adjacency on the cell grid
 				if (!IsAdjacent(candidateCell))
 				{
-					DBG_MESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
+					DBG_DMESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
 					continue;
 				}
 				m_adjacentCells.push_back(candidateCell);
-				DBG_MESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
+				DBG_VMESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
 			}
 		}
 	}
