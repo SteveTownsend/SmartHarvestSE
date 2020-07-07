@@ -135,6 +135,10 @@ ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr)
 	if (!refr || !refr->GetBaseObject())
 		return ObjectType::unknown;
 
+	if (refr->formType == RE::FormType::ActorCharacter)
+		// derived from REFR directly
+		return ObjectType::actor;
+
 	if (refr->GetBaseObject()->formType == RE::FormType::Activator && HasAshPile(refr))
 		return ObjectType::unknown;
 
