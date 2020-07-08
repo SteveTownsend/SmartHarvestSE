@@ -164,3 +164,41 @@ inline DeadBodyLooting DeadBodyLootingFromIniSetting(const double iniSetting)
 	}
 	return static_cast<DeadBodyLooting>(intSetting);
 }
+
+// the approximate compass direction to take to reach a target
+enum class CompassDirection {
+	North = 0,
+	NorthEast,
+	East,
+	SouthEast,
+	South,
+	SouthWest,
+	West,
+	NorthWest,
+	AlreadyThere,	// no movement needed to get to target
+	MAX
+};
+
+inline std::string CompassDirectionName(const CompassDirection direction)
+{
+	switch (direction) {
+	case CompassDirection::North:
+		return "north";
+	case CompassDirection::NorthEast:
+		return "northeast";
+	case CompassDirection::East:
+		return "east";
+	case CompassDirection::SouthEast:
+		return "southeast";
+	case CompassDirection::South:
+		return "south";
+	case CompassDirection::SouthWest:
+		return "southwest";
+	case CompassDirection::West:
+		return "west";
+	case CompassDirection::NorthWest:
+		return "northwest";
+	default:
+		return "";
+	}
+}

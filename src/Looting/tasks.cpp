@@ -25,6 +25,9 @@
 #include <chrono>
 #include <thread>
 
+namespace shse
+{
+
 INIFile* SearchTask::m_ini = nullptr;
 
 RecursiveLock SearchTask::m_lock;
@@ -956,9 +959,8 @@ void SearchTask::DoPeriodicSearch()
 		}
 
 		// brain dead item scan and brief glow
-		static const double FEET_PER_DISTANCE_UNIT(0.046875);
 		BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
-			(double(m_calibrateRadius) - double(m_calibrateDelta)) / FEET_PER_DISTANCE_UNIT, m_calibrateDelta / FEET_PER_DISTANCE_UNIT);
+			(double(m_calibrateRadius) - double(m_calibrateDelta)) / DistanceUnitInFeet, m_calibrateDelta / DistanceUnitInFeet);
 
 		DistanceToTarget targets;
 		PlayerCellHelper(targets, rangeCheck).FindAllCandidates();
@@ -1135,9 +1137,6 @@ void SearchTask::DoPeriodicSearch()
 
 void SearchTask::PrepareForReload()
 {
-	// stop scanning
-	Disallow();
-
 	UIState::Instance().Reset();
 
 	// Do not scan again until we are in sync with the scripts
@@ -1153,8 +1152,6 @@ void SearchTask::AfterReload()
 	// reset carry weight and menu-active state
 	static const bool reloaded(true);
 	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
-
-	Allow();
 }
 
 void SearchTask::Allow()
@@ -1329,3 +1326,4 @@ bool SearchTask::Init()
 	return true;
 }
 
+}

@@ -56,6 +56,7 @@ int Function CollectionObtained(String groupName, String collectionName) global 
 
 Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
+Function ShowLocation() global native
 
 int location_type_whitelist = 1
 int location_type_blacklist = 2

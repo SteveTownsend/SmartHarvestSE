@@ -35,6 +35,8 @@ namespace
 	}
 };
 
+namespace shse
+{
 
 DataCase* DataCase::s_pInstance = nullptr;
 
@@ -863,8 +865,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 {
 	// Moving arrows must be skipped if they are in flight. Bobbing on water or rolling around does not count.
 	// Assume in-flight movement rate at least N feet per loot scan interval.
-	constexpr double FEET_PER_DISTANCE_UNIT(0.046875);
-	constexpr double ArrowInFlightFeet(5. / FEET_PER_DISTANCE_UNIT);
+	constexpr double ArrowInFlightFeet(5. / DistanceUnitInFeet);
 
 	bool skip(false);
 	RE::NiPoint3 pos = refr->GetPosition();
@@ -1289,3 +1290,4 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 	}
 }
 
+}

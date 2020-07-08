@@ -12,6 +12,10 @@ constexpr RE::FormID ESPFETypeMask = 0xFE000000;
 constexpr RE::FormID ESPFEMask = 0xFEFFF000;
 constexpr RE::FormID ESPFERawMask = 0x00000FFF;
 
+constexpr double DistanceUnitInFeet = 0.046875;
+constexpr double FeetPerMile = 5280.0;
+constexpr double DistanceUnitInMiles = DistanceUnitInFeet / FeetPerMile;
+
 namespace FileUtils
 {
 	std::string ReadFileToString(const std::string& filePath);
