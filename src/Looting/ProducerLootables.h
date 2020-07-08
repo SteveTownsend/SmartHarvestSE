@@ -1,5 +1,8 @@
 #pragma once
 
+namespace shse
+{
+
 class ProducerLootables
 {
 private:
@@ -14,3 +17,5 @@ public:
 	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
 	RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
 };
+
+}

@@ -9,6 +9,9 @@
 #include "Looting/ManagedLists.h"
 #include "Collections/CollectionManager.h"
 
+namespace shse
+{
+
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
@@ -284,4 +287,6 @@ RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraData
 			return enchantment;
 	}
 	return nullptr;
+}
+
 }

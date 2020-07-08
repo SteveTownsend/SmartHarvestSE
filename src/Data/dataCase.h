@@ -5,6 +5,9 @@
 
 #include "Looting/ProducerLootables.h"
 
+namespace shse
+{
+
 class DataCase
 {
 public:
@@ -456,3 +459,4 @@ private:
 	DataCase(void);
 };
 
+}

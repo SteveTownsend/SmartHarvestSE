@@ -1,5 +1,8 @@
 #pragma once
 
+namespace shse
+{
+
 class TESObjectARMOHelper
 {
 public:
@@ -9,3 +12,5 @@ public:
 private:
 	const RE::TESObjectARMO* m_armor;
 };
+
+}

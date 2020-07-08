@@ -7,6 +7,10 @@
 
 #include <mutex>
 
+
+namespace shse
+{
+
 class SearchTask
 {
 public:
@@ -123,3 +127,5 @@ private:
 	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType);
 	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 };
+
+}

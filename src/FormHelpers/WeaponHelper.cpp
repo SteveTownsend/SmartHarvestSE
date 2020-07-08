@@ -3,6 +3,9 @@
 #include "FormHelpers/FormHelper.h"
 #include "FormHelpers/WeaponHelper.h"
 
+namespace shse
+{
+
 UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 {
 	if (!m_weapon)
@@ -45,4 +48,6 @@ double GetGameSettingFloat(const RE::BSFixedString& name)
 		return 0.0;
 
 	return setting->GetFloat();
+}
+
 }

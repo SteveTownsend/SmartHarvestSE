@@ -9,6 +9,9 @@
 #include "Collections/CollectionManager.h"
 #include "Looting/objects.h"
 
+namespace shse
+{
+
 TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope)
 {
 	// If this is a leveled item, try to redirect to its contents
@@ -150,4 +153,6 @@ bool IsPlayable(const RE::TESForm* pForm)
 	if (!pForm)
 		return false;
 	return pForm->GetPlayable();
+}
+
 }

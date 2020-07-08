@@ -2,6 +2,9 @@
 
 #include "Data/iniSettings.h"
 
+namespace shse
+{
+
 class InventoryItem
 {
 public:
@@ -25,3 +28,5 @@ private:
 	const std::ptrdiff_t m_count;
 	const ObjectType m_objectType;
 };
+
+}

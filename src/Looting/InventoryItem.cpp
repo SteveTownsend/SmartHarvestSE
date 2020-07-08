@@ -5,6 +5,9 @@
 #include "Looting/tasks.h"
 #include "Collections/CollectionManager.h"
 
+namespace shse
+{
+
 InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
 	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count),
 	m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
@@ -94,4 +97,6 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
 		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType, collectible);
 	}
+}
+
 }
