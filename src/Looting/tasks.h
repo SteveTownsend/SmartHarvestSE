@@ -16,12 +16,12 @@ class SearchTask
 public:
 #if _DEBUG
 	// make sure load spike handling works OK
-	static constexpr size_t MaxREFRSPerPass = 10;
+	static constexpr size_t MaxREFRSPerPass = 25;
 #else
 	static constexpr size_t MaxREFRSPerPass = 75;
 #endif
 
-	SearchTask(const TargetREFR& target, INIFile::SecondaryType targetType);
+	SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType);
 
 	static bool Init(void);
 	void Run();
@@ -31,7 +31,7 @@ public:
 	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
 	static void SyncDone(const bool reload);
-	static void ToggleCalibration(const bool shaderTest);
+	static void ToggleCalibration(const bool glowDemo);
 
 	static void Start();
 	static void PrepareForReload();
@@ -62,7 +62,6 @@ public:
 
 	static INIFile* m_ini;
 
-	double m_distance;
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
 
@@ -100,7 +99,7 @@ private:
 	static GlowReason m_nextGlow;
 	static constexpr int CalibrationRangeDelta = 3;
 	static constexpr int MaxCalibrationRange = 100;
-	static constexpr int ShaderTestRange = 30;
+	static constexpr int GlowDemoRange = 30;
 
 	// give the debug message time to catch up during calibration
 	static constexpr int CalibrationDelay = 5;

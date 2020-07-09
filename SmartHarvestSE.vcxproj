@@ -207,7 +207,6 @@
     <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp" />
     <ClCompile Include="src\FormHelpers\FormHelper.cpp" />
     <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp" />
-    <ClCompile Include="src\FormHelpers\PlayerCellHelper.cpp" />
     <ClCompile Include="src\FormHelpers\sound.cpp" />
     <ClCompile Include="src\FormHelpers\WeaponHelper.cpp" />
     <ClCompile Include="src\Looting\containerLister.cpp" />
@@ -217,6 +216,7 @@
     <ClCompile Include="src\Looting\ManagedLists.cpp" />
     <ClCompile Include="src\Looting\objects.cpp" />
     <ClCompile Include="src\Looting\ProducerLootables.cpp" />
+    <ClCompile Include="src\Looting\ReferenceFilter.cpp" />
     <ClCompile Include="src\Looting\tasks.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\PrecompiledHeaders.cpp">
@@ -263,7 +263,6 @@
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h" />
     <ClInclude Include="src\FormHelpers\FormHelper.h" />
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h" />
-    <ClInclude Include="src\FormHelpers\PlayerCellHelper.h" />
     <ClInclude Include="src\FormHelpers\sound.h" />
     <ClInclude Include="src\FormHelpers\WeaponHelper.h" />
     <ClInclude Include="src\Looting\containerLister.h" />
@@ -274,6 +273,7 @@
     <ClInclude Include="src\Looting\objects.h" />
     <ClInclude Include="src\Looting\ObjectType.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
+    <ClInclude Include="src\Looting\ReferenceFilter.h" />
     <ClInclude Include="src\Looting\tasks.h" />
     <ClInclude Include="src\PrecompiledHeaders.h" />
     <ClInclude Include="src\Utilities\debugs.h" />

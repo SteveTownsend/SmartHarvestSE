@@ -7,7 +7,7 @@ AbsoluteRange::AbsoluteRange(const RE::TESObjectREFR* source, const double radiu
 {
 }
 
-bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr, const double distance) const
+bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr) const
 {
 	RE::FormID formID(refr->formID);
 	double dx = fabs(refr->GetPositionX() - m_sourceX);
@@ -20,23 +20,53 @@ bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr, const double distance
 		// very verbose
 		DBG_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
 			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
-			RE::PlayerCharacter::GetSingleton()->GetPositionX(),
-			RE::PlayerCharacter::GetSingleton()->GetPositionY(),
-			RE::PlayerCharacter::GetSingleton()->GetPositionZ());
+			m_sourceX, m_sourceY, m_sourceZ);
+		m_distance = std::max({ dx, dy, dz });
 		return false;
 	}
-	m_distance = distance > 0. ? distance : sqrt((dx * dx) + (dy * dy) + (dz * dz));
+	m_distance = sqrt((dx * dx) + (dy * dy) + (dz * dz));
 	DBG_VMESSAGE("REFR 0x%08x is %.2f units away, loot range %.2f XY-units, %.2f Z-units", formID, m_distance, m_radius, m_zLimit);
 	return m_distance <= m_radius;
 }
 
+double AbsoluteRange::Radius() const
+{
+	return m_radius;
+}
+
+void AbsoluteRange::SetRadius(const double newRadius)
+{
+	m_radius = newRadius;
+}
+
+double AbsoluteRange::Distance() const
+{
+	return m_distance;
+}
+
 BracketedRange::BracketedRange(const RE::TESObjectREFR* source, const double radius, const double delta) :
-	m_innerLimit(source, radius, 1.0), m_outerLimit(source, radius + delta, 1.0)
+	m_innerLimit(source, std::max(radius, 0.0), 1.0), m_outerLimit(source, radius + delta, 1.0)
 {
 }
 
-bool BracketedRange::IsValid(const RE::TESObjectREFR* refr, const double distance) const
+bool BracketedRange::IsValid(const RE::TESObjectREFR* refr) const
 {
-	return !m_innerLimit.IsValid(refr) && m_outerLimit.IsValid(refr, m_innerLimit.Distance());
+	return !m_innerLimit.IsValid(refr) && m_outerLimit.IsValid(refr);
 }
 
+// TODO is this used/correct?
+double BracketedRange::Radius() const
+{
+	return m_outerLimit.Radius();
+}
+
+// TODO is this used/correct?
+void BracketedRange::SetRadius(const double newRadius)
+{
+	m_outerLimit.SetRadius(newRadius);
+}
+
+double BracketedRange::Distance() const
+{
+	return m_innerLimit.Distance();
+}
