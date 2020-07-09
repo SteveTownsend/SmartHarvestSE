@@ -2,6 +2,9 @@
 
 #include "Data/iniSettings.h"
 
+namespace shse
+{
+
 inline bool IsBookObject(ObjectType objType)
 {
 	return objType >= ObjectType::book && objType <= ObjectType::skillbookRead;
@@ -59,3 +62,5 @@ inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectT
 }
 
 bool IsPlayable(const RE::TESForm * pForm);
+
+}

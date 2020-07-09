@@ -1,9 +1,9 @@
 #pragma once
 
+#include "WorldState/LocationTracker.h"
+
 namespace shse
 {
-// x, y, z coordinates
-typedef std::tuple<float, float, float> Position;
 
 class PlayerState
 {
@@ -20,6 +20,7 @@ public:
 	bool IsSneaking() const;
 	void ExcludeMountedIfForbidden(void);
 	Position GetPosition() const;
+	AlglibPosition GetAlglibPosition() const;
 
 private:
 	void AdjustCarryWeight();

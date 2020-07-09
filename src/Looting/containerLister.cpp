@@ -4,6 +4,9 @@
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Looting/containerLister.h"
 
+namespace shse
+{
+
 ContainerLister::ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
 	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false),
@@ -82,7 +85,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 					}
 					if (!m_hasValuableItem)
 					{
-						m_hasValuableItem = itemEx.IsValuable(static_cast<SInt32>(itemEx.GetWorth()));
+						m_hasValuableItem = itemEx.IsValuable();
 					}
 					const auto collectible(itemEx.TreatAsCollectible());
 					if (collectible.first)
@@ -96,4 +99,6 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 		}
 	}
 	return lootableItems;
+}
+
 }

@@ -114,29 +114,21 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 		break;
 
 	case SKSE::MessagingInterface::kPreLoadGame:
-		scanOK = SearchTask::IsAllowed();
-		REL_MESSAGE("Game load starting, scanOK = %d", scanOK);
-		SearchTask::PrepareForReload();
+		REL_MESSAGE("Game load starting");
+		shse::SearchTask::PrepareForReload();
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:
 	case SKSE::MessagingInterface::kPostLoadGame:
 		REL_MESSAGE("Game load done, initializing Tasks");
 		// if checks fail, abort scanning
-		if (!SearchTask::Init())
+		if (!shse::SearchTask::Init())
 		{
 			REL_FATALERROR("SearchTask initialization failed - no looting");
 			return;
 		}
-		if (scanOK)
-		{
-			REL_MESSAGE("Initialized SearchTask, looting available");
-			SearchTask::AfterReload();
-		}
-		else
-		{
-			REL_ERROR("Initialized SearchTask: Looting unavailable");
-		}
+		REL_MESSAGE("Initialized SearchTask, looting available");
+		shse::SearchTask::AfterReload();
 		break;
 	}
 }
@@ -177,8 +169,8 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 
 	// print loaded addresses of key functions for debugging
 	DBG_MESSAGE("*** Function addresses START");
-	utils::LogFunctionAddress(&SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
-	utils::LogFunctionAddress(&SearchTask::Run, "SearchTask::Run");
+	utils::LogFunctionAddress(&shse::SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
+	utils::LogFunctionAddress(&shse::SearchTask::Run, "SearchTask::Run");
 	DBG_MESSAGE("*** Function addresses END");
 
 	return true;

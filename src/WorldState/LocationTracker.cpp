@@ -1,11 +1,19 @@
 #include "PrecompiledHeaders.h"
+
+#include <cmath>
+#include <numbers>
+
 #include "WorldState/LocationTracker.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/PlayerHouses.h"
+#include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
 #include "Looting/tasks.h"
 #include "VM/papyrus.h"
 #include "Utilities/utils.h"
+
+namespace shse
+{
 
 std::unique_ptr<LocationTracker> LocationTracker::m_instance;
 
@@ -19,8 +27,223 @@ LocationTracker& LocationTracker::Instance()
 }
 
 LocationTracker::LocationTracker() : 
-	m_playerCell(nullptr), m_priorCell(nullptr), m_playerLocation(nullptr), m_tellPlayerIfCanLootAfterLoad(false)
+	m_playerCell(nullptr), m_priorCell(nullptr), m_playerLocation(nullptr), m_playerParentWorld(nullptr),
+	m_tellPlayerIfCanLootAfterLoad(false)
 {
+}
+
+// called when Player moves to a new WorldSpace, including on game load/reload
+void LocationTracker::RecordMarkedPlaces()
+{
+	decltype(m_markedPlaces) markedPlaces;
+	// record map marker position for worldspace locations
+	for (const auto& formLocation : m_playerParentWorld->locationMap)
+	{
+		RE::BGSLocation* location(formLocation.second);
+		RE::ObjectRefHandle markerRef(location->worldLocMarker);
+		if (!markerRef)
+		{
+			DBG_VMESSAGE("Location %s/0x%08x has no map marker", location->GetName(), location->GetFormID());
+			continue;
+		}
+		shse::Position markerPosition({ markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ() });
+		if (markedPlaces.insert(std::make_pair(location, markerPosition)).second)
+		{
+			DBG_VMESSAGE("Location %s/0x%08x has marker at (%0.2f,%0.2f,%0.2f)", location->GetName(), location->GetFormID(),
+				markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ());
+		}
+		else
+		{
+			DBG_WARNING("Location %s/0x%08x with marker at (%0.2f,%0.2f,%0.2f) duplicates existing", location->GetName(), location->GetFormID(),
+				markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ());
+		}
+	}
+	if (markedPlaces.empty())
+	{
+		DBG_VMESSAGE("No map markers within this worldspace");
+		return;
+	}
+	// replace existing entries with new
+	m_markedPlaces.swap(markedPlaces);
+
+	// Build KD-tree for the location markers
+	std::vector<double> pointData(3 * m_markedPlaces.size());
+	size_t tagIndex(0);
+	size_t xIndex(0);
+	std::vector<alglib::ae_int_t> tagList(m_markedPlaces.size());
+	std::for_each(m_markedPlaces.cbegin(), m_markedPlaces.cend(), [&](const auto& posForm)
+	{
+		tagList[tagIndex++] = posForm.first->GetFormID();
+		pointData[xIndex++] = std::get<0>(posForm.second);
+		pointData[xIndex++] = std::get<1>(posForm.second);
+		pointData[xIndex++] = std::get<2>(posForm.second);
+	});
+
+	alglib::real_2d_array coordinates;
+	coordinates.setcontent(m_markedPlaces.size(), 3, &pointData[0]);
+	alglib::integer_1d_array tags;
+	tags.setcontent(m_markedPlaces.size(), &tagList[0]);
+
+	// use Euclidean norm 2 for 3D space
+	alglib::kdtreebuildtagged(coordinates, tags, m_markedPlaces.size(), 3, 0, 2, m_markers);
+}
+
+CompassDirection LocationTracker::DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const
+{
+	// only uses (x, y) parts of the endpoints
+	double deltaX(destination[0] - start[0]);
+	double deltaY(destination[1] - start[1]);
+
+	double degrees(std::atan2(deltaX, deltaY) * (180.0 / std::numbers::pi));
+	// which arc of the compass does this fall into? The value is in the range [-180.0, 180.0]
+	static const std::vector<std::pair<double, CompassDirection>> directions = {
+		{-157.5, CompassDirection::South},
+		{-112.5, CompassDirection::SouthWest},
+		{-67.5, CompassDirection::West},
+		{-22.5, CompassDirection::NorthWest},
+		{22.5, CompassDirection::North},
+		{67.5, CompassDirection::NorthEast},
+		{112.5, CompassDirection::East},
+		{157.5, CompassDirection::SouthEast},
+		{-180., CompassDirection::South}
+	};
+	auto& direction = directions.cbegin();
+	while (degrees > direction->first and direction != directions.cend())
+	{
+		++direction;
+	}
+	CompassDirection result(direction == directions.cend() ? CompassDirection::North : direction->second);
+	DBG_MESSAGE("Head %s at %.2f degrees from (%.2f,%.2f) to (%.2f,%.2f)", CompassDirectionName(result).c_str(),
+		degrees, start[0], start[1], destination[0], destination[1]);
+	return result;
+}
+
+std::string LocationTracker::ParentLocationName(const RE::BGSLocation* location) const
+{
+	RE::BGSLocation* parent(location->parentLoc);
+	while (parent && parent->GetName() == location->GetName())
+	{
+		parent = parent->parentLoc;
+	}
+	return parent ? parent->GetName() : std::string();
+}
+
+std::string LocationTracker::Proximity(const double milesAway, CompassDirection heading) const
+{
+	if (milesAway == 0.)
+	{
+		// player is physically at the place
+		return "at";
+	}
+	else
+	{
+		// conversational description of player's position in relation to the place
+		std::ostringstream proximity;
+		proximity << ConversationalDistance(milesAway) << ' ' << CompassDirectionName(heading) << " of";
+		return proximity.str();
+	}
+}
+
+std::string LocationTracker::ConversationalDistance(const double milesAway) const
+{
+	if (milesAway < 0.25)
+		return "a little way";
+	if (milesAway < 0.75)
+		return "about half a mile";
+	if (milesAway < 1.5)
+		return "a mile or so";
+	if (milesAway < 2.5)
+		return "a couple of miles";
+	return "several miles";
+}
+
+void LocationTracker::PrintPlayerLocation(const RE::BGSLocation* location) const
+{
+	PrintNearbyLocation(location, 0., CompassDirection::MAX);
+}
+
+void LocationTracker::PrintNearbyLocation(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const
+{
+	std::string locationMessage;
+	static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_WHERE_AM_I")));
+	if (!locationText.empty())
+	{
+		locationMessage = locationText;
+		StringUtils::Replace(locationMessage, "{PROXIMITY}", Proximity(milesAway, heading));
+		StringUtils::Replace(locationMessage, "{LOCATION}", location->GetName());
+		StringUtils::Replace(locationMessage, "{VICINITY}", ParentLocationName(location));
+		if (!locationMessage.empty())
+		{
+			RE::DebugNotification(locationMessage.c_str());
+		}
+	}
+}
+
+void LocationTracker::DisplayLocationRelativeToMapMarker() const
+{
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Locate relative to map marker");
+#endif
+	RecursiveLockGuard guard(m_locationLock);
+	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
+	if (m_playerLocation)
+	{
+		DBG_MESSAGE("Player (%.2f, %.2f) is in location %s/0x%08x", playerPos[0], playerPos[1],
+			m_playerLocation->GetName(), m_playerLocation->GetFormID());
+		PrintPlayerLocation(m_playerLocation);
+		return;
+	}
+	RelativeLocationDescriptor nearestMarker(NearestMapMarker(playerPos));
+	if (nearestMarker == RelativeLocationDescriptor::Invalid())
+	{
+		REL_WARNING("Could not determine nearest map marker to player (%.2f, %.2f)", playerPos[0], playerPos[1]);
+		return;
+	}
+	CompassDirection heading(DirectionToDestinationFromStart(nearestMarker.EndPoint(), nearestMarker.StartPoint()));
+
+	double milesAway(UnitsToMiles(nearestMarker.UnitsAway()));
+	RE::BGSLocation* location(RE::TESForm::LookupByID<RE::BGSLocation>(nearestMarker.LocationID()));
+	if (location)
+	{
+		DBG_MESSAGE("Player is %s of nearest Location map marker %s/0x%08x at distance %.2f miles",
+			CompassDirectionName(heading).c_str(), location->GetName(), nearestMarker.LocationID(), milesAway);
+		PrintNearbyLocation(location, milesAway, heading);
+	}
+	else
+	{
+		REL_WARNING("Could not determine Location for 0x%08x", nearestMarker.LocationID());
+	}
+}
+
+// scan the KD-tree for nearest map marker to a reference position
+RelativeLocationDescriptor LocationTracker::NearestMapMarker(const AlglibPosition& refPos) const
+{
+	alglib::real_1d_array coordinates;
+	coordinates.setcontent(3, refPos.data());
+	alglib::ae_int_t result(alglib::kdtreequeryknn(m_markers, coordinates, 1));
+	if (result != 1)
+	{
+		REL_WARNING("Expected 1 match for nearest map marker, got %d", result);
+		return RelativeLocationDescriptor::Invalid();
+	}
+	// get distance - overwrite the input to avoid another allocation
+	kdtreequeryresultsdistances(m_markers, coordinates);
+	double unitsAway(coordinates[0]);
+
+	// get tag, into preallocated buffer
+	alglib::integer_1d_array tags;
+	alglib::ae_int_t dummy(0);
+	tags.setcontent(1, &dummy);
+	kdtreequeryresultstags(m_markers, tags);
+	RE::FormID location(static_cast<RE::FormID>(tags[0]));
+
+	// get coordinates for the nearest marker
+	alglib::real_2d_array marker;
+	marker.setlength(1, 3);
+	kdtreequeryresultsx(m_markers, marker);
+
+	AlglibPosition markerPos = { marker(0, 0), marker(0, 1), marker(0, 2) };
+	return RelativeLocationDescriptor(refPos, markerPos, location, unitsAway);
 }
 
 bool LocationTracker::CellOwnedByPlayerOrPlayerFaction(const RE::TESObjectCELL* cell) const
@@ -70,12 +293,49 @@ void LocationTracker::Reset()
 	m_tellPlayerIfCanLootAfterLoad = true;
 	m_playerCell = nullptr;
 	m_priorCell = nullptr;
+	m_adjacentCells.clear();
 	m_playerLocation = nullptr;
+	m_playerParentWorld = nullptr;
+	m_markedPlaces.clear();
 }
+
+const RE::TESWorldSpace* LocationTracker::ParentWorld(const RE::TESObjectCELL* cell)
+{
+	const RE::TESWorldSpace* world(cell->worldSpace);
+	const RE::TESWorldSpace* candidate(nullptr);
+	std::vector<const RE::TESWorldSpace*> worlds;
+	while (world)
+	{
+		if (world->locationMap.size() > 0)
+		{
+			// parent world has locations, OK to proceed
+			DBG_MESSAGE("Found location-bearing parent world %s/0x%08x for cell 0x%08x", world->GetName(), world->GetFormID(), cell->GetFormID());
+			candidate = world;
+		}
+		if (!world->parentWorld)
+		{
+			DBG_MESSAGE("Reached root of worldspace hierarchy %s/0x%08x for cell 0x%08x", world->GetName(), world->GetFormID(), cell->GetFormID());
+			break;
+		}
+		world = world->parentWorld;
+		if (std::find(worlds.cbegin(), worlds.cend(), world) != worlds.cend())
+		{
+			// cycle in worldspace graph, return best so far
+			REL_ERROR("Cycle in worldspace graph at %s/0x%08x for cell 0x%08x", world->GetName(), world->GetFormID(), cell->GetFormID());
+			break;
+		}
+		worlds.push_back(world);
+	}
+	return candidate;
+}
+
 
 // refresh state based on player's current position
 bool LocationTracker::Refresh()
 {
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Location Data Refresh");
+#endif
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 	if (!player)
 	{
@@ -100,6 +360,17 @@ bool LocationTracker::Refresh()
 		if (m_playerCell)
 		{
 			DBG_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
+			RecordAdjacentCells();
+
+			// player cell is valid - check for worldspace update
+			const RE::TESWorldSpace* parentWorld(ParentWorld(m_playerCell));
+			if (parentWorld && parentWorld != m_playerParentWorld)
+			{
+				m_playerParentWorld = parentWorld;
+				DBG_MESSAGE("Player Parent WorldSpace updated to %s/0x%08x", m_playerParentWorld->GetName(), m_playerParentWorld->GetFormID());
+
+				RecordMarkedPlaces();
+			}
 		}
 		else
 		{
@@ -244,46 +515,42 @@ bool LocationTracker::IsAdjacent(RE::TESObjectCELL* cell) const
 		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
 }
 
-void LocationTracker::RecordAdjacentCells(RE::TESObjectCELL* cell)
+// this is only called when we updated player-cell with a valid value
+void LocationTracker::RecordAdjacentCells()
 {
-	// if this is the same cell we last checked, the list of adjacent cells does not need rebuilding
-	if (m_playerCell == cell)
-		return;
-
-	m_playerCell = cell;
 	m_adjacentCells.clear();
 
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	if (!m_playerCell->IsInteriorCell())
 	{
-		DBG_MESSAGE("Check for adjacent cells to 0x%08x", m_playerCell->GetFormID());
+		DBG_VMESSAGE("Check for adjacent cells to 0x%08x", m_playerCell->GetFormID());
 		RE::TESWorldSpace* worldSpace(m_playerCell->worldSpace);
 		if (worldSpace)
 		{
-			DBG_MESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
+			DBG_VMESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
 			for (const auto& worldCell : worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
 				// skip player cell, handled above
 				if (candidateCell == m_playerCell)
 				{
-					DBG_MESSAGE("Player cell, already handled");
+					DBG_VMESSAGE("Player cell, already handled");
 					continue;
 				}
 				// do not loot across interior/exterior boundary
 				if (candidateCell->IsInteriorCell())
 				{
-					DBG_MESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
+					DBG_VMESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
 					continue;
 				}
 				// check for adjacency on the cell grid
 				if (!IsAdjacent(candidateCell))
 				{
-					DBG_MESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
+					DBG_DMESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
 					continue;
 				}
 				m_adjacentCells.push_back(candidateCell);
-				DBG_MESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
+				DBG_VMESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
 			}
 		}
 	}
@@ -334,3 +601,4 @@ const RE::TESForm* LocationTracker::CurrentPlayerPlace() const
 	return m_playerCell;
 }
 
+}

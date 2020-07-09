@@ -1,5 +1,8 @@
 #pragma once
 
+namespace shse
+{
+
 // blacklist and whitelist, can contain places and items
 class ManagedList
 {
@@ -20,3 +23,5 @@ private:
 	std::unordered_set<const RE::TESForm*> m_members;
 	mutable RecursiveLock m_listLock;
 };
+
+}

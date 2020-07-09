@@ -2,6 +2,9 @@
 
 #include "Data/iniSettings.h"
 
+namespace shse
+{
+
 class InventoryItem
 {
 public:
@@ -13,7 +16,6 @@ public:
 
 	inline RE::BSSimpleList<RE::ExtraDataList*>* GetExtraDataLists() const { return m_entry->extraLists; }
 	inline RE::TESBoundObject* BoundObject() const { return m_entry->GetObject(); }
-	inline SInt32 GetGoldValue() const { return m_entry->GetValue(); }
 	inline ObjectType LootObjectType() const { return m_objectType; }
 	inline std::ptrdiff_t Count() const { return m_count; }
 
@@ -26,3 +28,5 @@ private:
 	const std::ptrdiff_t m_count;
 	const ObjectType m_objectType;
 };
+
+}

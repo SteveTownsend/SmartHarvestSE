@@ -7,6 +7,9 @@
 #include "WorldState/LocationTracker.h"
 #include "FormHelpers/PlayerCellHelper.h"
 
+namespace shse
+{
+
 PlayerCellHelper::PlayerCellHelper(DistanceToTarget& refs, const IRangeChecker& rangeCheck) :
 	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck), m_nearestDoor(0.)
 {
@@ -52,16 +55,16 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// if 3D not loaded do not measure
-	if (!refr->Is3DLoaded())
-	{
-		DBG_VMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
-
 	if (!refr->GetBaseObject())
 	{
 		DBG_VMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
+		return false;
+	}
+
+	// if 3D not loaded do not measure
+	if (!refr->Is3DLoaded())
+	{
+		DBG_VMESSAGE("skip REFR 0x%08x, 3D not loaded %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 
@@ -97,7 +100,7 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
 		data->BlacklistReference(refr);
-		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
+		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x, base form 0x%08x", refr->formID, refr->GetBaseObject()->GetFormID());
 		return false;
 	}
 
@@ -291,4 +294,6 @@ void PlayerCellHelper::FilterNearbyReferences() const
 	}
 	// Summary of unlootable REFRs
 	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, cell->GetFormID());
+}
+
 }

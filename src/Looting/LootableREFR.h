@@ -3,6 +3,9 @@
 #include "FormHelpers/IHasValueWeight.h"
 #include "Data/iniSettings.h"
 
+namespace shse
+{
+
 class LootableREFR : public IHasValueWeight
 {
 public:
@@ -23,10 +26,12 @@ public:
 protected:
 	virtual const char* GetName() const override;
 	virtual UInt32 GetFormID() const override;
-	virtual double CalculateWorth(void) const override;
+	virtual SInt32 CalculateWorth(void) const override;
 
 private:
 	const RE::TESObjectREFR* m_ref;
 	const INIFile::SecondaryType m_scope;
 	RE::TESForm* m_lootable;
 };
+
+}

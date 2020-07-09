@@ -2,6 +2,9 @@
 #include "VM/UIState.h"
 #include "Looting/tasks.h"
 
+namespace shse
+{
+
 std::unique_ptr<UIState> UIState::m_instance;
 
 UIState& UIState::Instance()
@@ -114,4 +117,6 @@ void UIState::Reset()
 	m_nonce = 0;
 	m_vmGoodToGo = false;
 	m_vmResponded = false;
+}
+
 }

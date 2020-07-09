@@ -79,11 +79,16 @@ bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID)
 void LoadOrder::AsJSON(nlohmann::json& j) const
 {
 	j["order"] = nlohmann::json::array();
-	for (const auto& pluginMask : m_formIDMaskByName)
+	std::map<RE::FormID, std::string> ordered;
+	std::for_each(m_formIDMaskByName.cbegin(), m_formIDMaskByName.cend(), [&](const auto& pluginMask)
+	{
+		ordered.insert(std::make_pair(pluginMask.second, pluginMask.first));
+	});
+	for (const auto& maskPlugin : ordered)
 	{
 		nlohmann::json entry;
-		entry["name"] = pluginMask.first;
-		entry["formID"] = pluginMask.second;
+		entry["formID"] = int(maskPlugin.first);
+		entry["name"] = maskPlugin.second;
 		j["order"].push_back(entry);
 	}
 }

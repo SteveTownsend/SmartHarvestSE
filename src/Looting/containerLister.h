@@ -2,6 +2,9 @@
 
 #include "InventoryItem.h"
 
+namespace shse
+{
+
 typedef std::vector<InventoryItem> LootableItems;
 
 struct ContainerLister
@@ -26,3 +29,4 @@ private:
 	SpecialObjectHandling m_collectibleAction;
 };
 
+}

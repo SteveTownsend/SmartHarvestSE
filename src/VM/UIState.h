@@ -3,6 +3,9 @@
 #include <condition_variable>
 #include <mutex>
 
+namespace shse
+{
+
 class UIState {
 public:
 	static UIState& Instance();
@@ -23,3 +26,5 @@ private:
 	bool m_vmResponded;
 	bool m_vmGoodToGo;
 };
+
+}

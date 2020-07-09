@@ -5,6 +5,9 @@
 #include "FormHelpers/FormHelper.h"
 #include "Looting/objects.h"
 
+namespace shse
+{
+
 LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_lootable(nullptr), m_scope(scope)
 {
 	m_objectType = GetREFRObjectType(m_ref);
@@ -41,7 +44,7 @@ std::pair<bool, SpecialObjectHandling> LootableREFR::TreatAsCollectible(void) co
 bool LootableREFR::IsValuable() const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.IsValuable(static_cast<SInt32>(GetWorth()));
+	return itemEx.IsValuable();
 }
 
 RE::TESForm* LootableREFR::GetLootable() const
@@ -54,7 +57,7 @@ void LootableREFR::SetLootable(RE::TESForm* lootable)
 	m_lootable = lootable;
 }
 
-double LootableREFR::CalculateWorth(void) const
+SInt32 LootableREFR::CalculateWorth(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.GetWorth();
@@ -99,4 +102,6 @@ SInt16 LootableREFR::GetItemCount()
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
 	}
 	return 1;
+}
+
 }
