@@ -1,2 +1,4 @@
-# AutoHarvestSE
-https://www.nexusmods.com/skyrimspecialedition/mods/17622
+# Smart Harvest SE
+
+https://www.nexusmods.com/skyrimspecialedition/mods/37091
+
