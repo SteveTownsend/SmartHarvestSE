@@ -54,8 +54,7 @@ void LocationTracker::RecordMarkedPlaces()
 		}
 		else
 		{
-			DBG_WARNING("Location %s/0x%08x with marker at (%0.2f,%0.2f,%0.2f) duplicates existing", location->GetName(), location->GetFormID(),
-				markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ());
+			DBG_VMESSAGE("Location %s/0x%08x already recorded", location->GetName(), location->GetFormID());
 		}
 	}
 	if (markedPlaces.empty())
@@ -65,27 +64,29 @@ void LocationTracker::RecordMarkedPlaces()
 	}
 	// replace existing entries with new
 	m_markedPlaces.swap(markedPlaces);
+	size_t numPlaces(m_markedPlaces.size());
+	DBG_MESSAGE("Build tree from %d LCTNs", numPlaces);
 
 	// Build KD-tree for the location markers
-	std::vector<double> pointData(3 * m_markedPlaces.size());
-	size_t tagIndex(0);
-	size_t xIndex(0);
-	std::vector<alglib::ae_int_t> tagList(m_markedPlaces.size());
+	std::vector<double> pointData;
+	pointData.reserve(3 * numPlaces);
+	std::vector<alglib::ae_int_t> tagList;
+	tagList.reserve(numPlaces);
 	std::for_each(m_markedPlaces.cbegin(), m_markedPlaces.cend(), [&](const auto& posForm)
 	{
-		tagList[tagIndex++] = posForm.first->GetFormID();
-		pointData[xIndex++] = std::get<0>(posForm.second);
-		pointData[xIndex++] = std::get<1>(posForm.second);
-		pointData[xIndex++] = std::get<2>(posForm.second);
+		tagList.push_back(posForm.first->GetFormID());
+		pointData.push_back(std::get<0>(posForm.second));
+		pointData.push_back(std::get<1>(posForm.second));
+		pointData.push_back(std::get<2>(posForm.second));
 	});
 
 	alglib::real_2d_array coordinates;
-	coordinates.setcontent(m_markedPlaces.size(), 3, &pointData[0]);
+	coordinates.setcontent(numPlaces, 3, &pointData[0]);
 	alglib::integer_1d_array tags;
-	tags.setcontent(m_markedPlaces.size(), &tagList[0]);
+	tags.setcontent(numPlaces, &tagList[0]);
 
 	// use Euclidean norm 2 for 3D space
-	alglib::kdtreebuildtagged(coordinates, tags, m_markedPlaces.size(), 3, 0, 2, m_markers);
+	alglib::kdtreebuildtagged(coordinates, tags, numPlaces, 3, 0, 2, m_markers);
 }
 
 CompassDirection LocationTracker::DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const
@@ -396,45 +397,43 @@ bool LocationTracker::Refresh()
 		DBG_MESSAGE("Player was at location %s, lootable = %s, now at %s", oldName.c_str(),
 			couldLootInPrior ? "true" : "false", playerLocation ? playerLocation->GetName() : "unnamed");
 		m_playerLocation = playerLocation;
-		// Player changed location
+		// Player changed location - may be a standalone Cell with m_playerLocation nullptr e.g. 000HatredWell
 		bool tellPlayer(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0);
-		if (m_playerLocation)
+
+		// check if it is a new player house
+		if (!IsPlayerAtHome())
 		{
-			// check if it is a new player house
-			if (!IsPlayerAtHome())
+			if (PlayerHouses::Instance().IsValidHouse(m_playerLocation))
 			{
-				if (PlayerHouses::Instance().IsValidHouse(m_playerLocation))
+				// record as a player house and notify as it is a new one in this game load
+				DBG_MESSAGE("Player House %s detected", m_playerLocation->GetName());
+				PlayerHouses::Instance().Add(m_playerLocation);
+			}
+		}
+		// Display messages about location auto-loot restrictions, if set in config
+		if (tellPlayer)
+		{
+			// notify entry to player home unless this was a menu reset, regardless of whether it's new to us
+			if (IsPlayerAtHome())
+			{
+				static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
+				if (!playerHouseMsg.empty())
 				{
-					// record as a player house and notify as it is a new one in this game load
-					DBG_MESSAGE("Player House %s detected", m_playerLocation->GetName());
-					PlayerHouses::Instance().Add(m_playerLocation);
+					std::string notificationText(playerHouseMsg);
+					StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
+					RE::DebugNotification(notificationText.c_str());
 				}
 			}
-			// Display messages about location auto-loot restrictions, if set in config
-			if (tellPlayer)
+			// Check if location is excluded from looting and if so, notify we entered it
+			if ((couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) && !LocationTracker::Instance().IsPlayerInLootablePlace(PlayerCell(), allowIfRestricted))
 			{
-				// notify entry to player home unless this was a menu reset, regardless of whether it's new to us
-				if (IsPlayerAtHome())
+				DBG_MESSAGE("Player Location %s no-loot message", playerLocation ? playerLocation->GetName() : "unnamed");
+				static RE::BSFixedString restrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
+				if (!restrictedPlaceMsg.empty())
 				{
-					static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
-					if (!playerHouseMsg.empty())
-					{
-						std::string notificationText(playerHouseMsg);
-						StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerLocation->GetName());
-						RE::DebugNotification(notificationText.c_str());
-					}
-				}
-				// Check if location is excluded from looting and if so, notify we entered it
-				if ((couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) && !LocationTracker::Instance().IsPlayerInLootablePlace(PlayerCell(), allowIfRestricted))
-				{
-					DBG_MESSAGE("Player Location %s no-loot message", m_playerLocation->GetName());
-					static RE::BSFixedString restrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
-					if (!restrictedPlaceMsg.empty())
-					{
-						std::string notificationText(restrictedPlaceMsg);
-						StringUtils::Replace(notificationText, "{LOCATIONNAME}", m_playerLocation->GetName());
-						RE::DebugNotification(notificationText.c_str());
-					}
+					std::string notificationText(restrictedPlaceMsg);
+					StringUtils::Replace(notificationText, "{LOCATIONNAME}", playerLocation ? playerLocation->GetName() : "unnamed");
+					RE::DebugNotification(notificationText.c_str());
 				}
 			}
 		}

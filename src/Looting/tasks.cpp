@@ -13,7 +13,7 @@
 #include "Looting/LootableREFR.h"
 #include "WorldState/PopulationCenters.h"
 #include "FormHelpers/FormHelper.h"
-#include "FormHelpers/PlayerCellHelper.h"
+#include "Looting/ReferenceFilter.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "Looting/ProducerLootables.h"
@@ -33,8 +33,8 @@ INIFile* SearchTask::m_ini = nullptr;
 RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
-SearchTask::SearchTask(const TargetREFR& target, INIFile::SecondaryType targetType)
-	: m_distance(target.first), m_candidate(target.second), m_targetType(targetType), m_glowReason(GlowReason::None)
+SearchTask::SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType)
+	: m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None)
 {
 }
 
@@ -396,8 +396,8 @@ void SearchTask::Run()
 		else
 		{
 			bool isSilent = !LootingRequiresNotification(lootingType);
-			DBG_VMESSAGE("SmartHarvest %s/0x%08x for REFR 0x%08x at distance %.2f units",
-				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), m_distance);
+			DBG_VMESSAGE("SmartHarvest %s/0x%08x for REFR 0x%08x", m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
 			// don't let the backlog of messages get too large, it's about 1 per second
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!LockHarvest(m_candidate, isSilent))
@@ -408,7 +408,7 @@ void SearchTask::Run()
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
-		DBG_MESSAGE("scanning container/body %s/0x%08x  at distance %.2f units", m_candidate->GetName(), m_candidate->formID, m_distance);
+		DBG_MESSAGE("scanning container/body %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
 #if _DEBUG
 		DumpContainer(LootableREFR(m_candidate, m_targetType));
 #endif
@@ -958,28 +958,19 @@ void SearchTask::DoPeriodicSearch()
 			}
 		}
 
-		// brain dead item scan and brief glow
+		// brain-dead item scan and brief glow - ignores doors for simplicity
 		BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
 			(double(m_calibrateRadius) - double(m_calibrateDelta)) / DistanceUnitInFeet, m_calibrateDelta / DistanceUnitInFeet);
-
 		DistanceToTarget targets;
-		PlayerCellHelper(targets, rangeCheck).FindAllCandidates();
-
-		// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
-		// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
-		// no more than N. std::nth_element does precisely what we need.
-		auto endOfRange(targets.begin() + std::min(MaxREFRSPerPass, targets.size()));
-		std::nth_element(targets.begin(), endOfRange, targets.end(),
-			[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
-		std::sort(targets.begin(), endOfRange,	[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
-		for (auto target = targets.cbegin(); target != endOfRange; ++target)
+		ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindAllCandidates();
+		for (auto target : targets)
 		{
-			DBG_VMESSAGE("Trigger glow for %s/0x%08x at distance %.2f units", target->second->GetName(), target->second->formID, target->first);
-			EventPublisher::Instance().TriggerObjectGlow(target->second, ObjectGlowDurationCalibrationSeconds,
+			DBG_VMESSAGE("Trigger glow for %s/0x%08x at distance %.2f units", target.second->GetName(), target.second->formID, target.first);
+			EventPublisher::Instance().TriggerObjectGlow(target.second, ObjectGlowDurationCalibrationSeconds,
 				m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
 		}
 
-		// shader test runs forever at the same radius
+		// glow demo runs forever at the same radius, range calibration stops after the outer limit
 		if (!m_glowDemo)
 		{
 			m_calibrateRadius += m_calibrateDelta;
@@ -1005,37 +996,16 @@ void SearchTask::DoPeriodicSearch()
 	double radius(LocationTracker::Instance().IsPlayerIndoors() ?
 		m_ini->GetIndoorsRadius(INIFile::PrimaryType::harvest) : m_ini->GetRadius(INIFile::PrimaryType::harvest));
 	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, m_ini->GetVerticalFactor());
+	bool respectDoors(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0.);
+	ReferenceFilter filter(targets, rangeCheck, respectDoors, MaxREFRSPerPass);
+	// this adds eligible REFRs ordered by distance from player
+	filter.FindLootableReferences();
 
-	PlayerCellHelper helper(targets, rangeCheck);
-	helper.FindLootableReferences();
-	double boundary(helper.DistanceToDoor());
-	// Use door distance if config indicates to do so, and there is a door nearby
-	if (m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0. && boundary > 0.)
+	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
+	// This seems no harm apart but offends my aesthetic sensibilities, so prevent it.
+	std::vector<RE::TESObjectREFR*> possibleDupes;
+	for (auto target : targets)
 	{
-		DBG_MESSAGE("Nearest Door to player is %.2f units away", boundary);
-	}
-	else
-	{
-		boundary = radius;
-		DBG_MESSAGE("Use vanilla loot radius %.2f units", boundary);
-	}
-
-	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
-	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
-	// no more than N. std::nth_element does precisely what we need.
-	auto endOfRange(targets.begin() + std::min(MaxREFRSPerPass, targets.size()));
-	std::nth_element(targets.begin(), endOfRange, targets.end(),
-		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
-	std::sort(targets.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
-	for (auto target = targets.begin(); target != endOfRange; ++target)
-	{
-		// exclude REFRs too far away, checking the adjusted radius
-		if (target->first > boundary)
-		{
-			// exit loop since targets are sorted by proximity
-			DBG_MESSAGE("REFR 0x%08x distance %.2f exceeds final radius %.2f", target->first, boundary);
-			break;
-		}
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
 		/*
 			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54419 micros
@@ -1046,7 +1016,7 @@ void SearchTask::DoPeriodicSearch()
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
 		*/
 		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
-		RE::TESObjectREFR* refr(target->second);
+		RE::TESObjectREFR* refr(target.second);
 		if (refr->GetFormID() == InvalidForm)
 		{
 			DBG_WARNING("REFR has invalid FormID");
@@ -1101,6 +1071,14 @@ void SearchTask::DoPeriodicSearch()
 					RegisterActorTimeOfDeath(refr);
 					continue;
 				}
+				// avoid double dipping for immediate-loot case
+				if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
+				{
+					DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+						refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+					continue;
+				}
+				possibleDupes.push_back(refr);
 			}
 			else if (refr->GetBaseObject()->As<RE::TESContainer>())
 			{
@@ -1123,15 +1101,24 @@ void SearchTask::DoPeriodicSearch()
 					continue;
 				}
 				// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
-				target->second = GetAshPile(refr);
-				DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", target->second->GetFormID(), refr->GetFormID());
+				refr = GetAshPile(refr);
+				DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), target.second->GetFormID());
+
+				// avoid double dipping for immediate-loot case
+				if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
+				{
+					DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+						refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+					continue;
+				}
+				possibleDupes.push_back(refr);
 			}
 			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
 			{
 				continue;
 			}
 		}
-		SearchTask(*target, lootTargetType).Run();
+		SearchTask(refr, lootTargetType).Run();
 	}
 }
 
@@ -1242,16 +1229,16 @@ int SearchTask::m_calibrateDelta(SearchTask::CalibrationRangeDelta);
 bool SearchTask::m_glowDemo(false);
 GlowReason SearchTask::m_nextGlow(GlowReason::SimpleTarget);
 
-void SearchTask::ToggleCalibration(const bool shaderTest)
+void SearchTask::ToggleCalibration(const bool glowDemo)
 {
 	RecursiveLockGuard guard(m_lock);
 	m_calibrating = !m_calibrating;
 	REL_MESSAGE("Calibration of Looting range %s, test shaders %s",	m_calibrating ? "started" : "stopped", m_glowDemo ? "true" : "false");
 	if (m_calibrating)
 	{
-		m_glowDemo = shaderTest;
-		m_calibrateDelta = m_glowDemo ? ShaderTestRange : CalibrationRangeDelta;
-		m_calibrateRadius = m_glowDemo ? ShaderTestRange : CalibrationRangeDelta;
+		m_glowDemo = glowDemo;
+		m_calibrateDelta = m_glowDemo ? GlowDemoRange : CalibrationRangeDelta;
+		m_calibrateRadius = m_glowDemo ? GlowDemoRange : CalibrationRangeDelta;
 		m_nextGlow = GlowReason::SimpleTarget;
 	}
 	else
