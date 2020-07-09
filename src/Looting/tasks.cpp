@@ -684,13 +684,19 @@ void SearchTask::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool
 		GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
 	}
 
+	// avoid sound spam
+	bool madeSound(false);
 	for (auto& target : targets)
 	{
 		// Play sound first as this uses InventoryItemData on the source container
 		InventoryItem& itemInfo(std::get<0>(target));
 		bool notify(std::get<1>(target));
 		bool collectible(std::get<2>(target));
-		RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
+		if (!madeSound)
+		{
+			RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
+			madeSound = true;
+		}
 		std::string name(itemInfo.BoundObject()->GetName());
 		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible));
 		if (notify)

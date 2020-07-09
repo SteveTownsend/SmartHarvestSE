@@ -207,7 +207,6 @@
     <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp" />
     <ClCompile Include="src\FormHelpers\FormHelper.cpp" />
     <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp" />
-    <ClCompile Include="src\FormHelpers\sound.cpp" />
     <ClCompile Include="src\FormHelpers\WeaponHelper.cpp" />
     <ClCompile Include="src\Looting\containerLister.cpp" />
     <ClCompile Include="src\Looting\InventoryItem.cpp" />
@@ -263,7 +262,6 @@
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h" />
     <ClInclude Include="src\FormHelpers\FormHelper.h" />
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h" />
-    <ClInclude Include="src\FormHelpers\sound.h" />
     <ClInclude Include="src\FormHelpers\WeaponHelper.h" />
     <ClInclude Include="src\Looting\containerLister.h" />
     <ClInclude Include="src\Looting\InventoryItem.h" />
