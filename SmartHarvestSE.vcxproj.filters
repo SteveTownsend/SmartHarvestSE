@@ -19,9 +19,6 @@
     <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="src\FormHelpers\sound.cpp">
-      <Filter>src\FormHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="src\FormHelpers\WeaponHelper.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
@@ -154,9 +151,6 @@
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h">
-      <Filter>src\FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\FormHelpers\sound.h">
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\WeaponHelper.h">
