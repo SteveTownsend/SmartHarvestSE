@@ -19,9 +19,6 @@
     <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="src\FormHelpers\PlayerCellHelper.cpp">
-      <Filter>src\FormHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="src\FormHelpers\sound.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
@@ -136,6 +133,9 @@
     <ClCompile Include="src\alglib\alglibinternal.cpp">
       <Filter>src\alglib</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\ReferenceFilter.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -154,9 +154,6 @@
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h">
-      <Filter>src\FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\FormHelpers\PlayerCellHelper.h">
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\sound.h">
@@ -284,6 +281,9 @@
     </ClInclude>
     <ClInclude Include="src\alglib\alglibinternal.h">
       <Filter>src\alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\ReferenceFilter.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

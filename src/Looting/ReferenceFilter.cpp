@@ -5,13 +5,13 @@
 #include "Looting/tasks.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/LocationTracker.h"
-#include "FormHelpers/PlayerCellHelper.h"
+#include "Looting/ReferenceFilter.h"
 
 namespace shse
 {
 
-PlayerCellHelper::PlayerCellHelper(DistanceToTarget& refs, const IRangeChecker& rangeCheck) :
-	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck), m_nearestDoor(0.)
+ReferenceFilter::ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeCheck, const bool respectDoors, const size_t limit) :
+	m_refs(refs), m_rangeCheck(rangeCheck), m_respectDoors(respectDoors), m_nearestDoor(0.), m_limit(limit)
 {
 }
 
@@ -47,34 +47,8 @@ For now, choose to flat-out ignore any REFR to a Dynamic Base - manual looting i
 never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR FormIDs are recycled.
 */
 
-bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
+bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 {
-	if (!refr)
-	{
-		DBG_VMESSAGE("null REFR");
-		return false;
-	}
-
-	if (!refr->GetBaseObject())
-	{
-		DBG_VMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
-		return false;
-	}
-
-	// if 3D not loaded do not measure
-	if (!refr->Is3DLoaded())
-	{
-		DBG_VMESSAGE("skip REFR 0x%08x, 3D not loaded %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
-
-	if (refr->GetBaseObject()->formType == RE::FormType::Furniture ||
-		refr->GetBaseObject()->formType == RE::FormType::Hazard)
-	{
-		DBG_VMESSAGE("skip ineligible Form Type %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return false;
-	}
-
 	DataCase* data = DataCase::GetInstance();
 	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
@@ -128,25 +102,6 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// skip anything not in the required distance-to-player range
-	if (!m_rangeCheck.IsValid(refr))
-		return false;
-
-	// Looting through Doors not allowed - check distance to this one and record if this is the nearest so far
-	if (refr->GetBaseObject()->formType == RE::FormType::Door)
-	{
-		if (m_nearestDoor == 0. || m_rangeCheck.Distance() < m_nearestDoor)
-		{
-			DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
-			m_nearestDoor = m_rangeCheck.Distance();
-		}
-		else
-		{
-			DBG_VMESSAGE("skip Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
-		}
-		return false;
-	}
-
 	if (SearchTask::IsLockedForHarvest(refr))
 	{
 		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
@@ -170,20 +125,8 @@ bool PlayerCellHelper::CanLoot(const RE::TESObjectREFR* refr) const
 	return true;
 }
 
-bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
+bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 {
-	if (!refr)
-	{
-		DBG_VMESSAGE("null REFR");
-		return false;
-	}
-
-	if (!refr->GetBaseObject())
-	{
-		DBG_VMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
-		return false;
-	}
-
 	DataCase* data = DataCase::GetInstance();
 	// check blacklist early - this may be a malformed REFR e.g. GetBaseObject() blank, 0x00000000 FormID
 	// as observed in play testing
@@ -193,12 +136,6 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	// if 3D not loaded do not measure
-	if (!refr->Is3DLoaded())
-	{
-		DBG_VMESSAGE("skip REFR, 3D not loaded %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
-	}
 	if (refr->formType == RE::FormType::ActorCharacter)
 	{
 		if (refr == RE::PlayerCharacter::GetSingleton())
@@ -207,10 +144,6 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 			return false;
 		}
 	}
-
-	// skip anything not in the required distance-to-player range
-	if (!m_rangeCheck.IsValid(refr))
-		return false;
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
 	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
@@ -227,23 +160,24 @@ bool PlayerCellHelper::IsLootCandidate(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	DBG_VMESSAGE("lootable candidate 0x%08x", refr->formID);
+	DBG_VMESSAGE("permissive lootable candidate 0x%08x", refr->formID);
 	return true;
 }
 
-void PlayerCellHelper::FindLootableReferences() const
+void ReferenceFilter::FindLootableReferences()
 {
-	m_predicate = std::bind(&PlayerCellHelper::CanLoot, this, std::placeholders::_1);
+	m_predicate = std::bind(&ReferenceFilter::CanLoot, this, std::placeholders::_1);
 	FilterNearbyReferences();
 }
 
-void PlayerCellHelper::FindAllCandidates() const
+void ReferenceFilter::FindAllCandidates()
 {
-	m_predicate = std::bind(&PlayerCellHelper::IsLootCandidate, this, std::placeholders::_1);
+	m_predicate = std::bind(&ReferenceFilter::IsLootCandidate, this, std::placeholders::_1);
 	FilterNearbyReferences();
 }
 
-void PlayerCellHelper::FilterCellReferences(const RE::TESObjectCELL* cell) const
+// update list with all possibly lootable REFRs in cell
+void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 {
 	// Do not scan reference list until cell is attached
 	if (!cell->IsAttached())
@@ -254,18 +188,63 @@ void PlayerCellHelper::FilterCellReferences(const RE::TESObjectCELL* cell) const
 		RE::TESObjectREFR* refr(refptr.get());
 		if (refr)
 		{
-			if (!m_predicate(refr))
+			if (!refr->GetBaseObject())
 			{
-				++m_eliminated;
+				DBG_VMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
 				continue;
 			}
 
+			// if 3D not loaded do not measure
+			if (!refr->Is3DLoaded())
+			{
+				DBG_VMESSAGE("skip REFR 0x%08x, 3D not loaded %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				continue;
+			}
+
+			// If Looting through Doors is not allowed, check distance and record if this is the nearest so far
+			RE::FormType formType(refr->GetBaseObject()->formType);
+			if (formType == RE::FormType::Door)
+			{
+				if (m_respectDoors && m_rangeCheck.IsValid(refr) && (m_nearestDoor == 0. || m_rangeCheck.Distance() < m_nearestDoor))
+				{
+					DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
+					m_nearestDoor = m_rangeCheck.Distance();
+					m_rangeCheck.SetRadius(m_nearestDoor);
+				}
+				else
+				{
+					DBG_VMESSAGE("skip Door 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
+				}
+				continue;
+			}
+			// skip other invalid form types
+			if (formType == RE::FormType::Furniture ||
+				formType == RE::FormType::Hazard ||
+				formType == RE::FormType::IdleMarker ||
+				formType == RE::FormType::MovableStatic ||
+				formType == RE::FormType::Static)
+			{
+				DBG_VMESSAGE("invalid formtype %d for 0x%08x(%s)", formType, refr->GetFormID(), refr->GetBaseObject()->GetName());
+				continue;
+			}
+			if (!m_rangeCheck.IsValid(refr))
+			{
+				DBG_VMESSAGE("omit out of range REFR 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
+				continue;
+			}
+			if (!m_predicate(refr))
+			{
+				DBG_VMESSAGE("omit ineligible REFR 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
+				continue;
+			}
+			DBG_VMESSAGE("add REFR 0x%08x(%s), distance %.2f, formtype %d", refr->GetFormID(),
+				refr->GetBaseObject()->GetName(), m_rangeCheck.Distance(), formType);
 			m_refs.emplace_back(m_rangeCheck.Distance(), refr);
 		}
 	}
 }
 
-void PlayerCellHelper::FilterNearbyReferences() const
+void ReferenceFilter::FilterNearbyReferences()
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
@@ -276,7 +255,7 @@ void PlayerCellHelper::FilterNearbyReferences() const
 
 	// For exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	// If current cell fills the list then ignore others.
-	FilterCellReferences(cell);
+	RecordCellReferences(cell);
 	if (!LocationTracker::Instance().IsPlayerIndoors())
 	{
 		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", cell->GetFormID());
@@ -289,11 +268,33 @@ void PlayerCellHelper::FilterNearbyReferences() const
 				continue;
 			}
 			DBG_VMESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
-			FilterCellReferences(adjacentCell);
+			RecordCellReferences(adjacentCell);
 		}
 	}
-	// Summary of unlootable REFRs
-	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, cell->GetFormID());
+
+	// Postprocess the list into ascending distance order and truncate if too long
+	// We must confirm distance is valid because the Radius may update adjusted on the fly as Doors are processed
+	DBG_MESSAGE("Sort and truncate %d eligible REFRs", m_refs.size());
+
+	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
+	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
+	// no more than N. std::nth_element does precisely what we need.
+	// End-of-range iterator remains valid as the container is processed in situ by each algorithms
+	auto endOfRange(m_refs.begin() + std::min(m_limit, m_refs.size()));
+	std::nth_element(m_refs.begin(), endOfRange, m_refs.end(),
+		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
+	std::sort(m_refs.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
+	// "Nearest Door" restriction can adjust the range downwards during the scan - re-check here
+	if (m_respectDoors)
+	{
+		auto tooFarAway(std::find_if(m_refs.begin(), endOfRange, [&](const auto& target) -> bool
+		{
+			return target.first > m_rangeCheck.Radius();
+		}));
+
+		DBG_MESSAGE("Erase %d out-of-range REFRs", std::distance(tooFarAway, m_refs.end()));
+		m_refs.erase(tooFarAway, m_refs.end());
+	}
 }
 
 }
