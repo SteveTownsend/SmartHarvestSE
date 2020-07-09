@@ -5,6 +5,9 @@
 #include "FormHelpers/FormHelper.h"
 #include "Looting/objects.h"
 
+namespace shse
+{
+
 LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_lootable(nullptr), m_scope(scope)
 {
 	m_objectType = GetREFRObjectType(m_ref);
@@ -99,4 +102,6 @@ SInt16 LootableREFR::GetItemCount()
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
 	}
 	return 1;
+}
+
 }

@@ -127,6 +127,15 @@
     <ClCompile Include="src\Looting\LootableREFR.cpp">
       <Filter>src\Looting</Filter>
     </ClCompile>
+    <ClCompile Include="src\alglib\alglibmisc.cpp">
+      <Filter>src\alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\alglib\ap.cpp">
+      <Filter>src\alglib</Filter>
+    </ClCompile>
+    <ClCompile Include="src\alglib\alglibinternal.cpp">
+      <Filter>src\alglib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -267,6 +276,15 @@
     <ClInclude Include="src\Looting\LootableREFR.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
+    <ClInclude Include="src\alglib\alglibmisc.h">
+      <Filter>src\alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="src\alglib\ap.h">
+      <Filter>src\alglib</Filter>
+    </ClInclude>
+    <ClInclude Include="src\alglib\alglibinternal.h">
+      <Filter>src\alglib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -316,6 +334,9 @@
     </Filter>
     <Filter Include="Collections\Examples">
       <UniqueIdentifier>{28f6f8ad-c267-491e-b008-ac1eeab42454}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\alglib">
+      <UniqueIdentifier>{1d6e1faa-e6bf-4ae8-8ece-658e06abe5fa}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

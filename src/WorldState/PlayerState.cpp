@@ -248,8 +248,13 @@ void PlayerState::ExcludeMountedIfForbidden(void)
 Position PlayerState::GetPosition() const
 {
 	const auto player(RE::PlayerCharacter::GetSingleton());
-	return std::make_tuple(player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
+	return { player->GetPositionX(), player->GetPositionY(), player->GetPositionZ() };
 }
 
+AlglibPosition PlayerState::GetAlglibPosition() const
+{
+	const auto player(RE::PlayerCharacter::GetSingleton());
+	return { player->GetPositionX(), player->GetPositionY(), player->GetPositionZ() };
+}
 
 }

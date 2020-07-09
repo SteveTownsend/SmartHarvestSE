@@ -3,6 +3,9 @@
 #include "Data/DataCase.h"
 #include "Looting/ManagedLists.h"
 
+namespace shse
+{
+
 std::unique_ptr<ManagedList> ManagedList::m_blackList;
 std::unique_ptr<ManagedList> ManagedList::m_whiteList;
 
@@ -61,4 +64,6 @@ bool ManagedList::Contains(const RE::TESForm* location) const
 {
 	RecursiveLockGuard guard(m_listLock);
 	return m_members.contains(location);
+}
+
 }

@@ -7,6 +7,9 @@
 #include "WorldState/LocationTracker.h"
 #include "FormHelpers/PlayerCellHelper.h"
 
+namespace shse
+{
+
 PlayerCellHelper::PlayerCellHelper(DistanceToTarget& refs, const IRangeChecker& rangeCheck) :
 	m_refs(refs), m_eliminated(0), m_rangeCheck(rangeCheck), m_nearestDoor(0.)
 {
@@ -291,4 +294,6 @@ void PlayerCellHelper::FilterNearbyReferences() const
 	}
 	// Summary of unlootable REFRs
 	DBG_VMESSAGE("Eliminated %d REFRs for cell 0x%08x", m_eliminated, cell->GetFormID());
+}
+
 }

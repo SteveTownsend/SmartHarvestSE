@@ -2,6 +2,9 @@
 
 #include "Looting/IRangeChecker.h"
 
+namespace shse
+{
+
 class PlayerCellHelper
 {
 public:
@@ -26,3 +29,5 @@ private:
 	const IRangeChecker& m_rangeCheck;
 	mutable double m_nearestDoor;
 };
+
+}

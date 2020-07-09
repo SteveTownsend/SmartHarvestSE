@@ -335,6 +335,13 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 Pause()
             endif
         elseif keyCode == whiteKey || keyCode == blackKey
+            ; check for long press
+            if keyCode == whiteKey && holdTime > 3.0
+                ; detect nearest map marker on long press
+                ShowLocation()
+                return
+            endIf
+
             ; Location/cell blacklist whitelist toggle in worldspace
             Form place = GetPlayerPlace()
             if (!place)
@@ -614,12 +621,14 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
             if ActivateEx(akTarget, player, suppressMessage)
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && applyGreenThumb
-                float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
-                int countPP = ((count * greenThumbValue) - count) as int
-                if (countPP >= 1)
-                    player.AddItem(baseForm, countPP, true)
-                    count = count + countPP
-                endif
+                if applyGreenThumb
+                    float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
+                    int countPP = ((count * greenThumbValue) - count) as int
+                    if (countPP >= 1)
+                        player.AddItem(baseForm, countPP, true)
+                        count = count + countPP
+                    endif
+                endIf
             endif
         ; Critter ACTI REFRs cannot be identified by item type
         elseif akTarget as Critter || akTarget as FXfakeCritterScript

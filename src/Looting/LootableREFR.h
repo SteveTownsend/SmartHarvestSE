@@ -3,6 +3,9 @@
 #include "FormHelpers/IHasValueWeight.h"
 #include "Data/iniSettings.h"
 
+namespace shse
+{
+
 class LootableREFR : public IHasValueWeight
 {
 public:
@@ -30,3 +33,5 @@ private:
 	const INIFile::SecondaryType m_scope;
 	RE::TESForm* m_lootable;
 };
+
+}

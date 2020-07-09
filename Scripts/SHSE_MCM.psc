@@ -128,8 +128,6 @@ Form[] blacklist_form_array
 String[] blackList_name_array
 bool[] blackList_flag_array
 
-bool gameReloadLock = false
-
 Actor player
 
 int Function CycleInt(int num, int max)
@@ -577,15 +575,7 @@ endEvent
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
 Event OnGameReload()
     parent.OnGameReload()
-    if (gameReloadLock)
-        return
-    endif
-    gameReloadLock = true
-
     ApplySetting(true)
-    
-    ;DebugTrace("* OnGameReload finished *")
-    gameReloadLock = false
 endEvent
 
 Event OnConfigOpen()

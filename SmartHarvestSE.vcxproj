@@ -178,6 +178,21 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\alglib\alglibinternal.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\alglib\alglibmisc.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\alglib\ap.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\Collections\Collection.cpp" />
     <ClCompile Include="src\Collections\CollectionFactory.cpp" />
     <ClCompile Include="src\Collections\CollectionManager.cpp" />
@@ -231,6 +246,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h" />
+    <ClInclude Include="src\alglib\alglibinternal.h" />
+    <ClInclude Include="src\alglib\alglibmisc.h" />
+    <ClInclude Include="src\alglib\ap.h" />
     <ClInclude Include="src\Collections\Collection.h" />
     <ClInclude Include="src\Collections\CollectionFactory.h" />
     <ClInclude Include="src\Collections\CollectionManager.h" />

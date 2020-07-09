@@ -3,6 +3,9 @@
 #include "FormHelpers/FormHelper.h"
 #include "FormHelpers/ArmorHelper.h"
 
+namespace shse
+{
+
 UInt32 TESObjectARMOHelper::GetGoldValue() const
 {
 	if (!m_armor)
@@ -27,4 +30,6 @@ UInt32 TESObjectARMOHelper::GetGoldValue() const
 	DBG_VMESSAGE("TESObjectARMOHelper::GetGoldValue()  %d  %d", m_armor->value, result);
 
 	return m_armor->value + result;
+}
+
 }

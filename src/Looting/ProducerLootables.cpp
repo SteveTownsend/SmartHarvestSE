@@ -2,6 +2,9 @@
 #include "Data/dataCase.h"
 #include "ProducerLootables.h"
 
+namespace shse
+{
+
 std::unique_ptr<ProducerLootables> ProducerLootables::m_instance;
 
 ProducerLootables& ProducerLootables::Instance()
@@ -47,4 +50,6 @@ RE::TESForm* ProducerLootables::GetLootableForProducer(RE::TESForm* producer) co
 	if (matched != m_producerLootable.cend())
 		return matched->second;
 	return nullptr;
+}
+
 }

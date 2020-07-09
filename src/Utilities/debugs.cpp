@@ -8,6 +8,9 @@
 #include "Looting/objects.h"
 #include "Looting/LootableREFR.h"
 
+namespace shse
+{
+
 void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 {
 #if _DEBUG
@@ -213,4 +216,6 @@ void DumpContainer(const LootableREFR& refr)
 	const RE::ExtraDataList *extraData = &refr.GetReference()->extraList;
     DumpExtraData(extraData);
 #endif
+}
+
 }

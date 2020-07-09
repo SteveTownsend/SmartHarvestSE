@@ -100,19 +100,17 @@ void INIFile::PutSetting(PrimaryType m_section_first, SecondaryType m_section_se
 double INIFile::GetRadius(PrimaryType first)
 {
 	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
-	static const double FEET_PER_DISTANCE_UNIT(0.046875);
 	const double setting(GetSetting(first, SecondaryType::config, "RadiusFeet"));
-	DBG_VMESSAGE("Search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
-	return setting / FEET_PER_DISTANCE_UNIT;
+	DBG_VMESSAGE("Search radius %.2f feet -> %.2f units", setting, setting / DistanceUnitInFeet);
+	return setting / DistanceUnitInFeet;
 }
 
 double INIFile::GetIndoorsRadius(PrimaryType first)
 {
 	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
-	static const double FEET_PER_DISTANCE_UNIT(0.046875);
 	const double setting(GetSetting(first, SecondaryType::config, "IndoorsRadiusFeet"));
-	DBG_VMESSAGE("Indoors search radius %.2f feet -> %.2f units", setting, setting / FEET_PER_DISTANCE_UNIT);
-	return setting / FEET_PER_DISTANCE_UNIT;
+	DBG_VMESSAGE("Indoors search radius %.2f feet -> %.2f units", setting, setting / DistanceUnitInFeet);
+	return setting / DistanceUnitInFeet;
 }
 
 double INIFile::GetVerticalFactor()

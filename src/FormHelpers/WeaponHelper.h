@@ -1,5 +1,8 @@
 #pragma once
 
+namespace shse
+{
+	
 class TESObjectWEAPHelper
 {
 public:
@@ -12,3 +15,5 @@ private:
 };
 
 double GetGameSettingFloat(const RE::BSFixedString& name);
+
+}

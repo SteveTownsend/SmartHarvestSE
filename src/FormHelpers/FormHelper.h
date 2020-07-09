@@ -4,6 +4,9 @@
 #include "Data/iniSettings.h"
 #include "Collections/Condition.h"
 
+namespace shse
+{
+
 class TESFormHelper : public IHasValueWeight
 {
 public:
@@ -34,4 +37,6 @@ template <typename FORM> RE::BGSKeywordForm* KeywordFormCast(const RE::TESForm* 
 	if (waypoint)
 		return waypoint->As<RE::BGSKeywordForm>();
 	return nullptr;
+}
+
 }

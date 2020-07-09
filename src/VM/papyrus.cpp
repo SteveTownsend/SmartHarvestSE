@@ -80,11 +80,11 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = GetBaseFormObjectType(thisForm);
+		ObjectType objType = shse::GetBaseFormObjectType(thisForm);
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 
-		std::string result = GetObjectTypeName(objType);
+		std::string result = shse::GetObjectTypeName(objType);
 		::ToUpper(result);
 		return (!result.empty()) ? result.c_str() : nullptr;
 	}
@@ -92,7 +92,7 @@ namespace papyrus
 	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag* base, SInt32 objectNumber)
 	{
 		RE::BSFixedString result;
-		std::string str = GetObjectTypeName(ObjectType(objectNumber));
+		std::string str = shse::GetObjectTypeName(ObjectType(objectNumber));
 		if (str.empty() || str.c_str() == "unknown")
 			return result;
 		else
@@ -101,12 +101,12 @@ namespace papyrus
 
 	SInt32 GetObjectTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString objectTypeName)
 	{
-		return static_cast<SInt32>(GetObjectTypeByTypeName(objectTypeName.c_str()));
+		return static_cast<SInt32>(shse::GetObjectTypeByTypeName(objectTypeName.c_str()));
 	}
 
 	SInt32 GetResourceTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString resourceTypeName)
 	{
-		return static_cast<SInt32>(ResourceTypeByName(resourceTypeName.c_str()));
+		return static_cast<SInt32>(shse::ResourceTypeByName(resourceTypeName.c_str()));
 	}
 
 	float GetSetting(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSFixedString key)
@@ -135,7 +135,7 @@ namespace papyrus
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return 0.0;
 
-		std::string key = GetObjectTypeName(ObjectType(index));
+		std::string key = shse::GetObjectTypeName(ObjectType(index));
 		::ToLower(key);
 		// constrain INI values to sensible values
 		float value(0.0f);
@@ -159,7 +159,7 @@ namespace papyrus
 		{
 			LootingType tmp_value = LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
 			// weightless objects and OreVeins are always looted unless explicitly disabled
-			if (IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
+			if (shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
 			{
 				value = static_cast<float>(tmp_value == LootingType::LootIfValuableEnoughNotify ? LootingType::LootAlwaysNotify : LootingType::LootAlwaysSilent);
 			}
@@ -196,7 +196,7 @@ namespace papyrus
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return;
 
-		std::string key = GetObjectTypeName(ObjectType(index));
+		std::string key = shse::GetObjectTypeName(ObjectType(index));
 		::ToLower(key);
 		DBG_VMESSAGE("Put config setting (array) %d/%d/%s = %f", first, second, key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
@@ -229,29 +229,29 @@ namespace papyrus
 
 	void SetLootableForProducer(RE::StaticFunctionTag* base, RE::TESForm* critter, RE::TESForm* lootable)
 	{
-		ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
+		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
 	}
 
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search enabled");
-		SearchTask::Allow();
+		shse::SearchTask::Allow();
 	}
 
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search disabled");
-		SearchTask::Disallow();
+		shse::SearchTask::Disallow();
 	}
 
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
 	{
-		return SearchTask::IsAllowed();
+		return shse::SearchTask::IsAllowed();
 	}
 
 	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
 	{
-		UIState::Instance().ReportVMGoodToGo(goodToGo, nonce);
+		shse::UIState::Instance().ReportVMGoodToGo(goodToGo, nonce);
 	}
 
 	constexpr int WhiteList = 1;
@@ -261,42 +261,42 @@ namespace papyrus
 	{
 		if (entryType == BlackList)
 		{
-			ManagedList::BlackList().Reset(reloadGame);
+			shse::ManagedList::BlackList().Reset(reloadGame);
 		}
 		else
 		{
-			ManagedList::WhiteList().Reset(reloadGame);
+			shse::ManagedList::WhiteList().Reset(reloadGame);
 		}
 	}
 	void AddEntryToList(RE::StaticFunctionTag* base, const int entryType, const RE::TESForm* entry)
 	{
 		if (entryType == BlackList)
 		{
-			ManagedList::BlackList().Add(entry);
+			shse::ManagedList::BlackList().Add(entry);
 		}
 		else
 		{
-			ManagedList::WhiteList().Add(entry);
+			shse::ManagedList::WhiteList().Add(entry);
 		}
 	}
 	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		SearchTask::SyncDone(reload);
+		shse::SearchTask::SyncDone(reload);
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
 	{
-		return LocationTracker::Instance().CurrentPlayerPlace();
+		return shse::LocationTracker::Instance().CurrentPlayerPlace();
 	}
 
 	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
 	{
-		return SearchTask::UnlockHarvest(refr, isSilent);
+		return shse::SearchTask::UnlockHarvest(refr, isSilent);
 	}
 
 	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
-		return DataCase::GetInstance()->BlockFirehoseSource(refr);
+		return shse::DataCase::GetInstance()->BlockFirehoseSource(refr);
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
@@ -310,7 +310,7 @@ namespace papyrus
 
 	RE::BSFixedString GetTranslation(RE::StaticFunctionTag* base, RE::BSFixedString key)
 	{
-		DataCase* data = DataCase::GetInstance();
+		shse::DataCase* data = shse::DataCase::GetInstance();
 		return data->GetTranslation(key.c_str());
 	}
 
@@ -429,7 +429,12 @@ namespace papyrus
 
 	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
-		SearchTask::ToggleCalibration(shaderTest);
+		shse::SearchTask::ToggleCalibration(shaderTest);
+	}
+
+	void ShowLocation(RE::StaticFunctionTag* base)
+	{
+		shse::LocationTracker::Instance().DisplayLocationRelativeToMapMarker();
 	}
 
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
@@ -490,6 +495,7 @@ namespace papyrus
 		a_vm->RegisterFunction("PutCollectionAction", SHSE_PROXY, papyrus::PutCollectionAction);
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
+		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
 
 		return true;
 	}
