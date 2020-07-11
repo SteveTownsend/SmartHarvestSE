@@ -46,7 +46,6 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": "Weapons Armor Clothing & Clutter Fixes.esp",
           "signature": [ "ARMO" ],
           "keyword": [ "WAF_ClothingPouch" ]
         }
