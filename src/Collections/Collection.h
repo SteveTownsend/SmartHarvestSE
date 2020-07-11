@@ -66,6 +66,8 @@ public:
 	inline void SetScopes(const std::vector<INIFile::SecondaryType>& scopes) { m_scopes = scopes; }
 
 protected:
+	size_t PlacedMembers(void) const;
+
 	// inputs
 	std::string m_name;
 	std::string m_description;
@@ -73,7 +75,7 @@ protected:
 	std::unique_ptr<ConditionTree> m_rootFilter;
 	// derived
 	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
-	mutable std::unordered_set<RE::FormID> m_members;
+	mutable std::unordered_set<const RE::TESForm*> m_members;
 	std::vector<INIFile::SecondaryType> m_scopes;
 };
 
