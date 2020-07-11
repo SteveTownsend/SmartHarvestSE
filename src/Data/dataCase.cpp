@@ -314,7 +314,7 @@ void DataCase::ExcludeFactionContainers()
 
 	for (RE::TESFaction* faction : dhnd->GetFormArray<RE::TESFaction>())
 	{
-		RE::TESObjectREFR* containerRef = nullptr;
+		const RE::TESObjectREFR* containerRef(nullptr);
 		if (faction->data.kVendor)
 		{
 			containerRef = faction->vendorData.merchantContainer;
@@ -484,6 +484,17 @@ void DataCase::ExcludeImmersiveArmorsGodChest()
 	}
 }
 
+void DataCase::ExcludeGrayCowlStonesChest()
+{
+	// check for best matching candidate in Load Order
+	RE::TESObjectCONT* stonesChestForm(FindBestMatch<RE::TESObjectCONT>("Gray Fox Cowl.esm", 0x1a184, "Chest"));
+	if (stonesChestForm)
+	{
+		REL_MESSAGE("Block Gray Cowl Stones chest %s/0x%08x", stonesChestForm->GetName(), stonesChestForm->GetFormID());
+		m_offLimitsForms.insert(stonesChestForm);
+	}
+}
+
 void DataCase::IncludeFossilMiningExcavation()
 {
 	static std::string espName("Fossilsyum.esp");
@@ -515,7 +526,7 @@ void DataCase::RecordOffLimitsLocations()
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
 #if NDEBUG && !defined(_PROFILING)
-		{"Skyrim.esm", 0x32ae7}	// QASMoke - Release build blocks, others allow
+		{"Skyrim.esm", 0x32ae7}	// QASmoke - Release build blocks, others allow
 #endif
 	};
 	for (const auto& pluginForm : illegalCells)
@@ -780,11 +791,6 @@ void DataCase::ResetBlockedForms()
 	DBG_MESSAGE("Reset Blocked Forms");
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blockForm.clear();
-	for (RE::FormID formID : m_userBlockedForm)
-	{
-		DBG_VMESSAGE("Restore block status for user form 0x%08x", formID);
-		BlockForm(RE::TESForm::LookupByID(formID));
-	}
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
@@ -906,10 +912,6 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 
 void DataCase::CategorizeLootables()
 {
-	REL_MESSAGE("*** LOAD *** Load User blocked forms");
-	if (!GetTSV(&m_userBlockedForm, "BlackList.tsv"))
-		GetTSV(&m_userBlockedForm, "default\\BlackList.tsv");
-
 	// used to taxonomize ACTIvators
 	REL_MESSAGE("*** LOAD *** Load Text Translation");
 	GetTranslationData();
@@ -977,6 +979,7 @@ void DataCase::HandleExceptions()
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();
 	ExcludeImmersiveArmorsGodChest();
+	ExcludeGrayCowlStonesChest();
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 

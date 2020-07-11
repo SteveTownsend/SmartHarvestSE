@@ -77,6 +77,10 @@ public:
 	{
 		return m_offLimitsLocations;
 	}
+	inline bool IsOffLimitsContainer(const RE::TESObjectREFR* containerRef) const
+	{
+		return m_offLimitsContainers.contains(containerRef);
+	}
 
 private:
 	std::unordered_map<std::string, std::string> m_translations;
@@ -85,9 +89,8 @@ private:
 	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
 	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
-	std::unordered_set<RE::TESObjectREFR*> m_offLimitsContainers;
+	std::unordered_set<const RE::TESObjectREFR*> m_offLimitsContainers;
 	std::unordered_set<RE::TESForm*> m_offLimitsForms;
-	std::unordered_set<RE::FormID> m_userBlockedForm;
 	std::unordered_set<const RE::TESForm*> m_blockForm;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_set<RE::FormID> m_blockRefr;
@@ -395,6 +398,7 @@ private:
 	void ExcludeFactionContainers();
 	void ExcludeVendorContainers();
 	void ExcludeImmersiveArmorsGodChest();
+	void ExcludeGrayCowlStonesChest();
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
