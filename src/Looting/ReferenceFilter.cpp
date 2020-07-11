@@ -183,6 +183,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 	if (!cell->IsAttached())
 		return;
 
+	DBG_MESSAGE("Filter %d REFRS in CELL 0x%08x", cell->references.size(), cell->GetFormID());
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
 		RE::TESObjectREFR* refr(refptr.get());

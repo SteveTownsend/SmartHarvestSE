@@ -192,6 +192,17 @@ const std::unordered_map<std::string, RE::FormType> SignatureCondition::m_validS
 	{"WEAP", RE::FormType::Weapon}
 };
 
+const std::vector<RE::FormType> SignatureCondition::m_validFormTypes = {
+	RE::FormType::AlchemyItem,
+	RE::FormType::Armor,
+	RE::FormType::Book,
+	RE::FormType::Ingredient,
+	RE::FormType::KeyMaster,
+	RE::FormType::Misc,
+	RE::FormType::SoulGem,
+	RE::FormType::Weapon
+};
+
 // This is O(n) in TESV Record Type count but only happens during startup, and there are not many of them
 SignatureCondition::SignatureCondition(const std::vector<std::string>& signatures)
 {
@@ -226,6 +237,11 @@ std::string SignatureCondition::FormTypeAsSignature(const RE::FormType formType)
 const decltype(SignatureCondition::m_validSignatures) SignatureCondition::ValidSignatures()
 {
 	return m_validSignatures;
+}
+
+bool SignatureCondition::IsValidFormType(const RE::FormType formType)
+{
+	return std::find(m_validFormTypes.cbegin(), m_validFormTypes.cend(), formType) != m_validFormTypes.cend();
 }
 
 nlohmann::json SignatureCondition::MakeJSON() const

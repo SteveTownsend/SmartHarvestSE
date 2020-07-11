@@ -1,6 +1,7 @@
 #include "PrecompiledHeaders.h"
 
 #include "Collections/Collection.h"
+#include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
 #include "VM/papyrus.h"
 #include "WorldState/PlayerState.h"
@@ -27,7 +28,7 @@ Collection::Collection(const std::string& name, const std::string& description, 
 
 bool Collection::AddMemberID(const RE::TESForm* form)const 
 {
-	if (form && m_members.insert(form->GetFormID()).second)
+	if (form && m_members.insert(form).second)
 	{
 		return true;
 	}
@@ -37,7 +38,7 @@ bool Collection::AddMemberID(const RE::TESForm* form)const
 bool Collection::IsMemberOf(const RE::TESForm* form) const
 {
 	// Check static list of IDs
-	return form && m_members.contains(form->GetFormID());
+	return form && m_members.contains(form);
 }
 
 bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
@@ -108,10 +109,17 @@ std::string Collection::PrintDefinition() const
 	return collectionStr.str();
 }
 
+
+size_t Collection::PlacedMembers(void) const
+{
+	return std::count_if(m_members.cbegin(), m_members.cend(),
+		[&](const RE::TESForm* form) -> bool { return CollectionManager::Instance().IsPlacedObject(form); });
+}
+
 std::string Collection::PrintMembers(void) const
 {
 	std::ostringstream collectionStr;
-	collectionStr << m_members.size() << " members\n";
+	collectionStr << m_members.size() << " members of which " << PlacedMembers() << " are placed in the world\n";
 	if (!m_scopes.empty())
 	{
 		collectionStr << "Scope: ";
@@ -131,12 +139,8 @@ std::string Collection::PrintMembers(void) const
 	}
 	for (const auto member : m_members)
 	{
-		collectionStr << "  0x" << std::hex << std::setw(8) << std::setfill('0') << member;
-		RE::TESForm* form(RE::TESForm::LookupByID(member));
-		if (form)
-		{
-			collectionStr << ":" << form->GetName();
-		}
+		collectionStr << "  0x" << std::hex << std::setw(8) << std::setfill('0') << member->GetFormID();
+		collectionStr << ":" << (CollectionManager::Instance().IsPlacedObject(member) ? 'Y' : 'N') << ":" << member->GetName();
 		collectionStr << '\n';
 	}
 	return collectionStr.str();
