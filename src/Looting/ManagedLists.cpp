@@ -60,10 +60,21 @@ void ManagedList::Drop(const RE::TESForm* entry)
 	m_members.erase(entry);
 }
 
-bool ManagedList::Contains(const RE::TESForm* location) const
+// sometimes multiple items use the same name - we treat them all the same
+bool ManagedList::Contains(const RE::TESForm* entry) const
 {
+	if (!entry)
+		return false;
 	RecursiveLockGuard guard(m_listLock);
-	return m_members.contains(location);
+	return m_members.contains(entry) || HasEntryWithSameName(entry->GetName());
+}
+
+bool ManagedList::HasEntryWithSameName(const std::string& name) const
+{
+	return !name.empty() && std::find_if(m_members.cbegin(), m_members.cend(), [&](const RE::TESForm* form) -> bool
+	{
+		return form->GetName() == name;
+	}) != m_members.cend();
 }
 
 }
