@@ -17,6 +17,8 @@ public:
 	bool Contains(const RE::TESForm* entry) const;
 
 private:
+	bool HasEntryWithSameName(const std::string& name) const;
+
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;
 
