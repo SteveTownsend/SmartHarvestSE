@@ -37,6 +37,40 @@
     },
 
     {
+      "name": "Oblivious",
+      "description": "Items added by Oblivion Artifacts",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "WZOblivionArtifacts.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Zimmersed",
+      "description": "Items added by Zim's Immersive Artifacts",
+      "policy": {
+        "action": "glow",
+        "notify": true,
+        "repeat": false
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "ZIA_Complete Pack.esp" ],
+          "signature": [ "ARMO", "BOOK", "INGR", "WEAP" ]
+        }
+      }
+    },
+
+    {
       "name": "Palaeontologist",
       "description": "All the fossils added by Fossil Mining",
       "policy": {
