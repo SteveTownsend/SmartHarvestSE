@@ -58,6 +58,7 @@ namespace shse {
 	class SignatureCondition : public Condition {
 	private:
 		static const std::unordered_map<std::string, RE::FormType> m_validSignatures;
+		static const std::vector<RE::FormType> m_validFormTypes;
 		std::vector<RE::FormType> m_formTypes;
 
 	public:
@@ -67,6 +68,7 @@ namespace shse {
 		SignatureCondition(const std::vector<std::string>& signatures);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
 		static const decltype(m_validSignatures) ValidSignatures();
+		static bool IsValidFormType(const RE::FormType formType);
 		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 		static std::string FormTypeAsSignature(const RE::FormType formType);
