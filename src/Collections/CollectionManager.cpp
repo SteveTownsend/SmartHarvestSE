@@ -1,3 +1,22 @@
+/*************************************************************************
+SmartHarvest SE
+Copyright (c) Steve Townsend 2020
+
+>>> SOURCE LICENSE >>>
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation (www.fsf.org); either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+A copy of the GNU General Public License is available at
+http://www.fsf.org/licensing/licenses
+>>> END OF LICENSE >>>
+*************************************************************************/
 #include "PrecompiledHeaders.h"
 
 #include <filesystem>
@@ -617,8 +636,12 @@ bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 
 void CollectionManager::RecordPlacedObjects(void)
 {
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Record Placed Objects");
+#endif
+
 	// list all placed objects of interest for Collections - don't quest for anything we cannot see
-for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
+	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
 		DBG_MESSAGE("Process %d CELLs in WorldSpace Map for %s/0x%08x", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
 		for (const auto cellEntry : worldSpace->cellMap)
@@ -642,6 +665,9 @@ bool CollectionManager::IsPlacedObject(const RE::TESForm* form) const
 
 void CollectionManager::ResolveMembership(void)
 {
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Resolve Collection Membership");
+#endif
 	std::unordered_set<RE::TESForm*> uniquePlaced;
 	std::unordered_set<RE::TESForm*> uniqueMembers;
 	for (const auto& signature : SignatureCondition::ValidSignatures())
