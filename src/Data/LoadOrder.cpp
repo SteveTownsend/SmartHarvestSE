@@ -37,13 +37,19 @@ LoadOrder& LoadOrder::Instance()
 	return *m_instance;
 }
 
+LoadOrder::LoadOrder() : m_shsePriority(-1)
+{
+}
+
 bool LoadOrder::Analyze(void)
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	if (!dhnd)
 		return false;
 	static const std::string oldName(PRIORNAME);
+	static const std::string shseName(MODNAME);
 	// Process each ESP and ESPFE/ESL in the master list of RE::TESFile / loaded mod instances
+	int priority(0);
 	for (const auto modFile : dhnd->files)
 	{
 		// Make sure the earlier version of the mod is not installed
@@ -51,6 +57,10 @@ bool LoadOrder::Analyze(void)
 		{
 			REL_ERROR("Prior mod plugin version (%s) is incompatible with current plugin (%s)", oldName.c_str(), &MODNAME[0]);
 			return false;
+		}
+		if (shseName.compare(0, shseName.length(), &modFile->fileName[0]) == 0)
+		{
+			m_shsePriority = priority;
 		}
 
 		// validation logic from CommonLibSSE 
@@ -63,8 +73,9 @@ bool LoadOrder::Analyze(void)
 		RE::FormID formIDMask(modFile->compileIndex << (3 * 8));
 		formIDMask += modFile->smallFileCompileIndex << ((1 * 8) + 4);
 
-		m_formIDMaskByName.insert(std::make_pair(modFile->fileName, formIDMask));
-		REL_MESSAGE("%s has FormID mask 0x%08x", modFile->fileName, formIDMask);
+		m_loadInfoByName.insert(std::make_pair(modFile->fileName, LoadInfo({ formIDMask, priority })));
+		REL_MESSAGE("%s has FormID mask 0x%08x, priority %d", modFile->fileName, formIDMask, priority);
+		++priority;
 	}
 	return true;
 }
@@ -72,10 +83,10 @@ bool LoadOrder::Analyze(void)
 // returns zero if mod not loaded
 RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 {
-	const auto& matched(m_formIDMaskByName.find(modName));
-	if (matched != m_formIDMaskByName.cend())
+	const auto& matched(m_loadInfoByName.find(modName));
+	if (matched != m_loadInfoByName.cend())
 	{
-		return matched->second;
+		return matched->second.m_mask;
 	}
 	return InvalidPlugin;
 }
@@ -83,7 +94,14 @@ RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 // returns true iff mod listed, which means it is active by virtue of exclusion of 0xff above
 bool LoadOrder::IncludesMod(const std::string& modName) const
 {
-	return m_formIDMaskByName.find(modName) != m_formIDMaskByName.cend();
+	return m_loadInfoByName.find(modName) != m_loadInfoByName.cend();
+}
+
+// returns true iff mod is installed/active, and earlier than SHSE in Load Order
+bool LoadOrder::ModPrecedesSHSE(const std::string& modName) const
+{
+	const auto matched(m_loadInfoByName.find(modName));
+	return matched != m_loadInfoByName.cend() && matched->second.m_priority < m_shsePriority;
 }
 
 bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID) const
@@ -98,16 +116,17 @@ bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID)
 void LoadOrder::AsJSON(nlohmann::json& j) const
 {
 	j["order"] = nlohmann::json::array();
-	std::map<RE::FormID, std::string> ordered;
-	std::for_each(m_formIDMaskByName.cbegin(), m_formIDMaskByName.cend(), [&](const auto& pluginMask)
+	std::map<LoadInfo, std::string> ordered;
+	std::for_each(m_loadInfoByName.cbegin(), m_loadInfoByName.cend(), [&](const auto& loadInfo)
 	{
-		ordered.insert(std::make_pair(pluginMask.second, pluginMask.first));
+		ordered.insert(std::make_pair(loadInfo.second, loadInfo.first));
 	});
-	for (const auto& maskPlugin : ordered)
+	for (const auto& loadInfo : ordered)
 	{
 		nlohmann::json entry;
-		entry["formID"] = int(maskPlugin.first);
-		entry["name"] = maskPlugin.second;
+		entry["formIDMask"] = int(loadInfo.first.m_mask);
+		entry["priority"] = int(loadInfo.first.m_priority);
+		entry["name"] = loadInfo.second;
 		j["order"].push_back(entry);
 	}
 }
