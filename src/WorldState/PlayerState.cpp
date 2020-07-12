@@ -257,10 +257,15 @@ bool PlayerState::IsSneaking() const
 void PlayerState::ExcludeMountedIfForbidden(void)
 {
 	// check for 'Convenient Horses' in Load Order
-	if (shse::LoadOrder::Instance().IncludesMod("Convenient Horses.esp"))
+	constexpr const char* convenientHorsesName("Convenient Horses.esp");
+	if (shse::LoadOrder::Instance().ModPrecedesSHSE(convenientHorsesName))
 	{
-		REL_MESSAGE("Block looting while mounted: Convenient Horses is active");
+		REL_MESSAGE("Block looting while mounted: Convenient Horses loads before SHSE");
 		m_disableWhileMounted = true;
+	}
+	else if (shse::LoadOrder::Instance().IncludesMod(convenientHorsesName))
+	{
+		REL_MESSAGE("SHSE handles looting while mounted: Convenient Horses loads after SHSE");
 	}
 }
 

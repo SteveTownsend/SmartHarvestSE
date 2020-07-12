@@ -46,13 +46,11 @@ public:
 	void Run();
 
 	static bool IsLockedForHarvest(const RE::TESObjectREFR* refr);
-	static size_t PendingHarvestNotifications();
 	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
 	static void SyncDone(const bool reload);
 	static void ToggleCalibration(const bool glowDemo);
 
-	static void Start();
 	static void PrepareForReload();
 	static void AfterReload();
 	static void Allow();
@@ -61,23 +59,35 @@ public:
 	static void ResetRestrictions(const bool gameReload);
 	static void DoPeriodicSearch();
 
+	static RE::FormID LootedDynamicContainerFormID(const RE::TESObjectREFR* refr);
+	static bool IsLootedContainer(const RE::TESObjectREFR* refr);
+
+	static void OnGoodToGo(void);
+
+private:
+	static size_t PendingHarvestNotifications();
 	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
+	static void Start();
+
+	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
+	static void ForgetLockedContainers();
+
+	static void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr);
+	static void ResetLootedDynamicContainers();
+
+	static void MarkContainerLooted(const RE::TESObjectREFR* refr);
+	static void ResetLootedContainers();
 
 	bool IsLootingForbidden(const INIFile::SecondaryType targetType);
 	bool IsBookGlowable() const;
 
-	static void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr);
-	static RE::FormID LootedDynamicContainerFormID(const RE::TESObjectREFR* refr);
-	static void ResetLootedDynamicContainers();
-
-	static void MarkContainerLooted(const RE::TESObjectREFR* refr);
-	static bool IsLootedContainer(const RE::TESObjectREFR* refr);
-	static void ResetLootedContainers();
-
 	static bool HasDynamicData(RE::TESObjectREFR* refr);
 	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
 
-	static void OnGoodToGo(void);
+	// special object glow - not too long, in case we loot or move away
+	static constexpr int ObjectGlowDurationSpecialSeconds = 10;
+	// brief glow for looted objects and other purposes
+	static constexpr int ObjectGlowDurationLootedSeconds = 2;
 
 	static INIFile* m_ini;
 
@@ -93,7 +103,7 @@ public:
 	static RecursiveLock m_searchLock;
 	static bool m_threadStarted;
 	static bool m_searchAllowed;
-	
+
 	static bool m_pluginSynced;
 
 	static RecursiveLock m_lock;
@@ -103,12 +113,8 @@ public:
 	static std::unordered_map<const RE::TESObjectREFR*, RE::FormID> m_lootedDynamicContainers;
 	static std::unordered_set<const RE::TESObjectREFR*> m_lootedContainers;
 
-	// special object glow - not too long, in case we loot or move away
-	static constexpr int ObjectGlowDurationSpecialSeconds = 10;
-
-private:
-	// brief glow for looted objects and other purposes
-	static constexpr int ObjectGlowDurationLootedSeconds = 2;
+	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
+	static std::unordered_set<const RE::TESObjectREFR*> m_lockedContainers;
 
 	// Loot Range calibration setting
 	static bool m_calibrating;

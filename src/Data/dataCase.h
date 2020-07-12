@@ -51,10 +51,6 @@ public:
 	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr);
 	void ClearReferenceBlacklist();
 
-	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
-	void ForgetLockedContainers();
-	void UpdateLockedContainers();
-
 	bool BlockForm(const RE::TESForm* form);
 	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
@@ -114,7 +110,6 @@ private:
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_set<RE::FormID> m_blockRefr;
 	std::unordered_set<RE::FormID> m_blacklistRefr;
-	std::unordered_map<RE::FormID, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lockedContainers;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
