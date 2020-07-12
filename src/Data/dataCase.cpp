@@ -505,8 +505,8 @@ void DataCase::ExcludeImmersiveArmorsGodChest()
 
 void DataCase::ExcludeGrayCowlStonesChest()
 {
-	// check for best matching candidate in Load Order
-	RE::TESObjectCONT* stonesChestForm(FindBestMatch<RE::TESObjectCONT>("Gray Fox Cowl.esm", 0x1a184, "Chest"));
+	// check for best matching candidate in Load Order - use exact match as the name is the very vague "Chest"
+	RE::TESObjectCONT* stonesChestForm(FindExactMatch<RE::TESObjectCONT>("Gray Fox Cowl.esm", 0x1a184));
 	if (stonesChestForm)
 	{
 		REL_MESSAGE("Block Gray Cowl Stones chest %s/0x%08x", stonesChestForm->GetName(), stonesChestForm->GetFormID());
@@ -710,67 +710,6 @@ void DataCase::ClearReferenceBlacklist()
 	m_blacklistRefr.clear();
 }
 
-// Remember locked containers so we do not indiscriminately auto-loot them after a player unlock, if config forbids
-bool DataCase::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
-{
-	if (!refr)
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	auto lockedMatch(m_lockedContainers.find(refr->GetFormID()));
-	if (!IsContainerLocked(refr))
-	{
-		if (lockedMatch != m_lockedContainers.end())
-		{
-			// If container is not locked, but previously was stored as locked, see if it remains unlocked for long enough
-			// to safely erase our record of it
-			// We take this approach in case unlock has script lag and we auto-loot before manually seeing the container
-			// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If 
-			// they don't want this, just configure 'Loot locked container'.
-			const auto recordedTime(lockedMatch->second);
-			if (std::chrono::high_resolution_clock::now() - recordedTime > std::chrono::milliseconds(SearchTask::ObjectGlowDurationSpecialSeconds * 1000))
-			{
-				DBG_VMESSAGE("Forget previously-locked container %s/0x%08x", refr->GetName(), refr->GetFormID());
-				m_lockedContainers.erase(lockedMatch);
-				return false;
-			}
-			return true;
-		}
-		return false;
-	}
-	else
-	{
-		// container is locked - save current time, update if already stored
-		if (lockedMatch == m_lockedContainers.end())
-		{
-			m_lockedContainers.insert(std::make_pair(refr->GetFormID(), std::chrono::high_resolution_clock::now()));
-			DBG_VMESSAGE("Remember locked container %s/0x%08x", refr->GetName(), refr->GetFormID());
-		}
-		else
-		{
-			lockedMatch->second = std::chrono::high_resolution_clock::now();
-		}
-		return true;
-	}
-}
-
-void DataCase::ForgetLockedContainers()
-{
-	DBG_MESSAGE("Clear locked containers from last cell");
-	RecursiveLockGuard guard(m_blockListLock);
-	m_lockedContainers.clear();
-}
-
-void DataCase::UpdateLockedContainers()
-{
-	RecursiveLockGuard guard(m_blockListLock);
-	DBG_MESSAGE("Update last checked time on %d locked containers", m_lockedContainers.size());
-	auto currentTime(std::chrono::high_resolution_clock::now());
-	for (auto& lockedContainer : m_lockedContainers)
-	{
-		lockedContainer.second = currentTime;
-	}
-}
-
 bool DataCase::BlockForm(const RE::TESForm* form)
 {
 	if (!form)
@@ -883,7 +822,6 @@ void DataCase::ListsClear(const bool gameReload)
 	ResetBlockedForms();
 	ClearBlockedReferences(gameReload);
 	BlockOffLimitsContainers();
-	ForgetLockedContainers();
 }
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)

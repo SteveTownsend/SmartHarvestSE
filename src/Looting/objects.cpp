@@ -31,6 +31,8 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
+constexpr RE::FormID BossContainerLCRT = 0x0130F8;
+
 bool IsBossContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
@@ -42,7 +44,7 @@ bool IsBossContainer(const RE::TESObjectREFR* refr)
 		return nullptr;
 
 	const RE::ExtraLocationRefType* exLocRefType = extraList->GetByType<RE::ExtraLocationRefType>();
-	return exLocRefType && exLocRefType->locRefType->formID == 0x0130F8;
+	return exLocRefType && exLocRefType->locRefType->formID == BossContainerLCRT;
 }
 
 // this logic is essential - TESObjectREFR::IsLocked() is not reliable

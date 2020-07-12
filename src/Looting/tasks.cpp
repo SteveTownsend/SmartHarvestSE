@@ -196,6 +196,41 @@ void SearchTask::ResetLootedContainers()
 	m_lootedContainers.clear();
 }
 
+std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_lockedContainers;
+
+// Remember locked containers so we do not auto-loot after player unlock, if config forbids
+bool SearchTask::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+	RecursiveLockGuard guard(m_lock);
+	// check instantaneous locked/unlocked state of the container
+	if (!IsContainerLocked(refr))
+	{
+		// If container is not locked, but previously was stored as locked, continue to treat as unlocked until game reload.
+		// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If they don't
+		// want this, they should configure 'Loot locked container'. Such a container will glow locked even after player
+		// unlocks.
+		DBG_VMESSAGE("Revisiting REFR 0x%08x to previously-locked container %s/0x%08x", refr->GetFormID(),
+			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		return m_lockedContainers.find(refr) != m_lockedContainers.cend();
+	}
+	// container is locked - save if not already known
+	else if (m_lockedContainers.insert(refr).second)
+	{
+		DBG_VMESSAGE("Remember REFR 0x%08x to locked container %s/0x%08x", refr->GetFormID(),
+			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+	}
+	return true;
+}
+
+void SearchTask::ForgetLockedContainers()
+{
+	DBG_MESSAGE("Clear locked containers blacklist");
+	RecursiveLockGuard guard(m_lock);
+	m_lockedContainers.clear();
+}
+
 void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 {
 	shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
@@ -452,7 +487,9 @@ void SearchTask::Run()
 		m_glowReason = GlowReason::None;
 		if (m_targetType == INIFile::SecondaryType::containers)
 		{
-			if (data->IsReferenceLockedContainer(m_candidate))
+			// If a container is once found locked, it remains treated the same way according to the looting rules. This means a chest that player unlocked
+			// will continue to glow if not auto-looted.
+			if (IsReferenceLockedContainer(m_candidate))
 			{
 				SpecialObjectHandling lockedChestLoot =
 					SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "lockedChestLoot"));
@@ -922,8 +959,9 @@ void SearchTask::ResetRestrictions(const bool gameReload)
 		PlayerHouses::Instance().Clear();
 		// reset Actor data
 		shse::ActorTracker::Instance().Reset();
-		// clear list of looted containers
+		// clear lists of looted and locked containers
 		ResetLootedContainers();
+		ForgetLockedContainers();
 		// Reset Collections State and reapply the saved-game data
 		shse::CollectionManager::Instance().OnGameReload();
 	}
@@ -942,8 +980,6 @@ void SearchTask::OnGoodToGo()
 	static const bool reloaded(false);
 	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
 
-	// update Locked Container last-accessed time
-	DataCase::GetInstance()->UpdateLockedContainers();
 	// Base Object Forms and REFRs handled for the case where we are not reloading game
 	DataCase::GetInstance()->ResetBlockedForms();
 	DataCase::GetInstance()->ClearBlockedReferences(false);
