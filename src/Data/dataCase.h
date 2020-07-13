@@ -88,6 +88,8 @@ public:
 	}
 
 	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
+	float PerkIngredientMultiplier(const RE::Actor* actor) const;
+
 	inline const std::unordered_set<const RE::TESForm*>& OffLimitsLocations()
 	{
 		return m_offLimitsLocations;
@@ -116,6 +118,8 @@ private:
 	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
+	// assume simple setters for now, like vanilla Green Thumb
+	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
 
 	mutable RecursiveLock m_blockListLock;
 

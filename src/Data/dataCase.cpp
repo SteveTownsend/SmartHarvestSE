@@ -271,9 +271,23 @@ void DataCase::AnalyzePerks(void)
 			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kAddLeveledListOnDeath &&
 				entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kAddLeveledList)
 			{
-				DBG_MESSAGE("Leveled items added on death by perk %s/0x%08x", perk->GetName(), perk->GetFormID());
+				REL_MESSAGE("Leveled items added on death by perk %s/0x%08x", perk->GetName(), perk->GetFormID());
 				m_leveledItemOnDeathPerks.insert(perk);
-				break;
+			}
+			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kModIngredientsHarvested)
+			{
+				if (entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kSetValue && 
+					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::FunctionType::kOneValue)
+				{
+					const RE::BGSEntryPointFunctionDataOneValue* oneValued(static_cast<const RE::BGSEntryPointFunctionDataOneValue*>(entryPoint->functionData));
+					REL_MESSAGE("Modify Harvested Ingredients factor %.2f from perk %s/0x%08x", oneValued->data, perk->GetName(), perk->GetFormID());
+					m_modifyHarvestedPerkMultipliers.insert(std::make_pair(perk, oneValued->data));
+				}
+				else
+				{
+					REL_WARNING("Modify Harvested Ingredients unsupported for perk %s/0x%08x, function %d, type %d", perk->GetName(), perk->GetFormID(),
+						entryPoint->entryData.function, entryPoint->functionData ? int(entryPoint->functionData->GetType()) : -1);
+				}
 			}
 		}
 	}
@@ -1117,6 +1131,30 @@ bool DataCase::PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const
 		return true;
 	}
 	return false;
+}
+
+float DataCase::PerkIngredientMultiplier(const RE::Actor* actor) const
+{
+	// default is one ingredient
+	float result(1.0);
+	const RE::BGSPerk* matched(nullptr);
+	std::for_each(m_modifyHarvestedPerkMultipliers.cbegin(), m_modifyHarvestedPerkMultipliers.cend(),
+		[&](const auto& perkEntry) {
+		if (actor->HasPerk(const_cast<RE::BGSPerk*>(perkEntry.first)))
+		{
+			if (matched)
+			{
+				DBG_VMESSAGE("Perk conflict ingredient harvesting via %s/0x%08x, discarding", perkEntry.first->GetName(), perkEntry.first->GetFormID());
+			}
+			else
+			{
+				DBG_VMESSAGE("Perk %s/0x%08x used for harvesting, multiplier %.2f", perkEntry.first->GetName(), perkEntry.first->GetFormID(), perkEntry.second);
+				matched = perkEntry.first;
+				result = perkEntry.second;
+			}
+		}
+	});
+	return result;
 }
 
 std::string DataCase::GetModelPath(const RE::TESForm* thisForm) const

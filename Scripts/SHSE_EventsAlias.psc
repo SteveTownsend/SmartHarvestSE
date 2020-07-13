@@ -12,7 +12,6 @@ GlobalVariable StrikesBeforeCollection
 Message property whitelist_message auto
 Message property to_list_message auto
 Container Property list_nametag auto
-Perk Property greenThumbPerk auto
 
 int type_Common = 1
 int type_Harvest = 2
@@ -592,7 +591,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
 EndEvent
 
-Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify, bool collectible)
+Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify, bool collectible, float ingredientCount)
     bool notify = false
     form baseForm = akTarget.GetBaseObject()
 
@@ -615,20 +614,13 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 
         elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
-            bool applyGreenThumb = (greenThumbPerk && player.HasPerk(greenThumbPerk)) as bool
-            bool suppressMessage = silent || applyGreenThumb
-            ;DebugTrace("Flora " + baseForm.GetName())
+            ;DebugTrace("Player has ingredient count " + ingredientCount)
+            bool suppressMessage = silent || ingredientCount as int > 1
+            ;DebugTrace("Flora/Tree original base form " + baseForm.GetName())
             if ActivateEx(akTarget, player, suppressMessage)
                 ;we must send the message if required default would have been incorrect
-                notify = !silent && applyGreenThumb
-                if applyGreenThumb
-                    float greenThumbValue = greenThumbPerk.GetNthEntryValue(0, 0)
-                    int countPP = ((count * greenThumbValue) - count) as int
-                    if (countPP >= 1)
-                        player.AddItem(baseForm, countPP, true)
-                        count = count + countPP
-                    endif
-                endIf
+                notify = !silent && ingredientCount as int > 1
+                count = count * ingredientCount as int
             endif
         ; Critter ACTI REFRs cannot be identified by item type
         elseif akTarget as Critter || akTarget as FXfakeCritterScript

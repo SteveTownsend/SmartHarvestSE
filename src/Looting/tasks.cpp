@@ -457,7 +457,8 @@ void SearchTask::Run()
 			if (!LockHarvest(m_candidate, isSilent))
 				return;
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
-				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify, collectible.first);
+				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify,
+				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
 		}
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)

@@ -187,6 +187,10 @@ void PlayerState::CheckPerks(const bool force)
 			m_perksAddLeveledItemsOnDeath = DataCase::GetInstance()->PerksAddLeveledItemsOnDeath(player);
 			DBG_MESSAGE("Leveled items added on death by perks? %s", m_perksAddLeveledItemsOnDeath ? "true" : "false");
 		}
+
+		m_harvestedIngredientMultiplier = DataCase::GetInstance()->PerkIngredientMultiplier(player);
+		DBG_VMESSAGE("Perk for harvesting -> multiplier %.2f", m_harvestedIngredientMultiplier);
+
 		m_lastPerkCheck = timeNow;
 	}
 }
@@ -197,6 +201,13 @@ bool PlayerState::PerksAddLeveledItemsOnDeath() const
 	RecursiveLockGuard guard(m_playerLock);
 	return m_perksAddLeveledItemsOnDeath;
 }
+
+float PlayerState::PerkIngredientMultiplier() const
+{
+	RecursiveLockGuard guard(m_playerLock);
+	return m_harvestedIngredientMultiplier;
+}
+
 
 // reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
 void PlayerState::ResetCarryWeight(const bool reloaded)

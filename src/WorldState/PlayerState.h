@@ -35,6 +35,7 @@ public:
 	void ResetCarryWeight(const bool reloaded);
 	void CheckPerks(const bool force);
 	bool PerksAddLeveledItemsOnDeath() const;
+	float PerkIngredientMultiplier() const;
 	bool CanLoot() const;
 	bool IsSneaking() const;
 	void ExcludeMountedIfForbidden(void);
@@ -51,6 +52,7 @@ private:
 	static constexpr int PerkCheckIntervalSeconds = 15;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
 	bool m_perksAddLeveledItemsOnDeath;
+	float m_harvestedIngredientMultiplier;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;
