@@ -51,6 +51,12 @@ int Function CollectionAction(String groupName, String collectionName) global na
 Function PutCollectionAllowsRepeats(String groupName, String collectionName, bool allowRepeats) global native
 Function PutCollectionNotifies(String groupName, String collectionName, bool notifies) global native
 Function PutCollectionAction(String groupName, String collectionName, int action) global native
+bool Function CollectionGroupAllowsRepeats(String groupName) global native
+bool Function CollectionGroupNotifies(String groupName) global native
+int Function CollectionGroupAction(String groupName) global native
+Function PutCollectionGroupAllowsRepeats(String groupName, bool allowRepeats) global native
+Function PutCollectionGroupNotifies(String groupName, bool notifies) global native
+Function PutCollectionGroupAction(String groupName, int action) global native
 int Function CollectionTotal(String groupName, String collectionName) global native
 int Function CollectionObtained(String groupName, String collectionName) global native
 

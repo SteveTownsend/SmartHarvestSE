@@ -45,12 +45,21 @@ public:
 	int NumberOfCollections(const std::string& groupName) const;
 	std::string NameByGroupIndex(const std::string& groupName, const int collectionIndex) const;
 	static std::string MakeLabel(const std::string& groupName, const std::string& collectionName);
+
 	bool PolicyRepeat(const std::string& groupName, const std::string& collectionName) const;
 	bool PolicyNotify(const std::string& groupName, const std::string& collectionName) const;
 	SpecialObjectHandling PolicyAction(const std::string& groupName, const std::string& collectionName) const;
 	void PolicySetRepeat(const std::string& groupName, const std::string& collectionName, const bool allowRepeats);
 	void PolicySetNotify(const std::string& groupName, const std::string& collectionName, const bool notify);
 	void PolicySetAction(const std::string& groupName, const std::string& collectionName, const SpecialObjectHandling action);
+
+	bool GroupPolicyRepeat(const std::string& groupName) const;
+	bool GroupPolicyNotify(const std::string& groupName) const;
+	SpecialObjectHandling GroupPolicyAction(const std::string& groupName) const;
+	void GroupPolicySetRepeat(const std::string& groupName, const bool allowRepeats);
+	void GroupPolicySetNotify(const std::string& groupName, const bool notify);
+	void GroupPolicySetAction(const std::string& groupName, const SpecialObjectHandling action);
+
 	size_t TotalItems(const std::string& groupName, const std::string& collectionName) const;
 	size_t ItemsObtained(const std::string& groupName, const std::string& collectionName) const;
 	bool IsPlacedObject(const RE::TESForm* form) const;
@@ -79,7 +88,7 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;
 	std::multimap<std::string, std::string> m_collectionsByGroupName;
 	std::unordered_map<std::string, std::string> m_fileNamesByGroupName;
-	std::vector<std::shared_ptr<CollectionGroup>> m_allGroups;
+	std::unordered_map<std::string, std::shared_ptr<CollectionGroup>> m_allGroupsByName;
 	// Link each Form to the Collections in which it belongs
 	std::unordered_multimap<RE::FormID, std::shared_ptr<Collection>> m_collectionsByFormID;
 	std::unordered_set<RE::FormID> m_nonCollectionForms;

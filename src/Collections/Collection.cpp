@@ -40,8 +40,9 @@ void to_json(nlohmann::json& j, const CollectionPolicy& policy)
 	policy.AsJSON(j);
 }
 
-Collection::Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy, std::unique_ptr<ConditionTree> filter) :
-	m_name(name), m_description(description), m_effectivePolicy(policy), m_rootFilter(std::move(filter))
+Collection::Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
+	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
+	m_name(name), m_description(description), m_effectivePolicy(policy), m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
 }
 
@@ -198,6 +199,17 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());
 		}
 	});
+}
+
+void CollectionGroup::SyncDefaultPolicy()
+{
+	for (const auto collection : m_collections)
+	{
+		if (!collection->OverridesGroup())
+		{
+			collection->SetPolicy(m_policy);
+		}
+	}
 }
 
 void CollectionGroup::AsJSON(nlohmann::json& j) const

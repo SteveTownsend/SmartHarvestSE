@@ -70,13 +70,17 @@ void to_json(nlohmann::json& j, const CollectionPolicy& collection);
 
 class Collection {
 public:
-	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy, std::unique_ptr<ConditionTree> filter);
+	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
+		const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
 	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
 	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
 	bool AddMemberID(const RE::TESForm* form) const;
 	inline const CollectionPolicy& Policy() const { return m_effectivePolicy; }
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
+	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
+	inline bool OverridesGroup() const { return m_overridesGroup; }
+	inline void SetOverridesGroup() { m_overridesGroup = true; }
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
 	void RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place);
@@ -96,6 +100,7 @@ protected:
 	std::string m_description;
 	// may inherit Policy from Group or override
 	CollectionPolicy m_effectivePolicy;
+	bool m_overridesGroup;
 	std::unique_ptr<ConditionTree> m_rootFilter;
 	// derived
 	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
@@ -111,6 +116,9 @@ public:
 	inline const std::vector<std::shared_ptr<Collection>>& Collections() const { return m_collections; }
 	inline std::string Name() const { return m_name; }
 	void AsJSON(nlohmann::json& j) const;
+	inline const CollectionPolicy& Policy() const { return m_policy; }
+	inline CollectionPolicy& Policy() { return m_policy; }
+	void SyncDefaultPolicy();
 
 private:
 	std::string m_name;

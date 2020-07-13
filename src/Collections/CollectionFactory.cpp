@@ -137,10 +137,11 @@ std::shared_ptr<Collection> CollectionFactory::ParseCollection(const nlohmann::j
 {
 	const auto policy(collection.find("policy"));
 	const std::string name(collection["name"].get<std::string>());
-	DBG_VMESSAGE("Collection %s, overrides Policy = %s", name.c_str(), policy != collection.cend() ? "true" : "false");
+	bool overridesPolicy(policy != collection.cend());
+	DBG_VMESSAGE("Collection %s, overrides Policy = %s", name.c_str(), overridesPolicy ? "true" : "false");
 
 	return std::make_shared<Collection>(name, collection["description"].get<std::string>(),
-		policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, ParseFilter(collection["rootFilter"], 0));
+		policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, overridesPolicy, ParseFilter(collection["rootFilter"], 0));
 }
 
 std::shared_ptr<CollectionGroup> CollectionFactory::ParseGroup(const nlohmann::json& group, const std::string& groupName) const

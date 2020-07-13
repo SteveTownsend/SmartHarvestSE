@@ -228,7 +228,7 @@ bool CollectionManager::LoadCollectionGroup(
 		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(collectionGroupData, groupName));
 		BuildDecisionTrees(collectionGroup);
 		m_fileNamesByGroupName.insert(std::make_pair(groupName, defFile.string()));
-		m_allGroups.push_back(collectionGroup);
+		m_allGroupsByName.insert(std::make_pair(groupName, collectionGroup));
 		return true;
 	}
 	catch (const std::exception& e) {
@@ -297,10 +297,10 @@ void CollectionManager::PrintDefinitions(void) const
 
 void CollectionManager::PrintMembership(void) const
 {
-	for (const auto& collectionGroup : m_allGroups)
+	for (const auto& collectionGroup : m_allGroupsByName)
 	{
-		REL_MESSAGE("Collection Group %s:", collectionGroup->Name().c_str());
-		for (const auto& collection : collectionGroup->Collections())
+		REL_MESSAGE("Collection Group %s:", collectionGroup.second->Name().c_str());
+		for (const auto& collection : collectionGroup.second->Collections())
 		{
 			REL_MESSAGE("Collection %s:\n%s", collection->Name().c_str(), collection->PrintMembers().c_str());
 		}
@@ -413,6 +413,7 @@ void CollectionManager::PolicySetRepeat(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetRepeat(allowRepeats);
+		matched->second->SetOverridesGroup();
 	}
 }
 
@@ -423,7 +424,8 @@ void CollectionManager::PolicySetNotify(const std::string& groupName, const std:
 	auto matched(m_allCollectionsByLabel.find(label));
 	if (matched != m_allCollectionsByLabel.cend())
 	{
-		return matched->second->Policy().SetNotify(notify);
+		matched->second->Policy().SetNotify(notify);
+		matched->second->SetOverridesGroup();
 	}
 }
 
@@ -435,6 +437,73 @@ void CollectionManager::PolicySetAction(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetAction(action);
+		matched->second->SetOverridesGroup();
+	}
+}
+
+bool CollectionManager::GroupPolicyRepeat(const std::string& groupName) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allGroupsByName.find(groupName));
+	if (matched != m_allGroupsByName.cend())
+	{
+		return matched->second->Policy().Repeat();
+	}
+	return false;
+}
+
+bool CollectionManager::GroupPolicyNotify(const std::string& groupName) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allGroupsByName.find(groupName));
+	if (matched != m_allGroupsByName.cend())
+	{
+		return matched->second->Policy().Notify();
+	}
+	return false;
+}
+
+SpecialObjectHandling CollectionManager::GroupPolicyAction(const std::string& groupName) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allGroupsByName.find(groupName));
+	if (matched != m_allGroupsByName.cend())
+	{
+		return matched->second->Policy().Action();
+	}
+	return SpecialObjectHandling::DoNotLoot;
+}
+
+void CollectionManager::GroupPolicySetRepeat(const std::string& groupName, const bool allowRepeats)
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allGroupsByName.find(groupName));
+	if (matched != m_allGroupsByName.cend())
+	{
+		matched->second->Policy().SetRepeat(allowRepeats);
+		matched->second->SyncDefaultPolicy();
+	}
+}
+
+void CollectionManager::GroupPolicySetNotify(const std::string& groupName, const bool notify)
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allGroupsByName.find(groupName));
+	if (matched != m_allGroupsByName.cend())
+	{
+		matched->second->Policy().SetNotify(notify);
+		matched->second->SyncDefaultPolicy();
+	}
+}
+
+void CollectionManager::GroupPolicySetAction(const std::string& groupName, const SpecialObjectHandling action)
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allGroupsByName.find(groupName));
+	if (matched != m_allGroupsByName.cend())
+	{
+		matched->second->Policy().SetAction(action);
+		matched->second->SyncDefaultPolicy();
 	}
 }
 
