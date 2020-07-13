@@ -58,9 +58,9 @@ public:
 
 private:
 	bool LoadData(void);
-	bool LoadCollectionsFromFile(
+	bool LoadCollectionGroup(
 		const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator);
-	void BuildDecisionTrees(nlohmann::json& collectionDefinitions, const std::string& groupName);
+	void BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup);
 	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
 	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
 	bool IsCellLocatable(const RE::TESObjectCELL* cell);
@@ -79,6 +79,7 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;
 	std::multimap<std::string, std::string> m_collectionsByGroupName;
 	std::unordered_map<std::string, std::string> m_fileNamesByGroupName;
+	std::vector<std::shared_ptr<CollectionGroup>> m_allGroups;
 	// Link each Form to the Collections in which it belongs
 	std::unordered_multimap<RE::FormID, std::shared_ptr<Collection>> m_collectionsByFormID;
 	std::unordered_set<RE::FormID> m_nonCollectionForms;

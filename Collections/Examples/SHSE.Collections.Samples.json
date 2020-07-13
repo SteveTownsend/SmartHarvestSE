@@ -1,6 +1,12 @@
 {
   "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
   "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "take",
+    "notify": true,
+    "repeat": false
+  },
+  "useMCM": true,
   "collections": [
     {
       "name": "AHSE Animal Parts",
@@ -55,11 +61,6 @@
     {
       "name": "Witch's Brew",
       "description": "Every Ingredient in the game",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -69,69 +70,12 @@
     },
 
     {
-      "name": "Invalid Plugin",
-      "description": "Demonstrates load resilient to unknown plugin",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": "Wibble.esp",
-          "signature": [ "WEAP" ]
-        }
-      }
-    },
-
-    {
-      "name": "Invalid FormList FormID",
-      "description": "Demonstrates load resilient to malformed FormID",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": true
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "LoTD Patches Merged.esp" ],
-          "formList": [ "C100174G" ]
-        }
-      }
-    },
-
-    {
-      "name": "Invalid Keyword",
-      "description": "Demonstrates load resilient to invalid KYWD",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": false
-      },
+      "name": "Base Game Weapons",
+      "description": "Demonstrates Skyrim.esm usable",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "plugin": [ "Skyrim.esm" ],
-          "signature": [ "WEAP" ],
-          "keyword": [ "this is invalid" ]
-        }
-      }
-    },
-
-    {
-      "name": "Base Game Weapons",
-      "description": "Demonstrates Skyrim.esm usable",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": false
-      },
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": "Skyrim.esm",
           "signature": [ "WEAP" ]
         }
       }

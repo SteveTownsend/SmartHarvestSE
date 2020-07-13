@@ -130,10 +130,19 @@ std::unique_ptr<ConditionTree> CollectionFactory::ParseFilter(const nlohmann::js
 	return root;
 }
 
-std::shared_ptr<Collection> CollectionFactory::ParseCollection(const nlohmann::json& collection) const
+std::shared_ptr<Collection> CollectionFactory::ParseCollection(const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const
 {
-	return std::make_shared<Collection>(collection["name"].get<std::string>(),
-		collection["description"].get<std::string>(), ParsePolicy(collection["policy"]), ParseFilter(collection["rootFilter"], 0));
+	const auto policy(collection.find("policy"));
+	const std::string name(collection["name"].get<std::string>());
+	DBG_VMESSAGE("Collection %s, overrides Policy = %s", name.c_str(), policy != collection.cend() ? "true" : "false");
+
+	return std::make_shared<Collection>(name, collection["description"].get<std::string>(),
+		policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, ParseFilter(collection["rootFilter"], 0));
+}
+
+std::shared_ptr<CollectionGroup> CollectionFactory::ParseGroup(const nlohmann::json& group, const std::string& groupName) const
+{
+	return std::make_shared<CollectionGroup>(groupName, ParsePolicy(group["groupPolicy"]), group["useMCM"].get<bool>(), group["collections"]);
 }
 
 }

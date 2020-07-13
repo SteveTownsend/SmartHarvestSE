@@ -295,6 +295,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas" />
+    <None Include="Collections\Examples\SHSE.Collections.Errors.json" />
     <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
     <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
     <None Include="Collections\Examples\SHSE.Collections.Samples.json" />

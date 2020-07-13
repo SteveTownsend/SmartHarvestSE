@@ -367,6 +367,9 @@
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas">
       <Filter>Edit Scripts</Filter>
     </None>
+    <None Include="Collections\Examples\SHSE.Collections.Errors.json">
+      <Filter>Collections\Examples</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Interface\translations\SmartHarvestSE_czech.txt">

@@ -215,7 +215,7 @@ std::vector<RE::FormID> CollectionManager::ReconcileInventory()
 	return candidates;
 }
 
-bool CollectionManager::LoadCollectionsFromFile(
+bool CollectionManager::LoadCollectionGroup(
 	const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator)
 {
 	try {
@@ -223,10 +223,12 @@ bool CollectionManager::LoadCollectionsFromFile(
 		if (collectionFile.fail()) {
 			throw FileNotFound(defFile.generic_string().c_str());
 		}
-		nlohmann::json collectionDefinitions(nlohmann::json::parse(collectionFile));
-		validator.validate(collectionDefinitions);
-		BuildDecisionTrees(collectionDefinitions, groupName);
+		nlohmann::json collectionGroupData(nlohmann::json::parse(collectionFile));
+		validator.validate(collectionGroupData);
+		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(collectionGroupData, groupName));
+		BuildDecisionTrees(collectionGroup);
 		m_fileNamesByGroupName.insert(std::make_pair(groupName, defFile.string()));
+		m_allGroups.push_back(collectionGroup);
 		return true;
 	}
 	catch (const std::exception& e) {
@@ -274,7 +276,7 @@ bool CollectionManager::LoadData(void)
 		}
 		// capture string at index 1 is the Collection Name, always present after a regex match
 		REL_MESSAGE("Load JSON Collection Definitions %s for Group %s", fileName.c_str(), matches[1].str().c_str());
-		if (LoadCollectionsFromFile(nextFile, matches[1].str(), validator))
+		if (LoadCollectionGroup(nextFile, matches[1].str(), validator))
 		{
 			REL_MESSAGE("JSON Collection Definitions %s/%s parsed and validated", fileName.c_str(), matches[1].str().c_str());
 		}
@@ -295,9 +297,13 @@ void CollectionManager::PrintDefinitions(void) const
 
 void CollectionManager::PrintMembership(void) const
 {
-	for (const auto& collection : m_allCollectionsByLabel)
+	for (const auto& collectionGroup : m_allGroups)
 	{
-		REL_MESSAGE("Collection %s:\n%s", collection.first.c_str(), collection.second->PrintMembers().c_str());
+		REL_MESSAGE("Collection Group %s:", collectionGroup->Name().c_str());
+		for (const auto& collection : collectionGroup->Collections())
+		{
+			REL_MESSAGE("Collection %s:\n%s", collection->Name().c_str(), collection->PrintMembers().c_str());
+		}
 	}
 }
 
@@ -456,25 +462,19 @@ size_t CollectionManager::ItemsObtained(const std::string& groupName, const std:
 	return 0;
 }
 
-void CollectionManager::BuildDecisionTrees(nlohmann::json& collectionDefinitions, const std::string& groupName)
+void CollectionManager::BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup)
 {
-	for (const auto& definition : collectionDefinitions["collections"])
+	for (const auto collection : collectionGroup->Collections())
 	{
-		try {
-			std::shared_ptr<Collection> filter(CollectionFactory::Instance().ParseCollection(definition));
-			const std::string label(MakeLabel(groupName, definition["name"].get<std::string>()));
-			if (m_allCollectionsByLabel.insert(std::make_pair(label, filter)).second)
-			{
-				REL_MESSAGE("Decision Tree built for Collection %s", label.c_str());
-				m_collectionsByGroupName.insert(std::make_pair(groupName, label));
-			}
-			else
-			{
-				REL_WARNING("Discarded Decision Tree for duplicate Collection %s", label.c_str());
-			}
+		const std::string label(MakeLabel(collectionGroup->Name(), collection->Name()));
+		if (m_allCollectionsByLabel.insert(std::make_pair(label, collection)).second)
+		{
+			REL_MESSAGE("Parse OK for Collection %s", label.c_str());
+			m_collectionsByGroupName.insert(std::make_pair(collectionGroup->Name(), label));
 		}
-		catch (const std::exception& exc) {
-			REL_ERROR("Error %s building Decision Tree for Collection\n%s", exc.what(), definition.dump(2).c_str());
+		else
+		{
+			REL_WARNING("Discarded duplicate Collection %s", label.c_str());
 		}
 	}
 }

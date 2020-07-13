@@ -1,0 +1,57 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "take",
+    "notify": true,
+    "repeat": false
+  },
+  "useMCM": true,
+  "collections": [
+    {
+      "name": "Invalid Plugin",
+      "description": "Demonstrates load resilient to unknown plugin",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Wibble.esp" ],
+          "signature": [ "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid FormList FormID",
+      "description": "Demonstrates load resilient to malformed FormID",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "C100174G"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Invalid Keyword",
+      "description": "Demonstrates load resilient to invalid KYWD",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Skyrim.esm" ],
+          "signature": [ "WEAP" ],
+          "keyword": [ "this is invalid" ]
+        }
+      }
+    }
+  ]
+}
