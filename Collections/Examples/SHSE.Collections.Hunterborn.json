@@ -4,8 +4,7 @@
   "groupPolicy": {
     "action": "leave",
     "notify": false,
-    "repeat": false,
-    "useMCM": false
+    "repeat": false
   },
   "useMCM": false,
   "collections": [

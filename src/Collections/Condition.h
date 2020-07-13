@@ -51,15 +51,14 @@ namespace shse {
 
 	class FormListCondition : public Condition {
 	public:
-		FormListCondition(const std::string& plugin, const std::string& formListID);
+		FormListCondition(const std::vector<std::pair<std::string, std::string>>& pluginFormList);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
 		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 
 	private:
 		void FlattenMembers(const RE::BGSListForm* formList);
-		std::string m_plugin;
-		RE::BGSListForm* m_formList;
+		std::vector<std::pair<RE::BGSListForm*, std::string>> m_formLists;
 		std::unordered_set<const RE::TESForm*> m_listMembers;
 	};
 

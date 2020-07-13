@@ -40,22 +40,25 @@ std::unique_ptr<PluginCondition> CollectionFactory::ParsePlugin(const nlohmann::
 {
 	std::vector<std::string> plugins;
 	plugins.reserve(pluginRule.size());
-	std::transform(pluginRule.begin(), pluginRule.end(), std::back_inserter(plugins),
+	std::transform(pluginRule.cbegin(), pluginRule.cend(), std::back_inserter(plugins),
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 	return std::make_unique<PluginCondition>(plugins);
 }
 
 std::unique_ptr<FormListCondition> CollectionFactory::ParseFormList(const nlohmann::json& formListRule) const
 {
-	return std::make_unique<FormListCondition>(
-		formListRule["listPlugin"].get<std::string>(), formListRule["formID"].get<std::string>());
+	std::vector<std::pair<std::string, std::string>> pluginFormLists;
+	pluginFormLists.reserve(formListRule.size());
+	std::transform(formListRule.cbegin(), formListRule.cend(), std::back_inserter(pluginFormLists),
+		[&](const nlohmann::json& next) { return std::make_pair(next["listPlugin"], next["formID"]); });
+	return std::make_unique<FormListCondition>(pluginFormLists);
 }
 
 std::unique_ptr<KeywordCondition> CollectionFactory::ParseKeyword(const nlohmann::json& keywordRule) const
 {
 	std::vector<std::string> keywords;
 	keywords.reserve(keywordRule.size());
-	std::transform(keywordRule.begin(), keywordRule.end(), std::back_inserter(keywords),
+	std::transform(keywordRule.cbegin(), keywordRule.cend(), std::back_inserter(keywords),
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 	return std::make_unique<KeywordCondition>(keywords);
 }
@@ -64,7 +67,7 @@ std::unique_ptr<SignatureCondition> CollectionFactory::ParseSignature(const nloh
 {
 	std::vector<std::string> signatures;
 	signatures.reserve(signatureRule.size());
-	std::transform(signatureRule.begin(), signatureRule.end(), std::back_inserter(signatures),
+	std::transform(signatureRule.cbegin(), signatureRule.cend(), std::back_inserter(signatures),
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 	return std::make_unique<SignatureCondition>(signatures);
 }
@@ -73,7 +76,7 @@ std::unique_ptr<ScopeCondition> CollectionFactory::ParseScope(const nlohmann::js
 {
 	std::vector<std::string> scopes;
 	scopes.reserve(scopeRule.size());
-	std::transform(scopeRule.begin(), scopeRule.end(), std::back_inserter(scopes),
+	std::transform(scopeRule.cbegin(), scopeRule.cend(), std::back_inserter(scopes),
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 	return std::make_unique<ScopeCondition>(scopes);
 }

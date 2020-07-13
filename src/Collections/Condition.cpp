@@ -82,22 +82,25 @@ void PluginCondition::AsJSON(nlohmann::json& j) const
 	}
 }
 
-FormListCondition::FormListCondition(const std::string& plugin, const std::string& formListID) : m_formList(nullptr)
+FormListCondition::FormListCondition(const std::vector<std::pair<std::string, std::string>>& pluginFormList)
 {
-	// schema enforces 8-char HEX format
-	RE::FormID formID;
-	std::stringstream ss;
-	ss << std::hex << formListID;
-	ss >> formID;
-	RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(PluginUtils::AsRaw(formID), plugin));
-	if (!formList)
+	for (const auto& entry : pluginFormList)
 	{
-		REL_ERROR("Collection Condition requires a FormList 0x%08x", formID);
-		return;
+		// schema enforces 8-char HEX format
+		RE::FormID formID;
+		std::stringstream ss;
+		ss << std::hex << entry.second;
+		ss >> formID;
+		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(PluginUtils::AsRaw(formID), entry.first));
+		if (!formList)
+		{
+			REL_ERROR("Collection Condition requires a FormList 0x%08x", formID);
+			return;
+		}
+		DBG_VMESSAGE("Resolved FormList 0x%08x", formID);
+		m_formLists.push_back(std::make_pair(formList, entry.first));
+		FlattenMembers(formList);
 	}
-	DBG_VMESSAGE("Resolved FormList 0x%08x", formID);
-	m_formList = formList;
-	FlattenMembers(m_formList);
 }
 
 void FormListCondition::FlattenMembers(const RE::BGSListForm* formList)
@@ -130,13 +133,15 @@ nlohmann::json FormListCondition::MakeJSON() const
 
 void FormListCondition::AsJSON(nlohmann::json& j) const
 {
-	j["formList"] = nlohmann::json();
-	j["listPlugin"] = m_plugin;
-	if (m_formList)
+	j["formList"] = nlohmann::json::array();
+	for (const auto formList : m_formLists)
 	{
 		std::ostringstream formStr;
-		formStr << std::hex << std::setfill('0') << std::setw(8) << m_formList->GetFormID();
-		j["formID"] = formStr.str();
+		formStr << std::hex << std::setfill('0') << std::setw(8) << formList.first->GetFormID();
+		auto next(nlohmann::json::object());
+		next["formID"] = formStr.str();
+		next["listPlugin"] = "";
+		j["formList"].push_back(next);
 	}
 }
 
