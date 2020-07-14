@@ -247,6 +247,12 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				DBG_VMESSAGE("invalid formtype %d for 0x%08x(%s)", formType, refr->GetFormID(), refr->GetBaseObject()->GetName());
 				continue;
 			}
+			if (refr->formType == RE::FormType::ActorCharacter && refr->As<RE::Actor>()->GetActorBase() && !refr->IsDead(true))
+			{
+				// TODO hook this up to allow safe stealing
+				EventPublisher::Instance().TriggerCheckDetectedBy(refr);
+			}
+
 			if (!m_rangeCheck.IsValid(refr))
 			{
 				DBG_VMESSAGE("omit out of range REFR 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());

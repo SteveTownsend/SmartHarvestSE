@@ -64,6 +64,10 @@ Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
 
+; Script operation timing
+int Function StartTimer(string context) global native
+Function StopTimer(int handle) global native
+
 int location_type_whitelist = 1
 int location_type_blacklist = 2
 

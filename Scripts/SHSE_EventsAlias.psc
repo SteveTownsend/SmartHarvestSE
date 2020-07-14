@@ -802,3 +802,14 @@ Event OnCheckOKToScan(int nonce)
     ;DebugTrace("Report UI Good-to-go = " + okToScan + " for request " + nonce)
     ReportOKToScan(okToScan, nonce)
 EndEvent
+
+; check if Actor detects player
+Event OnCheckDetectedBy(ObjectReference akTarget)
+    Actor npc = akTarget as Actor
+    if !npc
+        return
+    endIf
+    int handle = StartTimer(npc.getActorBase().GetName() + " check player-detect")
+    DebugTrace("Player detected by " + npc.getActorBase().GetName() + " = " + player.IsDetectedBy(npc))
+    StopTimer(handle)
+EndEvent

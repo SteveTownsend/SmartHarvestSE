@@ -477,6 +477,16 @@ namespace papyrus
 		shse::LocationTracker::Instance().DisplayLocationRelativeToMapMarker();
 	}
 
+	int StartTimer(RE::StaticFunctionTag* base, const std::string timerContext)
+	{
+		return WindowsUtils::ScopedTimerFactory::Instance().StartTimer(timerContext);
+	}
+
+	void StopTimer(RE::StaticFunctionTag* base, const int timerHandle)
+	{
+		WindowsUtils::ScopedTimerFactory::Instance().StopTimer(timerHandle);
+	}
+
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	{
 		a_vm->RegisterFunction("DebugTrace", SHSE_PROXY, papyrus::DebugTrace);
@@ -542,6 +552,8 @@ namespace papyrus
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
+		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);
+		a_vm->RegisterFunction("StopTimer", SHSE_PROXY, papyrus::StopTimer);
 
 		return true;
 	}

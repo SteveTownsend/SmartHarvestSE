@@ -80,6 +80,21 @@ namespace WindowsUtils
 		long long m_startTime;
 		std::string m_context;
 	};
+
+	class ScopedTimerFactory
+	{
+	public:
+		static ScopedTimerFactory& Instance();
+		ScopedTimerFactory() : m_nextHandle(0) {}
+		int StartTimer(const std::string& context);
+		void StopTimer(const int handle);
+
+	private:
+		static std::unique_ptr<ScopedTimerFactory> m_instance;
+		RecursiveLock m_timerLock;
+		std::unordered_map<int, std::unique_ptr<ScopedTimer>> m_timerByHandle;
+		int m_nextHandle;
+	};
 }
 
 namespace PluginUtils

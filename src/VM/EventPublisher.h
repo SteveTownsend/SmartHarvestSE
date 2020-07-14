@@ -42,6 +42,7 @@ public:
 	void TriggerFlushAddedItems(void);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void TriggerCheckOKToScan(const int nonce);
+	void TriggerCheckDetectedBy(RE::TESObjectREFR* refr);
 
 private:
 	RE::BGSRefAlias* GetScriptTarget(const char* espName, RE::FormID questID);
@@ -59,4 +60,5 @@ private:
 	SKSE::RegistrationSet<> m_onFlushAddedItems;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;
+	SKSE::RegistrationSet<RE::TESObjectREFR*> m_onCheckDetectedBy;
 };

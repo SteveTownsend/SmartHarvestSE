@@ -44,7 +44,8 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onLootFromNPC("OnLootFromNPC"),
 	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
-	m_onCheckOKToScan("OnCheckOKToScan")
+	m_onCheckOKToScan("OnCheckOKToScan"),
+	m_onCheckDetectedBy("OnCheckDetectedBy")
 {
 }
 
@@ -108,6 +109,7 @@ void EventPublisher::HookUp()
 	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
+	m_onCheckDetectedBy.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
@@ -156,4 +158,9 @@ void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int durati
 void EventPublisher::TriggerCheckOKToScan(const int nonce)
 {
 	m_onCheckOKToScan.SendEvent(nonce);
+}
+
+void EventPublisher::TriggerCheckDetectedBy(RE::TESObjectREFR* refr)
+{
+	m_onCheckDetectedBy.SendEvent(refr);
 }
