@@ -417,6 +417,7 @@ private:
 	void ExcludeVendorContainers();
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
+	void ExcludeMissivesBoards();
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
@@ -474,6 +475,24 @@ private:
 			}
 		}
 		return match;
+	}
+
+	template <typename T>
+	std::vector<T*> FindExactMatchesByName(const std::string& name)
+	{
+		std::vector<T*> matches;
+		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+		if (!dhnd)
+			return matches;
+
+		// Check for match on name. FormID can change if this is in a merge output.
+		std::for_each(dhnd->GetFormArray<T>().cbegin(), dhnd->GetFormArray<T>().cend(), [&](T* entry) {
+			if (entry->GetName() == name)
+			{
+				matches.push_back(entry);
+			}
+		});
+		return matches;
 	}
 
 	void IncludeFossilMiningExcavation();

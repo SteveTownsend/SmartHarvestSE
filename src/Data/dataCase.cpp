@@ -528,6 +528,29 @@ void DataCase::ExcludeGrayCowlStonesChest()
 	}
 }
 
+void DataCase::ExcludeMissivesBoards()
+{
+	// if Missives is installed and loads later than SHSE, conditionally blacklist the Noticeboards to avoid auto-looting of non-quest Missives
+	static constexpr const char* modName = "Missives.esp";
+	if (!LoadOrder::Instance().IncludesMod(modName))
+		return;
+	if (LoadOrder::Instance().ModPrecedesSHSE(modName))
+	{
+		REL_MESSAGE("Missive Boards lootable: Missives loads before SHSE");
+		return;
+	}
+
+	// if SHSE loads ahead of Missives (and by extension its patches), blacklist the relevant containers. This relies on CONT
+	// name "Missive Board" to tag these across base mod and its patches. Patches may be merged, so plugin name is no help.
+	static constexpr const char * containerName = "Missives Board";
+	std::vector<RE::TESObjectCONT*> missivesBoards(FindExactMatchesByName<RE::TESObjectCONT>(containerName));
+	for (const auto missivesBoard : missivesBoards)
+	{
+		REL_MESSAGE("Block Missive Board %s/0x%08x", missivesBoard->GetName(), missivesBoard->GetFormID());
+		m_offLimitsForms.insert(missivesBoard);
+	}
+}
+
 void DataCase::IncludeFossilMiningExcavation()
 {
 	static std::string espName("Fossilsyum.esp");
@@ -951,6 +974,7 @@ void DataCase::HandleExceptions()
 	ExcludeVendorContainers();
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
+	ExcludeMissivesBoards();
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 
