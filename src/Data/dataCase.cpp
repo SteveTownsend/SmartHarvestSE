@@ -542,7 +542,7 @@ void DataCase::ExcludeMissivesBoards()
 
 	// if SHSE loads ahead of Missives (and by extension its patches), blacklist the relevant containers. This relies on CONT
 	// name "Missive Board" to tag these across base mod and its patches. Patches may be merged, so plugin name is no help.
-	static constexpr const char * containerName = "Missives Board";
+	static constexpr const char * containerName = "Missive Board";
 	std::vector<RE::TESObjectCONT*> missivesBoards(FindExactMatchesByName<RE::TESObjectCONT>(containerName));
 	for (const auto missivesBoard : missivesBoards)
 	{
