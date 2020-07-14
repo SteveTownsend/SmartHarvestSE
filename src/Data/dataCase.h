@@ -478,9 +478,9 @@ private:
 	}
 
 	template <typename T>
-	std::vector<T*> FindExactMatchesByName(const std::string& name)
+	std::unordered_set<T*> FindExactMatchesByName(const std::string& name)
 	{
-		std::vector<T*> matches;
+		std::unordered_set<T*> matches;
 		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 		if (!dhnd)
 			return matches;
@@ -489,7 +489,7 @@ private:
 		std::for_each(dhnd->GetFormArray<T>().cbegin(), dhnd->GetFormArray<T>().cend(), [&](T* entry) {
 			if (entry->GetName() == name)
 			{
-				matches.push_back(entry);
+				matches.insert(entry);
 			}
 		});
 		return matches;
