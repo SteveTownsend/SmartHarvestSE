@@ -68,7 +68,7 @@ private:
 	{
 		return units * DistanceUnitInMiles;
 	}
-	bool CellOwnedByPlayerOrPlayerFaction(const RE::TESObjectCELL* cell) const;
+	CellOwnership GetCellOwnership(const RE::TESObjectCELL* cell) const;
 	RE::TESForm* GetCellOwner(const RE::TESObjectCELL* cell) const;
 
 	static std::unique_ptr<LocationTracker> m_instance;

@@ -31,6 +31,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
 #include "Looting/objects.h"
+#include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
 
 namespace
@@ -477,6 +478,16 @@ namespace papyrus
 		shse::LocationTracker::Instance().DisplayLocationRelativeToMapMarker();
 	}
 
+	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex)
+	{
+		return shse::TheftCoordinator::Instance().ActorByIndex(actorIndex);
+	}
+
+	void ReportPlayerDetectionState(RE::StaticFunctionTag* base, const bool detected)
+	{
+		shse::TheftCoordinator::Instance().StealOrForgetItems(detected);
+	}
+
 	int StartTimer(RE::StaticFunctionTag* base, const std::string timerContext)
 	{
 		return WindowsUtils::ScopedTimerFactory::Instance().StartTimer(timerContext);
@@ -552,6 +563,10 @@ namespace papyrus
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
+
+		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
+		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);
+
 		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);
 		a_vm->RegisterFunction("StopTimer", SHSE_PROXY, papyrus::StopTimer);
 

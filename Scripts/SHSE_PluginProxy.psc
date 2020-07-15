@@ -64,6 +64,9 @@ Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
 
+Actor Function GetDetectingActor(int actorIndex) global native    
+Function ReportPlayerDetectionState(bool detected) global native
+
 ; Script operation timing
 int Function StartTimer(string context) global native
 Function StopTimer(int handle) global native

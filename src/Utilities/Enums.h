@@ -159,7 +159,6 @@ inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectTyp
 	if (objectType == ObjectType::septims ||
 		objectType == ObjectType::key ||
 		objectType == ObjectType::oreVein ||
-		objectType == ObjectType::ammo ||
 		objectType == ObjectType::lockpick)
 		return false;
 	if (lootingType != LootingType::LootIfValuableEnoughNotify && lootingType != LootingType::LootIfValuableEnoughSilent)
@@ -217,6 +216,56 @@ inline std::string CompassDirectionName(const CompassDirection direction)
 		return "west";
 	case CompassDirection::NorthWest:
 		return "northwest";
+	default:
+		return "";
+	}
+}
+
+enum class OwnershipRule {
+	AllowCrimeIfUndetected = 0,
+	DisallowCrime,
+	Ownerless,
+	MAX
+};
+
+inline OwnershipRule OwnershipRuleFromIniSetting(const double iniSetting)
+{
+	UInt32 intSetting(static_cast<UInt32>(iniSetting));
+	if (intSetting >= static_cast<SInt32>(OwnershipRule::MAX))
+	{
+		return OwnershipRule::Ownerless;
+	}
+	return static_cast<OwnershipRule>(intSetting);
+}
+
+// Cell Ownership - lower values are less restrictive
+enum class CellOwnership {
+	NoOwner = 0,
+	Player,
+	PlayerFaction,
+	OtherFaction,
+	NPC,
+	MAX
+};
+
+inline bool IsPlayerFriendly(const CellOwnership ownership)
+{
+	return ownership != CellOwnership::OtherFaction && ownership != CellOwnership::NPC;
+}
+
+inline std::string CellOwnershipName(const CellOwnership ownership)
+{
+	switch (ownership) {
+	case CellOwnership::NoOwner:
+		return "NoOwner";
+	case CellOwnership::Player:
+		return "Player";
+	case CellOwnership::PlayerFaction:
+		return "PlayerFaction";
+	case CellOwnership::OtherFaction:
+		return "OtherFaction";
+	case CellOwnership::NPC:
+		return "NPC";
 	default:
 		return "";
 	}

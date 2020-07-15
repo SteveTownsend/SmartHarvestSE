@@ -38,9 +38,14 @@ public:
 	float PerkIngredientMultiplier() const;
 	bool CanLoot() const;
 	bool IsSneaking() const;
+	OwnershipRule EffectiveOwnershipRule() const { return m_ownershipRule; }
+	SpecialObjectHandling BelongingsCheck() const { return m_belongingsCheck; }
+	double SneakDistanceExterior() const;
+	double SneakDistanceInterior() const;
 	void ExcludeMountedIfForbidden(void);
 	Position GetPosition() const;
 	AlglibPosition GetAlglibPosition() const;
+	bool WithinDetectionRange(const double distance) const;
 
 private:
 	void AdjustCarryWeight();
@@ -60,6 +65,8 @@ private:
 	int m_currentCarryWeightChange;
 
 	bool m_sneaking;
+	OwnershipRule m_ownershipRule;
+	SpecialObjectHandling m_belongingsCheck;
 	bool m_disableWhileMounted;
 
 	mutable RecursiveLock m_playerLock;

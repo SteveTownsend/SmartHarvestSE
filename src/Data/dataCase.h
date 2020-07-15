@@ -52,9 +52,10 @@ public:
 	void ClearReferenceBlacklist();
 
 	bool BlockForm(const RE::TESForm* form);
-	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
 	void ResetBlockedForms();
+
+	bool ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const;
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
@@ -107,7 +108,7 @@ private:
 
 	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
 	std::unordered_set<const RE::TESObjectREFR*> m_offLimitsContainers;
-	std::unordered_set<RE::TESForm*> m_offLimitsForms;
+	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_set<const RE::TESForm*> m_blockForm;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_set<RE::FormID> m_blockRefr;

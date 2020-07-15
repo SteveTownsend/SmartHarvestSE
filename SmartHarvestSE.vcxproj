@@ -217,6 +217,7 @@
     <ClCompile Include="src\Looting\ProducerLootables.cpp" />
     <ClCompile Include="src\Looting\ReferenceFilter.cpp" />
     <ClCompile Include="src\Looting\tasks.cpp" />
+    <ClCompile Include="src\Looting\TheftCoordinator.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\PrecompiledHeaders.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -273,6 +274,7 @@
     <ClInclude Include="src\Looting\ProducerLootables.h" />
     <ClInclude Include="src\Looting\ReferenceFilter.h" />
     <ClInclude Include="src\Looting\tasks.h" />
+    <ClInclude Include="src\Looting\TheftCoordinator.h" />
     <ClInclude Include="src\PrecompiledHeaders.h" />
     <ClInclude Include="src\Utilities\debugs.h" />
     <ClInclude Include="src\Utilities\Enums.h" />

@@ -192,6 +192,23 @@ namespace utils
 		if (pValue)
 			pValue->value = value;
 	}
+
+	double GetGameSettingFloat(const RE::BSFixedString& name)
+	{
+		RE::Setting* setting(nullptr);
+		RE::GameSettingCollection* settings(RE::GameSettingCollection::GetSingleton());
+		if (settings)
+		{
+			setting = settings->GetSetting(name.c_str());
+		}
+
+		if (!setting || setting->GetType() != RE::Setting::Type::kFloat)
+			return 0.0;
+
+		double result(setting->GetFloat());
+		DBG_MESSAGE("Game Setting(%s)=%.3f", name.c_str(), result);
+		return result;
+	}
 }
 
 namespace WindowsUtils

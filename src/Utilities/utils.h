@@ -56,6 +56,7 @@ namespace FileUtils
 namespace utils
 {
 	void SetGoldValue(RE::TESForm* pForm, UInt32 value);
+	double GetGameSettingFloat(const RE::BSFixedString& name);
 	template <typename T> void LogFunctionAddress(T func, const char * name)
 	{
 		decltype(func) func1(func);

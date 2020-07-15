@@ -40,7 +40,7 @@ public:
 	static constexpr size_t MaxREFRSPerPass = 75;
 #endif
 
-	SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType);
+	SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen);
 
 	static bool Init(void);
 	void Run();
@@ -91,11 +91,9 @@ private:
 
 	static INIFile* m_ini;
 
+	bool m_stolen;
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
-
-	static int m_crimeCheck;
-	static SpecialObjectHandling m_belongingsCheck;
 
 	static std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
 	static int m_pendingNotifies;

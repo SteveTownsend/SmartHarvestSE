@@ -839,8 +839,11 @@ event OnPageReset(string currentPage)
         index = 1
         while index < s_objectTypeNameArray.length ; oreVein is the last
             ; do not request V/W for weightless or unhandleable item types
-            if (index == objType_Mine || index == objType_Ammo || index == objType_Septim  || index == objType_Key || index == objType_LockPick)
+            if (index == objType_Mine || index == objType_Septim  || index == objType_Key || index == objType_LockPick)
                 AddEmptyOption()
+            elseif index == objType_Ammo
+                ; absolute damage
+                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_DAMAGE")
             else
                 id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W")
             endif
@@ -964,7 +967,11 @@ event OnOptionSliderOpen(int a_option)
     index = id_valueWeightArray.find(a_option)
     if (index > -1)
         SetSliderDialogStartValue(valueWeightSettingArray[index])
-        SetSliderDialogRange(0, 1000)
+        if index == objtype_ammo
+            SetSliderDialogRange(0, 40)
+        else
+            SetSliderDialogRange(0, 1000)
+        endIf
     endif
 endEvent
 
@@ -977,7 +984,11 @@ event OnOptionSliderAccept(int a_option, float a_value)
         if (keyName != "unknown")
             valueWeightSettingArray[index] = a_value
 ;           PutSetting(type_Harvest, type_ValueWeight, keyName, valueWeightSettingArray[index])
-            SetSliderOptionValue(a_option, a_value, "$SHSE_V/W")
+            if index == objtype_ammo
+                SetSliderOptionValue(a_option, a_value, "$SHSE_DAMAGE")
+            else
+                SetSliderOptionValue(a_option, a_value, "$SHSE_V/W")
+            endIf
         endif
         return
     endif

@@ -374,6 +374,12 @@ void DataCase::ExcludeFactionContainers()
 	}
 }
 
+bool DataCase::ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	return m_containerBlackList.contains(refr->GetContainer());
+}
+
 void DataCase::ExcludeVendorContainers()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
@@ -467,7 +473,7 @@ void DataCase::ExcludeVendorContainers()
 				REL_MESSAGE("Block Vendor Container %s/0x%08x", container->GetName(), container->GetFormID());
 				matched = true;
 				// only continue if insert fails, not that this will likely do much good
-				return !m_offLimitsForms.insert(container).second;
+				return !m_containerBlackList.insert(container).second;
 			}
 			else
 			{
@@ -497,7 +503,7 @@ void DataCase::ExcludeVendorContainers()
 		if (chestForm)
 		{
 			REL_MESSAGE("CONT %s:0x%08x added to Mod Blacklist", espName.c_str(), chestForm->GetFormID());
-			m_offLimitsForms.insert(chestForm);
+			m_containerBlackList.insert(chestForm);
 		}
 		else
 		{
@@ -513,7 +519,7 @@ void DataCase::ExcludeImmersiveArmorsGodChest()
 	if (godChestForm)
 	{
 		REL_MESSAGE("Block Immersive Armors 'all the loot' chest %s/0x%08x", godChestForm->GetName(), godChestForm->GetFormID());
-		m_offLimitsForms.insert(godChestForm);
+		m_containerBlackList.insert(godChestForm);
 	}
 }
 
@@ -524,7 +530,7 @@ void DataCase::ExcludeGrayCowlStonesChest()
 	if (stonesChestForm)
 	{
 		REL_MESSAGE("Block Gray Cowl Stones chest %s/0x%08x", stonesChestForm->GetName(), stonesChestForm->GetFormID());
-		m_offLimitsForms.insert(stonesChestForm);
+		m_containerBlackList.insert(stonesChestForm);
 	}
 }
 
@@ -547,7 +553,7 @@ void DataCase::ExcludeMissivesBoards()
 	for (const auto missivesBoard : missivesBoards)
 	{
 		REL_MESSAGE("Block Missive Board %s/0x%08x", missivesBoard->GetName(), missivesBoard->GetFormID());
-		m_offLimitsForms.insert(missivesBoard);
+		m_containerBlackList.insert(missivesBoard);
 	}
 }
 
@@ -604,10 +610,6 @@ void DataCase::BlockOffLimitsContainers()
 	for (const auto refr : m_offLimitsContainers)
 	{
 		BlockReference(refr);
-	}
-	for (const auto form : m_offLimitsForms)
-	{
-		BlockForm(form);
 	}
 }
 
@@ -758,17 +760,6 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	return (m_blockForm.insert(form)).second;
 }
 
-bool DataCase::UnblockForm(const RE::TESForm* form)
-{
-	if (!form)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (form->IsDynamicForm())
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return m_blockForm.erase(form) > 0;
-}
-
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
 {
 	if (!form)
@@ -782,7 +773,6 @@ bool DataCase::IsFormBlocked(const RE::TESForm* form)
 
 void DataCase::ResetBlockedForms()
 {
-	// reset blocked forms to just the user's list
 	DBG_MESSAGE("Reset Blocked Forms");
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blockForm.clear();

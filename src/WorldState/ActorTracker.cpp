@@ -44,6 +44,7 @@ void ActorTracker::Reset()
 	RecursiveLockGuard guard(m_actorLock);
 	m_seenAlive.clear();
 	m_apparentTimeOfDeath.clear();
+	m_detectives.clear();
 }
 
 void ActorTracker::RecordLiveSighting(const RE::TESObjectREFR* actorRef)
@@ -88,6 +89,31 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 		// use distance 0. to prioritize looting
 		refs.emplace_back(0., refr);
 	}
+}
+
+void ActorTracker::AddDetective(const RE::Actor* detective, const double distance)
+{
+	RecursiveLockGuard guard(m_actorLock);
+	m_detectives.insert({ distance, detective });
+}
+
+// read and clear
+std::vector<const RE::Actor*> ActorTracker::ReadAndClearDetectives()
+{ 
+	RecursiveLockGuard guard(m_actorLock);
+	std::vector<const RE::Actor*> result;
+	result.reserve(m_detectives.size());
+	std::transform(m_detectives.cbegin(), m_detectives.cend(), std::back_inserter(result),
+		[&](const auto& detective) { return detective.second; });
+	m_detectives.clear();
+	return result;
+}
+
+// read and clear
+void ActorTracker::ClearDetectives()
+{
+	RecursiveLockGuard guard(m_actorLock);
+	m_detectives.clear();
 }
 
 }

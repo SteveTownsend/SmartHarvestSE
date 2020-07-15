@@ -45,7 +45,7 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
 	m_onCheckOKToScan("OnCheckOKToScan"),
-	m_onCheckDetectedBy("OnCheckDetectedBy")
+	m_onStealIfUndetected("OnStealIfUndetected")
 {
 }
 
@@ -109,7 +109,7 @@ void EventPublisher::HookUp()
 	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
-	m_onCheckDetectedBy.Register(m_eventTarget);
+	m_onStealIfUndetected.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
@@ -160,7 +160,7 @@ void EventPublisher::TriggerCheckOKToScan(const int nonce)
 	m_onCheckOKToScan.SendEvent(nonce);
 }
 
-void EventPublisher::TriggerCheckDetectedBy(RE::TESObjectREFR* refr)
+void EventPublisher::TriggerStealIfUndetected(const size_t actorCount)
 {
-	m_onCheckDetectedBy.SendEvent(refr);
+	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount));
 }

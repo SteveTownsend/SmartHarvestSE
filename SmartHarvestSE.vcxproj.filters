@@ -133,6 +133,9 @@
     <ClCompile Include="src\Looting\ReferenceFilter.cpp">
       <Filter>src\Looting</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\TheftCoordinator.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -277,6 +280,9 @@
       <Filter>src\alglib</Filter>
     </ClInclude>
     <ClInclude Include="src\Looting\ReferenceFilter.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\TheftCoordinator.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
   </ItemGroup>

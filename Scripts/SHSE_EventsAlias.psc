@@ -804,12 +804,20 @@ Event OnCheckOKToScan(int nonce)
 EndEvent
 
 ; check if Actor detects player
-Event OnCheckDetectedBy(ObjectReference akTarget)
-    Actor npc = akTarget as Actor
-    if !npc
-        return
-    endIf
-    int handle = StartTimer(npc.getActorBase().GetName() + " check player-detect")
-    DebugTrace("Player detected by " + npc.getActorBase().GetName() + " = " + player.IsDetectedBy(npc))
-    StopTimer(handle)
+Event OnStealIfUndetected(int actorCount)
+    int currentActor = 0
+    bool detected = False
+    ;DebugTrace("Check player detection, actorCount=" + actorCount)
+    while currentActor < actorCount && !detected
+        Actor npc = GetDetectingActor(currentActor)
+        if player.IsDetectedBy(npc)
+            ;DebugTrace("Player detected by " + npc.getActorBase().GetName())
+            detected = True
+        else
+            ;DebugTrace("Player not detected by " + npc.getActorBase().GetName())
+        endIf
+        currentActor = currentActor + 1
+    endWhile
+
+    ReportPlayerDetectionState(detected)
 EndEvent

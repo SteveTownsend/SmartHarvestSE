@@ -63,10 +63,17 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 
 	if (valueWeight > 0.)
 	{
+		if (m_objectType == ObjectType::ammo)
+		{
+			// arrows use the value as an absolute threshold - in this case value represents damage done
+			// allow small tolerance for floating point uncertainty
+			DBG_VMESSAGE("%s/0x%08x ammo damage %d vs threshold %0.2f", GetName(), GetFormID(), worth, valueWeight);
+			return worth < valueWeight - 0.01;
+		}
 		double weight = std::max(GetWeight(), 0.);
 		if (worth > 0. && weight <= 0.)
 		{
-			DBG_VMESSAGE("%s(%08x) has value %d, weightless", GetName(), GetFormID(), worth);
+			DBG_VMESSAGE("%s/0x%08x has value %d, weightless", GetName(), GetFormID(), worth);
 			return false;
 		}
 
@@ -75,19 +82,19 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 			if (weight <= 0.)
 			{
 				// Harvest if non v/w criteria say we should do so.
-				DBG_VMESSAGE("%s(%08x) - cannot calculate v/w from weight %0.2f and value %d", GetName(), GetFormID(), weight, worth);
+				DBG_VMESSAGE("%s/0x%08x - cannot calculate v/w from weight %0.2f and value %d", GetName(), GetFormID(), weight, worth);
 				return false;
 			}
 			else
 			{
 				// zero value object with strictly positive weight - do not auto-harvest
-				DBG_VMESSAGE("%s(%08x) - has weight %0.2f, no value", GetName(), GetFormID(), weight);
+				DBG_VMESSAGE("%s/0x%08x - has weight %0.2f, no value", GetName(), GetFormID(), weight);
 				return true;
 			}
 		}
 
 		double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.0;
-		DBG_VMESSAGE("%s(%08x) item VW %0.2f vs threshold VW %0.2f", GetName(), GetFormID(), vw, valueWeight);
+		DBG_VMESSAGE("%s/0x%08x item VW %0.2f vs threshold VW %0.2f", GetName(), GetFormID(), vw, valueWeight);
 		// allow small tolerance for floating point uncertainty
 		if (vw < valueWeight - 0.01)
 			return true;
@@ -104,7 +111,7 @@ bool IHasValueWeight::IsValuable() const
 		// allow small tolerance for floating point uncertainty
 		if (minValue > 0. && double(worth) >= minValue - 0.01)
 		{
-			DBG_VMESSAGE("%s(%08x) has value %d vs threshold %0.2f: Valuable", GetName(), GetFormID(), worth, minValue);
+			DBG_VMESSAGE("%s/%08x has value %d vs threshold %0.2f: Valuable", GetName(), GetFormID(), worth, minValue);
 			return true;
 		}
 	}

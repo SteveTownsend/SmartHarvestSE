@@ -116,9 +116,12 @@ SInt32 TESFormHelper::CalculateWorth() const
 	if (m_form->formType == RE::FormType::Ammo)
 	{
 		const RE::TESAmmo* ammo(m_form->As<RE::TESAmmo>());
-
-		DBG_VMESSAGE("Ammo %0.2f", ammo->data.damage);
-		return ammo ? static_cast<int>(ammo->data.damage) : 0;
+		if (ammo)
+		{
+			DBG_VMESSAGE("Ammo %s(%08x) damage = %0.2f", GetName(), GetFormID(), ammo->data.damage);
+			return static_cast<int>(ammo->data.damage);
+		}
+		return 0;
 	}
 	else if (m_form->formType == RE::FormType::Projectile)
 	{
@@ -128,9 +131,10 @@ SInt32 TESFormHelper::CalculateWorth() const
 			const RE::TESAmmo* ammo(DataCase::GetInstance()->ProjToAmmo(proj));
 			if (ammo)
 			{
-				DBG_VMESSAGE("Projectile %0.2f", ammo->data.damage);
+				DBG_VMESSAGE("Projectile has ammo %s(%08x) damage %0.2f", GetName(), GetFormID(), ammo->data.damage);
+				return static_cast<int>(ammo->data.damage);
 			}
-			return ammo ? static_cast<int>(ammo->data.damage) : 0;
+			return 0;
 		}
 	}
 	else
