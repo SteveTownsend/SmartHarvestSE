@@ -50,11 +50,6 @@ namespace FileUtils
 namespace utils
 {
 	double GetGameSettingFloat(const RE::BSFixedString& name);
-	template <typename T> void LogFunctionAddress(T func, const char * name)
-	{
-		decltype(func) func1(func);
-		DBG_MESSAGE("%p %s", func1, name);
-	}
 }
 
 namespace WindowsUtils

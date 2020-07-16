@@ -186,12 +186,6 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 		return false;
 	}
 
-	// print loaded addresses of key functions for debugging
-	DBG_MESSAGE("*** Function addresses START");
-	utils::LogFunctionAddress(&shse::SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
-	utils::LogFunctionAddress(&shse::SearchTask::Run, "SearchTask::Run");
-	DBG_MESSAGE("*** Function addresses END");
-
 	return true;
 }
 
