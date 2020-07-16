@@ -401,7 +401,7 @@ bool LocationTracker::Refresh()
 		}
 		// Fire limited location change logic on cell update
 		static const bool gameReload(false);
-		SearchTask::ResetRestrictions(gameReload);
+		PluginFacade::Instance().ResetState(gameReload);
 	}
 
 	// Scan and Location tracking should not run if Player cell is not yet filled in
