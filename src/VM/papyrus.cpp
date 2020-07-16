@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include <winver.h>
 #include <iostream>
 
+#include "PluginFacade.h"
 #include "Data/dataCase.h"
 #include "FormHelpers/IHasValueWeight.h"
 #include "Looting/tasks.h"
@@ -301,7 +302,7 @@ namespace papyrus
 	}
 	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		shse::SearchTask::SyncDone(reload);
+		shse::PluginFacade::Instance().SyncDone(reload);
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)

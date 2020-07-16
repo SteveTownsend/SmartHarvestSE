@@ -18,6 +18,9 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #include "PrecompiledHeaders.h"
+
+
+#include "PluginFacade.h"
 #include "VM/UIState.h"
 #include "Looting/tasks.h"
 
@@ -124,7 +127,7 @@ bool UIState::OKForSearch()
 		else
 		{
 			// State change from do not search -> search OK
-			SearchTask::OnGoodToGo();
+			PluginFacade::Instance().OnGoodToGo();
 		}
 	}
 	return m_goodToGo;

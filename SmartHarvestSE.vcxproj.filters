@@ -136,6 +136,9 @@
     <ClCompile Include="src\Looting\TheftCoordinator.cpp">
       <Filter>src\Looting</Filter>
     </ClCompile>
+    <ClCompile Include="src\PluginFacade.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -284,6 +287,9 @@
     </ClInclude>
     <ClInclude Include="src\Looting\TheftCoordinator.h">
       <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\PluginFacade.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -19,6 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include "PluginFacade.h"
+
 #include "Looting/containerLister.h"
 #include "Looting/IRangeChecker.h"
 #include "VM/EventPublisher.h"
@@ -42,41 +44,40 @@ public:
 
 	SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen);
 
-	static bool Init(void);
 	void Run();
 
+	static void Clear(const bool gameReload);
 	static bool IsLockedForHarvest(const RE::TESObjectREFR* refr);
 	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
-	static void SyncDone(const bool reload);
 	static void ToggleCalibration(const bool glowDemo);
 
-	static void PrepareForReload();
-	static void AfterReload();
 	static void Allow();
 	static void Disallow();
 	static bool IsAllowed();
-	static void ResetRestrictions(const bool gameReload);
 	static void DoPeriodicSearch();
+	static inline bool Calibrating() {
+		RecursiveLockGuard guard(m_searchLock);
+		return m_calibrating;
+	}
 
 	static RE::FormID LootedDynamicContainerFormID(const RE::TESObjectREFR* refr);
 	static bool IsLootedContainer(const RE::TESObjectREFR* refr);
-
-	static void OnGoodToGo(void);
+	static void ResetLootedDynamicContainers();
+	static void ResetLootedContainers();
+	static void ForgetLockedContainers();
+	static void ClearPendingHarvestNotifications();
+	static void ClearGlowExpiration();
 
 private:
 	static size_t PendingHarvestNotifications();
 	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
-	static void Start();
 
 	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
-	static void ForgetLockedContainers();
 
 	static void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr);
-	static void ResetLootedDynamicContainers();
 
 	static void MarkContainerLooted(const RE::TESObjectREFR* refr);
-	static void ResetLootedContainers();
 
 	bool IsLootingForbidden(const INIFile::SecondaryType targetType);
 	bool IsBookGlowable() const;
@@ -98,13 +99,9 @@ private:
 	static std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
 	static int m_pendingNotifies;
 
-	static RecursiveLock m_searchLock;
-	static bool m_threadStarted;
 	static bool m_searchAllowed;
 
-	static bool m_pluginSynced;
-
-	static RecursiveLock m_lock;
+	static RecursiveLock m_searchLock;
 	static std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
 
 	// Record looted containers to avoid re-scan of empty or looted chest and dead body. Resets on game reload or MCM settings update.
@@ -124,15 +121,8 @@ private:
 	static constexpr int MaxCalibrationRange = 100;
 	static constexpr int GlowDemoRange = 30;
 
-	// give the debug message time to catch up during calibration
-	static constexpr int CalibrationDelay = 5;
 	// short glow for loot range calibration and glow demo
-	static constexpr int ObjectGlowDurationCalibrationSeconds = CalibrationDelay - 2;
-
-	// Worker thread loop smallest possible delay
-	static constexpr double MinDelay = 0.1;
-
-	static bool m_pluginOK;
+	static constexpr int ObjectGlowDurationCalibrationSeconds = int(PluginFacade::CalibrationThreadDelay) - 2;
 
 	GlowReason m_glowReason;
 	inline void UpdateGlowReason(const GlowReason glowReason)
@@ -141,11 +131,6 @@ private:
 			m_glowReason = glowReason;
 	}
 
-	static bool Load(void);
-	static void TakeNap(void);
-	static void ScanThread(void);
-
-	
 	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType);
 	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 };
