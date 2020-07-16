@@ -293,52 +293,6 @@ void DataCase::AnalyzePerks(void)
 	}
 }
 
-bool DataCase::GetTSV(std::unordered_set<RE::FormID>* tsv, const char* fileName)
-{
-	std::string filepath(FileUtils::GetPluginPath() + std::string(SHSE_NAME) + std::string("\\override\\") + std::string(fileName));
-	std::ifstream ifs(filepath);
-	if (ifs.fail())
-	{
-		REL_MESSAGE("* override TSV:%s inaccessible", filepath.c_str());
-		filepath = FileUtils::GetPluginPath() + std::string(SHSE_NAME) + std::string("\\default\\") + std::string(fileName);
-		ifs.open(filepath);
-		if (ifs.fail())
-		{
-			REL_WARNING("* default TSV:%s inaccessible", filepath.c_str());
-			return false;
-		}
-	}
-	REL_MESSAGE("Using TSV file %s", filepath.c_str());
-
-	// The correct file is open when we get here
-	std::string str;
-	while (getline(ifs, str))
-	{
-		if (str[0] == '#' || str[0] == ';' || (str[0] == '/' && str[1] == '/'))
-			continue;
-
-		if (str.find_first_not_of("\t") == std::string::npos)
-			continue;
-
-		auto vec = StringUtils::Split(str, '\t');
-		std::string modName = vec[0];
-
-		std::optional<UInt8> modIndex = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(vec[0].c_str());
-		if (!modIndex.has_value())
-			continue;
-
-		UInt32 formID = std::stoul(vec[1], nullptr, 16);
-		formID |= (modIndex.value() << 24);
-
-		RE::TESForm* pForm = RE::TESForm::LookupByID(formID);
-		if (pForm)
-			tsv->insert(formID);
-	}
-
-	REL_MESSAGE("* TSV:%s(%d)", fileName, tsv->size());
-	return true;
-}
-
 void DataCase::ExcludeFactionContainers()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();

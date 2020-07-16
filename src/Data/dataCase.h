@@ -124,8 +124,6 @@ private:
 
 	mutable RecursiveLock m_blockListLock;
 
-	bool GetTSV(std::unordered_set<RE::FormID> *tsv, const char* fileName);
-
 	void RecordOffLimitsLocations(void);
 	void BlockOffLimitsContainers(void);
 	void GetAmmoData(void);
