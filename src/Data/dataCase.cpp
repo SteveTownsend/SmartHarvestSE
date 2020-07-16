@@ -855,7 +855,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 {
 	// Moving arrows must be skipped if they are in flight. Bobbing on water or rolling around does not count.
 	// Assume in-flight movement rate at least N feet per loot scan interval.
-	constexpr double ArrowInFlightFeet(5. / DistanceUnitInFeet);
+	constexpr double ArrowInFlightUnits(5. / DistanceUnitInFeet);
 
 	bool skip(false);
 	RE::NiPoint3 pos = refr->GetPosition();
@@ -879,7 +879,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 		double dx(pos.x - prev.x);
 		double dy(pos.y - prev.y);
 		double dz(pos.z - prev.z);
-		if (fabs(dx) > ArrowInFlightFeet || fabs(dy) > ArrowInFlightFeet || fabs(dz) > ArrowInFlightFeet)
+		if (fabs(dx) > ArrowInFlightUnits || fabs(dy) > ArrowInFlightUnits || fabs(dz) > ArrowInFlightUnits)
 		{
 			DBG_VMESSAGE("In flight, change in arrow position dx=%0.2f,dy=%0.2f,dz=%0.2f", dx, dy, dz);
 			m_arrowCheck[refr] = pos;
