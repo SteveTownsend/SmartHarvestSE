@@ -192,6 +192,23 @@ namespace utils
 		if (pValue)
 			pValue->value = value;
 	}
+
+	double GetGameSettingFloat(const RE::BSFixedString& name)
+	{
+		RE::Setting* setting(nullptr);
+		RE::GameSettingCollection* settings(RE::GameSettingCollection::GetSingleton());
+		if (settings)
+		{
+			setting = settings->GetSetting(name.c_str());
+		}
+
+		if (!setting || setting->GetType() != RE::Setting::Type::kFloat)
+			return 0.0;
+
+		double result(setting->GetFloat());
+		DBG_MESSAGE("Game Setting(%s)=%.3f", name.c_str(), result);
+		return result;
+	}
 }
 
 namespace WindowsUtils
@@ -227,6 +244,38 @@ namespace WindowsUtils
 	{
 		long long endTime(microsecondsNow());
 		REL_MESSAGE("TIME(%s)=%d micros", m_context.c_str(), endTime - m_startTime);
+	}
+
+	std::unique_ptr<ScopedTimerFactory> ScopedTimerFactory::m_instance;
+
+	ScopedTimerFactory& ScopedTimerFactory::Instance()
+	{
+		if (!m_instance)
+		{
+			m_instance = std::make_unique<ScopedTimerFactory>();
+		}
+		return *m_instance;
+	}
+
+	int ScopedTimerFactory::StartTimer(const std::string& context)
+	{
+#ifdef _PROFILING
+		RecursiveLockGuard guard(m_timerLock);
+		int handle(++m_nextHandle);
+		m_timerByHandle.insert(std::make_pair(handle, std::make_unique<ScopedTimer>(context)));
+		return handle;
+#else
+		return 0;
+#endif
+	}
+
+	// fails silently if invalid, otherwise stops the timer and records result
+	void ScopedTimerFactory::StopTimer(const int handle)
+	{
+#ifdef _PROFILING
+		RecursiveLockGuard guard(m_timerLock);
+		m_timerByHandle.erase(handle);
+#endif
 	}
 }
 

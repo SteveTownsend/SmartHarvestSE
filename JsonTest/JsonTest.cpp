@@ -14,10 +14,13 @@ void ParsePlugin(const nlohmann::json& pluginRule)
 
 void ParseFormList(const nlohmann::json& formListRule)
 {
-	std::vector<std::string> formLists;
+	std::vector<std::pair<std::string, std::string>> formLists;
 	formLists.reserve(formListRule.size());
 	std::transform(formListRule.begin(), formListRule.end(), std::back_inserter(formLists),
-		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+		[&](const nlohmann::json& next)
+	{ 
+		return std::make_pair(next["listPlugin"].get<std::string>(), next["formID"].get<std::string>());
+	});
 }
 
 void ParseKeyword(const nlohmann::json& keywordRule)
@@ -96,8 +99,19 @@ void ParseFilter(const nlohmann::json& filter)
 
 void ParseCollection(const nlohmann::json& collection)
 {
-	ParsePolicy(collection["policy"]);
+	if (collection.find("policy") != collection.cend())
+ 		ParsePolicy(collection["policy"]);
 	ParseFilter(collection["rootFilter"]);
+}
+
+void ParseCollectionGroup(const nlohmann::json& collectionGroup)
+{
+	ParsePolicy(collectionGroup["groupPolicy"]);
+	bool useMCM(collectionGroup["useMCM"].get<bool>());
+	for (const auto& collection : collectionGroup["collections"])
+	{
+		ParseCollection(collection);
+	}
 }
 
 int main(int argc, const char** argv)
@@ -132,10 +146,10 @@ int main(int argc, const char** argv)
 			continue;
 		}
 		std::ifstream collectionFile(collectionFileName);
-		nlohmann::json collections;
+		nlohmann::json collectionGroup;
 		try {
-			collections = nlohmann::json::parse(collectionFile);
-			validator.validate(collections);
+			collectionGroup = nlohmann::json::parse(collectionFile);
+			validator.validate(collectionGroup);
 		}
 		catch (const std::exception& e) {
 			std::cerr << "JSON Collections " << collectionFileName << " validation error\n" << e.what() << '/n';
@@ -144,10 +158,7 @@ int main(int argc, const char** argv)
 		std::cout << "JSON Collections " << collectionFileName << " parsed and validated\n";
 
 		// walk the tree
-		for (const auto& collection : collections["collection"])
-		{
-			ParseCollection(collection);
-		}
+		ParseCollectionGroup(collectionGroup);
 		std::cout << "JSON Collections " << collectionFileName << " walked OK\n";
 	}
 	return 0;

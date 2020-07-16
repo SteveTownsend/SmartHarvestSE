@@ -26,7 +26,8 @@ namespace shse
 class CollectionFactory {
 public:
 	static CollectionFactory& Instance();
-	std::shared_ptr<Collection> ParseCollection(const nlohmann::json& collection) const;
+	std::shared_ptr<Collection> ParseCollection(const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const;
+	std::shared_ptr<CollectionGroup> ParseGroup(const nlohmann::json& group, const std::string& groupName) const;
 
 private:
 	std::unique_ptr<PluginCondition> ParsePlugin(const nlohmann::json& pluginRule) const;

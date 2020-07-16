@@ -112,6 +112,11 @@ bool collectDuplicates
 int collectionTotal
 int collectionObtained
 
+; Current Collection Group state
+int groupCollectibleAction
+bool groupCollectionAddNotify
+bool groupCollectDuplicates
+
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -427,6 +432,7 @@ Function SetMiscDefaults(bool firstTime)
     valuableItemLoot = 2
     valuableItemThreshold = 500
     InstallCollections()
+    InstallCollectionGroups()
 EndFunction
 
 Function InstallCollections()
@@ -444,6 +450,13 @@ Function InstallCollections()
     collectibleAction = 2
     collectionAddNotify = true
     collectDuplicates = false
+EndFunction
+
+Function InstallCollectionGroups()
+    ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
+    groupCollectibleAction = 2
+    groupCollectionAddNotify = true
+    groupCollectDuplicates = false
 EndFunction
 
 Function InstallVerticalRadiusAndDoorRule()
@@ -525,7 +538,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 31
+    return 32
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -568,6 +581,10 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 31 && CurrentVersion < 31)
         ;defaults for all new settings
         InstallVerticalRadiusAndDoorRule()
+    endIf
+    if (a_version >= 32 && CurrentVersion < 32)
+        ;defaults for all new settings
+        InstallCollectionGroups()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -684,7 +701,21 @@ Function GetCollectionPolicy(String collectionName)
     endIf
 EndFunction
 
+Function SyncCollectionGroupPolicyUI()
+    SetToggleOptionValueST(groupCollectDuplicates, false, "groupCollectDuplicates")
+    SetTextOptionValueST(s_specialObjectHandlingArray[groupCollectibleAction], false, "groupCollectibleAction")
+    SetToggleOptionValueST(groupCollectionAddNotify, false, "groupCollectionAddNotify")
+EndFunction
+
+Function GetCollectionGroupPolicy()
+    groupCollectDuplicates = CollectionGroupAllowsRepeats(collectionGroupNames[collectionGroup])
+    groupCollectibleAction = CollectionGroupAction(collectionGroupNames[collectionGroup])
+    groupCollectionAddNotify = CollectionGroupNotifies(collectionGroupNames[collectionGroup])
+    SyncCollectionGroupPolicyUI()
+EndFunction
+
 Function PopulateCollectionsForGroup(String groupName)
+    GetCollectionGroupPolicy()
     collectionCount = CollectionsInGroup(groupName)
     lastKnownPolicy = ""
     int index = 0
@@ -808,8 +839,11 @@ event OnPageReset(string currentPage)
         index = 1
         while index < s_objectTypeNameArray.length ; oreVein is the last
             ; do not request V/W for weightless or unhandleable item types
-            if (index == objType_Mine || index == objType_Ammo || index == objType_Septim  || index == objType_Key || index == objType_LockPick)
+            if (index == objType_Mine || index == objType_Septim  || index == objType_Key || index == objType_LockPick)
                 AddEmptyOption()
+            elseif index == objType_Ammo
+                ; absolute damage
+                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_DAMAGE")
             else
                 id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W")
             endif
@@ -873,6 +907,9 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_COLLECTIONS_GLOBAL_HEADER")
         AddToggleOptionST("collectionsEnabled", "$SHSE_COLLECTIONS_ENABLED", collectionsEnabled)
         AddMenuOptionST("chooseCollectionGroup", "$SHSE_CHOOSE_COLLECTION_GROUP", initialGroupName, flags)
+        AddTextOptionST("groupCollectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_specialObjectHandlingArray[groupCollectibleAction], flags)
+        AddToggleOptionST("groupCollectionAddNotify", "$SHSE_COLLECTION_ADD_NOTIFY", groupCollectionAddNotify, flags)
+        AddToggleOptionST("groupCollectDuplicates", "$SHSE_COLLECT_DUPLICATES", groupCollectDuplicates, flags)
 
 ;   ======================== RIGHT ========================
         SetCursorPosition(1)
@@ -930,7 +967,11 @@ event OnOptionSliderOpen(int a_option)
     index = id_valueWeightArray.find(a_option)
     if (index > -1)
         SetSliderDialogStartValue(valueWeightSettingArray[index])
-        SetSliderDialogRange(0, 1000)
+        if index == objtype_ammo
+            SetSliderDialogRange(0, 40)
+        else
+            SetSliderDialogRange(0, 1000)
+        endIf
     endif
 endEvent
 
@@ -943,7 +984,11 @@ event OnOptionSliderAccept(int a_option, float a_value)
         if (keyName != "unknown")
             valueWeightSettingArray[index] = a_value
 ;           PutSetting(type_Harvest, type_ValueWeight, keyName, valueWeightSettingArray[index])
-            SetSliderOptionValue(a_option, a_value, "$SHSE_V/W")
+            if index == objtype_ammo
+                SetSliderOptionValue(a_option, a_value, "$SHSE_DAMAGE")
+            else
+                SetSliderOptionValue(a_option, a_value, "$SHSE_V/W")
+            endIf
         endif
         return
     endif
@@ -1707,6 +1752,9 @@ EndFunction
 Function SetCollectionsUIFlags()
     if collectionsEnabled
         SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseCollectionGroup")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "groupCollectibleAction")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "groupCollectionAddNotify")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "groupCollectDuplicates")
         SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseCollectionIndex")
         SetOptionFlagsST(OPTION_FLAG_NONE, false, "collectibleAction")
         SetOptionFlagsST(OPTION_FLAG_NONE, false, "collectionAddNotify")
@@ -1714,6 +1762,9 @@ Function SetCollectionsUIFlags()
         SetOptionFlagsST(OPTION_FLAG_NONE, false, "itemsCollected")
     else
         SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseCollectionGroup")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "groupCollectibleAction")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "groupCollectionAddNotify")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "groupCollectDuplicates")
         SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseCollectionIndex")
         SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "collectibleAction")
         SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "collectionAddNotify")
@@ -1789,6 +1840,61 @@ state chooseCollectionIndex
 
     event OnHighlightST()
         SetInfoText(collectionNames[collectionIndex])
+    endEvent
+endState
+
+state groupCollectibleAction
+    event OnSelectST()
+        int size = s_specialObjectHandlingArray.length
+        groupCollectibleAction = CycleInt(groupCollectibleAction, size)
+        SetTextOptionValueST(s_specialObjectHandlingArray[groupCollectibleAction])
+        PutCollectionGroupAction(collectionGroupNames[collectionGroup], groupCollectibleAction)
+    endEvent
+
+    event OnDefaultST()
+        groupCollectibleAction = 2
+        SetTextOptionValueST(s_specialObjectHandlingArray[groupCollectibleAction])
+        PutCollectionGroupAction(collectionGroupNames[collectionGroup], groupCollectibleAction)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_GROUP_COLLECTIBLE_ACTION"))
+    endEvent
+endState
+
+state groupCollectionAddNotify
+    event OnSelectST()
+        groupCollectionAddNotify = !groupCollectionAddNotify
+        SetToggleOptionValueST(groupCollectionAddNotify)
+        PutCollectionGroupNotifies(collectionGroupNames[collectionGroup], groupCollectionAddNotify)
+    endEvent
+
+    event OnDefaultST()
+        groupCollectionAddNotify = false
+        SetToggleOptionValueST(groupCollectionAddNotify)
+        PutCollectionGroupNotifies(collectionGroupNames[collectionGroup], groupCollectionAddNotify)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_GROUP_COLLECTION_ADD_NOTIFY"))
+    endEvent
+endState
+
+state groupCollectDuplicates
+    event OnSelectST()
+        groupCollectDuplicates = !groupCollectDuplicates
+        SetToggleOptionValueST(groupCollectDuplicates)
+        PutCollectionGroupAllowsRepeats(collectionGroupNames[collectionGroup], groupCollectDuplicates)
+    endEvent
+
+    event OnDefaultST()
+        groupCollectDuplicates = false
+        SetToggleOptionValueST(groupCollectDuplicates)
+        PutCollectionGroupAllowsRepeats(collectionGroupNames[collectionGroup], groupCollectDuplicates)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_GROUP_COLLECT_DUPLICATES"))
     endEvent
 endState
 

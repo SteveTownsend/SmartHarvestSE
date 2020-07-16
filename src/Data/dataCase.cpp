@@ -271,9 +271,23 @@ void DataCase::AnalyzePerks(void)
 			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kAddLeveledListOnDeath &&
 				entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kAddLeveledList)
 			{
-				DBG_MESSAGE("Leveled items added on death by perk %s/0x%08x", perk->GetName(), perk->GetFormID());
+				REL_MESSAGE("Leveled items added on death by perk %s/0x%08x", perk->GetName(), perk->GetFormID());
 				m_leveledItemOnDeathPerks.insert(perk);
-				break;
+			}
+			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kModIngredientsHarvested)
+			{
+				if (entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kSetValue && 
+					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::FunctionType::kOneValue)
+				{
+					const RE::BGSEntryPointFunctionDataOneValue* oneValued(static_cast<const RE::BGSEntryPointFunctionDataOneValue*>(entryPoint->functionData));
+					REL_MESSAGE("Modify Harvested Ingredients factor %.2f from perk %s/0x%08x", oneValued->data, perk->GetName(), perk->GetFormID());
+					m_modifyHarvestedPerkMultipliers.insert(std::make_pair(perk, oneValued->data));
+				}
+				else
+				{
+					REL_WARNING("Modify Harvested Ingredients unsupported for perk %s/0x%08x, function %d, type %d", perk->GetName(), perk->GetFormID(),
+						entryPoint->entryData.function, entryPoint->functionData ? int(entryPoint->functionData->GetType()) : -1);
+				}
 			}
 		}
 	}
@@ -358,6 +372,12 @@ void DataCase::ExcludeFactionContainers()
 			m_offLimitsContainers.insert(containerRef);
 		}
 	}
+}
+
+bool DataCase::ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	return m_containerBlackList.contains(refr->GetContainer());
 }
 
 void DataCase::ExcludeVendorContainers()
@@ -453,7 +473,7 @@ void DataCase::ExcludeVendorContainers()
 				REL_MESSAGE("Block Vendor Container %s/0x%08x", container->GetName(), container->GetFormID());
 				matched = true;
 				// only continue if insert fails, not that this will likely do much good
-				return !m_offLimitsForms.insert(container).second;
+				return !m_containerBlackList.insert(container).second;
 			}
 			else
 			{
@@ -483,7 +503,7 @@ void DataCase::ExcludeVendorContainers()
 		if (chestForm)
 		{
 			REL_MESSAGE("CONT %s:0x%08x added to Mod Blacklist", espName.c_str(), chestForm->GetFormID());
-			m_offLimitsForms.insert(chestForm);
+			m_containerBlackList.insert(chestForm);
 		}
 		else
 		{
@@ -499,7 +519,7 @@ void DataCase::ExcludeImmersiveArmorsGodChest()
 	if (godChestForm)
 	{
 		REL_MESSAGE("Block Immersive Armors 'all the loot' chest %s/0x%08x", godChestForm->GetName(), godChestForm->GetFormID());
-		m_offLimitsForms.insert(godChestForm);
+		m_containerBlackList.insert(godChestForm);
 	}
 }
 
@@ -510,7 +530,30 @@ void DataCase::ExcludeGrayCowlStonesChest()
 	if (stonesChestForm)
 	{
 		REL_MESSAGE("Block Gray Cowl Stones chest %s/0x%08x", stonesChestForm->GetName(), stonesChestForm->GetFormID());
-		m_offLimitsForms.insert(stonesChestForm);
+		m_containerBlackList.insert(stonesChestForm);
+	}
+}
+
+void DataCase::ExcludeMissivesBoards()
+{
+	// if Missives is installed and loads later than SHSE, conditionally blacklist the Noticeboards to avoid auto-looting of non-quest Missives
+	static constexpr const char* modName = "Missives.esp";
+	if (!LoadOrder::Instance().IncludesMod(modName))
+		return;
+	if (LoadOrder::Instance().ModPrecedesSHSE(modName))
+	{
+		REL_MESSAGE("Missive Boards lootable: Missives loads before SHSE");
+		return;
+	}
+
+	// if SHSE loads ahead of Missives (and by extension its patches), blacklist the relevant containers. This relies on CONT
+	// name "Missive Board" to tag these across base mod and its patches. Patches may be merged, so plugin name is no help.
+	static constexpr const char * containerName = "Missive Board";
+	std::unordered_set<RE::TESObjectCONT*> missivesBoards(FindExactMatchesByName<RE::TESObjectCONT>(containerName));
+	for (const auto missivesBoard : missivesBoards)
+	{
+		REL_MESSAGE("Block Missive Board %s/0x%08x", missivesBoard->GetName(), missivesBoard->GetFormID());
+		m_containerBlackList.insert(missivesBoard);
 	}
 }
 
@@ -567,10 +610,6 @@ void DataCase::BlockOffLimitsContainers()
 	for (const auto refr : m_offLimitsContainers)
 	{
 		BlockReference(refr);
-	}
-	for (const auto form : m_offLimitsForms)
-	{
-		BlockForm(form);
 	}
 }
 
@@ -721,17 +760,6 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	return (m_blockForm.insert(form)).second;
 }
 
-bool DataCase::UnblockForm(const RE::TESForm* form)
-{
-	if (!form)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (form->IsDynamicForm())
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return m_blockForm.erase(form) > 0;
-}
-
 bool DataCase::IsFormBlocked(const RE::TESForm* form)
 {
 	if (!form)
@@ -745,7 +773,6 @@ bool DataCase::IsFormBlocked(const RE::TESForm* form)
 
 void DataCase::ResetBlockedForms()
 {
-	// reset blocked forms to just the user's list
 	DBG_MESSAGE("Reset Blocked Forms");
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blockForm.clear();
@@ -937,6 +964,7 @@ void DataCase::HandleExceptions()
 	ExcludeVendorContainers();
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
+	ExcludeMissivesBoards();
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 
@@ -1117,6 +1145,30 @@ bool DataCase::PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const
 		return true;
 	}
 	return false;
+}
+
+float DataCase::PerkIngredientMultiplier(const RE::Actor* actor) const
+{
+	// default is one ingredient
+	float result(1.0);
+	const RE::BGSPerk* matched(nullptr);
+	std::for_each(m_modifyHarvestedPerkMultipliers.cbegin(), m_modifyHarvestedPerkMultipliers.cend(),
+		[&](const auto& perkEntry) {
+		if (actor->HasPerk(const_cast<RE::BGSPerk*>(perkEntry.first)))
+		{
+			if (matched)
+			{
+				DBG_VMESSAGE("Perk conflict ingredient harvesting via %s/0x%08x, discarding", perkEntry.first->GetName(), perkEntry.first->GetFormID());
+			}
+			else
+			{
+				DBG_VMESSAGE("Perk %s/0x%08x used for harvesting, multiplier %.2f", perkEntry.first->GetName(), perkEntry.first->GetFormID(), perkEntry.second);
+				matched = perkEntry.first;
+				result = perkEntry.second;
+			}
+		}
+	});
+	return result;
 }
 
 std::string DataCase::GetModelPath(const RE::TESForm* thisForm) const

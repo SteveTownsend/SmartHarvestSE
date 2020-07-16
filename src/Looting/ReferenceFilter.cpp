@@ -22,8 +22,11 @@ http://www.fsf.org/licensing/licenses
 #include "Data/dataCase.h"
 #include "Utilities/utils.h"
 #include "Looting/tasks.h"
+#include "Looting/objects.h"
+#include "Looting/TheftCoordinator.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/PlayerState.h"
 #include "Looting/ReferenceFilter.h"
 
 namespace shse
@@ -64,6 +67,7 @@ The failing REFR is a dynamic form referencing a dynamic base form. Earlier REFR
 Dynamic forms may be deleted by script. This means we must be especially wary in handling them. 
 For now, choose to flat-out ignore any REFR to a Dynamic Base - manual looting is still possible if REFR is not deleted. Filtering also includes
 never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR FormIDs are recycled.
+Blacklisted containers are allowed through here as they may still need to be glowed.
 */
 
 bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
@@ -233,7 +237,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				}
 				else
 				{
-					DBG_VMESSAGE("skip Door 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
+					DBG_VMESSAGE("skip Door 0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName());
 				}
 				continue;
 			}
@@ -244,10 +248,26 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				formType == RE::FormType::MovableStatic ||
 				formType == RE::FormType::Static)
 			{
-				DBG_VMESSAGE("invalid formtype %d for 0x%08x(%s)", formType, refr->GetFormID(), refr->GetBaseObject()->GetName());
+				DBG_VMESSAGE("invalid formtype %d for 0x%08x", formType, refr->GetFormID());
 				continue;
 			}
-			if (!m_rangeCheck.IsValid(refr))
+
+			bool withinRange(m_rangeCheck.IsValid(refr));
+			// Record this REFR if it represents a potential player-detecting NPC, unless Stealing operation is in progress already
+			// Bypass this logic if stealing is currently disallowed for player.
+			if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected &&
+				!TheftCoordinator::Instance().StealingItems() &&
+				PlayerState::Instance().WithinDetectionRange(m_rangeCheck.Distance()) &&	// sneak detection range is not the same as looting
+				refr->formType == RE::FormType::ActorCharacter && !refr->IsDead(true))
+			{
+				RE::Actor* actor(refr->As<RE::Actor>());
+				if (actor && !ActorHelper(actor).IsPlayerAlly())
+				{
+					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f may detect player", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+					ActorTracker::Instance().AddDetective(actor, m_rangeCheck.Distance());
+				}
+			}
+			if (!withinRange)
 			{
 				DBG_VMESSAGE("omit out of range REFR 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
 				continue;

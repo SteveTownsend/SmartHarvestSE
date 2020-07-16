@@ -52,9 +52,10 @@ public:
 	void ClearReferenceBlacklist();
 
 	bool BlockForm(const RE::TESForm* form);
-	bool UnblockForm(const RE::TESForm* form);
 	bool IsFormBlocked(const RE::TESForm* form);
 	void ResetBlockedForms();
+
+	bool ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const;
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
@@ -88,6 +89,8 @@ public:
 	}
 
 	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
+	float PerkIngredientMultiplier(const RE::Actor* actor) const;
+
 	inline const std::unordered_set<const RE::TESForm*>& OffLimitsLocations()
 	{
 		return m_offLimitsLocations;
@@ -105,7 +108,7 @@ private:
 
 	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
 	std::unordered_set<const RE::TESObjectREFR*> m_offLimitsContainers;
-	std::unordered_set<RE::TESForm*> m_offLimitsForms;
+	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_set<const RE::TESForm*> m_blockForm;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_set<RE::FormID> m_blockRefr;
@@ -116,6 +119,8 @@ private:
 	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
+	// assume simple setters for now, like vanilla Green Thumb
+	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
 
 	mutable RecursiveLock m_blockListLock;
 
@@ -413,6 +418,7 @@ private:
 	void ExcludeVendorContainers();
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
+	void ExcludeMissivesBoards();
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
@@ -470,6 +476,24 @@ private:
 			}
 		}
 		return match;
+	}
+
+	template <typename T>
+	std::unordered_set<T*> FindExactMatchesByName(const std::string& name)
+	{
+		std::unordered_set<T*> matches;
+		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+		if (!dhnd)
+			return matches;
+
+		// Check for match on name. FormID can change if this is in a merge output.
+		std::for_each(dhnd->GetFormArray<T>().cbegin(), dhnd->GetFormArray<T>().cend(), [&](T* entry) {
+			if (entry->GetName() == name)
+			{
+				matches.insert(entry);
+			}
+		});
+		return matches;
 	}
 
 	void IncludeFossilMiningExcavation();

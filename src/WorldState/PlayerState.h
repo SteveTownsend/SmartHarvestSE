@@ -35,11 +35,17 @@ public:
 	void ResetCarryWeight(const bool reloaded);
 	void CheckPerks(const bool force);
 	bool PerksAddLeveledItemsOnDeath() const;
+	float PerkIngredientMultiplier() const;
 	bool CanLoot() const;
 	bool IsSneaking() const;
+	OwnershipRule EffectiveOwnershipRule() const { return m_ownershipRule; }
+	SpecialObjectHandling BelongingsCheck() const { return m_belongingsCheck; }
+	double SneakDistanceExterior() const;
+	double SneakDistanceInterior() const;
 	void ExcludeMountedIfForbidden(void);
 	Position GetPosition() const;
 	AlglibPosition GetAlglibPosition() const;
+	bool WithinDetectionRange(const double distance) const;
 
 private:
 	void AdjustCarryWeight();
@@ -51,6 +57,7 @@ private:
 	static constexpr int PerkCheckIntervalSeconds = 15;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
 	bool m_perksAddLeveledItemsOnDeath;
+	float m_harvestedIngredientMultiplier;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;
@@ -58,6 +65,8 @@ private:
 	int m_currentCarryWeightChange;
 
 	bool m_sneaking;
+	OwnershipRule m_ownershipRule;
+	SpecialObjectHandling m_belongingsCheck;
 	bool m_disableWhileMounted;
 
 	mutable RecursiveLock m_playerLock;

@@ -44,7 +44,8 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onLootFromNPC("OnLootFromNPC"),
 	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
-	m_onCheckOKToScan("OnCheckOKToScan")
+	m_onCheckOKToScan("OnCheckOKToScan"),
+	m_onStealIfUndetected("OnStealIfUndetected")
 {
 }
 
@@ -108,6 +109,7 @@ void EventPublisher::HookUp()
 	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
+	m_onStealIfUndetected.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
@@ -132,10 +134,10 @@ void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType r
 }
 
 void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType objType, int itemCount, const bool isSilent,
-	const bool manualLootNotify, const bool collectible)
+	const bool manualLootNotify, const bool collectible, const float ingredientCount)
 {
 	// We always lock the REFR from more harvesting before firing this
-	m_onHarvest.SendEvent(refr, static_cast<int>(objType), itemCount, isSilent, manualLootNotify, collectible);
+	m_onHarvest.SendEvent(refr, static_cast<int>(objType), itemCount, isSilent, manualLootNotify, collectible, ingredientCount);
 }
 
 void EventPublisher::TriggerFlushAddedItems()
@@ -156,4 +158,9 @@ void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int durati
 void EventPublisher::TriggerCheckOKToScan(const int nonce)
 {
 	m_onCheckOKToScan.SendEvent(nonce);
+}
+
+void EventPublisher::TriggerStealIfUndetected(const size_t actorCount)
+{
+	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount));
 }

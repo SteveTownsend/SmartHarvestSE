@@ -56,6 +56,10 @@ public:
 
 	void AsJSON(nlohmann::json& j) const;
 
+	inline bool operator==(const CollectionPolicy& rhs) const {
+		return m_action == rhs.m_action && m_notify == rhs.m_notify && m_repeat == rhs.m_repeat;
+	}
+
 private:
 	SpecialObjectHandling m_action;
 	bool m_notify;
@@ -66,13 +70,17 @@ void to_json(nlohmann::json& j, const CollectionPolicy& collection);
 
 class Collection {
 public:
-	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy, std::unique_ptr<ConditionTree> filter);
+	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
+		const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
 	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
 	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
 	bool AddMemberID(const RE::TESForm* form) const;
-	inline const CollectionPolicy& Policy() const { return m_policy; }
-	inline CollectionPolicy& Policy() { return m_policy; }
+	inline const CollectionPolicy& Policy() const { return m_effectivePolicy; }
+	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
+	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
+	inline bool OverridesGroup() const { return m_overridesGroup; }
+	inline void SetOverridesGroup() { m_overridesGroup = true; }
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
 	void RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place);
@@ -90,7 +98,9 @@ protected:
 	// inputs
 	std::string m_name;
 	std::string m_description;
-	CollectionPolicy m_policy;
+	// may inherit Policy from Group or override
+	CollectionPolicy m_effectivePolicy;
+	bool m_overridesGroup;
 	std::unique_ptr<ConditionTree> m_rootFilter;
 	// derived
 	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
@@ -99,6 +109,25 @@ protected:
 };
 
 void to_json(nlohmann::json& j, const Collection& collection);
+
+class CollectionGroup {
+public:
+	CollectionGroup(const std::string& name, const CollectionPolicy& policy, const bool useMCM, const nlohmann::json& collections);
+	inline const std::vector<std::shared_ptr<Collection>>& Collections() const { return m_collections; }
+	inline std::string Name() const { return m_name; }
+	void AsJSON(nlohmann::json& j) const;
+	inline const CollectionPolicy& Policy() const { return m_policy; }
+	inline CollectionPolicy& Policy() { return m_policy; }
+	void SyncDefaultPolicy();
+
+private:
+	std::string m_name;
+	CollectionPolicy m_policy;
+	const bool m_useMCM;
+	std::vector<std::shared_ptr<Collection>> m_collections;
+};
+
+void to_json(nlohmann::json& j, const CollectionGroup& collectionGroup);
 
 }
 
