@@ -28,7 +28,6 @@ public:
 	ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeCheck, const bool respectDoors, const size_t limit);
 	void FindLootableReferences();
 	void FindAllCandidates();
-	inline double DistanceToDoor() const { return m_nearestDoor; }
 
 private:
 	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;

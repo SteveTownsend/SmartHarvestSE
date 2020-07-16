@@ -229,11 +229,32 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 			RE::FormType formType(refr->GetBaseObject()->formType);
 			if (formType == RE::FormType::Door)
 			{
-				if (m_respectDoors && m_rangeCheck.IsValid(refr) && (m_nearestDoor == 0. || m_rangeCheck.Distance() < m_nearestDoor))
+				if (m_respectDoors)
 				{
-					DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
-					m_nearestDoor = m_rangeCheck.Distance();
-					m_rangeCheck.SetRadius(m_nearestDoor);
+					// Locked DOOR (even if not in range) can bar manual looting from a Display Case - if player gets close we may autoloot the contents
+					constexpr double DoorToleranceUnits(3. / DistanceUnitInFeet);
+					constexpr double MinLootingRangeUnits(1.0);
+					m_rangeCheck.IsValid(refr);	// calculate distance to door, in range or not
+					double doorLimit(m_rangeCheck.Distance());
+					if (IsLocked(refr))
+					{
+						doorLimit = std::max(MinLootingRangeUnits, doorLimit - DoorToleranceUnits);
+						DBG_VMESSAGE("Locked in-range Door 0x%08x(%s) tightened proximity to %.2f",
+							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
+					}
+					else
+					{
+						// by the same token, an unlocked Display Case requires some leeway to autoloot its contents
+						doorLimit = std::min(m_rangeCheck.Radius(), doorLimit + DoorToleranceUnits);
+						DBG_VMESSAGE("Unlocked in-range Door 0x%08x(%s) relaxed allowed proximity to %.2f",
+							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
+					}
+					if (m_nearestDoor == 0. || doorLimit < m_nearestDoor)
+					{
+						DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(),
+							refr->GetBaseObject()->GetName(), doorLimit);
+						m_nearestDoor = doorLimit;
+					}
 				}
 				else
 				{
@@ -327,9 +348,10 @@ void ReferenceFilter::FilterNearbyReferences()
 	// "Nearest Door" restriction can adjust the range downwards during the scan - re-check here
 	if (m_respectDoors)
 	{
+		double effectiveRadius(std::min(m_nearestDoor, m_rangeCheck.Radius()));
 		auto tooFarAway(std::find_if(m_refs.begin(), endOfRange, [&](const auto& target) -> bool
 		{
-			return target.first > m_rangeCheck.Radius();
+			return target.first > effectiveRadius;
 		}));
 
 		DBG_MESSAGE("Erase %d out-of-range REFRs", std::distance(tooFarAway, m_refs.end()));

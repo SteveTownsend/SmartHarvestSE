@@ -48,7 +48,7 @@ bool IsBossContainer(const RE::TESObjectREFR* refr)
 }
 
 // this logic is essential - TESObjectREFR::IsLocked() is not reliable
-bool IsContainerLocked(const RE::TESObjectREFR* refr)
+bool IsLocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
