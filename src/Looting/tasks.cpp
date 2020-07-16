@@ -18,6 +18,7 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #include "PrecompiledHeaders.h"
+#include "Utilities/versiondb.h"
 
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
@@ -49,7 +50,7 @@ namespace shse
 
 INIFile* SearchTask::m_ini = nullptr;
 
-RecursiveLock SearchTask::m_searchLock;
+RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
 SearchTask::SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen)
@@ -159,7 +160,7 @@ bool SearchTask::HasDynamicData(RE::TESObjectREFR* refr)
 std::unordered_map<const RE::TESObjectREFR*, RE::FormID> SearchTask::m_lootedDynamicContainers;
 void SearchTask::MarkDynamicContainerLooted(const RE::TESObjectREFR* refr)
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	// record looting so we don't rescan
 	m_lootedDynamicContainers.insert(std::make_pair(refr, refr->GetFormID()));
 }
@@ -168,7 +169,7 @@ RE::FormID SearchTask::LootedDynamicContainerFormID(const RE::TESObjectREFR* ref
 {
 	if (!refr)
 		return false;
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	const auto looted(m_lootedDynamicContainers.find(refr));
 	return looted != m_lootedDynamicContainers.cend() ? looted->second : InvalidForm;
 }
@@ -177,14 +178,14 @@ RE::FormID SearchTask::LootedDynamicContainerFormID(const RE::TESObjectREFR* ref
 // as this list contains recycled FormIDs, and hypothetically may grow unbounded.
 void SearchTask::ResetLootedDynamicContainers()
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	m_lootedDynamicContainers.clear();
 }
 
 std::unordered_set<const RE::TESObjectREFR*> SearchTask::m_lootedContainers;
 void SearchTask::MarkContainerLooted(const RE::TESObjectREFR* refr)
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	// record looting so we don't rescan
 	m_lootedContainers.insert(refr);
 }
@@ -193,14 +194,14 @@ bool SearchTask::IsLootedContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	return m_lootedContainers.count(refr) > 0;
 }
 
 // forget about containers we looted to allow rescan after game load or config settings update
 void SearchTask::ResetLootedContainers()
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	m_lootedContainers.clear();
 }
 
@@ -211,7 +212,7 @@ bool SearchTask::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	// check instantaneous locked/unlocked state of the container
 	if (!IsContainerLocked(refr))
 	{
@@ -235,14 +236,14 @@ bool SearchTask::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 void SearchTask::ForgetLockedContainers()
 {
 	DBG_MESSAGE("Clear locked containers blacklist");
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	m_lockedContainers.clear();
 }
 
 void SearchTask::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 {
 	shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	// record looting so we don't rescan
 	MarkContainerLooted(refr);
 }
@@ -825,7 +826,7 @@ void SearchTask::GlowObject(RE::TESObjectREFR* refr, const int duration, const G
 	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
 	// never be so many in a cell that this is a problem.
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	const auto existingGlow(m_glowExpiration.find(refr));
 	auto currentTime(std::chrono::high_resolution_clock::now());
 	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
@@ -836,7 +837,185 @@ void SearchTask::GlowObject(RE::TESObjectREFR* refr, const int duration, const G
 	EventPublisher::Instance().TriggerObjectGlow(m_candidate, duration, glowReason);
 }
 
+RecursiveLock SearchTask::m_searchLock;
+bool SearchTask::m_threadStarted = false;
 bool SearchTask::m_searchAllowed = false;
+
+void SearchTask::TakeNap()
+{
+	double delay(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
+		LocationTracker::Instance().IsPlayerIndoors() ? "IndoorsIntervalSeconds" : "IntervalSeconds"));
+	delay = std::max(MinDelay, delay);
+	if (m_calibrating)
+	{
+		// use hard-coded delay to make UX comprehensible
+		delay = double(CalibrationDelay);
+	}
+
+	DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
+	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
+	std::this_thread::sleep_until(nextRunTime);
+}
+
+void SearchTask::ScanThread()
+{
+	REL_MESSAGE("Starting SHSE Worker Thread");
+	// record a message periodically if mod remains idle
+	constexpr std::chrono::milliseconds TellUserIAmIdle(60000LL);
+	m_ini = INIFile::GetInstance();
+	std::chrono::time_point<std::chrono::steady_clock> lastScanEndTime(std::chrono::high_resolution_clock::now());
+	std::chrono::time_point<std::chrono::steady_clock> lastIdleLogTime(lastScanEndTime);
+	while (true)
+	{
+		// Delay the scan for each loop
+		TakeNap();
+
+		{
+			// narrowly-scoped lock, do not need if this check passes. Go no further if game load is in progress.
+			RecursiveLockGuard guard(m_lock);
+			if (!m_pluginSynced)
+			{
+				REL_MESSAGE("Plugin sync still pending");
+				continue;
+			}
+		}
+
+		if (!EventPublisher::Instance().GoodToGo())
+		{
+			REL_MESSAGE("Event publisher not ready yet");
+			continue;
+		}
+
+		if (!UIState::Instance().OKForSearch())
+		{
+			DBG_MESSAGE("UI state not good to loot");
+			const auto timeNow(std::chrono::high_resolution_clock::now());
+			const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
+			const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
+			if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
+			{
+				REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
+				lastIdleLogTime = timeNow;
+			}
+			continue;
+		}
+
+		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
+		if (!LocationTracker::Instance().Refresh())
+		{
+			REL_VMESSAGE("Location or cell not stable yet");
+			continue;
+		}
+
+		shse::PlayerState::Instance().Refresh();
+
+		// process any queued added items since last time
+		shse::CollectionManager::Instance().ProcessAddedItems();
+
+		// Skip loot-OK checks if calibrating
+		if (!m_calibrating)
+		{
+			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
+			static const bool allowIfRestricted(true);
+			if (!LocationTracker::Instance().IsPlayerInLootablePlace(LocationTracker::Instance().PlayerCell(), allowIfRestricted))
+			{
+				DBG_MESSAGE("Location cannot be looted");
+				continue;
+			}
+			if (!shse::PlayerState::Instance().CanLoot())
+			{
+				DBG_MESSAGE("Player State prevents looting");
+				continue;
+			}
+			if (!IsAllowed())
+			{
+				DBG_MESSAGE("search disallowed");
+				const auto timeNow(std::chrono::high_resolution_clock::now());
+				const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
+				const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
+				if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
+				{
+					REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
+					lastIdleLogTime = timeNow;
+				}
+				continue;
+			}
+
+			// re-evaluate perks if timer has popped - no force, and execute scan
+			shse::PlayerState::Instance().CheckPerks(false);
+		}
+
+		DoPeriodicSearch();
+
+		// request added items to be pushed to us while we are sleeping
+		shse::CollectionManager::Instance().Refresh();
+		lastScanEndTime = std::chrono::high_resolution_clock::now();
+	}
+}
+
+void SearchTask::Start()
+{
+	// do not start the thread if we failed to initialize
+	if (!m_pluginOK)
+		return;
+	std::thread([]()
+	{
+		// use structured exception handling to get stack walk on windows exceptions
+		__try
+		{
+			ScanThread();
+		}
+		__except (LogStackWalker::LogStack(GetExceptionInformation()))
+		{
+		}
+	}).detach();
+}
+
+void SearchTask::ResetRestrictions(const bool gameReload)
+{
+	DataCase::GetInstance()->ListsClear(gameReload);
+
+	DBG_MESSAGE("Unlock task-pending REFRs");
+	RecursiveLockGuard guard(m_lock);
+	// unblock all blocked auto-harvest objects
+	m_HarvestLock.clear();
+
+	// Dynamic containers that we looted reset on cell change
+	ResetLootedDynamicContainers();
+
+	if (gameReload)
+	{
+		// unblock possible player house checks after game reload
+		PlayerHouses::Instance().Clear();
+		// reset Actor data
+		shse::ActorTracker::Instance().Reset();
+		// clear lists of looted and locked containers
+		ResetLootedContainers();
+		ForgetLockedContainers();
+		// Reset Collections State and reapply the saved-game data
+		shse::CollectionManager::Instance().OnGameReload();
+	}
+	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
+	m_glowExpiration.clear();
+}
+
+bool SearchTask::m_pluginOK(false);
+
+void SearchTask::OnGoodToGo()
+{
+	REL_MESSAGE("UI/controls now good-to-go");
+	// reset state that might be invalidated by MCM setting updates
+	shse::PlayerState::Instance().CheckPerks(true);
+	// reset carry weight - will reinstate correct value if/when scan resumes. Not a game reload.
+	static const bool reloaded(false);
+	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
+
+	// Base Object Forms and REFRs handled for the case where we are not reloading game
+	DataCase::GetInstance()->ResetBlockedForms();
+	DataCase::GetInstance()->ClearBlockedReferences(false);
+	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
+	ResetLootedContainers();
+}
 
 void SearchTask::DoPeriodicSearch()
 {
@@ -1032,10 +1211,35 @@ void SearchTask::DoPeriodicSearch()
 	TheftCoordinator::Instance().StealIfUndetected();
 }
 
+void SearchTask::PrepareForReload()
+{
+	UIState::Instance().Reset();
+
+	// Do not scan again until we are in sync with the scripts
+	m_pluginSynced = false;
+}
+
+void SearchTask::AfterReload()
+{
+	// force recheck Perks and reset carry weight
+	static const bool force(true);
+	shse::PlayerState::Instance().CheckPerks(force);
+
+	// reset carry weight and menu-active state
+	static const bool reloaded(true);
+	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
+}
+
 void SearchTask::Allow()
 {
 	RecursiveLockGuard guard(m_searchLock);
 	m_searchAllowed = true;
+	if (!m_threadStarted)
+	{
+		// Start the thread when we are first allowed to search
+		m_threadStarted = true;
+		SearchTask::Start();
+	}
 }
 
 void SearchTask::Disallow()
@@ -1054,7 +1258,7 @@ int SearchTask::m_pendingNotifies = 0;
 
 bool SearchTask::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	if (!refr)
 		return false;
 	if ((m_HarvestLock.insert(refr)).second)
@@ -1068,7 +1272,7 @@ bool SearchTask::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
 
 bool SearchTask::UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	if (!refr)
 		return false;
 	if (m_HarvestLock.erase(refr) > 0)
@@ -1080,46 +1284,31 @@ bool SearchTask::UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilen
 	return false;
 }
 
-void SearchTask::Clear(const bool gameReload)
-{
-	RecursiveLockGuard guard(m_searchLock);
-	// unblock all blocked auto-harvest objects
-	ClearPendingHarvestNotifications();
-	// Dynamic containers that we looted reset on cell change
-	ResetLootedDynamicContainers();
-	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
-	ClearGlowExpiration();
-
-	if (gameReload)
-	{
-		// clear lists of looted and locked containers
-		ResetLootedContainers();
-		ForgetLockedContainers();
-	}
-}
-
 bool SearchTask::IsLockedForHarvest(const RE::TESObjectREFR* refr)
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	return m_HarvestLock.contains(refr);
 }
 
 size_t SearchTask::PendingHarvestNotifications()
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	return m_pendingNotifies;
 }
 
-void SearchTask::ClearPendingHarvestNotifications()
-{
-	RecursiveLockGuard guard(m_searchLock);
-	return m_HarvestLock.clear();
-}
+bool SearchTask::m_pluginSynced(false);
 
-void SearchTask::ClearGlowExpiration()
+// this is the last function called by the scripts when re-syncing state
+void SearchTask::SyncDone(const bool reload)
 {
-	RecursiveLockGuard guard(m_searchLock);
-	return m_HarvestLock.clear();
+	RecursiveLockGuard guard(m_lock);
+
+	// reset blocked lists to allow recheck vs current state
+	ResetRestrictions(reload);
+	REL_MESSAGE("Restrictions reset, new/loaded game = %s", reload ? "true" : "false");
+
+	// need to wait for the scripts to sync up before performing player house checks
+	m_pluginSynced = true;
 }
 
 // this triggers/stops loot range calibration cycle
@@ -1131,7 +1320,7 @@ GlowReason SearchTask::m_nextGlow(GlowReason::SimpleTarget);
 
 void SearchTask::ToggleCalibration(const bool glowDemo)
 {
-	RecursiveLockGuard guard(m_searchLock);
+	RecursiveLockGuard guard(m_lock);
 	m_calibrating = !m_calibrating;
 	REL_MESSAGE("Calibration of Looting range %s, test shaders %s",	m_calibrating ? "started" : "stopped", m_glowDemo ? "true" : "false");
 	if (m_calibrating)
@@ -1155,6 +1344,62 @@ void SearchTask::ToggleCalibration(const bool glowDemo)
 		}
 		m_glowDemo = false;
 	}
+}
+
+bool SearchTask::Load()
+{
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Startup: Load Game Data");
+#endif
+#if _DEBUG
+	VersionDb db;
+
+	// Try to load database of version 1.5.97.0 regardless of running executable version.
+	if (!db.Load(1, 5, 97, 0))
+	{
+		DBG_FATALERROR("Failed to load database for 1.5.97.0!");
+		return false;
+	}
+
+	// Write out a file called offsets-1.5.97.0.txt where each line is the ID and offset.
+	db.Dump("offsets-1.5.97.0.txt");
+	DBG_MESSAGE("Dumped offsets for 1.5.97.0");
+#endif
+	if (!shse::LoadOrder::Instance().Analyze())
+	{
+		REL_FATALERROR("Load Order unsupportable");
+		return false;
+	}
+	DataCase::GetInstance()->CategorizeLootables();
+	PopulationCenters::Instance().Categorize();
+
+	// Collections are layered on top of categorized objects
+	REL_MESSAGE("*** LOAD *** Build Collections");
+	shse::CollectionManager::Instance().ProcessDefinitions();
+
+	m_pluginOK = true;
+	REL_MESSAGE("Plugin now in sync - Game Data load complete!");
+	return true;
+}
+
+bool SearchTask::Init()
+{
+    if (!m_pluginOK)
+	{
+		__try
+		{
+			// Use structured exception handling during game data load
+			REL_MESSAGE("Plugin not synced up - Game Data load executing");
+			if (!Load())
+				return false;
+			}
+		__except (LogStackWalker::LogStack(GetExceptionInformation()))
+		{
+			REL_FATALERROR("Fatal Exception during Game Data load");
+			return false;
+		}
+	}
+	return true;
 }
 
 }
