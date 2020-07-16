@@ -94,6 +94,7 @@ public:
 	decltype(m_adjacentCells) AdjacentCells() const;
 	bool IsPlayerIndoors() const;
 	bool IsPlayerInRestrictedLootSettlement(const RE::TESObjectCELL* cell) const;
+	bool IsPlayerInFriendlyCell() const;
 	const RE::TESForm* CurrentPlayerPlace() const;
 	bool IsPlayerInWhitelistedPlace(const RE::TESObjectCELL* cell) const;
 	void DisplayLocationRelativeToMapMarker() const;
