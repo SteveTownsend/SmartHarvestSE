@@ -26,7 +26,6 @@ class IRangeChecker {
 public:
 	virtual bool IsValid(const RE::TESObjectREFR* refr) const = 0;
 	virtual double Radius() const = 0;
-	virtual void SetRadius(const double newRadius) = 0;
 	virtual double Distance() const = 0;
 
 protected:
@@ -40,7 +39,6 @@ public:
 	AbsoluteRange(const RE::TESObjectREFR* source, const double radius, const double zFactor);
 	virtual bool IsValid(const RE::TESObjectREFR* refr) const override;
 	virtual double Radius() const override;
-	virtual void SetRadius(const double newRadius) override;
 	virtual double Distance() const override;
 
 private:
@@ -57,7 +55,6 @@ public:
 	BracketedRange(const RE::TESObjectREFR* source, const double radius, const double m_delta);
 	virtual bool IsValid(const RE::TESObjectREFR* refr) const override;
 	virtual double Radius() const override;
-	virtual void SetRadius(const double newRadius) override;
 	virtual double Distance() const override;
 
 private:

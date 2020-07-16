@@ -214,7 +214,7 @@ bool SearchTask::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 		return false;
 	RecursiveLockGuard guard(m_lock);
 	// check instantaneous locked/unlocked state of the container
-	if (!IsContainerLocked(refr))
+	if (!IsLocked(refr))
 	{
 		// If container is not locked, but previously was stored as locked, continue to treat as unlocked until game reload.
 		// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If they don't

@@ -46,7 +46,7 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsPlayerOwned(const RE::TESObjectREFR* refr);
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
-bool IsContainerLocked(const RE::TESObjectREFR * refr);
+bool IsLocked(const RE::TESObjectREFR * refr);
 ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr);
 ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm);
 // this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
