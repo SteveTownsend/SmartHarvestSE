@@ -25,6 +25,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
 #include "Looting/tasks.h"
+#include "Utilities/utils.h"
 
 namespace shse
 {
@@ -42,13 +43,28 @@ PlayerState& PlayerState::Instance()
 
 PlayerState::PlayerState() :
 	m_perksAddLeveledItemsOnDeath(false),
+	m_harvestedIngredientMultiplier(1.),
 	m_carryAdjustedForCombat(false),
 	m_carryAdjustedForPlayerHome(false),
 	m_carryAdjustedForDrawnWeapon(false),
 	m_currentCarryWeightChange(0),
 	m_sneaking(false),
+	m_ownershipRule(OwnershipRule::MAX),
+	m_belongingsCheck(SpecialObjectHandling::MAX),
 	m_disableWhileMounted(false)
 {
+}
+
+double PlayerState::SneakDistanceInterior() const
+{
+	static const double SneakMaxDistance(utils::GetGameSettingFloat("fSneakMaxDistance"));
+	return SneakMaxDistance;
+}
+
+double PlayerState::SneakDistanceExterior() const
+{
+	static const double SneakMaxDistanceExterior(utils::GetGameSettingFloat("fSneakExteriorDistanceMult") * SneakDistanceInterior());
+	return SneakMaxDistanceExterior;
 }
 
 void PlayerState::Refresh()
@@ -62,6 +78,12 @@ void PlayerState::Refresh()
 		m_sneaking = sneaking;
 		static const bool gameReload(false);
 		SearchTask::ResetRestrictions(gameReload);
+		// no player detection by NPC is a prerequisite for autoloot of crime-to-activate items
+		m_ownershipRule = OwnershipRuleFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
+			sneaking ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
+		m_belongingsCheck = SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(
+			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
+
 	}
 }
 
@@ -187,6 +209,10 @@ void PlayerState::CheckPerks(const bool force)
 			m_perksAddLeveledItemsOnDeath = DataCase::GetInstance()->PerksAddLeveledItemsOnDeath(player);
 			DBG_MESSAGE("Leveled items added on death by perks? %s", m_perksAddLeveledItemsOnDeath ? "true" : "false");
 		}
+
+		m_harvestedIngredientMultiplier = DataCase::GetInstance()->PerkIngredientMultiplier(player);
+		DBG_VMESSAGE("Perk for harvesting -> multiplier %.2f", m_harvestedIngredientMultiplier);
+
 		m_lastPerkCheck = timeNow;
 	}
 }
@@ -196,6 +222,12 @@ bool PlayerState::PerksAddLeveledItemsOnDeath() const
 {
 	RecursiveLockGuard guard(m_playerLock);
 	return m_perksAddLeveledItemsOnDeath;
+}
+
+float PlayerState::PerkIngredientMultiplier() const
+{
+	RecursiveLockGuard guard(m_playerLock);
+	return m_harvestedIngredientMultiplier;
 }
 
 // reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
@@ -279,6 +311,12 @@ AlglibPosition PlayerState::GetAlglibPosition() const
 {
 	const auto player(RE::PlayerCharacter::GetSingleton());
 	return { player->GetPositionX(), player->GetPositionY(), player->GetPositionZ() };
+}
+
+bool PlayerState::WithinDetectionRange(const double distance) const
+{
+	double maxDistance(LocationTracker::Instance().IsPlayerIndoors() ? SneakDistanceInterior() : SneakDistanceExterior());
+	return distance <= maxDistance;
 }
 
 }

@@ -266,31 +266,34 @@ RelativeLocationDescriptor LocationTracker::NearestMapMarker(const AlglibPositio
 	return RelativeLocationDescriptor(refPos, markerPos, location, unitsAway);
 }
 
-bool LocationTracker::CellOwnedByPlayerOrPlayerFaction(const RE::TESObjectCELL* cell) const
+CellOwnership LocationTracker::GetCellOwnership(const RE::TESObjectCELL* cell) const
 {
 	if (!cell)
-		return false;
+		return CellOwnership::NoOwner;
 	RE::TESForm* owner = GetCellOwner(cell);
 	if (!owner)
-		return false;
+		return CellOwnership::NoOwner;
 	if (owner->formType == RE::FormType::NPC)
 	{
 		const RE::TESNPC* npc = owner->As<RE::TESNPC>();
 		RE::TESNPC* playerBase = RE::PlayerCharacter::GetSingleton()->GetActorBase();
-		return (npc && npc == playerBase);
+		if (npc && npc == playerBase)
+		{
+			return CellOwnership::Player;
+		}
+		return CellOwnership::NPC;
 	}
 	else if (owner->formType == RE::FormType::Faction)
 	{
 		RE::TESFaction* faction = owner->As<RE::TESFaction>();
-		if (faction)
+		if (faction && RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
 		{
-			if (RE::PlayerCharacter::GetSingleton()->IsInFaction(faction))
-				return true;
-
-			return false;
+			return CellOwnership::PlayerFaction;
 		}
+		return CellOwnership::OtherFaction;
 	}
-	return false;
+	REL_WARNING("Owner 0x%08x exists but uncategorized in cell 0x%08x", owner->GetFormID(), cell->GetFormID());
+	return CellOwnership::NoOwner;
 }
 
 RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
@@ -499,9 +502,10 @@ bool LocationTracker::IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, con
 		DBG_DMESSAGE("Player House: no looting");
 		return false;
 	}
-	if (CellOwnedByPlayerOrPlayerFaction(cell))
+	CellOwnership ownership(GetCellOwnership(cell));
+	if (!IsPlayerFriendly(ownership))
 	{
-		DBG_DMESSAGE("Player or Player Faction own cell: no looting");
+		DBG_DMESSAGE("Not a Player-friendly cell %s: no looting unless whitelisted", CellOwnershipName(ownership).c_str());
 		return false;
 	}
 	if (IsPlayerInBlacklistedPlace(cell))

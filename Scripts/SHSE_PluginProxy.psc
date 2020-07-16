@@ -51,12 +51,25 @@ int Function CollectionAction(String groupName, String collectionName) global na
 Function PutCollectionAllowsRepeats(String groupName, String collectionName, bool allowRepeats) global native
 Function PutCollectionNotifies(String groupName, String collectionName, bool notifies) global native
 Function PutCollectionAction(String groupName, String collectionName, int action) global native
+bool Function CollectionGroupAllowsRepeats(String groupName) global native
+bool Function CollectionGroupNotifies(String groupName) global native
+int Function CollectionGroupAction(String groupName) global native
+Function PutCollectionGroupAllowsRepeats(String groupName, bool allowRepeats) global native
+Function PutCollectionGroupNotifies(String groupName, bool notifies) global native
+Function PutCollectionGroupAction(String groupName, int action) global native
 int Function CollectionTotal(String groupName, String collectionName) global native
 int Function CollectionObtained(String groupName, String collectionName) global native
 
 Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
+
+Actor Function GetDetectingActor(int actorIndex) global native    
+Function ReportPlayerDetectionState(bool detected) global native
+
+; Script operation timing
+int Function StartTimer(string context) global native
+Function StopTimer(int handle) global native
 
 int location_type_whitelist = 1
 int location_type_blacklist = 2

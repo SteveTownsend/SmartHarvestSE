@@ -37,6 +37,9 @@ public:
 
 	void RecordTimeOfDeath(RE::TESObjectREFR* actorRef);
 	void ReleaseIfReliablyDead(DistanceToTarget& refs);
+	void AddDetective(const RE::Actor*, const double distance);
+	std::vector<const RE::Actor*> ReadAndClearDetectives();
+	void ClearDetectives();
 
 private:
 	static std::unique_ptr<ActorTracker> m_instance;
@@ -52,6 +55,8 @@ private:
 
 	// Actors we encountered alive at any point of this visit to the cell
 	std::unordered_set<const RE::TESObjectREFR*> m_seenAlive;
+	// possible detecting NPCs, ordered by proximity to Player to expedite detection
+	std::map<double, const RE::Actor*> m_detectives;
 
 	mutable RecursiveLock m_actorLock;
 };

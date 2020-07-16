@@ -1,15 +1,16 @@
 {
   "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
   "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "glow",
+    "notify": true,
+    "repeat": false
+  },
+  "useMCM": true,
   "collections": [
     {
       "name": "Bad Gremlins",
       "description": "Items added by Bad Gremlins Collectables",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -22,11 +23,6 @@
     {
       "name": "Skyrim's Unique Treasures",
       "description": "Items added by Skyrim's Unique Treasures",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -39,11 +35,6 @@
     {
       "name": "Oblivious",
       "description": "Items added by Oblivion Artifacts",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -56,16 +47,35 @@
     {
       "name": "Zimmersed",
       "description": "Items added by Zim's Immersive Artifacts",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "plugin": [ "ZIA_Complete Pack.esp" ],
           "signature": [ "ARMO", "BOOK", "INGR", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Morrowloot-ed",
+      "description": "Items added by MLU and Patches",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "MLU.esp", "MLU - Immersive Armors.esp", "MLU - Summermyst.esp" ],
+          "signature": [ "ARMO", "BOOK", "KEYM", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Sewer Rat",
+      "description": "Items added by Skyrim Sewers",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "SkyrimSewers.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
         }
       }
     },
@@ -90,11 +100,6 @@
     {
       "name": "A Hot Meal",
       "description": "Every Cooked Food Item",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -107,11 +112,6 @@
     {
       "name": "Cloaking Device",
       "description": "Every Cloak of Skyrim",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -125,11 +125,6 @@
     {
       "name": "Keys to the City",
       "description": "Every Key in the Forgotten City",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {

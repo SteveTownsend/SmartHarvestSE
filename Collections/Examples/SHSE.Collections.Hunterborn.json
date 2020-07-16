@@ -1,15 +1,16 @@
 {
   "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
   "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "leave",
+    "notify": false,
+    "repeat": false
+  },
+  "useMCM": false,
   "collections": [
     {
       "name": "Hunterborn Tokens",
       "description": "Prevent SHSE from messing up Hunterborn Tokens",
-      "policy": {
-        "action": "leave",
-        "notify": false,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -21,11 +22,6 @@
     {
       "description": "Prevent SHSE from messing up Hunterborn looting",
       "name": "Hunterborn Prevent",
-      "policy": {
-        "action": "leave",
-        "notify": false,
-        "repeat": false
-      },
       "rootFilter": {
         "condition": {
           "keyword": [

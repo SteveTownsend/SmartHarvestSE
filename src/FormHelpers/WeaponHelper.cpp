@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "FormHelpers/FormHelper.h"
 #include "FormHelpers/WeaponHelper.h"
+#include "Utilities/utils.h"
 
 namespace shse
 {
@@ -31,9 +32,9 @@ UInt32 TESObjectWEAPHelper::GetGoldValue(void) const
 		return 0;
 
 	static RE::BSFixedString fEnchantmentPointsMult = "fEnchantmentPointsMult";
-	double fEPM = GetGameSettingFloat(fEnchantmentPointsMult);
+	static const double fEPM = utils::GetGameSettingFloat(fEnchantmentPointsMult);
 	static RE::BSFixedString fEnchantmentEffectPointsMult = "fEnchantmentEffectPointsMult";
-	double fEEPM = GetGameSettingFloat(fEnchantmentEffectPointsMult);
+	static const double fEEPM = utils::GetGameSettingFloat(fEnchantmentEffectPointsMult);
 
 	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (!ench)
@@ -52,21 +53,6 @@ SInt16 TESObjectWEAPHelper::GetMaxCharge() const
 	if (ench)
         return static_cast<SInt16>(m_weapon->amountofEnchantment);
 	return 0;
-}
-
-double GetGameSettingFloat(const RE::BSFixedString& name)
-{
-	RE::Setting* setting(nullptr);
-	RE::GameSettingCollection* settings(RE::GameSettingCollection::GetSingleton());
-	if (settings)
-	{
-		setting = settings->GetSetting(name.c_str());
-	}
-
-	if (!setting || setting->GetType() != RE::Setting::Type::kFloat)
-		return 0.0;
-
-	return setting->GetFloat();
 }
 
 }

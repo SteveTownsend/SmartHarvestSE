@@ -133,6 +133,9 @@
     <ClCompile Include="src\Looting\ReferenceFilter.cpp">
       <Filter>src\Looting</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\TheftCoordinator.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -279,6 +282,9 @@
     <ClInclude Include="src\Looting\ReferenceFilter.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
+    <ClInclude Include="src\Looting\TheftCoordinator.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -366,6 +372,9 @@
     </None>
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas">
       <Filter>Edit Scripts</Filter>
+    </None>
+    <None Include="Collections\Examples\SHSE.Collections.Errors.json">
+      <Filter>Collections\Examples</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

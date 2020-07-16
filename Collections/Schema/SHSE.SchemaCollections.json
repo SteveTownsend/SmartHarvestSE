@@ -3,12 +3,18 @@
   "$comment": "$id tag not required yet",
   "title": "Smart Harvest SE",
   "type": "object",
+  "required": [ "groupPolicy", "collections", "useMCM" ],
   "properties": {
-    "collection": {
+    "groupPolicy": { "$ref": "#/definitions/policyType" },
+    "collections": {
       "type": "array",
       "minItems": 0,
       "maxItems": 128,
       "items": { "$ref": "#/definitions/collectionType" }
+    },
+    "useMCM": {
+      "type": "boolean",
+      "description": "Whether Collection Group is managed in the GUI"
     }
   },
   "definitions": {
@@ -50,7 +56,7 @@
     "conditionType": {
       "type": "object",
       "$comment": "we need 'signature', 'plugin', 'keyword', 'formList' (FLST form ID) in a leaf node as they are highly restrictive, or 'subFilter' which defers the decision",
-      "oneOf": [
+      "anyOf": [
         {
           "required": [ "plugin" ]
         },
@@ -145,7 +151,7 @@
 
     "collectionType": {
       "type": "object",
-      "required": [ "name", "description", "policy", "rootFilter" ],
+      "required": [ "name", "description", "rootFilter" ],
       "properties": {
         "name": {
           "type": "string",

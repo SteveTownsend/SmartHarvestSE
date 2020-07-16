@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "Collections/Collection.h"
+#include "Collections/CollectionFactory.h"
 #include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
 #include "VM/papyrus.h"
@@ -39,8 +40,9 @@ void to_json(nlohmann::json& j, const CollectionPolicy& policy)
 	policy.AsJSON(j);
 }
 
-Collection::Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy, std::unique_ptr<ConditionTree> filter) :
-	m_name(name), m_description(description), m_policy(policy), m_rootFilter(std::move(filter))
+Collection::Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
+	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
+	m_name(name), m_description(description), m_effectivePolicy(policy), m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
 }
 
@@ -72,7 +74,7 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 	}
 
 	// if (always collectible OR not observed) AND a member of this collection
-	return (m_policy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
+	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
 }
 
 bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
@@ -91,7 +93,7 @@ void Collection::RecordItem(const RE::FormID itemID, const RE::TESForm* form, co
 	if (m_observed.insert(
 		std::make_pair(itemID, CollectionEntry(form, gameTime, place, PlayerState::Instance().GetPosition()))).second)
 	{
-		if (m_policy.Notify())
+		if (m_effectivePolicy.Notify())
 		{
 			// notify about these, just once
 			std::string notificationText;
@@ -173,13 +175,57 @@ void Collection::AsJSON(nlohmann::json& j) const
 {
 	j["name"] = m_name;
 	j["description"] = m_description;
-	j["policy"] = nlohmann::json(m_policy);
+	j["policy"] = nlohmann::json(m_effectivePolicy);
 	j["rootFilter"] = nlohmann::json(*m_rootFilter);
 }
 
 void to_json(nlohmann::json& j, const Collection& collection)
 {
 	collection.AsJSON(j);
+}
+
+CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy& policy, const bool useMCM, const nlohmann::json& collections) :
+	m_name(name), m_policy(policy), m_useMCM(useMCM)
+{
+	// input is JSON array, by construction
+	m_collections.reserve(collections.size());
+	std::for_each(collections.cbegin(), collections.cend(), [&] (const nlohmann::json& collection)
+	{
+		try {
+			// Group Policy is the default for Group Member Collection
+			m_collections.push_back(CollectionFactory::Instance().ParseCollection(collection, m_policy));
+		}
+		catch (const std::exception& exc) {
+			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());
+		}
+	});
+}
+
+void CollectionGroup::SyncDefaultPolicy()
+{
+	for (const auto collection : m_collections)
+	{
+		if (!collection->OverridesGroup())
+		{
+			collection->SetPolicy(m_policy);
+		}
+	}
+}
+
+void CollectionGroup::AsJSON(nlohmann::json& j) const
+{
+	j["groupPolicy"] = nlohmann::json(m_policy);
+	j["useMCM"] = m_useMCM;
+	j["collections"] = nlohmann::json::array();
+	for (const auto& collection : m_collections)
+	{
+		j["collections"].push_back(*collection);
+	}
+}
+
+void to_json(nlohmann::json& j, const CollectionGroup& collectionGroup)
+{
+	collectionGroup.AsJSON(j);
 }
 
 }

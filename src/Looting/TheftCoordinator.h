@@ -18,19 +18,32 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
+#include "Data/iniSettings.h"
 
 namespace shse
 {
-	
-class TESObjectWEAPHelper
+
+class TheftCoordinator
 {
 public:
-	TESObjectWEAPHelper(const RE::TESObjectWEAP* weapon) : m_weapon(weapon) {}
-	SInt16 GetMaxCharge(void) const;
-	UInt32 GetGoldValue(void) const;
-	bool IsPlayable(void) const { return m_weapon->GetPlayable(); }
+	static TheftCoordinator& Instance();
+	TheftCoordinator() : m_stealInProgress(false), m_stealTimer(-1) {}
+	void DelayStealableItem(RE::TESObjectREFR * target, INIFile::SecondaryType targetType);
+	void StealIfUndetected(void);
+	const RE::Actor* ActorByIndex(const int actorIndex) const;
+	void StealOrForgetItems(const bool detected);
+	bool StealingItems() const;
+
 private:
-	const RE::TESObjectWEAP* m_weapon;
+	static std::unique_ptr<TheftCoordinator> m_instance;
+	mutable RecursiveLock m_theftLock;
+
+	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_refrsToSteal;
+	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_refrsStealInProgress;
+	// ordered by proximity to player at time of recording
+	std::vector<const RE::Actor*> m_detectingActors;
+	bool m_stealInProgress;
+	int m_stealTimer;
 };
 
 }

@@ -9,6 +9,7 @@ var
   collectionPreamble: string;
   collectionTemplate: string;
   collectionPostscript: string;
+  notFirst: Boolean;
 
 function Initialize: integer;
 begin
@@ -21,9 +22,10 @@ begin
   legalTypes.Add('MISC');
   legalTypes.Add('SLGM');
   legalTypes.Add('WEAP');
+  notFirst := False;
 
-  collectionPreamble := '{ "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections", "$schema": "./SHSE.SchemaCollections.json", "collections": [ ';
-  collectionTemplate := '{ "name": "{NAME}", "description": "{DESCRIPTION}", "policy": { "action": "take", "notify": true, "repeat": true }, "rootFilter": { "operator": "AND", "condition": { "formList": { "listPlugin": "{PLUGIN}" , "formID": "{FORMID}" } } } },';
+  collectionPreamble := '{ "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections", "$schema": "./SHSE.SchemaCollections.json", "groupPolicy": { "action": "take", "notify": true, "repeat": true }, "useMCM": true, "collections": [ ';
+  collectionTemplate := '{OPTIONALCOMMA}{ "name": "{NAME}", "description": "{DESCRIPTION}", "rootFilter": { "operator": "AND", "condition": { "formList": [ { "listPlugin": "{PLUGIN}" , "formID": "{FORMID}" } ] } } }';
   collectionPostscript := ' ] }';
 
   formLists := TStringList.Create;
@@ -81,7 +83,14 @@ end;
 
 function EncodeAsCollection(e: IInterface; edid, rawName: string): string;
 begin
-	result := DoStringReplace(collectionTemplate, '{NAME}', MakeName(rawName));
+	if (notFirst) then begin
+		result := DoStringReplace(collectionTemplate, '{OPTIONALCOMMA}', ',');
+	end else begin
+		notFirst := True;
+		result := DoStringReplace(collectionTemplate, '{OPTIONALCOMMA}', '');
+	end;
+
+	result := DoStringReplace(result, '{NAME}', MakeName(rawName));
 	result := DoStringReplace(result, '{DESCRIPTION}', 'Display: ' + edid);
 	result := DoStringReplace(result, '{PLUGIN}', GetFileName(e));
 	result := DoStringReplace(result, '{FORMID}', IntToHex(GetLoadOrderFormID(e), 8));

@@ -36,6 +36,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "Looting/ProducerLootables.h"
+#include "Looting/TheftCoordinator.h"
 #include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "VM/EventPublisher.h"
@@ -52,8 +53,8 @@ INIFile* SearchTask::m_ini = nullptr;
 RecursiveLock SearchTask::m_lock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> SearchTask::m_glowExpiration;
 
-SearchTask::SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType)
-	: m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None)
+SearchTask::SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen)
+	: m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None), m_stolen(stolen)
 {
 }
 
@@ -61,6 +62,10 @@ const int HarvestSpamLimit = 10;
 
 bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 {
+	// Already trying to steal this - bypass repeat check
+	if (m_stolen)
+		return false;
+
 	bool isForbidden(false);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
 	// Ownership expires with the target, e.g. Francis the Horse from Interesting NPCs was killed by a wolf in Solitude
@@ -76,18 +81,18 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 		if (!lootingIsCrime && playerOwned && !firedArrow)
 		{
 			// can configure to not loot my own belongings even though it's always legal
-			if (!IsSpecialObjectLootable(m_belongingsCheck))
+			if (!IsSpecialObjectLootable(PlayerState::Instance().BelongingsCheck()))
 			{
 				DBG_VMESSAGE("Player-owned %s, looting belongings disallowed: %s/0x%08x",
 					playerOwned ? "true" : "false",	m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				isForbidden = true;
 				// Glow if configured
-				if (m_belongingsCheck == SpecialObjectHandling::GlowTarget)
+				if (PlayerState::Instance().BelongingsCheck() == SpecialObjectHandling::GlowTarget)
 					UpdateGlowReason(GlowReason::PlayerProperty);
 			}
 		}
 		// if restricted to law-abiding citizenship, check if OK to loot
-		else if (m_crimeCheck > 0)
+		else if (PlayerState::Instance().EffectiveOwnershipRule() != OwnershipRule::AllowCrimeIfUndetected)
 		{
 			if (lootingIsCrime)
 			{
@@ -95,7 +100,8 @@ bool SearchTask::IsLootingForbidden(const INIFile::SecondaryType targetType)
 				DBG_VMESSAGE("Crime to loot REFR, cannot loot");
 				isForbidden = true;
 			}
-			else if (m_crimeCheck == 2 && !playerOwned && !firedArrow && m_candidate->GetOwner() != nullptr)
+			else if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::Ownerless &&
+				!playerOwned && !firedArrow && m_candidate->GetOwner() != nullptr)
 			{
 				// owner is not player, disallow
 				DBG_VMESSAGE("REFR is owned, cannot loot");
@@ -211,7 +217,7 @@ bool SearchTask::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
 		// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If they don't
 		// want this, they should configure 'Loot locked container'. Such a container will glow locked even after player
 		// unlocks.
-		DBG_VMESSAGE("Revisiting REFR 0x%08x to previously-locked container %s/0x%08x", refr->GetFormID(),
+		DBG_VMESSAGE("Check REFR 0x%08x to not-locked container %s/0x%08x", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		return m_lockedContainers.find(refr) != m_lockedContainers.cend();
 	}
@@ -440,6 +446,17 @@ void SearchTask::Run()
 		if (skipLooting)
 			return;
 
+		// Check if we should attempt to steal the item. If we skip it due to looting rules, it's immune from stealing.
+		// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
+		// is the delayed autoloot operation after we find we are undetected, don't trigger that check again here.
+		if (!m_stolen && m_candidate->IsOffLimits() &&
+			PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
+		{
+			DBG_VMESSAGE("REFR to be stolen if undetected");
+			TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
+			return;
+		}
+
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
@@ -457,7 +474,8 @@ void SearchTask::Run()
 			if (!LockHarvest(m_candidate, isSilent))
 				return;
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
-				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify, collectible.first);
+				isSilent || PendingHarvestNotifications() > HarvestSpamLimit, manualLootNotify,
+				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
 		}
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
@@ -562,13 +580,13 @@ void SearchTask::Run()
 
 			skipLooting = skipLooting || !IsSpecialObjectLootable(lister.CollectibleAction());
 		}
-		// Order is important to ensure we glow correctly even if blocked
-		// Check here is on the container, skip all contents if not looting permitted
-		skipLooting = IsLootingForbidden(m_targetType) || skipLooting;
+		// Order is important to ensure we glow correctly even if blocked - IsLootingForbidden must come first.
+		// Check here is on the container, skip all contents if looting not permitted
+		skipLooting = IsLootingForbidden(m_targetType) || DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate) || skipLooting;
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
-		if (m_targetType != INIFile::SecondaryType::deadbodies &&
+		if (!skipLooting && m_targetType != INIFile::SecondaryType::deadbodies &&
 			!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
 			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()))
 		{
@@ -584,6 +602,18 @@ void SearchTask::Run()
 		// TODO if it contains whitelisted items we will nonetheless skip, due to checks at the container level
 		if (skipLooting)
 			return;
+
+		// Check if we should attempt to loot the target's contents the item. If we skip it due to looting rules, it's
+		// immune from stealing.
+		// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
+		// is the delayed autoloot operation after we find we are undetected, don't trigger that check again here.
+		if (!m_stolen && m_candidate->IsOffLimits() &&
+			PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
+		{
+			DBG_VMESSAGE("Container/deadbody contents %s/0x%08x to be stolen if undetected", m_candidate->GetName(), m_candidate->formID);
+			TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
+			return;
+		}
 
 		// when we get to the point where looting is confirmed, block the reference to
 		// avoid re-looting without a player cell or config change
@@ -807,9 +837,6 @@ void SearchTask::GlowObject(RE::TESObjectREFR* refr, const int duration, const G
 RecursiveLock SearchTask::m_searchLock;
 bool SearchTask::m_threadStarted = false;
 bool SearchTask::m_searchAllowed = false;
-
-int SearchTask::m_crimeCheck = 0;
-SpecialObjectHandling SearchTask::m_belongingsCheck = SpecialObjectHandling::GlowTarget;
 
 void SearchTask::TakeNap()
 {
@@ -1044,11 +1071,6 @@ void SearchTask::DoPeriodicSearch()
 		return;
 	}
 
-	// Retrieve these settings only once
-	m_crimeCheck = static_cast<int>(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
-		shse::PlayerState::Instance().IsSneaking() ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
-	m_belongingsCheck = SpecialObjectHandlingFromIniSetting(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
-
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to loot in an orderly fashion than to get it all into inventory on
 	// one pass.
 	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
@@ -1179,8 +1201,11 @@ void SearchTask::DoPeriodicSearch()
 				continue;
 			}
 		}
-		SearchTask(refr, lootTargetType).Run();
+		static const bool stolen(false);
+		SearchTask(refr, lootTargetType, stolen).Run();
 	}
+	// after checking all REFRs, trigger async undetected-theft
+	TheftCoordinator::Instance().StealIfUndetected();
 }
 
 void SearchTask::PrepareForReload()
