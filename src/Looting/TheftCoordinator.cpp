@@ -19,7 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "Looting/TheftCoordinator.h"
-#include "Looting/tasks.h"
+#include "Looting/TryLootREFR.h"
 #include "VM/EventPublisher.h"
 #include "WorldState/ActorTracker.h"
 #include "Utilities/utils.h"
@@ -94,7 +94,7 @@ void TheftCoordinator::StealOrForgetItems(const bool detected)
 		static const bool stolen(true);
 		for (const auto& item : items)
 		{
-			SearchTask(item.first, item.second, stolen).Run();
+			TryLootREFR(item.first, item.second, stolen).Process();
 		}
 	}
 }

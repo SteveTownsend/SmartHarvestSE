@@ -22,7 +22,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "PluginFacade.h"
 #include "VM/UIState.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 
 namespace shse
 {

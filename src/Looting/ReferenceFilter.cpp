@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 #include "Utilities/utils.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "WorldState/ActorTracker.h"
@@ -125,19 +125,19 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 		return false;
 	}
 
-	if (SearchTask::IsLockedForHarvest(refr))
+	if (ScanGovernor::IsLockedForHarvest(refr))
 	{
 		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
-	if (SearchTask::IsLootedContainer(refr))
+	if (ScanGovernor::IsLootedContainer(refr))
 	{
 		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return false;
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
@@ -169,7 +169,7 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);

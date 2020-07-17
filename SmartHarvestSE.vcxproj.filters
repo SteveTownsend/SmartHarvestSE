@@ -52,9 +52,6 @@
     <ClCompile Include="src\Looting\ProducerLootables.cpp">
       <Filter>src\Looting</Filter>
     </ClCompile>
-    <ClCompile Include="src\Looting\tasks.cpp">
-      <Filter>src\Looting</Filter>
-    </ClCompile>
     <ClCompile Include="src\Data\dataCase.cpp">
       <Filter>src\Data</Filter>
     </ClCompile>
@@ -139,6 +136,12 @@
     <ClCompile Include="src\PluginFacade.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\TryLootREFR.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Looting\ScanGovernor.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -187,9 +190,6 @@
       <Filter>src\Looting</Filter>
     </ClInclude>
     <ClInclude Include="src\Looting\ProducerLootables.h">
-      <Filter>src\Looting</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Looting\tasks.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
     <ClInclude Include="src\Data\dataCase.h">
@@ -290,6 +290,12 @@
     </ClInclude>
     <ClInclude Include="src\PluginFacade.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\TryLootREFR.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Looting\ScanGovernor.h">
+      <Filter>src\Looting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

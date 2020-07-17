@@ -30,7 +30,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/version.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
 
 namespace

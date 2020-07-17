@@ -24,7 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Utilities/utils.h"
 
 namespace shse

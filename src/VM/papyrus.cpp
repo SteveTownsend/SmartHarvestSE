@@ -25,7 +25,7 @@ http://www.fsf.org/licensing/licenses
 #include "PluginFacade.h"
 #include "Data/dataCase.h"
 #include "FormHelpers/IHasValueWeight.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/LocationTracker.h"
 #include "Looting/ProducerLootables.h"
@@ -256,18 +256,18 @@ namespace papyrus
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search enabled");
-		shse::SearchTask::Allow();
+		shse::ScanGovernor::Allow();
 	}
 
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search disabled");
-		shse::SearchTask::Disallow();
+		shse::ScanGovernor::Disallow();
 	}
 
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
 	{
-		return shse::SearchTask::IsAllowed();
+		return shse::ScanGovernor::IsAllowed();
 	}
 
 	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
@@ -312,7 +312,7 @@ namespace papyrus
 
 	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
 	{
-		return shse::SearchTask::UnlockHarvest(refr, isSilent);
+		return shse::ScanGovernor::UnlockHarvest(refr, isSilent);
 	}
 
 	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
@@ -471,7 +471,7 @@ namespace papyrus
 
 	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
-		shse::SearchTask::ToggleCalibration(shaderTest);
+		shse::ScanGovernor::ToggleCalibration(shaderTest);
 	}
 
 	void ShowLocation(RE::StaticFunctionTag* base)

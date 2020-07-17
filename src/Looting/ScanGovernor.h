@@ -32,7 +32,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-class SearchTask
+class ScanGovernor
 {
 public:
 #if _DEBUG
@@ -42,11 +42,11 @@ public:
 	static constexpr size_t MaxREFRSPerPass = 75;
 #endif
 
-	SearchTask(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen);
-
-	void Run();
-
 	static void Clear(const bool gameReload);
+
+	static constexpr int HarvestSpamLimit = 10;
+	static size_t PendingHarvestNotifications();
+	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 	static bool IsLockedForHarvest(const RE::TESObjectREFR* refr);
 	static bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
@@ -62,39 +62,24 @@ public:
 	}
 
 	static RE::FormID LootedDynamicContainerFormID(const RE::TESObjectREFR* refr);
+	static void MarkContainerLooted(const RE::TESObjectREFR* refr);
 	static bool IsLootedContainer(const RE::TESObjectREFR* refr);
+	static bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
 	static void ResetLootedDynamicContainers();
 	static void ResetLootedContainers();
 	static void ForgetLockedContainers();
 	static void ClearPendingHarvestNotifications();
+	static void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	static void ClearGlowExpiration();
 
 private:
-	static size_t PendingHarvestNotifications();
-	static bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
-
-	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr);
 
 	static void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr);
-
-	static void MarkContainerLooted(const RE::TESObjectREFR* refr);
-
-	bool IsLootingForbidden(const INIFile::SecondaryType targetType);
-	bool IsBookGlowable() const;
 
 	static bool HasDynamicData(RE::TESObjectREFR* refr);
 	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
 
-	// special object glow - not too long, in case we loot or move away
-	static constexpr int ObjectGlowDurationSpecialSeconds = 10;
-	// brief glow for looted objects and other purposes
-	static constexpr int ObjectGlowDurationLootedSeconds = 2;
-
 	static INIFile* m_ini;
-
-	bool m_stolen;
-	RE::TESObjectREFR* m_candidate;
-	INIFile::SecondaryType m_targetType;
 
 	static std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
 	static int m_pendingNotifies;
@@ -123,16 +108,6 @@ private:
 
 	// short glow for loot range calibration and glow demo
 	static constexpr int ObjectGlowDurationCalibrationSeconds = int(PluginFacade::CalibrationThreadDelay) - 2;
-
-	GlowReason m_glowReason;
-	inline void UpdateGlowReason(const GlowReason glowReason)
-	{
-		if (glowReason < m_glowReason)
-			m_glowReason = glowReason;
-	}
-
-	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType);
-	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 };
 
 }

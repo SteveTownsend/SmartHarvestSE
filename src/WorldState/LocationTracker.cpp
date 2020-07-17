@@ -27,7 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "VM/papyrus.h"
 #include "Utilities/utils.h"
 
