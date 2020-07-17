@@ -985,7 +985,21 @@ void DataCase::SetObjectTypeByKeywords()
 		// Legacy of the Dragonborn
 		{"VendorItemJournal", ObjectType::book},
 		{"VendorItemNote", ObjectType::book},
-		{"VendorItemFateCards", ObjectType::clutter}
+		{"VendorItemFateCards", ObjectType::clutter},
+		// Skyrim core
+		{"WeapTypeBattleaxe", ObjectType::weapon},
+		{"WeapTypeBoundArrow", ObjectType::ammo},
+		{"WeapTypeBow", ObjectType::weapon},
+		{"WeapTypeDagger", ObjectType::weapon},
+		{"WeapTypeGreatsword", ObjectType::weapon},
+		{"WeapTypeMace", ObjectType::weapon},
+		{"WeapTypeStaff", ObjectType::weapon},
+		{"WeapTypeSword", ObjectType::weapon},
+		{"WeapTypeWarAxe", ObjectType::weapon},
+		{"WeapTypeWarhammer", ObjectType::weapon},
+		//CACO
+		{"WAF_WeapTypeGrenade", ObjectType::weapon},
+		{"WAF_WeapTypeScalpel", ObjectType::weapon}
 	};
 	std::vector<std::pair<std::string, ObjectType>> typeByVendorItemSubstring =
 	{
@@ -1039,11 +1053,6 @@ void DataCase::SetObjectTypeByKeywords()
 			}) != typeByVendorItemSubstring.cend())
 		{
 			DBG_VMESSAGE("0x%08x (%s) matched substring, treated as %s", keywordDef->GetFormID(), keywordName.c_str(), GetObjectTypeName(objectType).c_str());
-		}
-		else if (keywordName.starts_with("VendorItem"))
-		{
-			DBG_VMESSAGE("0x%08x (%s) treated as clutter", keywordDef->GetFormID(), keywordName.c_str());
-			objectType = ObjectType::clutter;
 		}
 		else
 		{
