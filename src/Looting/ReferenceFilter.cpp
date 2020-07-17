@@ -346,7 +346,7 @@ void ReferenceFilter::FilterNearbyReferences()
 		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	std::sort(m_refs.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	// "Nearest Door" restriction can adjust the range downwards during the scan - re-check here
-	if (m_respectDoors)
+	if (m_respectDoors && m_nearestDoor > 0.)
 	{
 		double effectiveRadius(std::min(m_nearestDoor, m_rangeCheck.Radius()));
 		auto tooFarAway(std::find_if(m_refs.begin(), endOfRange, [&](const auto& target) -> bool
