@@ -142,6 +142,9 @@
     <ClCompile Include="src\Looting\ScanGovernor.cpp">
       <Filter>src\Looting</Filter>
     </ClCompile>
+    <ClCompile Include="src\Utilities\Enums.cpp">
+      <Filter>src\Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">

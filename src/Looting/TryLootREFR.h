@@ -28,7 +28,7 @@ class TryLootREFR
 {
 public:
 	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen);
-	void Process(void);
+	Lootability Process(const bool dryRun);
 
 private:
 	bool m_stolen;
@@ -36,7 +36,7 @@ private:
 	INIFile::SecondaryType m_targetType;
 
 	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType);
-	bool IsLootingForbidden(const INIFile::SecondaryType targetType);
+	Lootability LootingLegality(const INIFile::SecondaryType targetType);
 
 	// special object glow - not too long, in case we loot or move away
 	static constexpr int ObjectGlowDurationSpecialSeconds = 10;

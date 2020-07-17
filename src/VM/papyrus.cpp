@@ -256,18 +256,18 @@ namespace papyrus
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search enabled");
-		shse::ScanGovernor::Allow();
+		shse::ScanGovernor::Instance().Allow();
 	}
 
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search disabled");
-		shse::ScanGovernor::Disallow();
+		shse::ScanGovernor::Instance().Disallow();
 	}
 
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
 	{
-		return shse::ScanGovernor::IsAllowed();
+		return shse::ScanGovernor::Instance().IsAllowed();
 	}
 
 	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
@@ -312,7 +312,7 @@ namespace papyrus
 
 	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
 	{
-		return shse::ScanGovernor::UnlockHarvest(refr, isSilent);
+		return shse::ScanGovernor::Instance().UnlockHarvest(refr, isSilent);
 	}
 
 	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
@@ -471,7 +471,7 @@ namespace papyrus
 
 	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
-		shse::ScanGovernor::ToggleCalibration(shaderTest);
+		shse::ScanGovernor::Instance().ToggleCalibration(shaderTest);
 	}
 
 	void ShowLocation(RE::StaticFunctionTag* base)
@@ -487,6 +487,11 @@ namespace papyrus
 	void ReportPlayerDetectionState(RE::StaticFunctionTag* base, const bool detected)
 	{
 		shse::TheftCoordinator::Instance().StealOrForgetItems(detected);
+	}
+
+	void CheckLootable(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	{
+		shse::ScanGovernor::Instance().DisplayLootability(refr);
 	}
 
 	int StartTimer(RE::StaticFunctionTag* base, const std::string timerContext)
@@ -567,6 +572,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
 		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);
+		a_vm->RegisterFunction("CheckLootable", SHSE_PROXY, papyrus::CheckLootable);
 
 		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);
 		a_vm->RegisterFunction("StopTimer", SHSE_PROXY, papyrus::StopTimer);

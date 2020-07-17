@@ -48,12 +48,25 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-RecursiveLock ScanGovernor::m_searchLock;
-std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> ScanGovernor::m_glowExpiration;
+std::unique_ptr<ScanGovernor> ScanGovernor::m_instance;
+
+ScanGovernor& ScanGovernor::Instance()
+{
+	if (!m_instance)
+	{
+		m_instance = std::make_unique<ScanGovernor>();
+	}
+	return *m_instance;
+}
+
+ScanGovernor::ScanGovernor() : m_searchAllowed(false), m_pendingNotifies(0), m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
+	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget), m_targetType(INIFile::SecondaryType::NONE2)
+{
+}
 
 // Dynamic REFR looting is not delayed - the visuals may be less appealing, but delaying risks CTD as REFRs can
 // be recycled very quickly.
-bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr)
+bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr) const
 {
 	// do not reregister known REFR
 	if (LootedDynamicContainerFormID(refr) != InvalidForm)
@@ -71,15 +84,14 @@ bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr)
 	return false;
 }
 
-std::unordered_map<const RE::TESObjectREFR*, RE::FormID> ScanGovernor::m_lootedDynamicContainers;
-void ScanGovernor::MarkDynamicContainerLooted(const RE::TESObjectREFR* refr)
+void ScanGovernor::MarkDynamicContainerLooted(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_searchLock);
 	// record looting so we don't rescan
 	m_lootedDynamicContainers.insert(std::make_pair(refr, refr->GetFormID()));
 }
 
-RE::FormID ScanGovernor::LootedDynamicContainerFormID(const RE::TESObjectREFR* refr)
+RE::FormID ScanGovernor::LootedDynamicContainerFormID(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
@@ -96,7 +108,6 @@ void ScanGovernor::ResetLootedDynamicContainers()
 	m_lootedDynamicContainers.clear();
 }
 
-std::unordered_set<const RE::TESObjectREFR*> ScanGovernor::m_lootedContainers;
 void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
 {
 	RecursiveLockGuard guard(m_searchLock);
@@ -104,7 +115,7 @@ void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
 	m_lootedContainers.insert(refr);
 }
 
-bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR* refr)
+bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
@@ -119,10 +130,8 @@ void ScanGovernor::ResetLootedContainers()
 	m_lootedContainers.clear();
 }
 
-std::unordered_set<const RE::TESObjectREFR*> ScanGovernor::m_lockedContainers;
-
 // Remember locked containers so we do not auto-loot after player unlock, if config forbids
-bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr)
+bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
@@ -162,65 +171,184 @@ void ScanGovernor::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 	MarkContainerLooted(refr);
 }
 
-bool ScanGovernor::m_searchAllowed = false;
-
-void ScanGovernor::DoPeriodicSearch()
+void ScanGovernor::ProgressGlowDemo()
 {
-	DataCase* data = DataCase::GetInstance();
-	if (!data)
-		return;
-	bool sneaking(false);
-	if (m_calibrating)
+	// send the message first, it's super-slow compared to scan
+	if (m_glowDemo)
 	{
-		// send the message first, it's super-slow compared to scan
-		if (m_glowDemo)
+		m_nextGlow = CycleGlow(m_nextGlow);
+		std::ostringstream glowText;
+		glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 3 seconds to terminate";
+		RE::DebugNotification(glowText.str().c_str());
+	}
+	else
+	{
+		static RE::BSFixedString rangeText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
+		if (!rangeText.empty())
 		{
-			m_nextGlow = CycleGlow(m_nextGlow);
-			std::ostringstream glowText;
-			glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 3 seconds to terminate";
-			RE::DebugNotification(glowText.str().c_str());
-		}
-		else
-		{
-			static RE::BSFixedString rangeText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
-			if (!rangeText.empty())
+			std::string notificationText("Range: ");
+			notificationText.append(rangeText);
+			StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
+			notificationText.append(", hold Pause key for 3 seconds to terminate");
+			if (!notificationText.empty())
 			{
-				std::string notificationText("Range: ");
-				notificationText.append(rangeText);
-				StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
-				notificationText.append(", hold Pause key for 3 seconds to terminate");
-				if (!notificationText.empty())
-				{
-					RE::DebugNotification(notificationText.c_str());
-				}
+				RE::DebugNotification(notificationText.c_str());
 			}
 		}
-
-		// brain-dead item scan and brief glow - ignores doors for simplicity
-		BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
-			(double(m_calibrateRadius) - double(m_calibrateDelta)) / DistanceUnitInFeet, m_calibrateDelta / DistanceUnitInFeet);
-		DistanceToTarget targets;
-		ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindAllCandidates();
-		for (auto target : targets)
-		{
-			DBG_VMESSAGE("Trigger glow for %s/0x%08x at distance %.2f units", target.second->GetName(), target.second->formID, target.first);
-			EventPublisher::Instance().TriggerObjectGlow(target.second, ObjectGlowDurationCalibrationSeconds,
-				m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
-		}
-
-		// glow demo runs forever at the same radius, range calibration stops after the outer limit
-		if (!m_glowDemo)
-		{
-			m_calibrateRadius += m_calibrateDelta;
-			if (m_calibrateRadius > MaxCalibrationRange)
-			{
-				REL_MESSAGE("Loot range calibration complete");
-				ScanGovernor::ToggleCalibration(false);
-			}
-		}
-		return;
 	}
 
+	// brain-dead item scan and brief glow - ignores doors for simplicity
+	BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
+		(double(m_calibrateRadius) - double(m_calibrateDelta)) / DistanceUnitInFeet, m_calibrateDelta / DistanceUnitInFeet);
+	DistanceToTarget targets;
+	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindAllCandidates();
+	for (auto target : targets)
+	{
+		DBG_VMESSAGE("Trigger glow for %s/0x%08x at distance %.2f units", target.second->GetName(), target.second->formID, target.first);
+		EventPublisher::Instance().TriggerObjectGlow(target.second, ObjectGlowDurationCalibrationSeconds,
+			m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
+	}
+
+	// glow demo runs forever at the same radius, range calibration stops after the outer limit
+	if (!m_glowDemo)
+	{
+		m_calibrateRadius += m_calibrateDelta;
+		if (m_calibrateRadius > MaxCalibrationRange)
+		{
+			REL_MESSAGE("Loot range calibration complete");
+			ToggleCalibration(false);
+		}
+	}
+}
+
+// input may get updated for ashpile
+Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dryRun)
+{
+	m_targetType = INIFile::SecondaryType::itemObjects;
+	if (!refr)
+		return Lootability::NullReference;
+	if (refr->GetFormID() == InvalidForm)
+	{
+		if (!dryRun)
+		{
+			DBG_WARNING("REFR has invalid FormID");
+			DataCase::GetInstance()->BlacklistReference(refr);
+		}
+		return Lootability::InvalidFormID;
+	}
+	else if (!refr->GetBaseObject())
+	{
+		if (!dryRun)
+		{
+			DBG_WARNING("REFR 0x%08x has no Base Object", refr->GetFormID());
+			DataCase::GetInstance()->BlacklistReference(refr);
+		}
+		return Lootability::NoBaseObject;
+	}
+	else
+	{
+		DBG_VMESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
+			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+#ifdef _PROFILING
+		WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
+#endif
+		if (refr->GetFormType() == RE::FormType::ActorCharacter)
+		{
+			if (!refr->IsDead(true) ||
+				DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
+					INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
+			{
+				return Lootability::LootDeadBodyDisabled;
+			}
+
+			RE::Actor* actor(refr->As<RE::Actor>());
+			if (actor)
+			{
+				ActorHelper actorEx(actor);
+				if (actorEx.IsPlayerAlly() || actorEx.IsEssential() || actorEx.IsSummoned())
+				{
+					if (!dryRun)
+					{
+						DBG_VMESSAGE("Block ineligible Actor 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+						DataCase::GetInstance()->BlockReference(refr);
+					}
+					return Lootability::DeadBodyNotEligible;
+				}
+			}
+
+			m_targetType = INIFile::SecondaryType::deadbodies;
+			// Delay looting exactly once. We only return here after required time since death has expired.
+			// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
+			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) && !IsLootedContainer(refr))
+			{
+				if (!dryRun)
+				{
+					// Use async looting to allow game to settle actor state and animate their untimely demise
+					RegisterActorTimeOfDeath(refr);
+				}
+				return Lootability::DeadBodyDelayedLooting;
+			}
+			// avoid double dipping for immediate-loot case
+			if (std::find(m_possibleDupes.cbegin(), m_possibleDupes.cend(), refr) != m_possibleDupes.cend())
+			{
+				DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+				return Lootability::DeadBodyPossibleDuplicate;
+			}
+			m_possibleDupes.push_back(refr);
+		}
+		else if (refr->GetBaseObject()->As<RE::TESContainer>())
+		{
+			if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootContainer") == 0.0)
+			{
+				return Lootability::LootContainersDisabled;
+			}
+			m_targetType = INIFile::SecondaryType::containers;
+		}
+		else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
+		{
+			DeadBodyLooting lootBodies(DeadBodyLootingFromIniSetting(
+				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")));
+			if (lootBodies == DeadBodyLooting::DoNotLoot)
+			{
+				return Lootability::LootDeadBodyDisabled;
+			}
+			m_targetType = INIFile::SecondaryType::deadbodies;
+			// Delay looting exactly once. We only return here after required time since death has expired.
+			if (!HasDynamicData(refr) && !IsLootedContainer(refr))
+			{
+				if (!dryRun)
+				{
+					// Use async looting to allow game to settle actor state and animate their untimely demise
+					RegisterActorTimeOfDeath(refr);
+				}
+				return Lootability::DeadBodyDelayedLooting;
+			}
+			// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
+			RE::TESObjectREFR* original(refr);
+			refr = GetAshPile(refr);
+			DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), original->GetFormID());
+
+			// avoid double dipping for immediate-loot case
+			if (std::find(m_possibleDupes.cbegin(), m_possibleDupes.cend(), refr) != m_possibleDupes.cend())
+			{
+				DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+				return Lootability::DeadBodyPossibleDuplicate;
+			}
+			m_possibleDupes.push_back(refr);
+		}
+		else if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
+		{
+			return Lootability::HarvestLooseItemDisabled;
+		}
+		return Lootability::Lootable;
+	}
+}
+
+void ScanGovernor::LootAllEligible()
+{
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to loot in an orderly fashion than to get it all into inventory on
 	// one pass.
 	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
@@ -236,7 +364,7 @@ void ScanGovernor::DoPeriodicSearch()
 
 	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
 	// This seems no harm apart but offends my aesthetic sensibilities, so prevent it.
-	std::vector<RE::TESObjectREFR*> possibleDupes;
+	m_possibleDupes.clear();
 	for (auto target : targets)
 	{
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
@@ -250,112 +378,53 @@ void ScanGovernor::DoPeriodicSearch()
 		*/
 		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
 		RE::TESObjectREFR* refr(target.second);
-		if (refr->GetFormID() == InvalidForm)
-		{
-			DBG_WARNING("REFR has invalid FormID");
-			data->BlacklistReference(refr);
+		static const bool dryRun(false);
+		if (ValidateTarget(refr, dryRun) != Lootability::Lootable)
 			continue;
-		}
-		else if (!refr->GetBaseObject())
-		{
-			DBG_WARNING("REFR 0x%08x has no Base Object", refr->GetFormID());
-			data->BlacklistReference(refr);
-			continue;
-		}
-		else
-		{
-			DBG_VMESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
-				refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		}
-
-		INIFile::SecondaryType lootTargetType = INIFile::SecondaryType::itemObjects;
-		{
-#ifdef _PROFILING
-			WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
-#endif
-			if (!refr)
-				continue;
-			if (refr->GetFormType() == RE::FormType::ActorCharacter)
-			{
-				if (!refr->IsDead(true) ||
-					DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
-						INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
-					continue;
-
-				RE::Actor* actor(refr->As<RE::Actor>());
-				if (actor)
-				{
-					ActorHelper actorEx(actor);
-					if (actorEx.IsPlayerAlly() || actorEx.IsEssential() || actorEx.IsSummoned())
-					{
-						DBG_VMESSAGE("Block ineligible Actor 0x%08x, base = %s/0x%08x", refr->GetFormID(),
-							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-						data->BlockReference(refr);
-						continue;
-					}
-				}
-
-				lootTargetType = INIFile::SecondaryType::deadbodies;
-				// Delay looting exactly once. We only return here after required time since death has expired.
-				// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
-				if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) && !IsLootedContainer(refr))
-				{
-					// Use async looting to allow game to settle actor state and animate their untimely demise
-					RegisterActorTimeOfDeath(refr);
-					continue;
-				}
-				// avoid double dipping for immediate-loot case
-				if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
-				{
-					DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
-						refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-					continue;
-				}
-				possibleDupes.push_back(refr);
-			}
-			else if (refr->GetBaseObject()->As<RE::TESContainer>())
-			{
-				if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootContainer") == 0.0)
-					continue;
-				lootTargetType = INIFile::SecondaryType::containers;
-			}
-			else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
-			{
-				DeadBodyLooting lootBodies(DeadBodyLootingFromIniSetting(
-					INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")));
-				if (lootBodies == DeadBodyLooting::DoNotLoot)
-					continue;
-				lootTargetType = INIFile::SecondaryType::deadbodies;
-				// Delay looting exactly once. We only return here after required time since death has expired.
-				if (!HasDynamicData(refr) && !IsLootedContainer(refr))
-				{
-					// Use async looting to allow game to settle actor state and animate their untimely demise
-					RegisterActorTimeOfDeath(refr);
-					continue;
-				}
-				// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
-				refr = GetAshPile(refr);
-				DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), target.second->GetFormID());
-
-				// avoid double dipping for immediate-loot case
-				if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
-				{
-					DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
-						refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-					continue;
-				}
-				possibleDupes.push_back(refr);
-			}
-			else if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
-			{
-				continue;
-			}
-		}
 		static const bool stolen(false);
-		TryLootREFR(refr, lootTargetType, stolen).Process();
+		TryLootREFR(refr, m_targetType, stolen).Process(dryRun);
 	}
-	// after checking all REFRs, trigger async undetected-theft
-	TheftCoordinator::Instance().StealIfUndetected();
+
+}
+
+void ScanGovernor::DoPeriodicSearch()
+{
+	bool sneaking(false);
+	if (m_calibrating)
+	{
+		ProgressGlowDemo();
+	}
+	else
+	{
+		LootAllEligible();
+
+		// after checking all REFRs, trigger async undetected-theft
+		TheftCoordinator::Instance().StealIfUndetected();
+	}
+}
+
+void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
+{
+	Lootability result(ReferenceFilter::CheckLootable(refr));
+	static const bool dryRun(true);
+	if (result == Lootability::Lootable)
+	{
+		result = ValidateTarget(refr, dryRun);
+	}
+	if (result == Lootability::Lootable)
+	{
+		// flag to prevent mutation of state when just checking the rules
+		result = TryLootREFR(refr, m_targetType, false).Process(dryRun);
+	}
+	std::ostringstream resultStr;
+	resultStr << "REFR 0x" << std::setw(8) << std::hex << std::setfill('0') << refr->GetFormID();
+	const auto baseObject(refr->GetBaseObject());
+	if (baseObject)
+	{
+		resultStr << " -> " << baseObject->GetName() << "/0x" << std::setw(8) << std::hex << std::setfill('0') << baseObject->GetFormID();
+	}
+	resultStr << ' ' << LootabilityName(result);
+	RE::DebugNotification(resultStr.str().c_str());
 }
 
 void ScanGovernor::Allow()
@@ -369,14 +438,11 @@ void ScanGovernor::Disallow()
 	RecursiveLockGuard guard(m_searchLock);
 	m_searchAllowed = false;
 }
-bool ScanGovernor::IsAllowed()
+bool ScanGovernor::IsAllowed() const
 {
 	RecursiveLockGuard guard(m_searchLock);
 	return m_searchAllowed;
 }
-
-std::unordered_set<const RE::TESObjectREFR*> ScanGovernor::m_HarvestLock;
-int ScanGovernor::m_pendingNotifies = 0;
 
 bool ScanGovernor::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
 {
@@ -424,13 +490,13 @@ void ScanGovernor::Clear(const bool gameReload)
 	}
 }
 
-bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR* refr)
+bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_searchLock);
 	return m_HarvestLock.contains(refr);
 }
 
-size_t ScanGovernor::PendingHarvestNotifications()
+size_t ScanGovernor::PendingHarvestNotifications() const
 {
 	RecursiveLockGuard guard(m_searchLock);
 	return m_pendingNotifies;
@@ -449,12 +515,6 @@ void ScanGovernor::ClearGlowExpiration()
 }
 
 // this triggers/stops loot range calibration cycle
-bool ScanGovernor::m_calibrating(false);
-int ScanGovernor::m_calibrateRadius(ScanGovernor::CalibrationRangeDelta);
-int ScanGovernor::m_calibrateDelta(ScanGovernor::CalibrationRangeDelta);
-bool ScanGovernor::m_glowDemo(false);
-GlowReason ScanGovernor::m_nextGlow(GlowReason::SimpleTarget);
-
 void ScanGovernor::ToggleCalibration(const bool glowDemo)
 {
 	RecursiveLockGuard guard(m_searchLock);

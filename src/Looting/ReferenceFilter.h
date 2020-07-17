@@ -26,6 +26,7 @@ class ReferenceFilter
 {
 public:
 	ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeCheck, const bool respectDoors, const size_t limit);
+	static Lootability CheckLootable(const RE::TESObjectREFR* refr);
 	void FindLootableReferences();
 	void FindAllCandidates();
 
@@ -34,8 +35,12 @@ private:
 	void FilterNearbyReferences();
 	void RecordCellReferences(const RE::TESObjectCELL* cell);
 
+	Lootability AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const;
 	// predicates supported
-	bool CanLoot(const RE::TESObjectREFR* refr) const;
+	inline bool CanLoot(const RE::TESObjectREFR* refr) const {
+		static const bool dryRun(false);
+		return AnalyzeREFR(refr, dryRun) == Lootability::Lootable;
+	}
 	bool IsLootCandidate(const RE::TESObjectREFR* refr) const;
 
 	DistanceToTarget& m_refs;

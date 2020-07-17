@@ -41,9 +41,10 @@ TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targe
 {
 }
 
-void TryLootREFR::Process(void)
+Lootability TryLootREFR::Process(const bool dryRun)
 {
 	DataCase* data = DataCase::GetInstance();
+	Lootability result(Lootability::Lootable);
 
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
@@ -51,7 +52,7 @@ void TryLootREFR::Process(void)
 		ObjectType objType = refrEx.GetObjectType();
 		std::string typeName = refrEx.GetTypeName();
 		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
-		if (objType == ObjectType::critter)
+		if (!dryRun && objType == ObjectType::critter)
 		{
 			RE::TESForm* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
@@ -69,42 +70,51 @@ void TryLootREFR::Process(void)
 				{
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
 				}
-				return;
+				return Lootability::PendingProducerIngredient;
 			}
 		}
 
 		if (objType == ObjectType::unknown)
 		{
-			DBG_VMESSAGE("blacklist objType == ObjectType::unknown for 0x%08x", m_candidate->GetFormID());
-			data->BlacklistReference(m_candidate);
-			return;
+			if (!dryRun)
+			{
+				DBG_VMESSAGE("blacklist objType == ObjectType::unknown for 0x%08x", m_candidate->GetFormID());
+				data->BlacklistReference(m_candidate);
+			}
+			return Lootability::ObjectTypeUnknown;
 		}
 
 		bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
 		if (objType == ObjectType::manualLoot && manualLootNotify)
 		{
-			// notify about these, just once
-			std::string notificationText;
-			static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));
-			if (!manualLootText.empty())
+			if (!dryRun)
 			{
-				notificationText = manualLootText;
-				StringUtils::Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
-				if (!notificationText.empty())
+				// notify about these, just once
+				std::string notificationText;
+				static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));
+				if (!manualLootText.empty())
 				{
-					RE::DebugNotification(notificationText.c_str());
+					notificationText = manualLootText;
+					StringUtils::Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
+					if (!notificationText.empty())
+					{
+						RE::DebugNotification(notificationText.c_str());
+					}
 				}
+				DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
+				data->BlockReference(m_candidate);
 			}
-			DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
-			data->BlockReference(m_candidate);
-			return;
+			return Lootability::ManualLootTarget;
 		}
 
 		if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
-			DBG_VMESSAGE("Block BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
-			data->BlockForm(m_candidate->GetBaseObject());
-			return;
+			if (!dryRun)
+			{
+				DBG_VMESSAGE("Block BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
+				data->BlockForm(m_candidate->GetBaseObject());
+			}
+			return Lootability::BaseObjectOnBlacklist;
 		}
 #if _DEBUG
 		DumpReference(refrEx, typeName.c_str(), m_targetType);
@@ -125,7 +135,11 @@ void TryLootREFR::Process(void)
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(questObjectLoot);
+			if (!IsSpecialObjectLootable(questObjectLoot))
+			{
+				skipLooting = true;
+				result = Lootability::CannotLootQuestObject;
+			}
 		}
 		// glow unread notes as they are often quest-related
 		else if (questObjectLoot == SpecialObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
@@ -134,6 +148,7 @@ void TryLootREFR::Process(void)
 			UpdateGlowReason(GlowReason::SimpleTarget);
 		}
 
+		// TODO this may update state on a dry run but we should already have processed the item on >= 1 pass, so no harm?
 		const auto collectible(refrEx.TreatAsCollectible());
 		SpecialObjectHandling collectibleAction(collectible.second);
 		if (collectible.first)
@@ -145,7 +160,11 @@ void TryLootREFR::Process(void)
 				UpdateGlowReason(GlowReason::Collectible);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(collectibleAction);
+			if (!IsSpecialObjectLootable(collectibleAction))
+			{
+				skipLooting = true;
+				result = Lootability::CannotLootCollectibleObject;
+			}
 		}
 
 		SpecialObjectHandling valuableLoot =
@@ -159,21 +178,33 @@ void TryLootREFR::Process(void)
 				UpdateGlowReason(GlowReason::Valuable);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(valuableLoot);
+			if (!IsSpecialObjectLootable(valuableLoot))
+			{
+				skipLooting = true;
+				result = Lootability::CannotLootValuableObject;
+			}
 		}
 
 		if (objType == ObjectType::ammo)
 		{
-			skipLooting = skipLooting || data->SkipAmmoLooting(m_candidate);
+			if (data->SkipAmmoLooting(m_candidate))
+			{
+				skipLooting = true;
+				result = Lootability::CannotLootAmmo;
+			}
 		}
 
 		// order is important to ensure we glow correctly even if blocked
-		bool forbidden(IsLootingForbidden(m_targetType));
-		skipLooting = forbidden || skipLooting;
-
-		if (m_glowReason != GlowReason::None)
+		Lootability forbidden(LootingLegality(m_targetType));
+		if (forbidden != Lootability::Lootable)
 		{
-			ScanGovernor::GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			skipLooting = true;
+			result = forbidden;
+		}
+
+		if (!dryRun && m_glowReason != GlowReason::None)
+		{
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
 		}
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
@@ -183,6 +214,7 @@ void TryLootREFR::Process(void)
 			!IsItemLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
+			result = Lootability::PopulousLocationRestrictsLooting;
 			skipLooting = true;
 		}
 
@@ -191,29 +223,45 @@ void TryLootREFR::Process(void)
 		{
 			// ** if configured as permitted ** collectible objects are always looted silently
 			DBG_VMESSAGE("check REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
-			skipLooting = forbidden || collectibleAction != SpecialObjectHandling::DoLoot;
+			skipLooting = forbidden != Lootability::Lootable || collectibleAction != SpecialObjectHandling::DoLoot;
 			lootingType = collectibleAction == SpecialObjectHandling::DoLoot ? LootingType::LootAlwaysSilent : LootingType::LeaveBehind;
 			if (lootingType == LootingType::LeaveBehind)
 			{
-				// this is a blacklist collection
-				DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
-				data->BlockForm(m_candidate->GetBaseObject());
+				if (!dryRun)
+				{
+					// this is a blacklist collection
+					DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
+					data->BlockForm(m_candidate->GetBaseObject());
+				}
+				result = Lootability::ItemInBlacklistCollection;
+			}
+			else if (skipLooting)
+			{
+				result = Lootability::CollectibleItemSetToGlow;
 			}
 		}
 		else if (ManagedList::WhiteList().Contains(m_candidate->GetBaseObject()))
 		{
 			// ** if configured as permitted ** whitelisted objects are always looted silently
 			DBG_VMESSAGE("check REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
-			skipLooting = forbidden;
+			skipLooting = forbidden != Lootability::Lootable;
+			if (skipLooting)
+			{
+				result = Lootability::LawAbidingSoNoWhitelistItemLooting;
+			}
 			lootingType = LootingType::LootAlwaysSilent;
 		}
 		else if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
-			// blacklisted objects are never looted
-			DBG_VMESSAGE("block blacklisted base %s/0x%08x for REFR 0x%08x",
-				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
-			data->BlockForm(m_candidate->GetBaseObject());
+			if (!dryRun)
+			{
+				// blacklisted objects are never looted
+				DBG_VMESSAGE("block blacklisted base %s/0x%08x for REFR 0x%08x",
+					m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
+				data->BlockForm(m_candidate->GetBaseObject());
+			}
 			skipLooting = true;
+			result = Lootability::ItemIsBlacklisted;
 			lootingType = LootingType::LeaveBehind;
 		}
 		else if (!skipLooting)
@@ -222,25 +270,33 @@ void TryLootREFR::Process(void)
 				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
 			if (lootingType == LootingType::LeaveBehind)
 			{
-				DBG_VMESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
-				data->BlockReference(m_candidate);
+				if (!dryRun)
+				{
+					DBG_VMESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
+					data->BlockReference(m_candidate);
+				}
 				skipLooting = true;
+				result = Lootability::ItemSettingsPreventLooting;
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
 				TESFormHelper helper(m_candidate->GetBaseObject(), m_targetType);
 				if (helper.ValueWeightTooLowToLoot())
 				{
-					DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
-					data->BlockForm(m_candidate->GetBaseObject());
+					if (!dryRun)
+					{
+						DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
+						data->BlockForm(m_candidate->GetBaseObject());
+					}
 					skipLooting = true;
+					result = Lootability::ValueWeightPreventsLooting;
 				}
 				DBG_VMESSAGE("%s/0x%08x value:%d", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, int(helper.GetWorth()));
 			}
 		}
 
-		if (skipLooting)
-			return;
+		if (skipLooting || dryRun)
+			return result;
 
 		// Check if we should attempt to steal the item. If we skip it due to looting rules, it's immune from stealing.
 		// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
@@ -250,7 +306,7 @@ void TryLootREFR::Process(void)
 		{
 			DBG_VMESSAGE("REFR to be stolen if undetected");
 			TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
-			return;
+			return Lootability::ItemTheftTriggered;
 		}
 
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
@@ -267,10 +323,10 @@ void TryLootREFR::Process(void)
 				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
 			// don't let the backlog of messages get too large, it's about 1 per second
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
-			if (!ScanGovernor::LockHarvest(m_candidate, isSilent))
-				return;
+			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
+				return Lootability::HarvestOperationPending;
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
-				isSilent || ScanGovernor::PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit, manualLootNotify,
+				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit, manualLootNotify,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
 		}
 	}
@@ -290,11 +346,14 @@ void TryLootREFR::Process(void)
 		LootableItems lootableItems(lister.GetOrCheckContainerForms());
 		if (lootableItems.empty())
 		{
-			// Nothing lootable here
-			DBG_MESSAGE("container %s/0x%08x is empty", m_candidate->GetName(), m_candidate->formID);
-			// record looting so we don't rescan
-			ScanGovernor::MarkContainerLooted(m_candidate);
-			return;
+			if (!dryRun)
+			{
+				// Nothing lootable here
+				DBG_MESSAGE("container %s/0x%08x is empty", m_candidate->GetName(), m_candidate->formID);
+				// record looting so we don't rescan
+				ScanGovernor::Instance().MarkContainerLooted(m_candidate);
+			}
+			return Lootability::ContainerHasNoLootableItems;
 		}
 
 		// initially no glow - flag using synthetic value with highest precedence
@@ -303,7 +362,7 @@ void TryLootREFR::Process(void)
 		{
 			// If a container is once found locked, it remains treated the same way according to the looting rules. This means a chest that player unlocked
 			// will continue to glow if not auto-looted.
-			if (ScanGovernor::IsReferenceLockedContainer(m_candidate))
+			if (ScanGovernor::Instance().IsReferenceLockedContainer(m_candidate))
 			{
 				SpecialObjectHandling lockedChestLoot =
 					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "lockedChestLoot"));
@@ -313,7 +372,11 @@ void TryLootREFR::Process(void)
 					UpdateGlowReason(GlowReason::LockedContainer);
 				}
 
-				skipLooting = skipLooting || !IsSpecialObjectLootable(lockedChestLoot);
+				if (!IsSpecialObjectLootable(lockedChestLoot))
+				{
+					skipLooting = true;
+					result = Lootability::ContainerIsLocked;
+				}
 			}
 
 			if (IsBossContainer(m_candidate))
@@ -326,7 +389,11 @@ void TryLootREFR::Process(void)
 					UpdateGlowReason(GlowReason::BossContainer);
 				}
 
-				skipLooting = skipLooting || !IsSpecialObjectLootable(bossChestLoot);
+				if (!IsSpecialObjectLootable(bossChestLoot))
+				{
+					skipLooting = true;
+					result = Lootability::ContainerIsBossChest;
+				}
 			}
 		}
 
@@ -340,7 +407,11 @@ void TryLootREFR::Process(void)
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(questObjectLoot);
+			if (!IsSpecialObjectLootable(questObjectLoot))
+			{
+				skipLooting = true;
+				result = Lootability::ContainerHasQuestObject;
+			}
 		}
 
 		if (lister.HasEnchantedItem())
@@ -363,7 +434,11 @@ void TryLootREFR::Process(void)
 				UpdateGlowReason(GlowReason::Valuable);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(valuableLoot);
+			if (!IsSpecialObjectLootable(valuableLoot))
+			{
+				skipLooting = true;
+				result = Lootability::ContainerHasValuableObject;
+			}
 		}
 
 		if (lister.HasCollectibleItem())
@@ -374,11 +449,25 @@ void TryLootREFR::Process(void)
 				UpdateGlowReason(GlowReason::Collectible);
 			}
 
-			skipLooting = skipLooting || !IsSpecialObjectLootable(lister.CollectibleAction());
+			if (!IsSpecialObjectLootable(lister.CollectibleAction()))
+			{
+				skipLooting = true;
+				result = Lootability::ContainerHasCollectibleObject;
+			}
 		}
 		// Order is important to ensure we glow correctly even if blocked - IsLootingForbidden must come first.
 		// Check here is on the container, skip all contents if looting not permitted
-		skipLooting = IsLootingForbidden(m_targetType) || DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate) || skipLooting;
+		Lootability forbidden(LootingLegality(m_targetType));
+		if (forbidden != Lootability::Lootable)
+		{
+			skipLooting = true;
+			result = forbidden;
+		}
+		else if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
+		{
+			skipLooting = true;
+			result = Lootability::ContainerIsBlacklisted;
+		}
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
@@ -388,16 +477,17 @@ void TryLootREFR::Process(void)
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this target type");
 			skipLooting = true;
+			result = Lootability::PopulousLocationRestrictsLooting;
 		}
 
-		if (m_glowReason != GlowReason::None)
+		if (!dryRun && m_glowReason != GlowReason::None)
 		{
-			ScanGovernor::GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
 		}
 
 		// TODO if it contains whitelisted items we will nonetheless skip, due to checks at the container level
-		if (skipLooting)
-			return;
+		if (dryRun || skipLooting)
+			return result;
 
 		// Check if we should attempt to loot the target's contents the item. If we skip it due to looting rules, it's
 		// immune from stealing.
@@ -408,7 +498,7 @@ void TryLootREFR::Process(void)
 		{
 			DBG_VMESSAGE("Container/deadbody contents %s/0x%08x to be stolen if undetected", m_candidate->GetName(), m_candidate->formID);
 			TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
-			return;
+			return Lootability::ItemTheftTriggered;
 		}
 
 		// when we get to the point where looting is confirmed, block the reference to
@@ -425,7 +515,7 @@ void TryLootREFR::Process(void)
 				continue;
 
 			// crime-check this REFR from the container as individual object
-			if (IsLootingForbidden(INIFile::SecondaryType::itemObjects))
+			if (LootingLegality(INIFile::SecondaryType::itemObjects) != Lootability::Lootable)
 			{
 				continue;
 			}
@@ -548,6 +638,7 @@ void TryLootREFR::Process(void)
 			GetLootFromContainer(targets, playContainerAnimation);
 		}
 	}
+	return result;
 }
 
 void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType)
@@ -563,7 +654,7 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	else if (animationType == 2)
 	{
 		// glow looted object briefly after looting
-		ScanGovernor::GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
+		ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
 	}
 
 	// avoid sound spam
@@ -613,13 +704,13 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	}
 }
 
-bool TryLootREFR::IsLootingForbidden(const INIFile::SecondaryType targetType)
+Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType)
 {
 	// Already trying to steal this - bypass repeat check
 	if (m_stolen)
-		return false;
+		return Lootability::PendingItemSteal;
 
-	bool isForbidden(false);
+	Lootability legality(Lootability::Lootable);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
 	// Ownership expires with the target, e.g. Francis the Horse from Interesting NPCs was killed by a wolf in Solitude
 	// and becomes lootable thereafter.
@@ -638,7 +729,7 @@ bool TryLootREFR::IsLootingForbidden(const INIFile::SecondaryType targetType)
 			{
 				DBG_VMESSAGE("Player-owned %s, looting belongings disallowed: %s/0x%08x",
 					playerOwned ? "true" : "false", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-				isForbidden = true;
+				legality = Lootability::PlayerOwned;
 				// Glow if configured
 				if (PlayerState::Instance().BelongingsCheck() == SpecialObjectHandling::GlowTarget)
 					UpdateGlowReason(GlowReason::PlayerProperty);
@@ -651,7 +742,7 @@ bool TryLootREFR::IsLootingForbidden(const INIFile::SecondaryType targetType)
 			{
 				// never commit a crime unless crimeCheck is 0
 				DBG_VMESSAGE("Crime to loot REFR, cannot loot");
-				isForbidden = true;
+				legality = Lootability::CrimeToLoot;
 			}
 			else if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::Ownerless)
 			{
@@ -660,18 +751,12 @@ bool TryLootREFR::IsLootingForbidden(const INIFile::SecondaryType targetType)
 				{
 					// owner of item or cell is not player/player-friendly - disallow owned item
 					DBG_VMESSAGE("REFR or Cell is not player-owned, cannot loot");
-					isForbidden = true;
+					legality = Lootability::CellOrItemOwnerPreventsOwnerlessLooting;
 				}
 			}
 		}
-
-		if (isForbidden)
-		{
-			DBG_MESSAGE("Block owned/illegal-to-loot REFR: %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-			DataCase::GetInstance()->BlockReference(m_candidate);
-		}
 	}
-	return isForbidden;
+	return legality;
 }
 
 bool TryLootREFR::IsBookGlowable() const

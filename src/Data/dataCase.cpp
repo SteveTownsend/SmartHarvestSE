@@ -1060,6 +1060,11 @@ template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectARMO>()
 	return ObjectType::armor;
 }
 
+template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectWEAP>()
+{
+	return ObjectType::weapon;
+}
+
 template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectARMO>(const RE::TESForm* form, const ObjectType objectType)
 {
 	ObjectType rawType(objectType);

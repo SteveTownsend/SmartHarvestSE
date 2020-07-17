@@ -135,7 +135,7 @@ void PluginFacade::TakeNap()
 	double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 		LocationTracker::Instance().IsPlayerIndoors() ? "IndoorsIntervalSeconds" : "IntervalSeconds"));
 	delay = std::max(MinThreadDelay, delay);
-	if (ScanGovernor::Calibrating())
+	if (ScanGovernor::Instance().Calibrating())
 	{
 		// use hard-coded delay to make UX comprehensible
 		delay = CalibrationThreadDelay;
@@ -204,7 +204,7 @@ void PluginFacade::ScanThread()
 		shse::CollectionManager::Instance().ProcessAddedItems();
 
 		// Skip loot-OK checks if calibrating
-		if (!ScanGovernor::Calibrating())
+		if (!ScanGovernor::Instance().Calibrating())
 		{
 			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 			static const bool allowIfRestricted(true);
@@ -218,7 +218,7 @@ void PluginFacade::ScanThread()
 				DBG_MESSAGE("Player State prevents looting");
 				continue;
 			}
-			if (!ScanGovernor::IsAllowed())
+			if (!ScanGovernor::Instance().IsAllowed())
 			{
 				DBG_MESSAGE("search disallowed");
 				const auto timeNow(std::chrono::high_resolution_clock::now());
@@ -236,7 +236,7 @@ void PluginFacade::ScanThread()
 			shse::PlayerState::Instance().CheckPerks(false);
 		}
 
-		ScanGovernor::DoPeriodicSearch();
+		ScanGovernor::Instance().DoPeriodicSearch();
 
 		// request added items to be pushed to us while we are sleeping
 		shse::CollectionManager::Instance().Refresh();
@@ -281,7 +281,7 @@ void PluginFacade::ResetState(const bool gameReload)
 	// TODO review to make sure this does not deadlock
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
-	ScanGovernor::Clear(gameReload);
+	ScanGovernor::Instance().Clear(gameReload);
 
 	if (gameReload)
 	{
@@ -310,7 +310,7 @@ void PluginFacade::OnGoodToGo()
 	DataCase::GetInstance()->ClearBlockedReferences(false);
 
 	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
-	ScanGovernor::ResetLootedContainers();
+	ScanGovernor::Instance().ResetLootedContainers();
 }
 
 }

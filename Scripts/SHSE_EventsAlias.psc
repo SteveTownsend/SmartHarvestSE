@@ -74,8 +74,11 @@ int glowReasonHighValue
 int glowReasonPlayerProperty
 int glowReasonSimpleTarget
 
+ObjectReference targetedRefr
+
 Function SetPlayer(Actor playerref)
     player = playerref
+    RegisterForCrosshairRef()
 EndFunction
 
 ; merge FormList with plugin data
@@ -334,10 +337,16 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 Pause()
             endif
         elseif keyCode == whiteKey || keyCode == blackKey
+            ; check for object introspection
             ; check for long press
-            if keyCode == whiteKey && holdTime > 3.0
-                ; detect nearest map marker on long press
-                ShowLocation()
+            if holdTime > 3.0
+                if keyCode == whiteKey
+                    ; detect nearest map marker on long press
+                    ShowLocation()
+                else
+                    ; object lootability introspection
+                    CheckLootable(targetedRefr)
+                endIf
                 return
             endIf
 
@@ -450,6 +459,13 @@ bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, 
     endif
     return result
 endFunction
+
+; item introspection support
+Event OnCrosshairRefChange(ObjectReference ref)
+    ;DebugTrace("Crosshair targeting " + ref)
+    targetedRefr = ref
+EndEvent
+; end item introspection support
 
 bool Function isOverlyGenerousResource(string oreName)
     return oreName == "Quarried Stone" || oreName == "Clay"

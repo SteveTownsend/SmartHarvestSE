@@ -276,6 +276,7 @@ private:
 		return ObjectType::clutter;
 	}
 	template <> ObjectType  DefaultObjectType<RE::TESObjectARMO>();
+	template <> ObjectType  DefaultObjectType<RE::TESObjectWEAP>();
 
 	template <typename T>
 	ObjectType OverrideIfBadChoice(const RE::TESForm* form, const ObjectType objectType)
@@ -332,7 +333,6 @@ private:
 			}
 
 			ObjectType correctType(ObjectType::unknown);
-			bool hasDefault(false);
 			for (UInt32 index = 0; index < keywordForm->GetNumKeywords(); ++index)
 			{
 				std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
@@ -344,7 +344,7 @@ private:
 					// if default type, postpone storage in case there is a more specific match
 					if (matched->second == DefaultObjectType<T>())
 					{
-						hasDefault = true;
+						continue;
 					}
 					else if (correctType != ObjectType::unknown)
 					{
@@ -357,14 +357,11 @@ private:
 					}
 				}
 			}
-			if (correctType == ObjectType::unknown && hasDefault)
+			if (correctType == ObjectType::unknown)
 			{
 				correctType = DefaultObjectType<T>();
 			}
-			else
-			{
-				correctType = OverrideIfBadChoice<T>(typedForm, correctType);
-			}
+			correctType = OverrideIfBadChoice<T>(typedForm, correctType);
 			if (correctType != ObjectType::unknown)
 			{
 				if (SetObjectTypeForForm(typedForm->GetFormID(), correctType))

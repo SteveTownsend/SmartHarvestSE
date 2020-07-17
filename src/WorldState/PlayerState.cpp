@@ -71,13 +71,11 @@ void PlayerState::Refresh()
 {
 	AdjustCarryWeight();
 
-	// Reset blocked lists if sneak state has changed
+	// Update state cache if sneak state has changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
 	const bool sneaking(IsSneaking());
 	if (m_sneaking != sneaking)
 	{
 		m_sneaking = sneaking;
-		static const bool gameReload(false);
-		PluginFacade::Instance().ResetState(gameReload);
 		// no player detection by NPC is a prerequisite for autoloot of crime-to-activate items
 		m_ownershipRule = OwnershipRuleFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 			sneaking ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));

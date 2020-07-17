@@ -37,6 +37,13 @@ ReferenceFilter::ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeChe
 {
 }
 
+// lootability inquiry from the player using hotkey on unlooted item in worldspace
+Lootability ReferenceFilter::CheckLootable(const RE::TESObjectREFR* refr)
+{
+	static const bool dryRun(true);
+	return ReferenceFilter(DistanceToTarget(), AbsoluteRange(refr ,0., 0.), false, 1).AnalyzeREFR(refr, dryRun);
+}
+
 /*
 Lootability can be subjective and/or time-sensitive. Dynamic forms (FormID 0xffnnnnnn) may be deleted from under our feet.
 Current hypothesis is that this is safe so long as the base object is not itself dynamic.
@@ -70,19 +77,19 @@ never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR
 Blacklisted containers are allowed through here as they may still need to be glowed.
 */
 
-bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
+Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const
 {
 	DataCase* data = DataCase::GetInstance();
 	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
 		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
-		return false;
+		return Lootability::BaseObjectBlocked;
 	}
 
 	if (data->IsReferenceBlocked(refr))
 	{
 		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
-		return false;
+		return Lootability::ReferenceBlocked;
 	}
 
 	// check blacklist early - this may be a malformed REFR e.g. GetBaseObject() blank, 0x00000000 FormID
@@ -90,21 +97,24 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 	if (data->IsReferenceOnBlacklist(refr))
 	{
 		DBG_VMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
-		return false;
+		return Lootability::ReferenceBlacklisted;
 	}
 
 	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
-		data->BlacklistReference(refr);
-		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x, base form 0x%08x", refr->formID, refr->GetBaseObject()->GetFormID());
-		return false;
+		if (!dryRun)
+		{
+			data->BlacklistReference(refr);
+			DBG_VMESSAGE("blacklist REFR with blank name 0x%08x, base form 0x%08x", refr->formID, refr->GetBaseObject()->GetFormID());
+		}
+		return Lootability::UnnamedReference;
 	}
 
 	if (refr == RE::PlayerCharacter::GetSingleton())
 	{
 		DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
+		return Lootability::ReferenceIsPlayer;
 	}
 
 	// Actor derives from REFR
@@ -112,9 +122,12 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 	{
 		if (!refr->IsDead(true))
 		{
-			DBG_VMESSAGE("skip living Actor/NPC %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-			shse::ActorTracker::Instance().RecordLiveSighting(refr);
-			return false;
+			if (!dryRun)
+			{
+				DBG_VMESSAGE("skip living Actor/NPC %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				shse::ActorTracker::Instance().RecordLiveSighting(refr);
+			}
+			return Lootability::ReferenceIsLiveActor;
 		}
 	}
 
@@ -122,30 +135,30 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
 		DBG_VMESSAGE("skip REFR 0x%08x to harvested Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return false;
+		return Lootability::FloraHarvested;
 	}
 
-	if (ScanGovernor::IsLockedForHarvest(refr))
+	if (ScanGovernor::Instance().IsLockedForHarvest(refr))
 	{
 		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
+		return Lootability::PendingHarvest;
 	}
-	if (ScanGovernor::IsLootedContainer(refr))
+	if (ScanGovernor::Instance().IsLootedContainer(refr))
 	{
 		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
+		return Lootability::ContainerLootedAlready;
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(ScanGovernor::LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
-		return false;
+		return Lootability::DynamicContainerLootedAlready;
 	}
 
 	DBG_VMESSAGE("lootable candidate 0x%08x", refr->formID);
-	return true;
+	return Lootability::Lootable;
 }
 
 bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
@@ -169,7 +182,7 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(ScanGovernor::LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);

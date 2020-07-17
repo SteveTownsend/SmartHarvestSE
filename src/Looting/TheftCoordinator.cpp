@@ -92,9 +92,10 @@ void TheftCoordinator::StealOrForgetItems(const bool detected)
 	if (!detected)
 	{
 		static const bool stolen(true);
+		static const bool dryRun(false);
 		for (const auto& item : items)
 		{
-			TryLootREFR(item.first, item.second, stolen).Process();
+			TryLootREFR(item.first, item.second, stolen).Process(dryRun);
 		}
 	}
 }
