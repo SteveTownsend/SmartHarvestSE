@@ -48,8 +48,6 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-INIFile* ScanGovernor::m_ini = nullptr;
-
 RecursiveLock ScanGovernor::m_searchLock;
 std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> ScanGovernor::m_glowExpiration;
 
@@ -229,9 +227,9 @@ void ScanGovernor::DoPeriodicSearch()
 	DistanceToTarget targets;
 	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
 	double radius(LocationTracker::Instance().IsPlayerIndoors() ?
-		m_ini->GetIndoorsRadius(INIFile::PrimaryType::harvest) : m_ini->GetRadius(INIFile::PrimaryType::harvest));
-	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, m_ini->GetVerticalFactor());
-	bool respectDoors(m_ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0.);
+		INIFile::GetInstance()->GetIndoorsRadius(INIFile::PrimaryType::harvest) : INIFile::GetInstance()->GetRadius(INIFile::PrimaryType::harvest));
+	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, INIFile::GetInstance()->GetVerticalFactor());
+	bool respectDoors(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0.);
 	ReferenceFilter filter(targets, rangeCheck, respectDoors, MaxREFRSPerPass);
 	// this adds eligible REFRs ordered by distance from player
 	filter.FindLootableReferences();
@@ -280,7 +278,7 @@ void ScanGovernor::DoPeriodicSearch()
 			if (refr->GetFormType() == RE::FormType::ActorCharacter)
 			{
 				if (!refr->IsDead(true) ||
-					DeadBodyLootingFromIniSetting(m_ini->GetSetting(
+					DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 						INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
 					continue;
 
@@ -317,14 +315,14 @@ void ScanGovernor::DoPeriodicSearch()
 			}
 			else if (refr->GetBaseObject()->As<RE::TESContainer>())
 			{
-				if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootContainer") == 0.0)
+				if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootContainer") == 0.0)
 					continue;
 				lootTargetType = INIFile::SecondaryType::containers;
 			}
 			else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
 			{
 				DeadBodyLooting lootBodies(DeadBodyLootingFromIniSetting(
-					m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")));
+					INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")));
 				if (lootBodies == DeadBodyLooting::DoNotLoot)
 					continue;
 				lootTargetType = INIFile::SecondaryType::deadbodies;
@@ -348,7 +346,7 @@ void ScanGovernor::DoPeriodicSearch()
 				}
 				possibleDupes.push_back(refr);
 			}
-			else if (m_ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
+			else if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
 			{
 				continue;
 			}

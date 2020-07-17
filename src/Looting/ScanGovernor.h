@@ -79,8 +79,6 @@ private:
 	static bool HasDynamicData(RE::TESObjectREFR* refr);
 	static void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
 
-	static INIFile* m_ini;
-
 	static std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
 	static int m_pendingNotifies;
 
