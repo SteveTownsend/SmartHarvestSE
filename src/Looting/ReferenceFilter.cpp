@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 #include "Utilities/utils.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "WorldState/ActorTracker.h"
@@ -35,6 +35,15 @@ namespace shse
 ReferenceFilter::ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeCheck, const bool respectDoors, const size_t limit) :
 	m_refs(refs), m_rangeCheck(rangeCheck), m_respectDoors(respectDoors), m_nearestDoor(0.), m_limit(limit)
 {
+}
+
+// lootability inquiry from the player using hotkey on unlooted item in worldspace
+Lootability ReferenceFilter::CheckLootable(const RE::TESObjectREFR* refr)
+{
+	static const bool dryRun(true);
+	if (!refr)
+		return Lootability::NullReference;
+	return ReferenceFilter(DistanceToTarget(), AbsoluteRange(refr ,0., 0.), false, 1).AnalyzeREFR(refr, dryRun);
 }
 
 /*
@@ -70,19 +79,22 @@ never recording a Dynamic REFR or Base Form in our filter lists, as Dynamic REFR
 Blacklisted containers are allowed through here as they may still need to be glowed.
 */
 
-bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
+Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const
 {
+	if (!refr)
+		return Lootability::NullReference;
+
 	DataCase* data = DataCase::GetInstance();
 	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
 		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
-		return false;
+		return Lootability::BaseObjectBlocked;
 	}
 
 	if (data->IsReferenceBlocked(refr))
 	{
 		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
-		return false;
+		return Lootability::ReferenceBlocked;
 	}
 
 	// check blacklist early - this may be a malformed REFR e.g. GetBaseObject() blank, 0x00000000 FormID
@@ -90,21 +102,24 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 	if (data->IsReferenceOnBlacklist(refr))
 	{
 		DBG_VMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
-		return false;
+		return Lootability::ReferenceBlacklisted;
 	}
 
 	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
-		data->BlacklistReference(refr);
-		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x, base form 0x%08x", refr->formID, refr->GetBaseObject()->GetFormID());
-		return false;
+		if (!dryRun)
+		{
+			data->BlacklistReference(refr);
+			DBG_VMESSAGE("blacklist REFR with blank name 0x%08x, base form 0x%08x", refr->formID, refr->GetBaseObject()->GetFormID());
+		}
+		return Lootability::UnnamedReference;
 	}
 
 	if (refr == RE::PlayerCharacter::GetSingleton())
 	{
 		DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
+		return Lootability::ReferenceIsPlayer;
 	}
 
 	// Actor derives from REFR
@@ -112,9 +127,12 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 	{
 		if (!refr->IsDead(true))
 		{
-			DBG_VMESSAGE("skip living Actor/NPC %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-			shse::ActorTracker::Instance().RecordLiveSighting(refr);
-			return false;
+			if (!dryRun)
+			{
+				DBG_VMESSAGE("skip living Actor/NPC %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				shse::ActorTracker::Instance().RecordLiveSighting(refr);
+			}
+			return Lootability::ReferenceIsLiveActor;
 		}
 	}
 
@@ -122,30 +140,30 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
 		DBG_VMESSAGE("skip REFR 0x%08x to harvested Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return false;
+		return Lootability::FloraHarvested;
 	}
 
-	if (SearchTask::IsLockedForHarvest(refr))
+	if (ScanGovernor::Instance().IsLockedForHarvest(refr))
 	{
 		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
+		return Lootability::PendingHarvest;
 	}
-	if (SearchTask::IsLootedContainer(refr))
+	if (ScanGovernor::Instance().IsLootedContainer(refr))
 	{
 		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-		return false;
+		return Lootability::ContainerLootedAlready;
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
-		return false;
+		return Lootability::DynamicContainerLootedAlready;
 	}
 
 	DBG_VMESSAGE("lootable candidate 0x%08x", refr->formID);
-	return true;
+	return Lootability::Lootable;
 }
 
 bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
@@ -169,7 +187,7 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(SearchTask::LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
 		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
@@ -229,11 +247,32 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 			RE::FormType formType(refr->GetBaseObject()->formType);
 			if (formType == RE::FormType::Door)
 			{
-				if (m_respectDoors && m_rangeCheck.IsValid(refr) && (m_nearestDoor == 0. || m_rangeCheck.Distance() < m_nearestDoor))
+				if (m_respectDoors)
 				{
-					DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(), refr->GetBaseObject()->GetName(), m_rangeCheck.Distance());
-					m_nearestDoor = m_rangeCheck.Distance();
-					m_rangeCheck.SetRadius(m_nearestDoor);
+					// Locked DOOR (even if not in range) can bar manual looting from a Display Case - if player gets close we may autoloot the contents
+					constexpr double DoorToleranceUnits(3. / DistanceUnitInFeet);
+					constexpr double MinLootingRangeUnits(1.0);
+					m_rangeCheck.IsValid(refr);	// calculate distance to door, in range or not
+					double doorLimit(m_rangeCheck.Distance());
+					if (IsLocked(refr))
+					{
+						doorLimit = std::max(MinLootingRangeUnits, doorLimit - DoorToleranceUnits);
+						DBG_VMESSAGE("Locked in-range Door 0x%08x(%s) tightened proximity to %.2f",
+							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
+					}
+					else
+					{
+						// by the same token, an unlocked Display Case requires some leeway to autoloot its contents
+						doorLimit = std::min(m_rangeCheck.Radius(), doorLimit + DoorToleranceUnits);
+						DBG_VMESSAGE("Unlocked in-range Door 0x%08x(%s) relaxed allowed proximity to %.2f",
+							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
+					}
+					if (m_nearestDoor == 0. || doorLimit < m_nearestDoor)
+					{
+						DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(),
+							refr->GetBaseObject()->GetName(), doorLimit);
+						m_nearestDoor = doorLimit;
+					}
 				}
 				else
 				{
@@ -325,11 +364,12 @@ void ReferenceFilter::FilterNearbyReferences()
 		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	std::sort(m_refs.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	// "Nearest Door" restriction can adjust the range downwards during the scan - re-check here
-	if (m_respectDoors)
+	if (m_respectDoors && m_nearestDoor > 0.)
 	{
+		double effectiveRadius(std::min(m_nearestDoor, m_rangeCheck.Radius()));
 		auto tooFarAway(std::find_if(m_refs.begin(), endOfRange, [&](const auto& target) -> bool
 		{
-			return target.first > m_rangeCheck.Radius();
+			return target.first > effectiveRadius;
 		}));
 
 		DBG_MESSAGE("Erase %d out-of-range REFRs", std::distance(tooFarAway, m_refs.end()));

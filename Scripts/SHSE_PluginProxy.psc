@@ -66,6 +66,7 @@ Function ShowLocation() global native
 
 Actor Function GetDetectingActor(int actorIndex) global native    
 Function ReportPlayerDetectionState(bool detected) global native
+Function CheckLootable(ObjectReference refr) global native
 
 ; Script operation timing
 int Function StartTimer(string context) global native

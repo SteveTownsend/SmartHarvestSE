@@ -121,6 +121,7 @@ int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
 String[] s_behaviorArray
+String[] s_ammoBehaviorArray
 String[] s_objectTypeNameArray
 
 int[] id_whiteList_array
@@ -466,6 +467,15 @@ Function InstallVerticalRadiusAndDoorRule()
     doorsPreventLooting = defaultDoorsPreventLooting
 EndFunction
 
+Function InstallDamageLootOptions()
+    s_ammoBehaviorArray = New String[5]
+    s_ammoBehaviorArray[0] = "$SHSE_DONT_PICK_UP"
+    s_ammoBehaviorArray[1] = "$SHSE_PICK_UP_W/O_MSG"
+    s_ammoBehaviorArray[2] = "$SHSE_PICK_UP_W/MSG"
+    s_ammoBehaviorArray[3] = "$SHSE_PICK_UP_DAMAGE_W/O_MSG"
+    s_ammoBehaviorArray[4] = "$SHSE_PICK_UP_DAMAGE_W/MSG"
+EndFunction
+
 Function InitPages()
     Pages = New String[6]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
@@ -525,6 +535,8 @@ Event OnConfigInit()
     s_behaviorArray[3] = "$SHSE_PICK_UP_V/W_W/O_MSG"
     s_behaviorArray[4] = "$SHSE_PICK_UP_V/W_W/MSG"
 
+    InstallDamageLootOptions()
+
     eventScript.whitelist_form = Game.GetFormFromFile(0x801, "SmartHarvestSE.esp") as Formlist
     eventScript.blacklist_form = Game.GetFormFromFile(0x802, "SmartHarvestSE.esp") as Formlist
 
@@ -538,7 +550,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 32
+    return 33
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -585,6 +597,10 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 32 && CurrentVersion < 32)
         ;defaults for all new settings
         InstallCollectionGroups()
+    endIf
+    if (a_version >= 33 && CurrentVersion < 33)
+        ;arrow damage loot options - no V/W
+        InstallDamageLootOptions()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -825,6 +841,8 @@ event OnPageReset(string currentPage)
         while index < s_objectTypeNameArray.length ; oreVein is the last
             if (index == objType_Mine)
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorToggleArray[(objectSettingArray[index] as int)])
+            elseif (index == objType_Ammo)
+                id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_ammoBehaviorArray[(objectSettingArray[index] as int)])
             else
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorArray[(objectSettingArray[index] as int)])
             endif
@@ -929,14 +947,18 @@ Event OnOptionSelect(int a_option)
     if (index >= 0)
         string keyName = GetObjectTypeNameByType(index)
         if (keyName != "unknown")
-            if (index != objType_Mine)
-                int size = s_behaviorArray.length
-                objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
-                SetTextOptionValue(a_option, s_behaviorArray[(objectSettingArray[index] as int)])
-            else
+            if (index == objType_Mine)
                 int size = s_behaviorToggleArray.length
                 objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
                 SetTextOptionValue(a_option, s_behaviorToggleArray[(objectSettingArray[index] as int)])
+            elseif (index == objType_Ammo)
+                int size = s_ammoBehaviorArray.length
+                objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
+                SetTextOptionValue(a_option, s_ammoBehaviorArray[(objectSettingArray[index] as int)])
+            else
+                int size = s_ammoBehaviorArray.length
+                objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
+                SetTextOptionValue(a_option, s_behaviorArray[(objectSettingArray[index] as int)])
             endif
 ;           PutSetting(type_Harvest, type_ItemObject, keyName, objectSettingArray[index])
         endif

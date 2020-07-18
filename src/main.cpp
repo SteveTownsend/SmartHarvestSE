@@ -18,8 +18,8 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #include "PrecompiledHeaders.h"
+#include "PluginFacade.h"
 
-#include "Looting/tasks.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
 #include "VM/papyrus.h"
@@ -134,20 +134,20 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 
 	case SKSE::MessagingInterface::kPreLoadGame:
 		REL_MESSAGE("Game load starting");
-		shse::SearchTask::PrepareForReload();
+		shse::PluginFacade::Instance().PrepareForReload();
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:
 	case SKSE::MessagingInterface::kPostLoadGame:
 		REL_MESSAGE("Game load done, initializing Tasks");
 		// if checks fail, abort scanning
-		if (!shse::SearchTask::Init())
+		if (!shse::PluginFacade::Instance().Init())
 		{
 			REL_FATALERROR("SearchTask initialization failed - no looting");
 			return;
 		}
 		REL_MESSAGE("Initialized SearchTask, looting available");
-		shse::SearchTask::AfterReload();
+		shse::PluginFacade::Instance().AfterReload();
 		break;
 	}
 }
@@ -185,12 +185,6 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 		REL_FATALERROR("Unsupported runtime version %08x!\n", runtimeVer);
 		return false;
 	}
-
-	// print loaded addresses of key functions for debugging
-	DBG_MESSAGE("*** Function addresses START");
-	utils::LogFunctionAddress(&shse::SearchTask::DoPeriodicSearch, "SearchTask::DoPeriodicSearch");
-	utils::LogFunctionAddress(&shse::SearchTask::Run, "SearchTask::Run");
-	DBG_MESSAGE("*** Function addresses END");
 
 	return true;
 }

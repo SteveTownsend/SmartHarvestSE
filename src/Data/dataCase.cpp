@@ -30,7 +30,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/version.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
 
 namespace
@@ -291,52 +291,6 @@ void DataCase::AnalyzePerks(void)
 			}
 		}
 	}
-}
-
-bool DataCase::GetTSV(std::unordered_set<RE::FormID>* tsv, const char* fileName)
-{
-	std::string filepath(FileUtils::GetPluginPath() + std::string(SHSE_NAME) + std::string("\\override\\") + std::string(fileName));
-	std::ifstream ifs(filepath);
-	if (ifs.fail())
-	{
-		REL_MESSAGE("* override TSV:%s inaccessible", filepath.c_str());
-		filepath = FileUtils::GetPluginPath() + std::string(SHSE_NAME) + std::string("\\default\\") + std::string(fileName);
-		ifs.open(filepath);
-		if (ifs.fail())
-		{
-			REL_WARNING("* default TSV:%s inaccessible", filepath.c_str());
-			return false;
-		}
-	}
-	REL_MESSAGE("Using TSV file %s", filepath.c_str());
-
-	// The correct file is open when we get here
-	std::string str;
-	while (getline(ifs, str))
-	{
-		if (str[0] == '#' || str[0] == ';' || (str[0] == '/' && str[1] == '/'))
-			continue;
-
-		if (str.find_first_not_of("\t") == std::string::npos)
-			continue;
-
-		auto vec = StringUtils::Split(str, '\t');
-		std::string modName = vec[0];
-
-		std::optional<UInt8> modIndex = RE::TESDataHandler::GetSingleton()->GetLoadedModIndex(vec[0].c_str());
-		if (!modIndex.has_value())
-			continue;
-
-		UInt32 formID = std::stoul(vec[1], nullptr, 16);
-		formID |= (modIndex.value() << 24);
-
-		RE::TESForm* pForm = RE::TESForm::LookupByID(formID);
-		if (pForm)
-			tsv->insert(formID);
-	}
-
-	REL_MESSAGE("* TSV:%s(%d)", fileName, tsv->size());
-	return true;
 }
 
 void DataCase::ExcludeFactionContainers()
@@ -855,7 +809,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 {
 	// Moving arrows must be skipped if they are in flight. Bobbing on water or rolling around does not count.
 	// Assume in-flight movement rate at least N feet per loot scan interval.
-	constexpr double ArrowInFlightFeet(5. / DistanceUnitInFeet);
+	constexpr double ArrowInFlightUnits(5. / DistanceUnitInFeet);
 
 	bool skip(false);
 	RE::NiPoint3 pos = refr->GetPosition();
@@ -879,7 +833,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 		double dx(pos.x - prev.x);
 		double dy(pos.y - prev.y);
 		double dz(pos.z - prev.z);
-		if (fabs(dx) > ArrowInFlightFeet || fabs(dy) > ArrowInFlightFeet || fabs(dz) > ArrowInFlightFeet)
+		if (fabs(dx) > ArrowInFlightUnits || fabs(dy) > ArrowInFlightUnits || fabs(dz) > ArrowInFlightUnits)
 		{
 			DBG_VMESSAGE("In flight, change in arrow position dx=%0.2f,dy=%0.2f,dz=%0.2f", dx, dy, dz);
 			m_arrowCheck[refr] = pos;
@@ -1031,7 +985,21 @@ void DataCase::SetObjectTypeByKeywords()
 		// Legacy of the Dragonborn
 		{"VendorItemJournal", ObjectType::book},
 		{"VendorItemNote", ObjectType::book},
-		{"VendorItemFateCards", ObjectType::clutter}
+		{"VendorItemFateCards", ObjectType::clutter},
+		// Skyrim core
+		{"WeapTypeBattleaxe", ObjectType::weapon},
+		{"WeapTypeBoundArrow", ObjectType::ammo},
+		{"WeapTypeBow", ObjectType::weapon},
+		{"WeapTypeDagger", ObjectType::weapon},
+		{"WeapTypeGreatsword", ObjectType::weapon},
+		{"WeapTypeMace", ObjectType::weapon},
+		{"WeapTypeStaff", ObjectType::weapon},
+		{"WeapTypeSword", ObjectType::weapon},
+		{"WeapTypeWarAxe", ObjectType::weapon},
+		{"WeapTypeWarhammer", ObjectType::weapon},
+		//CACO
+		{"WAF_WeapTypeGrenade", ObjectType::weapon},
+		{"WAF_WeapTypeScalpel", ObjectType::weapon}
 	};
 	std::vector<std::pair<std::string, ObjectType>> typeByVendorItemSubstring =
 	{
@@ -1086,11 +1054,6 @@ void DataCase::SetObjectTypeByKeywords()
 		{
 			DBG_VMESSAGE("0x%08x (%s) matched substring, treated as %s", keywordDef->GetFormID(), keywordName.c_str(), GetObjectTypeName(objectType).c_str());
 		}
-		else if (keywordName.starts_with("VendorItem"))
-		{
-			DBG_VMESSAGE("0x%08x (%s) treated as clutter", keywordDef->GetFormID(), keywordName.c_str());
-			objectType = ObjectType::clutter;
-		}
 		else
 		{
 			DBG_VMESSAGE("0x%08x (%s) skipped", keywordDef->GetFormID(), keywordName.c_str());
@@ -1104,6 +1067,11 @@ void DataCase::SetObjectTypeByKeywords()
 template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectARMO>()
 {
 	return ObjectType::armor;
+}
+
+template <> ObjectType DataCase::DefaultObjectType<RE::TESObjectWEAP>()
+{
+	return ObjectType::weapon;
 }
 
 template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectARMO>(const RE::TESForm* form, const ObjectType objectType)

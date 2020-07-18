@@ -216,15 +216,18 @@
     <ClCompile Include="src\Looting\objects.cpp" />
     <ClCompile Include="src\Looting\ProducerLootables.cpp" />
     <ClCompile Include="src\Looting\ReferenceFilter.cpp" />
-    <ClCompile Include="src\Looting\tasks.cpp" />
+    <ClCompile Include="src\Looting\ScanGovernor.cpp" />
     <ClCompile Include="src\Looting\TheftCoordinator.cpp" />
+    <ClCompile Include="src\Looting\TryLootREFR.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\PluginFacade.cpp" />
     <ClCompile Include="src\PrecompiledHeaders.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\Utilities\debugs.cpp" />
+    <ClCompile Include="src\Utilities\Enums.cpp" />
     <ClCompile Include="src\Utilities\Exception.cpp" />
     <ClCompile Include="src\Utilities\LogStackWalker.cpp" />
     <ClCompile Include="src\Utilities\RecursiveLock.cpp" />
@@ -273,8 +276,10 @@
     <ClInclude Include="src\Looting\ObjectType.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
     <ClInclude Include="src\Looting\ReferenceFilter.h" />
-    <ClInclude Include="src\Looting\tasks.h" />
+    <ClInclude Include="src\Looting\ScanGovernor.h" />
     <ClInclude Include="src\Looting\TheftCoordinator.h" />
+    <ClInclude Include="src\Looting\TryLootREFR.h" />
+    <ClInclude Include="src\PluginFacade.h" />
     <ClInclude Include="src\PrecompiledHeaders.h" />
     <ClInclude Include="src\Utilities\debugs.h" />
     <ClInclude Include="src\Utilities\Enums.h" />
