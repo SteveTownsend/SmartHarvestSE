@@ -1,0 +1,76 @@
+/*************************************************************************
+SmartHarvest SE
+Copyright (c) Steve Townsend 2020
+
+>>> SOURCE LICENSE >>>
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation (www.fsf.org); either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+A copy of the GNU General Public License is available at
+http://www.fsf.org/licensing/licenses
+>>> END OF LICENSE >>>
+*************************************************************************/
+#include "PrecompiledHeaders.h"
+#include "Utilities/Enums.h"
+
+std::string LootabilityName(const Lootability lootability)
+{
+	switch (lootability) {
+	case Lootability::Lootable: return "Lootable";
+	case Lootability::BaseObjectBlocked : return "BaseObjectBlocked";
+	case Lootability::ReferenceBlocked : return "ReferenceBlocked";
+	case Lootability::ReferenceBlacklisted : return "ReferenceBlacklisted";
+	case Lootability::UnnamedReference : return "UnnamedReference";
+	case Lootability::ReferenceIsPlayer : return "ReferenceIsPlayer";
+	case Lootability::ReferenceIsLiveActor : return "ReferenceIsLiveActor";
+	case Lootability::FloraHarvested : return "FloraHarvested";
+	case Lootability::PendingHarvest : return "PendingHarvest";
+	case Lootability::ContainerLootedAlready : return "ContainerLootedAlready";
+	case Lootability::DynamicContainerLootedAlready : return "DynamicContainerLootedAlready";
+	case Lootability::NullReference : return "NullReference";
+	case Lootability::InvalidFormID : return "InvalidFormID";
+	case Lootability::NoBaseObject : return "NoBaseObject";
+	case Lootability::LootDeadBodyDisabled : return "LootDeadBodyDisabled";
+	case Lootability::DeadBodyNotEligible : return "DeadBodyNotEligible";
+	case Lootability::DeadBodyDelayedLooting : return "DeadBodyDelayedLooting";
+	case Lootability::DeadBodyPossibleDuplicate : return "DeadBodyPossibleDuplicate";
+	case Lootability::LootContainersDisabled : return "LootContainersDisabled";
+	case Lootability::HarvestLooseItemDisabled : return "HarvestLooseItemDisabled";
+	case Lootability::PendingProducerIngredient : return "PendingProducerIngredient";
+	case Lootability::ObjectTypeUnknown : return "ObjectTypeUnknown";
+	case Lootability::ManualLootTarget : return "ManualLootTarget";
+	case Lootability::BaseObjectOnBlacklist : return "BaseObjectOnBlacklist";
+	case Lootability::CannotLootQuestObject : return "CannotLootQuestObject";
+	case Lootability::CannotLootCollectibleObject : return "CannotLootCollectibleObject";
+	case Lootability::CannotLootValuableObject : return "CannotLootValuableObject";
+	case Lootability::CannotLootAmmo : return "CannotLootAmmo";
+	case Lootability::PendingItemSteal : return "PendingItemSteal";
+	case Lootability::PlayerOwned : return "PlayerOwned";
+	case Lootability::CrimeToLoot : return "CrimeToLoot";
+	case Lootability::CellOrItemOwnerPreventsOwnerlessLooting: return "CellOrItemOwnerPreventsOwnerlessLooting";
+	case Lootability::PopulousLocationRestrictsLooting : return "PopulousLocationRestrictsLooting";
+	case Lootability::ItemInBlacklistCollection : return "ItemOnBlacklistCollection";
+	case Lootability::CollectibleItemSetToGlow : return "CollectibleItemSetToGlow";
+	case Lootability::LawAbidingSoNoWhitelistItemLooting : return "CrimeCheckPreventsWhitelistItemLooting";
+	case Lootability::ItemIsBlacklisted : return "ItemIsBlacklisted";
+	case Lootability::ItemSettingsPreventLooting : return "ItemSettingsPreventLooting";
+	case Lootability::ValueWeightPreventsLooting : return "ValueWeightPreventsLooting";
+	case Lootability::ItemTheftTriggered : return "ItemTheftTriggered";
+	case Lootability::HarvestOperationPending : return "HarvestOperationPending";
+	case Lootability::ContainerHasNoLootableItems : return "ContainerHasNoLootableItems";
+	case Lootability::ContainerIsLocked : return "ContainerIsLocked";
+	case Lootability::ContainerIsBossChest : return "ContainerIsBossChest";
+	case Lootability::ContainerHasQuestObject : return "ContainerHasQuestObject";
+	case Lootability::ContainerHasValuableObject : return "ContainerHasValuableObject";
+	case Lootability::ContainerHasCollectibleObject : return "ContainerHasCollectibleObject";
+	case Lootability::ContainerIsBlacklisted : return "ContainerIsBlacklisted";
+	default: return "";
+	}
+}

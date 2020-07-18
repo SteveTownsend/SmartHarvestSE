@@ -27,7 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "VM/papyrus.h"
 #include "Utilities/utils.h"
 
@@ -401,7 +401,7 @@ bool LocationTracker::Refresh()
 		}
 		// Fire limited location change logic on cell update
 		static const bool gameReload(false);
-		SearchTask::ResetRestrictions(gameReload);
+		PluginFacade::Instance().ResetState(gameReload);
 	}
 
 	// Scan and Location tracking should not run if Player cell is not yet filled in
@@ -500,12 +500,6 @@ bool LocationTracker::IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, con
 	if (IsPlayerAtHome())
 	{
 		DBG_DMESSAGE("Player House: no looting");
-		return false;
-	}
-	CellOwnership ownership(GetCellOwnership(cell));
-	if (!IsPlayerFriendly(ownership))
-	{
-		DBG_DMESSAGE("Not a Player-friendly cell %s: no looting unless whitelisted", CellOwnershipName(ownership).c_str());
 		return false;
 	}
 	if (IsPlayerInBlacklistedPlace(cell))
@@ -613,6 +607,17 @@ bool LocationTracker::IsPlayerInRestrictedLootSettlement(const RE::TESObjectCELL
 		return false;
 	// whitelist check done before we get called
 	return PopulationCenters::Instance().CannotLoot(m_playerLocation);
+}
+
+bool LocationTracker::IsPlayerInFriendlyCell() const
+{
+	RecursiveLockGuard guard(m_locationLock);
+	// Player Location may be empty e.g. if we are in the wilderness
+	// Player Cell should never be empty
+	CellOwnership ownership(GetCellOwnership(m_playerCell));
+	bool isFriendly(IsPlayerFriendly(ownership));
+	DBG_DMESSAGE("Cell ownership %s, allow Ownerless looting = %s", CellOwnershipName(ownership).c_str(), isFriendly ? "true" : "false");
+	return isFriendly;
 }
 
 const RE::TESForm* LocationTracker::CurrentPlayerPlace() const

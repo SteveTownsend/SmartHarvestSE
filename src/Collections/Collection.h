@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include <tuple>
 
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Collections/Condition.h"
 #include "WorldState/PlayerState.h"
 

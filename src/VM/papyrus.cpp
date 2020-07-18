@@ -22,9 +22,10 @@ http://www.fsf.org/licensing/licenses
 #include <winver.h>
 #include <iostream>
 
+#include "PluginFacade.h"
 #include "Data/dataCase.h"
 #include "FormHelpers/IHasValueWeight.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/LocationTracker.h"
 #include "Looting/ProducerLootables.h"
@@ -255,18 +256,18 @@ namespace papyrus
 	void AllowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search enabled");
-		shse::SearchTask::Allow();
+		shse::ScanGovernor::Instance().Allow();
 	}
 
 	void DisallowSearch(RE::StaticFunctionTag* base)
 	{
 		REL_MESSAGE("Reference Search disabled");
-		shse::SearchTask::Disallow();
+		shse::ScanGovernor::Instance().Disallow();
 	}
 
 	bool IsSearchAllowed(RE::StaticFunctionTag* base)
 	{
-		return shse::SearchTask::IsAllowed();
+		return shse::ScanGovernor::Instance().IsAllowed();
 	}
 
 	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
@@ -301,7 +302,7 @@ namespace papyrus
 	}
 	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		shse::SearchTask::SyncDone(reload);
+		shse::PluginFacade::Instance().SyncDone(reload);
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
@@ -311,7 +312,7 @@ namespace papyrus
 
 	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
 	{
-		return shse::SearchTask::UnlockHarvest(refr, isSilent);
+		return shse::ScanGovernor::Instance().UnlockHarvest(refr, isSilent);
 	}
 
 	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
@@ -470,7 +471,7 @@ namespace papyrus
 
 	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
-		shse::SearchTask::ToggleCalibration(shaderTest);
+		shse::ScanGovernor::Instance().ToggleCalibration(shaderTest);
 	}
 
 	void ShowLocation(RE::StaticFunctionTag* base)
@@ -486,6 +487,11 @@ namespace papyrus
 	void ReportPlayerDetectionState(RE::StaticFunctionTag* base, const bool detected)
 	{
 		shse::TheftCoordinator::Instance().StealOrForgetItems(detected);
+	}
+
+	void CheckLootable(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	{
+		shse::ScanGovernor::Instance().DisplayLootability(refr);
 	}
 
 	int StartTimer(RE::StaticFunctionTag* base, const std::string timerContext)
@@ -566,6 +572,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
 		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);
+		a_vm->RegisterFunction("CheckLootable", SHSE_PROXY, papyrus::CheckLootable);
 
 		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);
 		a_vm->RegisterFunction("StopTimer", SHSE_PROXY, papyrus::StopTimer);

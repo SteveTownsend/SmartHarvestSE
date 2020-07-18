@@ -53,11 +53,6 @@ double AbsoluteRange::Radius() const
 	return m_radius;
 }
 
-void AbsoluteRange::SetRadius(const double newRadius)
-{
-	m_radius = newRadius;
-}
-
 double AbsoluteRange::Distance() const
 {
 	return m_distance;
@@ -77,12 +72,6 @@ bool BracketedRange::IsValid(const RE::TESObjectREFR* refr) const
 double BracketedRange::Radius() const
 {
 	return m_outerLimit.Radius();
-}
-
-// TODO is this used/correct?
-void BracketedRange::SetRadius(const double newRadius)
-{
-	m_outerLimit.SetRadius(newRadius);
 }
 
 double BracketedRange::Distance() const

@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/objects.h"
 #include "Looting/InventoryItem.h"
-#include "Looting/tasks.h"
+#include "Looting/ScanGovernor.h"
 #include "Collections/CollectionManager.h"
 
 namespace shse
