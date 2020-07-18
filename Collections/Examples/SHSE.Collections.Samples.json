@@ -27,11 +27,6 @@
     {
       "name": "Daedric Wielder",
       "description": "Every Daedric Artifact",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -44,11 +39,6 @@
     {
       "name": "Baggage Handler",
       "description": "Every Pouch and Carrier",
-      "policy": {
-        "action": "glow",
-        "notify": true,
-        "repeat": false
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {

@@ -2,7 +2,7 @@
   "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
   "$schema": "./SHSE.SchemaCollections.json",
   "groupPolicy": {
-    "action": "glow",
+    "action": "take",
     "notify": true,
     "repeat": false
   },
