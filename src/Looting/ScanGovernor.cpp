@@ -224,7 +224,6 @@ void ScanGovernor::ProgressGlowDemo()
 // input may get updated for ashpile
 Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dryRun)
 {
-	m_targetType = INIFile::SecondaryType::itemObjects;
 	if (!refr)
 		return Lootability::NullReference;
 	if (refr->GetFormID() == InvalidForm)
@@ -247,6 +246,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 	}
 	else
 	{
+		m_targetType = INIFile::SecondaryType::itemObjects;
 		DBG_VMESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 #ifdef _PROFILING
@@ -405,6 +405,9 @@ void ScanGovernor::DoPeriodicSearch()
 
 void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 {
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Check Lootability", refr);
+#endif
 	Lootability result(ReferenceFilter::CheckLootable(refr));
 	static const bool dryRun(true);
 	if (result == Lootability::Lootable)
@@ -417,14 +420,16 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 		result = TryLootREFR(refr, m_targetType, false).Process(dryRun);
 	}
 	std::ostringstream resultStr;
-	resultStr << "REFR 0x" << std::setw(8) << std::hex << std::setfill('0') << refr->GetFormID();
-	const auto baseObject(refr->GetBaseObject());
+	resultStr << "REFR 0x" << std::setw(8) << std::hex << std::setfill('0') << (refr ? refr->GetFormID() : InvalidForm);
+	const auto baseObject(refr ? refr->GetBaseObject() : nullptr);
 	if (baseObject)
 	{
 		resultStr << " -> " << baseObject->GetName() << "/0x" << std::setw(8) << std::hex << std::setfill('0') << baseObject->GetFormID();
 	}
 	resultStr << ' ' << LootabilityName(result);
-	RE::DebugNotification(resultStr.str().c_str());
+	std::string message(resultStr.str());
+	RE::DebugNotification(message.c_str());
+	REL_MESSAGE("Lootability result: %s", message.c_str());
 }
 
 void ScanGovernor::Allow()

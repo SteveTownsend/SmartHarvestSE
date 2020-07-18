@@ -345,7 +345,9 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     ShowLocation()
                 else
                     ; object lootability introspection
-                    CheckLootable(targetedRefr)
+                    if targetedRefr
+                        CheckLootable(targetedRefr)
+                    endIf
                 endIf
                 return
             endIf

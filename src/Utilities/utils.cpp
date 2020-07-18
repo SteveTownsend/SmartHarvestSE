@@ -146,13 +146,10 @@ namespace WindowsUtils
 	ScopedTimer::ScopedTimer(const std::string& context) : m_startTime(microsecondsNow()), m_context(context) {}
 	ScopedTimer::ScopedTimer(const std::string& context, RE::TESObjectREFR* refr) : m_startTime(microsecondsNow()), m_context(context)
 	{
-		if (refr)
-		{
-			std::ostringstream fullContext;
-			fullContext << context << ' ' << refr->GetBaseObject()->GetName() <<
-				"/0x" << std::hex << std::setw(8) << std::setfill('0') << refr->GetBaseObject()->GetFormID();
-			m_context = fullContext.str();
-		}
+		std::ostringstream fullContext;
+		fullContext << context << ' ' << (refr ? std::string(refr->GetBaseObject()->GetName()) : std::string()) <<
+			"/0x" << std::hex << std::setw(8) << std::setfill('0') << (refr ? refr->GetBaseObject()->GetFormID() : InvalidForm);
+		m_context = fullContext.str();
 	}
 
 	ScopedTimer::~ScopedTimer()

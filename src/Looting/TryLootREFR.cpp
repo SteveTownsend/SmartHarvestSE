@@ -43,9 +43,11 @@ TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targe
 
 Lootability TryLootREFR::Process(const bool dryRun)
 {
+	if (!m_candidate)
+		return Lootability::NullReference;
+
 	DataCase* data = DataCase::GetInstance();
 	Lootability result(Lootability::Lootable);
-
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
 		LootableREFR refrEx(m_candidate, m_targetType);

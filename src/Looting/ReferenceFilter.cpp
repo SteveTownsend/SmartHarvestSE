@@ -41,6 +41,8 @@ ReferenceFilter::ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeChe
 Lootability ReferenceFilter::CheckLootable(const RE::TESObjectREFR* refr)
 {
 	static const bool dryRun(true);
+	if (!refr)
+		return Lootability::NullReference;
 	return ReferenceFilter(DistanceToTarget(), AbsoluteRange(refr ,0., 0.), false, 1).AnalyzeREFR(refr, dryRun);
 }
 
@@ -79,6 +81,9 @@ Blacklisted containers are allowed through here as they may still need to be glo
 
 Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const
 {
+	if (!refr)
+		return Lootability::NullReference;
+
 	DataCase* data = DataCase::GetInstance();
 	if (data->IsFormBlocked(refr->GetBaseObject()))
 	{
