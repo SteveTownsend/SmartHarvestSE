@@ -56,9 +56,11 @@ bool PluginFacade::Init()
 		__try
 		{
 			// Use structured exception handling during game data load
-			REL_MESSAGE("Plugin not synced up - Game Data load executing");
+			REL_MESSAGE("Plugin not initialized - Game Data load executing");
+			WindowsUtils::LogProcessWorkingSet();
 			if (!Load())
 				return false;
+			WindowsUtils::LogProcessWorkingSet();
 		}
 		__except (LogStackWalker::LogStack(GetExceptionInformation()))
 		{

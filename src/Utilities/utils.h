@@ -55,6 +55,7 @@ namespace utils
 namespace WindowsUtils
 {
 	long long microsecondsNow();
+	void LogProcessWorkingSet();
 
 	class ScopedTimer {
 	public:
