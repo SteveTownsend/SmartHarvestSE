@@ -109,6 +109,7 @@ private:
 	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
 	std::unordered_set<const RE::TESObjectREFR*> m_offLimitsContainers;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
+	std::unordered_set<const RE::TESForm*> m_permanentBlockedForms;
 	std::unordered_set<const RE::TESForm*> m_blockForm;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_map<RE::FormID, Lootability> m_blockRefr;
@@ -409,6 +410,7 @@ private:
 	static constexpr RE::FormID Gold = 0x0F;
 
 	void CategorizeStatics();
+	void SetPermanentBlockedItems();
 	void ExcludeFactionContainers();
 	void ExcludeVendorContainers();
 	void ExcludeImmersiveArmorsGodChest();
@@ -418,10 +420,8 @@ private:
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
 	{
-		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-		if (!dhnd)
-			return nullptr;
-
+		if (defaultESP == "Skyrim.esm")
+			return RE::TESForm::LookupByID<T>(maskedFormID);
 		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
 		if (typedForm)
 		{
@@ -433,6 +433,8 @@ private:
 		}
 		return typedForm;
 	}
+
+	RE::TESForm* FindExactMatchRaw(const std::string& defaultESP, const RE::FormID maskedFormID);
 
 	template <typename T>
 	T* FindBestMatch(const std::string& defaultESP, const RE::FormID maskedFormID, const std::string& name)

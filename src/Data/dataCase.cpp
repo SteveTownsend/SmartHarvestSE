@@ -334,6 +334,34 @@ bool DataCase::ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const
 	return m_containerBlackList.contains(refr->GetContainer());
 }
 
+void DataCase::SetPermanentBlockedItems()
+{
+
+	// mod-added Containers to avoid looting
+	std::vector<std::tuple<std::string, RE::FormID>> suchBadForm = {
+		// "Do Not Delete" Named (e.g. Dragonsreach) - maybe should not be Playable: USSEP fixes a couple of them
+		{"Skyrim.esm", 0xc7316},		// TGRFOValueItem
+		{"Skyrim.esm", 0xea5c5},		// TGRGeneralValueItem
+		{"Skyrim.esm", 0x103370},		// TGCrownValueItem
+		{"Skyrim.esm", 0x10c762}		// TGTQ03ValueItem
+	};
+	for (const auto& form : suchBadForm)
+	{
+		std::string espName(std::get<0>(form));
+		RE::FormID formID(std::get<1>(form));
+		RE::TESForm* itemForm(FindExactMatchRaw(espName, formID));
+		if (itemForm)
+		{
+			REL_MESSAGE("Item %s:0x%08x added to permanent naughty list", espName.c_str(), formID);
+			m_permanentBlockedForms.insert(itemForm);
+		}
+		else
+		{
+			REL_WARNING("Blocked Item %s:0x%08x not found", espName.c_str(), formID);
+		}
+	}
+}
+
 void DataCase::ExcludeVendorContainers()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
@@ -733,7 +761,7 @@ void DataCase::ResetBlockedForms()
 {
 	DBG_MESSAGE("Reset Blocked Forms");
 	RecursiveLockGuard guard(m_blockListLock);
-	m_blockForm.clear();
+	m_blockForm = m_permanentBlockedForms;
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
@@ -916,6 +944,8 @@ void DataCase::CategorizeLootables()
 
 void DataCase::HandleExceptions()
 {
+	SetPermanentBlockedItems();
+
 	// on first pass, detect off limits containers and other special cases to avoid rescan on game reload
 	DBG_MESSAGE("Pre-emptively handle special cases from Load Order");
 	ExcludeFactionContainers();
@@ -1105,6 +1135,11 @@ template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::Alche
 template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem* consumable)
 {
 	return ObjectType::ingredient;
+}
+
+RE::TESForm* DataCase::FindExactMatchRaw(const std::string& defaultESP, const RE::FormID maskedFormID)
+{
+	return RE::TESDataHandler::GetSingleton()->LookupForm(maskedFormID, defaultESP);
 }
 
 bool DataCase::PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const
