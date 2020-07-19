@@ -166,9 +166,8 @@ void ScanGovernor::ForgetLockedContainers()
 void ScanGovernor::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
 {
 	shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
-	RecursiveLockGuard guard(m_searchLock);
-	// record looting so we don't rescan
-	MarkContainerLooted(refr);
+	// block REFR so we don't include in future scans
+	DataCase::GetInstance()->BlockReference(refr, Lootability::DeadBodyDelayedLooting);
 }
 
 void ScanGovernor::ProgressGlowDemo()
@@ -265,22 +264,36 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			if (actor)
 			{
 				ActorHelper actorEx(actor);
-				if (actorEx.IsPlayerAlly() || actorEx.IsEssential() || actorEx.IsSummoned())
+				Lootability exclusionType(Lootability::Lootable);
+				if (actorEx.IsPlayerAlly())
+				{
+					exclusionType = Lootability::DeadBodyIsPlayerAlly;
+				}
+				else if (actorEx.IsEssential())
+				{
+					exclusionType = Lootability::DeadBodyIsEssential;
+				}
+				else if (actorEx.IsSummoned())
+				{
+					exclusionType = Lootability::DeadBodyIsSummoned;
+				}
+				if (exclusionType != Lootability::Lootable)
 				{
 					if (!dryRun)
 					{
 						DBG_VMESSAGE("Block ineligible Actor 0x%08x, base = %s/0x%08x", refr->GetFormID(),
 							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-						DataCase::GetInstance()->BlockReference(refr);
+						DataCase::GetInstance()->BlockReference(refr, exclusionType);
 					}
-					return Lootability::DeadBodyNotEligible;
+					return exclusionType;
 				}
 			}
 
 			m_targetType = INIFile::SecondaryType::deadbodies;
 			// Delay looting exactly once. We only return here after required time since death has expired.
 			// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
-			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) && !IsLootedContainer(refr))
+			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) &&
+				DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
 				if (!dryRun)
 				{
@@ -316,7 +329,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			}
 			m_targetType = INIFile::SecondaryType::deadbodies;
 			// Delay looting exactly once. We only return here after required time since death has expired.
-			if (!HasDynamicData(refr) && !IsLootedContainer(refr))
+			if (!HasDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
 				if (!dryRun)
 				{
@@ -384,7 +397,14 @@ void ScanGovernor::LootAllEligible()
 		static const bool stolen(false);
 		TryLootREFR(refr, m_targetType, stolen).Process(dryRun);
 	}
+}
 
+const RE::Actor* ScanGovernor::ActorByIndex(const int actorIndex) const
+{
+	RecursiveLockGuard guard(m_searchLock);
+	if (actorIndex < m_detectiveWannabes.size())
+		return m_detectiveWannabes[actorIndex];
+	return nullptr;
 }
 
 void ScanGovernor::DoPeriodicSearch()
@@ -410,6 +430,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 #endif
 	Lootability result(ReferenceFilter::CheckLootable(refr));
 	static const bool dryRun(true);
+	std::string typeName;
 	if (result == Lootability::Lootable)
 	{
 		result = ValidateTarget(refr, dryRun);
@@ -417,8 +438,20 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	if (result == Lootability::Lootable)
 	{
 		// flag to prevent mutation of state when just checking the rules
-		result = TryLootREFR(refr, m_targetType, false).Process(dryRun);
+		TryLootREFR runner(refr, m_targetType, false);
+		result = runner.Process(dryRun);
+		typeName = runner.ObjectTypeName();
 	}
+
+	// check player detection state if relevant
+	if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
+	{
+		m_detectiveWannabes = ActorTracker::Instance().ReadDetectives();
+		DBG_VMESSAGE("Detection check to steal under the nose of %d Actors", m_detectiveWannabes.size());
+		static const bool dryRun(true);
+		EventPublisher::Instance().TriggerStealIfUndetected(m_detectiveWannabes.size(), dryRun);
+	}
+
 	std::ostringstream resultStr;
 	resultStr << "REFR 0x" << std::setw(8) << std::hex << std::setfill('0') << (refr ? refr->GetFormID() : InvalidForm);
 	const auto baseObject(refr ? refr->GetBaseObject() : nullptr);
@@ -426,8 +459,17 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	{
 		resultStr << " -> " << baseObject->GetName() << "/0x" << std::setw(8) << std::hex << std::setfill('0') << baseObject->GetFormID();
 	}
-	resultStr << ' ' << LootabilityName(result);
+	if (!typeName.empty())
+	{
+		resultStr << " type=" << typeName;
+	}
 	std::string message(resultStr.str());
+	RE::DebugNotification(message.c_str());
+	REL_MESSAGE("Lootability checked for %s", message.c_str());
+	resultStr.str("");
+
+	resultStr << LootabilityName(result) << ' ' << LocationTracker::Instance().PlayerExactLocation();
+	message = resultStr.str();
 	RE::DebugNotification(message.c_str());
 	REL_MESSAGE("Lootability result: %s", message.c_str());
 }

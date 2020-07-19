@@ -134,11 +134,11 @@ void PluginFacade::TakeNap()
 {
 	double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
 		LocationTracker::Instance().IsPlayerIndoors() ? "IndoorsIntervalSeconds" : "IntervalSeconds"));
-	delay = std::max(MinThreadDelay, delay);
+	delay = std::max(MinThreadDelaySeconds, delay);
 	if (ScanGovernor::Instance().Calibrating())
 	{
 		// use hard-coded delay to make UX comprehensible
-		delay = CalibrationThreadDelay;
+		delay = CalibrationThreadDelaySeconds;
 	}
 
 	DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
@@ -198,7 +198,9 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		shse::PlayerState::Instance().Refresh();
+		static const bool onMCMPush(false);
+		static const bool onGameReload(false);
+		shse::PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 		// process any queued added items since last time
 		shse::CollectionManager::Instance().ProcessAddedItems();
@@ -231,9 +233,6 @@ void PluginFacade::ScanThread()
 				}
 				continue;
 			}
-
-			// re-evaluate perks if timer has popped - no force, and execute scan
-			shse::PlayerState::Instance().CheckPerks(false);
 		}
 
 		ScanGovernor::Instance().DoPeriodicSearch();
@@ -255,23 +254,19 @@ void PluginFacade::PrepareForReload()
 
 void PluginFacade::AfterReload()
 {
-	// force recheck Perks and reset carry weight
-	static const bool force(true);
-	shse::PlayerState::Instance().CheckPerks(force);
-
-	// reset carry weight and menu-active state
-	static const bool reloaded(true);
-	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
+	static const bool onMCMPush(false);
+	static const bool onGameReload(true);
+	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 }
 
 // this is the last function called by the scripts when re-syncing state
-void PluginFacade::SyncDone(const bool reload)
+void PluginFacade::SyncDone()
 {
 	RecursiveLockGuard guard(m_pluginLock);
 	// reset blocked lists to allow recheck vs current state
+	static const bool reload(true);
 	ResetState(reload);
-	REL_MESSAGE("Restrictions reset, new/loaded game = %s", reload ? "true" : "false");
-
+	REL_MESSAGE("Restrictions reset, new/loaded game");
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
 }
@@ -294,23 +289,31 @@ void PluginFacade::ResetState(const bool gameReload)
 	}
 }
 
-// lock not required, by construction
+// lock not required, by construction. This is called-back in ScanThread via UIState so should be fine
 void PluginFacade::OnGoodToGo()
 {
-	REL_MESSAGE("UI/controls now good-to-go");
-	// reset state that might be invalidated by MCM setting updates
-	shse::PlayerState::Instance().CheckPerks(true);
+	REL_MESSAGE("UI/controls now good-to-go, wait before first scan");
+	TakeNap();
+}
 
-	// reset carry weight - will reinstate correct value if/when scan resumes. Not a game reload.
-	static const bool reloaded(false);
-	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
+// lock not required, by construction
+void PluginFacade::OnSettingsPushed()
+{
+	// refresh player state that could be affected
+	static const bool onMCMPush(true);
+	static const bool onGameReload(false);
+	shse::PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 	// Base Object Forms and REFRs handled for the case where we are not reloading game
 	DataCase::GetInstance()->ResetBlockedForms();
-	DataCase::GetInstance()->ClearBlockedReferences(false);
+	DataCase::GetInstance()->ClearBlockedReferences(onGameReload);
 
 	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
+	ActorTracker::Instance().Reset();
+
+	// clear lists of looted and locked containers
 	ScanGovernor::Instance().ResetLootedContainers();
+	ScanGovernor::Instance().ForgetLockedContainers();
 }
 
 }

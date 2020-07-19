@@ -21,6 +21,9 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/ObjectType.h"
 
+namespace shse
+{
+
 // object glow reasons, in descending order of precedence
 enum class GlowReason {
 	LockedContainer = 1,
@@ -274,7 +277,10 @@ inline std::string CellOwnershipName(const CellOwnership ownership)
 enum class Lootability {
 	Lootable = 0,
 	BaseObjectBlocked,
-	ReferenceBlocked,
+	CannotRelootFirehoseSource,
+	ContainerPermanentlyOffLimits,
+	CorruptArrowPosition,
+	CannotMineTwiceInSameCellVisit,
 	ReferenceBlacklisted,
 	UnnamedReference,
 	ReferenceIsPlayer,
@@ -287,7 +293,9 @@ enum class Lootability {
 	InvalidFormID,
 	NoBaseObject,
 	LootDeadBodyDisabled,
-	DeadBodyNotEligible,
+	DeadBodyIsPlayerAlly,
+	DeadBodyIsSummoned,
+	DeadBodyIsEssential,
 	DeadBodyDelayedLooting,
 	DeadBodyPossibleDuplicate,
 	LootContainersDisabled,
@@ -300,7 +308,6 @@ enum class Lootability {
 	CannotLootCollectibleObject,
 	CannotLootValuableObject,
 	CannotLootAmmo,
-	PendingItemSteal,
 	PlayerOwned,
 	CrimeToLoot,
 	CellOrItemOwnerPreventsOwnerlessLooting,
@@ -309,7 +316,7 @@ enum class Lootability {
 	CollectibleItemSetToGlow,
 	LawAbidingSoNoWhitelistItemLooting,
 	ItemIsBlacklisted,
-	ItemSettingsPreventLooting,
+	ItemTypeIsSetToPreventLooting,
 	ValueWeightPreventsLooting,
 	ItemTheftTriggered,
 	HarvestOperationPending,
@@ -323,4 +330,12 @@ enum class Lootability {
 	MAX
 };
 
+inline bool LootIfCollectible(const Lootability lootability)
+{
+	return lootability == Lootability::PlayerOwned ||
+		lootability == Lootability::CellOrItemOwnerPreventsOwnerlessLooting;
+}
+
 std::string LootabilityName(const Lootability lootability);
+
+}

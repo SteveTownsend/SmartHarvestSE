@@ -38,7 +38,7 @@ public:
 	void RecordTimeOfDeath(RE::TESObjectREFR* actorRef);
 	void ReleaseIfReliablyDead(DistanceToTarget& refs);
 	void AddDetective(const RE::Actor*, const double distance);
-	std::vector<const RE::Actor*> ReadAndClearDetectives();
+	std::vector<const RE::Actor*> ReadDetectives();
 	void ClearDetectives();
 
 private:

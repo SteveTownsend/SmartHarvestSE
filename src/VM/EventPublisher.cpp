@@ -24,6 +24,9 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
 
+namespace shse
+{
+
 std::unique_ptr<EventPublisher> EventPublisher::m_instance;
 
 EventPublisher& EventPublisher::Instance()
@@ -160,7 +163,9 @@ void EventPublisher::TriggerCheckOKToScan(const int nonce)
 	m_onCheckOKToScan.SendEvent(nonce);
 }
 
-void EventPublisher::TriggerStealIfUndetected(const size_t actorCount)
+void EventPublisher::TriggerStealIfUndetected(const size_t actorCount, const bool dryRun)
 {
-	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount));
+	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount), dryRun);
+}
+
 }

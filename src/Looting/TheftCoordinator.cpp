@@ -54,16 +54,16 @@ void TheftCoordinator::StealIfUndetected(void)
 	{
 		m_refrsStealInProgress.swap(m_refrsToSteal);
 		m_stealInProgress = true;
-		m_detectingActors = ActorTracker::Instance().ReadAndClearDetectives();
+		m_detectingActors = ActorTracker::Instance().ReadDetectives();
 		DBG_VMESSAGE("Steal %d items/containers under the nose of %d Actors", m_refrsStealInProgress.size(), m_detectingActors.size());
-		EventPublisher::Instance().TriggerStealIfUndetected(m_detectingActors.size());
+		static const bool dryRun(false);
+		EventPublisher::Instance().TriggerStealIfUndetected(m_detectingActors.size(), dryRun);
 		m_stealTimer = WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
 	}
 	else
 	{
-		// clear the lists - no steal triggered this time
+		// clear the REFR list - no steal triggered this time. Actor list left in place for possible REFR dry run.
 		m_refrsToSteal.clear();
-		ActorTracker::Instance().ClearDetectives();
 	}
 }
 

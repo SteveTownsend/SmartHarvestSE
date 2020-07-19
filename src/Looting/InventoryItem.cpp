@@ -27,15 +27,16 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-InventoryItem::InventoryItem(const INIFile::SecondaryType targetType, std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
-	m_targetType(targetType), m_entry(std::move(a_entry)), m_count(a_count),
+InventoryItem::InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
+	m_inlineTransfer(false), m_entry(std::move(a_entry)), m_count(a_count),
 	m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
-	m_targetType(rhs.m_targetType), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
+	m_inlineTransfer(rhs.m_inlineTransfer), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
 // returns number of objects added
-int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool collectible)
+size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool collectible, const bool inlineTransfer)
 {
+	m_inlineTransfer = inlineTransfer;
 	auto toRemove = m_count;
 	if (toRemove <= 0) {
 		return 0;
@@ -100,12 +101,12 @@ int InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		DBG_VMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
 		Remove(container, target, nullptr, toRemove, collectible);
 	}
-	return static_cast<int>(toRemove + queued.size());
+	return static_cast<size_t>(toRemove + queued.size());
 }
 
 void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count, const bool collectible)
 {
-	if (m_targetType == INIFile::SecondaryType::containers)
+	if (m_inlineTransfer)
 	{
 		// safe to handle here - record the item for Collection correlation before moving
 		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject()->GetFormID());
@@ -116,6 +117,11 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 		// apparent thread safety issues for NPC item transfer - use Script event dispatch
 		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType, collectible);
 	}
+}
+
+void InventoryItem::MakeCopies(RE::TESObjectREFR* target, ptrdiff_t count)
+{
+	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<SInt32>(count), nullptr);
 }
 
 }

@@ -97,11 +97,10 @@ Function SyncList(bool reload, int listNum, FormList forms)
     endwhile
 endFunction
 
-; merge FormList with plugin data
+;push updated lists to plugin
 Function SyncLists(bool reload)
     SyncList(reload, location_type_whitelist, whitelist_form)
     SyncList(reload, location_type_blacklist, blacklist_form)
-    SyncDone(reload)
 endFunction
 
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
@@ -276,6 +275,9 @@ Function ApplySetting(bool reload, int oreMining)
         ResetCollections()
     endIf
     SyncLists(reload)
+    if (reload)
+        SyncDone()
+    endIf
 
     utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
@@ -306,9 +308,9 @@ function Pause()
     string s_enableStr = none
     bool priorState = scanActive
     if (priorState)
-        DisallowSearch()
+        DisallowSearch(False)
     else
-        AllowSearch()
+        AllowSearch(False)
     endif
     scanActive = !scanActive
         
@@ -501,7 +503,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
             ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
             ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-            while (available != 0 && mined < maxMiningItems)
+            while OKToScan() && available != 0 && mined < maxMiningItems
                 ;DebugTrace("Trigger harvesting")
                 oreScript.giveOre()
                 mined += oreScript.ResourceCount
@@ -509,6 +511,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 available = oreScript.ResourceCountCurrent
                 miningStrikes += 1
             endwhile
+            if !OKToScan()
+                AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
+            endIf
             ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
             FOSStrikesBeforeFossil = 6
         else
@@ -531,7 +536,6 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 oreName = "gems"
             endif
             int mined = 0
-            oreName = oreScript.ore.GetName()
             ; do not harvest firehose unless set in config
             if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
                 if (available == -1)
@@ -542,7 +546,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
                 ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
                 ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-                while (available != 0 && mined < maxMiningItems)
+                while OKToScan() && available != 0 && mined < maxMiningItems
                     ;DebugTrace("Trigger CACO ore harvesting")
                     cacoMinable.giveOre()
                     mined += cacoMinable.ResourceCount
@@ -550,6 +554,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                     available = cacoMinable.ResourceCountCurrent
                     miningStrikes += 1
                 endwhile
+                if !OKToScan()
+                    AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " " + orename + " obtained")
+                endIf
                 ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
             else
                 ;DebugTrace("Ignoring firehose source (CACO)")
@@ -585,7 +592,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     elseif (miningStrikes > 0 && FossilMiningModIndex != 255 && resourceType != resource_VolcanicDigSite)
         ; Fossil Mining Drop Logic from oreVein per Fos_AttackMineAlias.psc, bypassing the FURN.
         ; Excludes Hearthfire house materials (by construction) to mimic FOS_IgnoreList filtering.
-        ; Excludes Fossil Mining DIg Sites, processed in full above
+        ; Excludes Fossil Mining Dig Sites, processed in full above
         ;randomize drop of fossil based on number of strikes and vein characteristics
         FOSStrikesBeforeFossil = strikesToCollect * targetResourceTotal
         int dropFactor = Utility.RandomInt(1, FOSStrikesBeforeFossil)
@@ -756,7 +763,7 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     else
         effShader = lootedShader
     endif
-    if (effShader)
+    if effShader && OKToScan()
         ; play for requested duration - C++ code will tidy up when out of range
         ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
         effShader.Play(akTargetRef, duration)
@@ -806,36 +813,52 @@ Event OnFlushAddedItems()
     currentAddedItem = 0
 EndEvent
 
-Event OnCheckOKToScan(int nonce)
-    ; no-op if empty list
-    bool okToScan = true
+bool Function OKToScan()
     if (Utility.IsInMenuMode())
         ;DebugTrace("UI has menu open")
-        okToScan = false
+        return False
     elseif (!Game.IsActivateControlsEnabled())
         ;DebugTrace("UI has controls disabled")
-        okToScan = false
+        return False
     endIf
+    return True
+EndFunction
 
-    ;DebugTrace("Report UI Good-to-go = " + okToScan + " for request " + nonce)
-    ReportOKToScan(okToScan, nonce)
+Event OnCheckOKToScan(int nonce)
+    bool goodToGo = OKToScan()
+    ;DebugTrace("Report UI Good-to-go = " + goodToGo + " for request " + nonce)
+    ReportOKToScan(goodToGo, nonce)
 EndEvent
 
-; check if Actor detects player
-Event OnStealIfUndetected(int actorCount)
+; check if Actor detects player - used for real stealing, or stealibility check in dry run
+Event OnStealIfUndetected(int actorCount, bool dryRun)
     int currentActor = 0
     bool detected = False
     ;DebugTrace("Check player detection, actorCount=" + actorCount)
+    String msg
     while currentActor < actorCount && !detected
-        Actor npc = GetDetectingActor(currentActor)
-        if player.IsDetectedBy(npc)
-            ;DebugTrace("Player detected by " + npc.getActorBase().GetName())
-            detected = True
+        if !OKToScan()
+            msg = "UI Open : Actor Detection interrupted"
+            AlwaysTrace(msg)
+            detected = True     ; do not steal items while UI is active
         else
-            ;DebugTrace("Player not detected by " + npc.getActorBase().GetName())
+            Actor npc = GetDetectingActor(currentActor, dryRun)
+            if player.IsDetectedBy(npc)
+                msg = "Player detected by " + npc.getActorBase().GetName()
+                detected = True
+            else
+                ;DebugTrace("Player not detected by " + npc.getActorBase().GetName())
+            endIf
+            currentActor = currentActor + 1
         endIf
-        currentActor = currentActor + 1
     endWhile
 
-    ReportPlayerDetectionState(detected)
+    if dryRun
+    	if !detected
+            msg = "Player is not detected"
+        endIf
+        Debug.Notification(msg)
+    else
+        ReportPlayerDetectionState(detected)
+    endIf
 EndEvent

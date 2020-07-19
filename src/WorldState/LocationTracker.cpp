@@ -177,6 +177,25 @@ std::string LocationTracker::ConversationalDistance(const double milesAway) cons
 	return "several miles";
 }
 
+std::string LocationTracker::PlayerExactLocation() const
+{
+	if (!m_playerCell && !m_playerLocation)
+		return "unknown";
+
+	std::ostringstream locationStr;
+	if (m_playerLocation)
+	{
+		locationStr << "at " << m_playerLocation->GetName() << "/0x"
+			<< std::hex << std::setw(8) << std::setfill('0') << m_playerLocation->GetFormID() << ' ';
+	}
+	if (m_playerCell)
+	{
+		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x"
+			<< std::hex << std::setw(8) << std::setfill('0') << m_playerCell->GetFormID();
+	}
+	return locationStr.str();
+}
+
 void LocationTracker::PrintPlayerLocation(const RE::BGSLocation* location) const
 {
 	PrintNearbyLocation(location, 0., CompassDirection::MAX);

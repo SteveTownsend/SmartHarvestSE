@@ -67,13 +67,25 @@ double PlayerState::SneakDistanceExterior() const
 	return SneakMaxDistanceExterior;
 }
 
-void PlayerState::Refresh()
+void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 {
-	AdjustCarryWeight();
+	// re-evaluate perks if timer has popped - force after game reload or settings update
+	static const bool force(onGameReload || onMCMPush);
+	shse::PlayerState::Instance().CheckPerks(force);
 
-	// Update state cache if sneak state has changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
+	if (onGameReload || onMCMPush)
+	{
+		// reset carry weight and menu-active state
+		shse::PlayerState::Instance().ResetCarryWeight(onGameReload);
+	}
+	else
+	{
+		AdjustCarryWeight();
+	}
+
+	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
 	const bool sneaking(IsSneaking());
-	if (m_sneaking != sneaking)
+	if (onGameReload || onMCMPush || m_sneaking != sneaking)
 	{
 		m_sneaking = sneaking;
 		// no player detection by NPC is a prerequisite for autoloot of crime-to-activate items
@@ -81,7 +93,6 @@ void PlayerState::Refresh()
 			sneaking ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
 		m_belongingsCheck = SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
-
 	}
 }
 
@@ -255,8 +266,7 @@ void PlayerState::ResetCarryWeight(const bool reloaded)
 		DBG_VMESSAGE("Reset carry weight skipped, it's not managed");
 	}
 
-	// reset location to force proper recalculation
-	// TODO is this still needed?
+	// reset location to force proper recalculation, after game reload
 	if (reloaded)
 	{
 		LocationTracker::Instance().Reset();
