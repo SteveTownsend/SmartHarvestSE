@@ -21,7 +21,6 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/LoadOrder.h"
 #include "Utilities/version.h"
-#include "Utilities/utils.h"
 
 namespace shse
 {

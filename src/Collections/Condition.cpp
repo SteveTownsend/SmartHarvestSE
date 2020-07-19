@@ -91,7 +91,7 @@ FormListCondition::FormListCondition(const std::vector<std::pair<std::string, st
 		std::stringstream ss;
 		ss << std::hex << entry.second;
 		ss >> formID;
-		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(PluginUtils::AsRaw(formID), entry.first));
+		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(LoadOrder::Instance().AsRaw(formID), entry.first));
 		if (!formList)
 		{
 			REL_ERROR("Collection Condition requires a FormList 0x%08x", formID);

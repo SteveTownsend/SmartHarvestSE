@@ -87,20 +87,6 @@ namespace WindowsUtils
 	};
 }
 
-namespace PluginUtils
-{
-	inline std::string GetBaseName(RE::TESForm* thisForm)
-	{
-		return thisForm ? thisForm->GetName() : std::string();
-	}
-	inline RE::FormID AsRaw(const RE::FormID rawID)
-	{
-		if ((rawID & ESPFETypeMask) == ESPFETypeMask)
-			return rawID & ESPFERawMask;
-		return rawID & FullRawMask;
-	}
-}
-
 namespace FormUtils
 {
 	// This can be missing, e.g. "Elementary Destruction.esp" FormID 0x31617, Github issue #28

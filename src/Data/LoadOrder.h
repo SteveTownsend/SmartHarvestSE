@@ -18,6 +18,7 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
+#include "Utilities/utils.h"
 
 namespace shse
 {
@@ -32,6 +33,13 @@ public:
 	bool ModPrecedesSHSE(const std::string& modName) const;
 	bool ModOwnsForm(const std::string& modName, const RE::FormID formID) const;
 	void AsJSON(nlohmann::json& j) const;
+	inline RE::FormID AsRaw(const RE::FormID rawID)
+	{
+		constexpr RE::FormID ESPFERawMask = 0x00000FFF;
+		if ((rawID & ESPFETypeMask) == ESPFETypeMask)
+			return rawID & ESPFERawMask;
+		return rawID & FullRawMask;
+	}
 
 	struct LoadInfo {
 		RE::FormID m_mask;

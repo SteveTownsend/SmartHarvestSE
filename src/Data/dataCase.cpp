@@ -611,8 +611,7 @@ void DataCase::GetAmmoData()
 			continue;
 		}
 
-		std::string name;
-		name = PluginUtils::GetBaseName(ammo);
+		std::string name(ammo->GetName());
 		if (name.empty())
 		{
 			DBG_VMESSAGE("base name empty");
