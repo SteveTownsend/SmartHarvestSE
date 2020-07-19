@@ -185,7 +185,7 @@ std::string LocationTracker::PlayerExactLocation() const
 	std::ostringstream locationStr;
 	if (m_playerLocation)
 	{
-		locationStr << "at " << m_playerLocation->GetName() << '/0x'
+		locationStr << "at " << m_playerLocation->GetName() << "/0x"
 			<< std::hex << std::setw(8) << std::setfill('0') << m_playerLocation->GetFormID() << ' ';
 	}
 	if (m_playerCell)
@@ -193,6 +193,7 @@ std::string LocationTracker::PlayerExactLocation() const
 		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x"
 			<< std::hex << std::setw(8) << std::setfill('0') << m_playerCell->GetFormID();
 	}
+	return locationStr.str();
 }
 
 void LocationTracker::PrintPlayerLocation(const RE::BGSLocation* location) const

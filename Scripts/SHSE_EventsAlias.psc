@@ -503,18 +503,17 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
             ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
             ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-            while (available != 0 && mined < maxMiningItems)
+            while OKToScan() && available != 0 && mined < maxMiningItems
                 ;DebugTrace("Trigger harvesting")
-                if !OKToScan()
-                    AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
-                    return
-                endIf
                 oreScript.giveOre()
                 mined += oreScript.ResourceCount
                 ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
                 available = oreScript.ResourceCountCurrent
                 miningStrikes += 1
             endwhile
+            if !OKToScan()
+                AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
+            endIf
             ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
             FOSStrikesBeforeFossil = 6
         else
@@ -547,11 +546,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
                 ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
                 ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-                while (available != 0 && mined < maxMiningItems)
-                    if !OKToScan()
-                        AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " " + orename + " obtained")
-                        return
-                    endIf
+                while OKToScan() && available != 0 && mined < maxMiningItems
                     ;DebugTrace("Trigger CACO ore harvesting")
                     cacoMinable.giveOre()
                     mined += cacoMinable.ResourceCount
@@ -559,6 +554,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                     available = cacoMinable.ResourceCountCurrent
                     miningStrikes += 1
                 endwhile
+                if !OKToScan()
+                    AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " " + orename + " obtained")
+                endIf
                 ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
             else
                 ;DebugTrace("Ignoring firehose source (CACO)")

@@ -459,15 +459,19 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	{
 		resultStr << " -> " << baseObject->GetName() << "/0x" << std::setw(8) << std::hex << std::setfill('0') << baseObject->GetFormID();
 	}
-	resultStr << '\n';
 	if (!typeName.empty())
 	{
-		resultStr << "type=" << typeName << ' ';
+		resultStr << " type=" << typeName;
 	}
-	resultStr << LootabilityName(result) << '\n' << LocationTracker::Instance().PlayerExactLocation();
 	std::string message(resultStr.str());
 	RE::DebugNotification(message.c_str());
-	REL_MESSAGE("Lootability result:\n%s", message.c_str());
+	REL_MESSAGE("Lootability checked for %s", message.c_str());
+	resultStr.str("");
+
+	resultStr << LootabilityName(result) << ' ' << LocationTracker::Instance().PlayerExactLocation();
+	message = resultStr.str();
+	RE::DebugNotification(message.c_str());
+	REL_MESSAGE("Lootability result: %s", message.c_str());
 }
 
 void ScanGovernor::Allow()

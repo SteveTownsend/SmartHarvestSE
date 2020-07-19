@@ -75,13 +75,13 @@ namespace papyrus
 	// available in release build, but typically unused
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		DBG_MESSAGE("%s", str);
+		DBG_MESSAGE("%s", str.c_str());
 	}
 
 	// available in release build for important output
 	void AlwaysTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		REL_MESSAGE("%s", str);
+		REL_MESSAGE("%s", str.c_str());
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)

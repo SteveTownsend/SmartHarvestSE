@@ -307,7 +307,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
-			DBG_VMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_candidate->formID);
+			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x%08x", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
 			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
 		}
