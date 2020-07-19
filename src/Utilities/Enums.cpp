@@ -25,7 +25,10 @@ std::string LootabilityName(const Lootability lootability)
 	switch (lootability) {
 	case Lootability::Lootable: return "Lootable";
 	case Lootability::BaseObjectBlocked : return "BaseObjectBlocked";
-	case Lootability::ReferenceBlocked : return "ReferenceBlocked";
+	case Lootability::CannotRelootFirehoseSource: return "CannotRelootFirehoseSource";
+	case Lootability::ContainerPermanentlyOffLimits: return "ContainerPermanentlyOffLimits";
+	case Lootability::CorruptArrowPosition: return "CorruptArrowPosition";
+	case Lootability::CannotMineTwiceInSameCellVisit: return "CannotMineTwiceInSameCellVisit";
 	case Lootability::ReferenceBlacklisted : return "ReferenceBlacklisted";
 	case Lootability::UnnamedReference : return "UnnamedReference";
 	case Lootability::ReferenceIsPlayer : return "ReferenceIsPlayer";
@@ -38,7 +41,9 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::InvalidFormID : return "InvalidFormID";
 	case Lootability::NoBaseObject : return "NoBaseObject";
 	case Lootability::LootDeadBodyDisabled : return "LootDeadBodyDisabled";
-	case Lootability::DeadBodyNotEligible : return "DeadBodyNotEligible";
+	case Lootability::DeadBodyIsPlayerAlly : return "DeadBodyIsPlayerAlly";
+	case Lootability::DeadBodyIsSummoned: return "DeadBodyIsSummoned";
+	case Lootability::DeadBodyIsEssential: return "DeadBodyIsEssential";
 	case Lootability::DeadBodyDelayedLooting : return "DeadBodyDelayedLooting";
 	case Lootability::DeadBodyPossibleDuplicate : return "DeadBodyPossibleDuplicate";
 	case Lootability::LootContainersDisabled : return "LootContainersDisabled";
@@ -51,7 +56,6 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::CannotLootCollectibleObject : return "CannotLootCollectibleObject";
 	case Lootability::CannotLootValuableObject : return "CannotLootValuableObject";
 	case Lootability::CannotLootAmmo : return "CannotLootAmmo";
-	case Lootability::PendingItemSteal : return "PendingItemSteal";
 	case Lootability::PlayerOwned : return "PlayerOwned";
 	case Lootability::CrimeToLoot : return "CrimeToLoot";
 	case Lootability::CellOrItemOwnerPreventsOwnerlessLooting: return "CellOrItemOwnerPreventsOwnerlessLooting";
@@ -60,7 +64,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::CollectibleItemSetToGlow : return "CollectibleItemSetToGlow";
 	case Lootability::LawAbidingSoNoWhitelistItemLooting : return "CrimeCheckPreventsWhitelistItemLooting";
 	case Lootability::ItemIsBlacklisted : return "ItemIsBlacklisted";
-	case Lootability::ItemSettingsPreventLooting : return "ItemSettingsPreventLooting";
+	case Lootability::ItemTypeIsSetToPreventLooting : return "ItemTypeIsSetToPreventLooting";
 	case Lootability::ValueWeightPreventsLooting : return "ValueWeightPreventsLooting";
 	case Lootability::ItemTheftTriggered : return "ItemTheftTriggered";
 	case Lootability::HarvestOperationPending : return "HarvestOperationPending";

@@ -59,6 +59,7 @@ public:
 	void Disallow();
 	bool IsAllowed() const;
 	void DoPeriodicSearch();
+	const RE::Actor* ActorByIndex(const int actorIndex) const;
 	inline bool Calibrating() const {
 		RecursiveLockGuard guard(m_searchLock);
 		return m_calibrating;
@@ -93,6 +94,9 @@ private:
 	INIFile::SecondaryType m_targetType;
 	std::vector<RE::TESObjectREFR*> m_possibleDupes;
 
+	// for dry run - ordered by proximity to player at time of recording
+	std::vector<const RE::Actor*> m_detectiveWannabes;
+
 	mutable RecursiveLock m_searchLock;
 	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
 
@@ -114,7 +118,7 @@ private:
 	static constexpr int GlowDemoRange = 30;
 
 	// short glow for loot range calibration and glow demo
-	static constexpr int ObjectGlowDurationCalibrationSeconds = int(PluginFacade::CalibrationThreadDelay) - 2;
+	static constexpr int ObjectGlowDurationCalibrationSeconds = int(PluginFacade::CalibrationThreadDelaySeconds) - 2;
 };
 
 }

@@ -98,14 +98,13 @@ void ActorTracker::AddDetective(const RE::Actor* detective, const double distanc
 }
 
 // read and clear
-std::vector<const RE::Actor*> ActorTracker::ReadAndClearDetectives()
+std::vector<const RE::Actor*> ActorTracker::ReadDetectives()
 { 
 	RecursiveLockGuard guard(m_actorLock);
 	std::vector<const RE::Actor*> result;
 	result.reserve(m_detectives.size());
 	std::transform(m_detectives.cbegin(), m_detectives.cend(), std::back_inserter(result),
 		[&](const auto& detective) { return detective.second; });
-	m_detectives.clear();
 	return result;
 }
 

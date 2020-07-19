@@ -103,6 +103,7 @@ public:
 	std::string ParentLocationName(const RE::BGSLocation* location) const;
 	std::string Proximity(const double milesAway, CompassDirection heading) const;
 	std::string ConversationalDistance(const double milesAway) const;
+	std::string PlayerExactLocation() const;
 
 	const RE::TESObjectCELL* PlayerCell() const;
 };

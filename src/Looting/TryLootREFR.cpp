@@ -52,7 +52,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	{
 		LootableREFR refrEx(m_candidate, m_targetType);
 		ObjectType objType = refrEx.GetObjectType();
-		std::string typeName = refrEx.GetTypeName();
+		m_typeName = refrEx.GetTypeName();
 		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
 		if (!dryRun && objType == ObjectType::critter)
 		{
@@ -104,22 +104,18 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					}
 				}
 				DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
-				data->BlockReference(m_candidate);
+				data->BlockReference(m_candidate, Lootability::ManualLootTarget);
 			}
 			return Lootability::ManualLootTarget;
 		}
 
 		if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
-			if (!dryRun)
-			{
-				DBG_VMESSAGE("Block BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
-				data->BlockForm(m_candidate->GetBaseObject());
-			}
+			DBG_VMESSAGE("Skip BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
 			return Lootability::BaseObjectOnBlacklist;
 		}
 #if _DEBUG
-		DumpReference(refrEx, typeName.c_str(), m_targetType);
+		DumpReference(refrEx, m_typeName.c_str(), m_targetType);
 #endif
 		// initially no glow - use synthetic value with highest precedence
 		m_glowReason = GlowReason::None;
@@ -245,7 +241,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (ManagedList::WhiteList().Contains(m_candidate->GetBaseObject()))
 		{
 			// ** if configured as permitted ** whitelisted objects are always looted silently
-			DBG_VMESSAGE("check REFR to whitelisted 0x%08x", m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("check REFR 0x%08x to whitelisted %s/0x%08x",
+				m_candidate->GetFormID(), m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 			skipLooting = forbidden != Lootability::Lootable;
 			if (skipLooting)
 			{
@@ -255,13 +252,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 		else if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
-			if (!dryRun)
-			{
-				// blacklisted objects are never looted
-				DBG_VMESSAGE("block blacklisted base %s/0x%08x for REFR 0x%08x",
-					m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
-				data->BlockForm(m_candidate->GetBaseObject());
-			}
+			// blacklisted objects are never looted
+			DBG_VMESSAGE("disallow blacklisted Base %s/0x%08x for REFR 0x%08x",
+				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
 			skipLooting = true;
 			result = Lootability::ItemIsBlacklisted;
 			lootingType = LootingType::LeaveBehind;
@@ -269,16 +262,16 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (!skipLooting)
 		{
 			lootingType = LootingTypeFromIniSetting(
-				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
+				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, m_typeName.c_str()));
 			if (lootingType == LootingType::LeaveBehind)
 			{
 				if (!dryRun)
 				{
 					DBG_VMESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
-					data->BlockReference(m_candidate);
+					data->BlockReference(m_candidate, Lootability::ItemTypeIsSetToPreventLooting);
 				}
 				skipLooting = true;
-				result = Lootability::ItemSettingsPreventLooting;
+				result = Lootability::ItemTypeIsSetToPreventLooting;
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
@@ -315,7 +308,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (objType == ObjectType::oreVein)
 		{
 			DBG_VMESSAGE("do not process oreVein more than once per cell visit: 0x%08x", m_candidate->formID);
-			data->BlockReference(m_candidate);
+			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
 			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
 		}
 		else
@@ -503,12 +496,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::ItemTheftTriggered;
 		}
 
-		// when we get to the point where looting is confirmed, block the reference to
-		// avoid re-looting without a player cell or config change
-		DBG_MESSAGE("block looted container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-		data->BlockReference(m_candidate);
-		// Build list of lootable targets with notification and collectibility flag for each
-		std::vector<std::tuple<InventoryItem, bool, bool>> targets;
+		// Build list of lootable targets with notification, collectibility flag & count for each
+		std::vector<std::tuple<InventoryItem, bool, bool, size_t>> targets;
 		targets.reserve(lootableItems.size());
 		for (auto& targetItemInfo : lootableItems)
 		{
@@ -524,8 +513,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (ManagedList::BlackList().Contains(target))
 			{
-				DBG_VMESSAGE("block 0x%08x due to BlackList", target->formID);
-				data->BlockForm(target);
+				DBG_VMESSAGE("skip 0x%08x due to BlackList", target->formID);
 				continue;
 			}
 
@@ -586,8 +574,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			else if (ManagedList::BlackList().Contains(target))
 			{
 				// blacklisted objects are never looted
-				DBG_VMESSAGE("block blacklisted target %s/0x%08x", target->GetName(), target->GetFormID());
-				data->BlockForm(target);
+				DBG_VMESSAGE("skip blacklisted target %s/0x%08x", target->GetName(), target->GetFormID());
 				continue;
 			}
 			else
@@ -611,7 +598,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				}
 			}
 
-			targets.push_back({ targetItemInfo, LootingRequiresNotification(lootingType), collectible.first });
+			// item count unknown at this point
+			targets.push_back({ targetItemInfo, LootingRequiresNotification(lootingType), collectible.first, 0 });
 			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", target->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
@@ -636,14 +624,33 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					playContainerAnimation = 2;
 				}
 			}
+			// use inline transfer for containers on first attempt - fills in item counts
+			GetLootFromContainer(targets, playContainerAnimation, m_targetType == INIFile::SecondaryType::containers);
+		}
 
-			GetLootFromContainer(targets, playContainerAnimation);
+		// Avoid re-looting without a player cell or config change. Sometimes auto-looting here may fail, so we just copy the
+		// items and blacklist the REFR to avoid revisiting. Confirm looting by checking lootable target count now vs start
+		// value. This logic only applies to containers: NPC auto-looting is scripted and not known to fail.
+		if (m_targetType == INIFile::SecondaryType::containers && !targets.empty() &&
+		    lister.GetOrCheckContainerForms().size() >= lootableItems.size())
+		{
+			// nothing looted - make copies of targets and blacklist the reference (e.g. MrB's Lootable Things)
+			REL_WARNING("looting %d items from container %s/0x%08x resulted in no-op, make copies", targets.size(),
+				m_candidate->GetName(), m_candidate->formID);
+			CopyLootFromContainer(targets);
+			DataCase::GetInstance()->BlacklistReference(m_candidate);
+		}
+		else
+		{
+			DBG_MESSAGE("block looted container/NPC %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+			ScanGovernor::Instance().MarkContainerLooted(m_candidate);
 		}
 	}
 	return result;
 }
 
-void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType)
+void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets,
+	const int animationType, const bool inlineTransfer)
 {
 	if (!m_candidate)
 		return;
@@ -673,7 +680,9 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 			madeSound = true;
 		}
 		std::string name(itemInfo.BoundObject()->GetName());
-		int count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible));
+		size_t count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible, inlineTransfer));
+		// save count in case we have to copy these after failure to transfer (e.g. MrB's Lootable Things)
+		std::get<3>(target) = count;
 		if (notify)
 		{
 			std::string notificationText;
@@ -706,11 +715,24 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	}
 }
 
+void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets)
+{
+	if (!m_candidate)
+		return;
+
+	for (auto& target : targets)
+	{
+		InventoryItem& itemInfo(std::get<0>(target));
+		itemInfo.MakeCopies(RE::PlayerCharacter::GetSingleton(), std::get<3>(target));
+	}
+}
+
 Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType)
 {
-	// Already trying to steal this - bypass repeat check
+	// Already trying to steal this - bypass repeat check, known to be OK modulo actor or player state change
+	// in the world
 	if (m_stolen)
-		return Lootability::PendingItemSteal;
+		return Lootability::Lootable;
 
 	Lootability legality(Lootability::Lootable);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.

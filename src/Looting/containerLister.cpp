@@ -60,7 +60,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 		if (!fullName || fullName->GetFullNameLength() == 0)
 			continue;
 
-		lootableItems.emplace_back(m_targetType, std::move(entry), count);
+		lootableItems.emplace_back(std::move(entry), count);
 	}
 
 	if (lootableItems.empty())

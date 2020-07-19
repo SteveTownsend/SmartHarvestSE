@@ -253,15 +253,25 @@ namespace papyrus
 		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
 	}
 
-	void AllowSearch(RE::StaticFunctionTag* base)
+	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search enabled");
+		// clean lists if MCM has just been active, then enable scan
+		if (onMCMClose)
+		{
+			shse::PluginFacade::Instance().OnSettingsPushed();
+		}
 		shse::ScanGovernor::Instance().Allow();
 	}
 
-	void DisallowSearch(RE::StaticFunctionTag* base)
+	void DisallowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search disabled");
+		// clean lists if MCM has just been active, then enable scan
+		if (onMCMClose)
+		{
+			shse::PluginFacade::Instance().OnSettingsPushed();
+		}
 		shse::ScanGovernor::Instance().Disallow();
 	}
 
@@ -300,9 +310,9 @@ namespace papyrus
 			shse::ManagedList::WhiteList().Add(entry);
 		}
 	}
-	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
+	void SyncDone(RE::StaticFunctionTag* base)
 	{
-		shse::PluginFacade::Instance().SyncDone(reload);
+		shse::PluginFacade::Instance().SyncDone();
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
@@ -479,9 +489,16 @@ namespace papyrus
 		shse::LocationTracker::Instance().DisplayLocationRelativeToMapMarker();
 	}
 
-	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex)
+	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex, const bool dryRun)
 	{
-		return shse::TheftCoordinator::Instance().ActorByIndex(actorIndex);
+		if (dryRun)
+		{
+			return shse::ScanGovernor::Instance().ActorByIndex(actorIndex);
+		}
+		else
+		{
+			return shse::TheftCoordinator::Instance().ActorByIndex(actorIndex);
+		}
 	}
 
 	void ReportPlayerDetectionState(RE::StaticFunctionTag* base, const bool detected)
