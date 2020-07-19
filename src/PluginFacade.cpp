@@ -198,7 +198,9 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		shse::PlayerState::Instance().Refresh();
+		static const bool onMCMPush(false);
+		static const bool onGameReload(false);
+		shse::PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 		// process any queued added items since last time
 		shse::CollectionManager::Instance().ProcessAddedItems();
@@ -231,9 +233,6 @@ void PluginFacade::ScanThread()
 				}
 				continue;
 			}
-
-			// re-evaluate perks if timer has popped - no force, and execute scan
-			shse::PlayerState::Instance().CheckPerks(false);
 		}
 
 		ScanGovernor::Instance().DoPeriodicSearch();
@@ -255,13 +254,9 @@ void PluginFacade::PrepareForReload()
 
 void PluginFacade::AfterReload()
 {
-	// force recheck Perks and reset carry weight
-	static const bool force(true);
-	shse::PlayerState::Instance().CheckPerks(force);
-
-	// reset carry weight and menu-active state
-	static const bool reloaded(true);
-	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
+	static const bool onMCMPush(false);
+	static const bool onGameReload(true);
+	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 }
 
 // this is the last function called by the scripts when re-syncing state
@@ -304,16 +299,14 @@ void PluginFacade::OnGoodToGo()
 // lock not required, by construction
 void PluginFacade::OnSettingsPushed()
 {
-	// reset state that might be invalidated by MCM setting updates
-	shse::PlayerState::Instance().CheckPerks(true);
-
-	// reset carry weight - will reinstate correct value if/when scan resumes. Not a game reload.
-	static const bool reloaded(false);
-	shse::PlayerState::Instance().ResetCarryWeight(reloaded);
+	// refresh player state that could be affected
+	static const bool onMCMPush(true);
+	static const bool onGameReload(false);
+	shse::PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 	// Base Object Forms and REFRs handled for the case where we are not reloading game
 	DataCase::GetInstance()->ResetBlockedForms();
-	DataCase::GetInstance()->ClearBlockedReferences(reloaded);
+	DataCase::GetInstance()->ClearBlockedReferences(onGameReload);
 
 	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
 	ActorTracker::Instance().Reset();

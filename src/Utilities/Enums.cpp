@@ -20,6 +20,9 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "Utilities/Enums.h"
 
+namespace shse
+{
+
 std::string LootabilityName(const Lootability lootability)
 {
 	switch (lootability) {
@@ -77,4 +80,6 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerIsBlacklisted : return "ContainerIsBlacklisted";
 	default: return "";
 	}
+}
+
 }

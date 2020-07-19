@@ -192,8 +192,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-		// order is important to ensure we glow correctly even if blocked
-		Lootability forbidden(LootingLegality(m_targetType));
+		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
+		Lootability forbidden(ItemLootingLegality(collectible.first));
 		if (forbidden != Lootability::Lootable)
 		{
 			skipLooting = true;
@@ -505,12 +505,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (!target)
 				continue;
 
-			// crime-check this REFR from the container as individual object
-			if (LootingLegality(INIFile::SecondaryType::itemObjects) != Lootability::Lootable)
-			{
-				continue;
-			}
-
 			if (ManagedList::BlackList().Contains(target))
 			{
 				DBG_VMESSAGE("skip 0x%08x due to BlackList", target->formID);
@@ -596,6 +590,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					data->BlockForm(target);
 					continue;
 				}
+			}
+
+			// crime-check this REFR from the container as individual object, respecting collectibility if not a crime
+			if (ItemLootingLegality(collectible.first) != Lootability::Lootable)
+			{
+				continue;
 			}
 
 			// item count unknown at this point
@@ -725,6 +725,18 @@ void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bo
 		InventoryItem& itemInfo(std::get<0>(target));
 		itemInfo.MakeCopies(RE::PlayerCharacter::GetSingleton(), std::get<3>(target));
 	}
+}
+
+Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible)
+{
+	Lootability result(LootingLegality(INIFile::SecondaryType::itemObjects));
+	if (isCollectible && LootIfCollectible(result))
+	{
+		DBG_VMESSAGE("Collectible REFR 0x%08x overrides Legality %s for %s/0x%08x", m_candidate->GetFormID(), LootabilityName(result),
+			m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID());
+		result = Lootability::Lootable;
+	}
+	return result;
 }
 
 Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType)

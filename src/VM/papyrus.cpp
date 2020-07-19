@@ -178,11 +178,11 @@ namespace papyrus
 		}
 		else
 		{
-			LootingType tmp_value = LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
+			shse::LootingType tmp_value = shse::LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
 			// weightless objects and OreVeins are always looted unless explicitly disabled
-			if (shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
+			if (shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > shse::LootingType::LootAlwaysSilent)
 			{
-				value = static_cast<float>(tmp_value == LootingType::LootIfValuableEnoughNotify ? LootingType::LootAlwaysNotify : LootingType::LootAlwaysSilent);
+				value = static_cast<float>(tmp_value == shse::LootingType::LootIfValuableEnoughNotify ? shse::LootingType::LootAlwaysNotify : shse::LootingType::LootAlwaysSilent);
 			}
 			else
 			{
@@ -441,7 +441,7 @@ namespace papyrus
 	}
 	void PutCollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const int action)
 	{
-		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, SpecialObjectHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::SpecialObjectHandlingFromIniSetting(double(action)));
 	}
 
 	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName)
@@ -466,7 +466,7 @@ namespace papyrus
 	}
 	void PutCollectionGroupAction(RE::StaticFunctionTag* base, const std::string groupName, const int action)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, SpecialObjectHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::SpecialObjectHandlingFromIniSetting(double(action)));
 	}
 
 	int CollectionTotal(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)

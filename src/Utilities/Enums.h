@@ -21,6 +21,9 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/ObjectType.h"
 
+namespace shse
+{
+
 // object glow reasons, in descending order of precedence
 enum class GlowReason {
 	LockedContainer = 1,
@@ -327,4 +330,12 @@ enum class Lootability {
 	MAX
 };
 
+inline bool LootIfCollectible(const Lootability lootability)
+{
+	return lootability == Lootability::PlayerOwned ||
+		lootability == Lootability::CellOrItemOwnerPreventsOwnerlessLooting;
+}
+
 std::string LootabilityName(const Lootability lootability);
+
+}

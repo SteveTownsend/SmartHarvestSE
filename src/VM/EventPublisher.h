@@ -24,6 +24,9 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/InventoryItem.h"
 
+namespace shse
+{
+
 constexpr RE::FormID QuestAliasFormID = 0x800;
 
 class EventPublisher{
@@ -62,3 +65,5 @@ private:
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;
 	SKSE::RegistrationSet<int, bool> m_onStealIfUndetected;
 };
+
+}
