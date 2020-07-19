@@ -29,14 +29,19 @@ class TryLootREFR
 public:
 	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen);
 	Lootability Process(const bool dryRun);
+	inline std::string ObjectTypeName() const { return m_typeName; }
 
 private:
 	bool m_stolen;
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
+	std::string m_typeName;
 
-	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool>>& targets, const int animationType);
+	Lootability ItemLootingLegality(const bool isCollectible);
 	Lootability LootingLegality(const INIFile::SecondaryType targetType);
+	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets,
+		const int animationType, const bool directTransfer);
+	void CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets);
 
 	// special object glow - not too long, in case we loot or move away
 	static constexpr int ObjectGlowDurationSpecialSeconds = 10;

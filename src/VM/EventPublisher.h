@@ -24,6 +24,9 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/InventoryItem.h"
 
+namespace shse
+{
+
 constexpr RE::FormID QuestAliasFormID = 0x800;
 
 class EventPublisher{
@@ -42,7 +45,7 @@ public:
 	void TriggerFlushAddedItems(void);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void TriggerCheckOKToScan(const int nonce);
-	void TriggerStealIfUndetected(const size_t actorCount);
+	void TriggerStealIfUndetected(const size_t actorCount, const bool dryRun);
 
 private:
 	RE::BGSRefAlias* GetScriptTarget(const char* espName, RE::FormID questID);
@@ -60,5 +63,7 @@ private:
 	SKSE::RegistrationSet<> m_onFlushAddedItems;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;
-	SKSE::RegistrationSet<int> m_onStealIfUndetected;
+	SKSE::RegistrationSet<int, bool> m_onStealIfUndetected;
 };
+
+}

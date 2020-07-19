@@ -23,14 +23,14 @@ Function SaveIniFile() global native
 
 Function SetLootableForProducer(Form producer, Form lootable) global native
 
-Function AllowSearch() global native
-Function DisallowSearch() global native
+Function AllowSearch(bool onMCMClose) global native
+Function DisallowSearch(bool onMCMClose) global native
 bool Function IsSearchAllowed() global native
 Function ReportOKToScan(bool goodToGo, int nonce) global native
 
 Function ResetList(bool reload, int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
-Function SyncDone(bool reload) global native
+Function SyncDone() global native
 String Function PrintFormID(int formID) global native
 
 String Function GetTranslation(String key) global native
@@ -64,7 +64,7 @@ Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
 
-Actor Function GetDetectingActor(int actorIndex) global native    
+Actor Function GetDetectingActor(int actorIndex, bool dryRun) global native    
 Function ReportPlayerDetectionState(bool detected) global native
 Function CheckLootable(ObjectReference refr) global native
 

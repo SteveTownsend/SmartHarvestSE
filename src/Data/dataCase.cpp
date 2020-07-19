@@ -563,7 +563,7 @@ void DataCase::BlockOffLimitsContainers()
 	// block all the known off-limits containers - list is invariant during gaming session
 	for (const auto refr : m_offLimitsContainers)
 	{
-		BlockReference(refr);
+		BlockReference(refr, Lootability::ContainerPermanentlyOffLimits);
 	}
 }
 
@@ -619,7 +619,7 @@ void DataCase::ForgetFirehoseSources()
 }
 
 
-bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
+bool DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
 {
 	if (!refr)
 		return false;
@@ -627,37 +627,38 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr)
 	if (refr->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (m_blockRefr.insert(refr->GetFormID())).second;
+	return (m_blockRefr.insert({ refr->GetFormID(), reason })).second;
 }
 
-bool DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
+Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
-		return false;
+		return Lootability::NullReference;
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (refr->IsDynamicForm())
-		return false;
+		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_blockRefr.contains(refr->GetFormID());
+	const auto blocked(m_blockRefr.find(refr->GetFormID()));
+	return blocked == m_blockRefr.cend() ? Lootability::Lootable : blocked->second;
 }
 
 void DataCase::ClearBlockedReferences(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
+	m_blockRefr.clear();
 	if (gameReload)
 	{
 		DBG_MESSAGE("Reset entire list of blocked REFRs");
-		m_blockRefr.clear();
 		ForgetFirehoseSources();
 		return;
 	}
 	// Volcanic dig sites from Fossil Mining are only cleared on game reload, to simulate the 30 day delay in
 	// the mining script. Only allow one auto-mining visit per gaming session, unless player dies.
 	// The same goes for Firehose item sources, currently the BYOH mined materials
-	decltype(m_blockRefr) volcanicDigSites(m_firehoseSources);
+	decltype(m_firehoseSources) volcanicDigSites(m_firehoseSources);
 	for (const auto refrID : m_blockRefr)
 	{
-		RE::TESForm* form(RE::TESForm::LookupByID(refrID));
+		RE::TESForm* form(RE::TESForm::LookupByID(refrID.first));
 		if (!form)
 			continue;
 		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
@@ -666,12 +667,15 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
-			volcanicDigSites.insert(refrID);
+			volcanicDigSites.insert(refrID.first);
 		}
 	}
 	DBG_MESSAGE("Reset blocked REFRs apart from %d volcanic and %d firehose",
 		volcanicDigSites.size() - m_firehoseSources.size(), m_firehoseSources.size());
-	m_blockRefr.swap(volcanicDigSites);
+	for (const auto digSite : volcanicDigSites)
+	{
+		m_blockRefr.insert({ digSite, Lootability::CannotRelootFirehoseSource });
+	}
 }
 
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
@@ -816,7 +820,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	if (pos == RE::NiPoint3())
 	{
 		DBG_VMESSAGE("Arrow position unknown %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
-		BlockReference(refr);
+		BlockReference(refr, Lootability::CorruptArrowPosition);
 		skip = true;
 	}
 

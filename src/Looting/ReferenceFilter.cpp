@@ -91,10 +91,11 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 		return Lootability::BaseObjectBlocked;
 	}
 
-	if (data->IsReferenceBlocked(refr))
+	Lootability blockReason(data->IsReferenceBlocked(refr));
+	if (blockReason != Lootability::Lootable)
 	{
 		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
-		return Lootability::ReferenceBlocked;
+		return blockReason;
 	}
 
 	// check blacklist early - this may be a malformed REFR e.g. GetBaseObject() blank, 0x00000000 FormID
@@ -328,6 +329,9 @@ void ReferenceFilter::FilterNearbyReferences()
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
 #endif
+	// reset the possible detecting Actor list
+	ActorTracker::Instance().ClearDetectives();
+
 	const RE::TESObjectCELL* cell(LocationTracker::Instance().PlayerCell());
 	if (!cell)
 		return;

@@ -31,13 +31,10 @@ public:
 	static PlayerState& Instance();
 	PlayerState();
 
-	void Refresh();
-	void ResetCarryWeight(const bool reloaded);
-	void CheckPerks(const bool force);
+	void Refresh(const bool onMCMPush, const bool onGameReload);
 	bool PerksAddLeveledItemsOnDeath() const;
 	float PerkIngredientMultiplier() const;
 	bool CanLoot() const;
-	bool IsSneaking() const;
 	OwnershipRule EffectiveOwnershipRule() const { return m_ownershipRule; }
 	SpecialObjectHandling BelongingsCheck() const { return m_belongingsCheck; }
 	double SneakDistanceExterior() const;
@@ -48,7 +45,10 @@ public:
 	bool WithinDetectionRange(const double distance) const;
 
 private:
+	void CheckPerks(const bool force);
+	void ResetCarryWeight(const bool reloaded);
 	void AdjustCarryWeight();
+	bool IsSneaking() const;
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
 
 	static std::unique_ptr<PlayerState> m_instance;

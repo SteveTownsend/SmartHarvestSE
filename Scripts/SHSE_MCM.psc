@@ -317,10 +317,10 @@ Function ApplySetting(bool reload)
     ; do this last so plugin state is in sync   
     if (isEnabled)
         Debug.Notification(Replace(GetTranslation("$SHSE_ENABLE"), "{VERSION}", GetPluginVersion()))
-        AllowSearch()
+        AllowSearch(True)
     Else
         Debug.Notification(Replace(GetTranslation("$SHSE_DISABLE"), "{VERSION}", GetPluginVersion()))
-        DisallowSearch()
+        DisallowSearch(True)
     EndIf
 
     ;DebugTrace("  MCM ApplySetting finished")

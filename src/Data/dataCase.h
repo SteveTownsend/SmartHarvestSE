@@ -42,8 +42,8 @@ public:
 	void BlockFirehoseSource(const RE::TESObjectREFR* refr);
 	void ForgetFirehoseSources();
 
-	bool BlockReference(const RE::TESObjectREFR* refr);
-	bool IsReferenceBlocked(const RE::TESObjectREFR* refr);
+	bool BlockReference(const RE::TESObjectREFR* refr, const Lootability reason);
+	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr);
 	void ClearBlockedReferences(const bool gameReload);
 
 	// permanent REFR blacklist, reset on game reload
@@ -111,7 +111,7 @@ private:
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_set<const RE::TESForm*> m_blockForm;
 	std::unordered_set<RE::FormID> m_firehoseSources;
-	std::unordered_set<RE::FormID> m_blockRefr;
+	std::unordered_map<RE::FormID, Lootability> m_blockRefr;
 	std::unordered_set<RE::FormID> m_blacklistRefr;
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;

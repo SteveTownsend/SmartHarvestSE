@@ -75,13 +75,13 @@ namespace papyrus
 	// available in release build, but typically unused
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		DBG_MESSAGE("%s", str);
+		DBG_MESSAGE("%s", str.c_str());
 	}
 
 	// available in release build for important output
 	void AlwaysTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		REL_MESSAGE("%s", str);
+		REL_MESSAGE("%s", str.c_str());
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -178,11 +178,11 @@ namespace papyrus
 		}
 		else
 		{
-			LootingType tmp_value = LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
+			shse::LootingType tmp_value = shse::LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
 			// weightless objects and OreVeins are always looted unless explicitly disabled
-			if (shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > LootingType::LootAlwaysSilent)
+			if (shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > shse::LootingType::LootAlwaysSilent)
 			{
-				value = static_cast<float>(tmp_value == LootingType::LootIfValuableEnoughNotify ? LootingType::LootAlwaysNotify : LootingType::LootAlwaysSilent);
+				value = static_cast<float>(tmp_value == shse::LootingType::LootIfValuableEnoughNotify ? shse::LootingType::LootAlwaysNotify : shse::LootingType::LootAlwaysSilent);
 			}
 			else
 			{
@@ -253,15 +253,25 @@ namespace papyrus
 		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
 	}
 
-	void AllowSearch(RE::StaticFunctionTag* base)
+	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search enabled");
+		// clean lists if MCM has just been active, then enable scan
+		if (onMCMClose)
+		{
+			shse::PluginFacade::Instance().OnSettingsPushed();
+		}
 		shse::ScanGovernor::Instance().Allow();
 	}
 
-	void DisallowSearch(RE::StaticFunctionTag* base)
+	void DisallowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search disabled");
+		// clean lists if MCM has just been active, then enable scan
+		if (onMCMClose)
+		{
+			shse::PluginFacade::Instance().OnSettingsPushed();
+		}
 		shse::ScanGovernor::Instance().Disallow();
 	}
 
@@ -300,9 +310,9 @@ namespace papyrus
 			shse::ManagedList::WhiteList().Add(entry);
 		}
 	}
-	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
+	void SyncDone(RE::StaticFunctionTag* base)
 	{
-		shse::PluginFacade::Instance().SyncDone(reload);
+		shse::PluginFacade::Instance().SyncDone();
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
@@ -431,7 +441,7 @@ namespace papyrus
 	}
 	void PutCollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const int action)
 	{
-		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, SpecialObjectHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::SpecialObjectHandlingFromIniSetting(double(action)));
 	}
 
 	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName)
@@ -456,7 +466,7 @@ namespace papyrus
 	}
 	void PutCollectionGroupAction(RE::StaticFunctionTag* base, const std::string groupName, const int action)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, SpecialObjectHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::SpecialObjectHandlingFromIniSetting(double(action)));
 	}
 
 	int CollectionTotal(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
@@ -479,9 +489,16 @@ namespace papyrus
 		shse::LocationTracker::Instance().DisplayLocationRelativeToMapMarker();
 	}
 
-	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex)
+	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex, const bool dryRun)
 	{
-		return shse::TheftCoordinator::Instance().ActorByIndex(actorIndex);
+		if (dryRun)
+		{
+			return shse::ScanGovernor::Instance().ActorByIndex(actorIndex);
+		}
+		else
+		{
+			return shse::TheftCoordinator::Instance().ActorByIndex(actorIndex);
+		}
 	}
 
 	void ReportPlayerDetectionState(RE::StaticFunctionTag* base, const bool detected)
