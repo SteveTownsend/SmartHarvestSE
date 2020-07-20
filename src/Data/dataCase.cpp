@@ -178,7 +178,9 @@ void DataCase::StoreActivationVerbs()
 	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_CRITTER", ObjectType::critter);
 	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_FLORA", ObjectType::flora);
 	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_OREVEIN", ObjectType::oreVein);
-	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
+	// https://github.com/SteveTownsend/SmartHarvestSE/issues/133
+	// retired in favour of Collections-based solution
+	//ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
 }
 
 ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activationText) const

@@ -327,7 +327,12 @@ namespace papyrus
 
 	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
-		return shse::DataCase::GetInstance()->BlockFirehoseSource(refr);
+		shse::DataCase::GetInstance()->BlockFirehoseSource(refr);
+	}
+
+	void NotifyManualLootItem(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	{
+		shse::ProcessManualLootItem(refr);
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
@@ -416,12 +421,12 @@ namespace papyrus
 
 	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
 	{
-		return shse::CollectionManager::Instance().NameByGroupIndex(groupName, collectionIndex);
+		return shse::CollectionManager::Instance().NameByIndexInGroup(groupName, collectionIndex);
 	}
 
 	std::string CollectionDescriptionByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
 	{
-		return shse::CollectionManager::Instance().DescriptionByGroupIndex(groupName, collectionIndex);
+		return shse::CollectionManager::Instance().DescriptionByIndexInGroup(groupName, collectionIndex);
 	}
 
 	bool CollectionAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
@@ -446,7 +451,7 @@ namespace papyrus
 	}
 	void PutCollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const int action)
 	{
-		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::SpecialObjectHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
 	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName)
@@ -471,7 +476,7 @@ namespace papyrus
 	}
 	void PutCollectionGroupAction(RE::StaticFunctionTag* base, const std::string groupName, const int action)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::SpecialObjectHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
 	int CollectionTotal(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
@@ -536,6 +541,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
 		a_vm->RegisterFunction("BlockFirehose", SHSE_PROXY, papyrus::BlockFirehose);
+		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
 		a_vm->RegisterFunction("GetSettingObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingObjectArrayEntry);

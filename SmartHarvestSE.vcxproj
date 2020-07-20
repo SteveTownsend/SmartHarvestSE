@@ -305,6 +305,7 @@
     <None Include="Collections\Examples\SHSE.Collections.Errors.json" />
     <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
     <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
+    <None Include="Collections\Examples\SHSE.Collections.ManualLoot.json" />
     <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
     <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
     <None Include="Collections\Schema\SHSE.SchemaCollections.json" />

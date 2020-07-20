@@ -111,6 +111,24 @@ bool IsPlayerOwned(const RE::TESObjectREFR* refr)
 	return false;
 }
 
+void ProcessManualLootItem(const RE::TESObjectREFR* refr)
+{
+	// notify about these, just once
+	std::string notificationText;
+	static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));
+	if (!manualLootText.empty())
+	{
+		notificationText = manualLootText;
+		StringUtils::Replace(notificationText, "{ITEMNAME}", refr->GetName());
+		if (!notificationText.empty())
+		{
+			RE::DebugNotification(notificationText.c_str());
+		}
+	}
+	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", refr->GetFormID());
+	DataCase::GetInstance()->BlockReference(refr, Lootability::ManualLootTarget);
+}
+
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
 {
 	const RE::NiAVObject* node = refr->Get3D2();
@@ -250,8 +268,7 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::drink, "drink"},
 	{ObjectType::oreVein, "orevein"},
 	{ObjectType::container, "container"},
-	{ObjectType::actor, "actor"},
-	{ObjectType::manualLoot, "manualloot"}
+	{ObjectType::actor, "actor"}
 	});
 
 std::string GetObjectTypeName(ObjectType objectType)

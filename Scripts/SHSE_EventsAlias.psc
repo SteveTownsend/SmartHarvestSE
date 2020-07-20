@@ -610,18 +610,18 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     Endif
 
     if !handled && manualLootNotify
-        ; unrecognized 'Mine' target? glow as a 'nearby manual lootable' if configured to do so
-        DoObjectGlow(akMineable, 5, glowReasonSimpleTarget)
+        ; unrecognized 'Mine' verb target - print message for 'nearby manual lootable' if configured to do so
+        NotifyManualLootItem(akMineable)
     endif
 
 EndEvent
 
-Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool manualLootNotify, bool collectible, float ingredientCount)
+Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool collectible, float ingredientCount)
     bool notify = false
     form baseForm = akTarget.GetBaseObject()
 
     ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + baseForm) 
-    ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ", notify for manual loot: " + manualLootNotify)
+    ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ")
 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)

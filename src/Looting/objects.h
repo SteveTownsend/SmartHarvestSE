@@ -44,6 +44,7 @@ private:
 bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsPlayerOwned(const RE::TESObjectREFR* refr);
+void ProcessManualLootItem(const RE::TESObjectREFR* refr);
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsLocked(const RE::TESObjectREFR * refr);

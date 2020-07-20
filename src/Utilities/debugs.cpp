@@ -148,22 +148,6 @@ void DumpItemVW(const TESFormHelper& itemEx)
 #endif
 }
 
-void DumpReference(const LootableREFR& refr, const char* typeName, const INIFile::SecondaryType scope)
-{
-#if _DEBUG
-	const RE::TESForm* target(refr.GetLootable() ? refr.GetLootable() : refr.GetReference()->GetBaseObject());
-	DBG_VMESSAGE("0x%08x 0x%02x(%02d) [%s] - typename %s", target->formID, target->formType, target->formType, refr.GetReference()->GetName(), typeName);
-
-	TESFormHelper itemEx(target, scope);
-	DumpItemVW(itemEx);
-
-	DumpKeyword(target, scope);
-
-	const RE::ExtraDataList *extraData = &refr.GetReference()->extraList;
-	DumpExtraData(extraData);
-#endif
-}
-
 void DumpContainer(const LootableREFR& refr)
 {
 #if _DEBUG

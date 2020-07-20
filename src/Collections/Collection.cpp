@@ -30,7 +30,7 @@ namespace shse
 
 void CollectionPolicy::AsJSON(nlohmann::json& j) const
 {
-	j["action"] = SpecialObjectHandlingJSON(m_action);
+	j["action"] = CollectibleHandlingJSON(m_action);
 	j["notify"] = m_notify;
 	j["repeat"] = m_repeat;
 }
@@ -44,6 +44,8 @@ Collection::Collection(const std::string& name, const std::string& description, 
 	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
 	m_name(name), m_description(description), m_effectivePolicy(policy), m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
+	// if this collection has static members, add them now to seed the list
+	m_members = m_rootFilter->StaticMembers();
 }
 
 bool Collection::AddMemberID(const RE::TESForm* form)const 

@@ -34,7 +34,7 @@ public:
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
 	SInt32 GetGoldValue(void) const;
-	std::pair<bool, SpecialObjectHandling> TreatAsCollectible(void) const;
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	inline const RE::TESForm* Form() const { return m_form; }
 
 	virtual double GetWeight(void) const override;

@@ -76,6 +76,41 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
+		// initially no glow - use synthetic value with highest precedence
+		m_glowReason = GlowReason::None;
+		bool skipLooting(false);
+
+		// TODO this may update state on a dry run but we should already have processed the item on >= 1 pass, so no harm?
+		// Check Collections first in case there are Manual Loot items that do not have an objectType, esp. scripted ACTI
+		const auto collectible(refrEx.TreatAsCollectible());
+		if (collectible.first)
+		{
+			CollectibleHandling collectibleAction(collectible.second);
+			DBG_VMESSAGE("Collectible Item 0x%08x", m_candidate->GetBaseObject()->formID);
+			if (!CanLootCollectible(collectibleAction))
+			{
+				skipLooting = true;
+				if (collectibleAction == CollectibleHandling::Print)
+				{
+					if (!dryRun)
+					{
+						ProcessManualLootItem(m_candidate);
+					}
+					//we do not want to blacklist the base object even if it's not a proper objectType
+					return Lootability::ManualLootTarget;
+				}
+				else if (collectibleAction == CollectibleHandling::Glow)
+				{
+					DBG_VMESSAGE("glow collectible object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+					UpdateGlowReason(GlowReason::Collectible);
+				}
+				else
+				{
+					result = Lootability::CannotLootCollectibleObject;
+				}
+			}
+		}
+
 		if (objType == ObjectType::unknown)
 		{
 			if (!dryRun)
@@ -86,40 +121,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::ObjectTypeUnknown;
 		}
 
-		bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
-		if (objType == ObjectType::manualLoot && manualLootNotify)
-		{
-			if (!dryRun)
-			{
-				// notify about these, just once
-				std::string notificationText;
-				static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));
-				if (!manualLootText.empty())
-				{
-					notificationText = manualLootText;
-					StringUtils::Replace(notificationText, "{ITEMNAME}", m_candidate->GetName());
-					if (!notificationText.empty())
-					{
-						RE::DebugNotification(notificationText.c_str());
-					}
-				}
-				DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", m_candidate->GetFormID());
-				data->BlockReference(m_candidate, Lootability::ManualLootTarget);
-			}
-			return Lootability::ManualLootTarget;
-		}
-
 		if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
 			DBG_VMESSAGE("Skip BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
 			return Lootability::BaseObjectOnBlacklist;
 		}
-#if _DEBUG
-		DumpReference(refrEx, m_typeName.c_str(), m_targetType);
-#endif
-		// initially no glow - use synthetic value with highest precedence
-		m_glowReason = GlowReason::None;
-		bool skipLooting(false);
 
 		bool needsFullQuestFlags(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0);
 		SpecialObjectHandling questObjectLoot =
@@ -144,25 +150,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			DBG_VMESSAGE("Glowable book 0x%08x", m_candidate->GetBaseObject()->formID);
 			UpdateGlowReason(GlowReason::SimpleTarget);
-		}
-
-		// TODO this may update state on a dry run but we should already have processed the item on >= 1 pass, so no harm?
-		const auto collectible(refrEx.TreatAsCollectible());
-		SpecialObjectHandling collectibleAction(collectible.second);
-		if (collectible.first)
-		{
-			DBG_VMESSAGE("Collectible Item 0x%08x", m_candidate->GetBaseObject()->formID);
-			if (collectibleAction == SpecialObjectHandling::GlowTarget)
-			{
-				DBG_VMESSAGE("glow collectible object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
-				UpdateGlowReason(GlowReason::Collectible);
-			}
-
-			if (!IsSpecialObjectLootable(collectibleAction))
-			{
-				skipLooting = true;
-				result = Lootability::CannotLootCollectibleObject;
-			}
 		}
 
 		SpecialObjectHandling valuableLoot =
@@ -219,23 +206,40 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		LootingType lootingType(LootingType::LeaveBehind);
 		if (collectible.first)
 		{
+			CollectibleHandling collectibleAction(collectible.second);
 			// ** if configured as permitted ** collectible objects are always looted silently
 			DBG_VMESSAGE("check REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
-			skipLooting = forbidden != Lootability::Lootable || collectibleAction != SpecialObjectHandling::DoLoot;
-			lootingType = collectibleAction == SpecialObjectHandling::DoLoot ? LootingType::LootAlwaysSilent : LootingType::LeaveBehind;
-			if (lootingType == LootingType::LeaveBehind)
+			skipLooting = forbidden != Lootability::Lootable || !CanLootCollectible(collectibleAction);
+			if (!CanLootCollectible(collectibleAction))
 			{
-				if (!dryRun)
+				lootingType = LootingType::LeaveBehind;
+				// skipLooting is true by construction
+				if (collectibleAction == CollectibleHandling::Leave)
 				{
-					// this is a blacklist collection
-					DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
-					data->BlockForm(m_candidate->GetBaseObject());
+					if (!dryRun)
+					{
+						// this is a blacklist collection
+						DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
+						data->BlockForm(m_candidate->GetBaseObject());
+					}
+					result = Lootability::ItemInBlacklistCollection;
 				}
-				result = Lootability::ItemInBlacklistCollection;
+				else if (collectibleAction == CollectibleHandling::Print)
+				{
+					if (!dryRun)
+					{
+						ProcessManualLootItem(m_candidate);
+					}
+					result = Lootability::ManualLootTarget;
+				}
+				else
+				{
+					result = Lootability::CollectibleItemSetToGlow;
+				}
 			}
-			else if (skipLooting)
+			else if (!skipLooting)
 			{
-				result = Lootability::CollectibleItemSetToGlow;
+				lootingType = LootingType::LootAlwaysSilent;
 			}
 		}
 		else if (ManagedList::WhiteList().Contains(m_candidate->GetBaseObject()))
@@ -309,6 +313,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x%08x", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
+			bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
 			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
 		}
 		else
@@ -321,7 +326,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
 				return Lootability::HarvestOperationPending;
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
-				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit, manualLootNotify,
+				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
 		}
 	}
@@ -438,16 +443,23 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (lister.HasCollectibleItem())
 		{
-			if (lister.CollectibleAction() == SpecialObjectHandling::GlowTarget)
+			if (!CanLootCollectible(lister.CollectibleAction()))
 			{
-				DBG_VMESSAGE("glow container with collectible object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
-				UpdateGlowReason(GlowReason::Collectible);
-			}
-
-			if (!IsSpecialObjectLootable(lister.CollectibleAction()))
-			{
+				if (lister.CollectibleAction() == CollectibleHandling::Glow)
+				{
+					DBG_VMESSAGE("glow container with collectible object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+					UpdateGlowReason(GlowReason::Collectible);
+					result = Lootability::CollectibleItemSetToGlow;
+				}
+				else if (lister.CollectibleAction() == CollectibleHandling::Print)
+				{
+					result = Lootability::ManualLootTarget;
+				}
+				else
+				{
+					result = Lootability::ItemInBlacklistCollection;
+				}
 				skipLooting = true;
-				result = Lootability::ContainerHasCollectibleObject;
 			}
 		}
 		// Order is important to ensure we glow correctly even if blocked - IsLootingForbidden must come first.
@@ -547,7 +559,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				ConditionMatcher(targetItemInfo.BoundObject(), m_targetType)));
 			if (collectible.first)
 			{
-				if (IsSpecialObjectLootable(collectible.second))
+				if (CanLootCollectible(collectible.second))
 				{
 					DBG_VMESSAGE("Collectible Item 0x%08x", targetItemInfo.BoundObject()->formID);
 					lootingType = LootingType::LootAlwaysSilent;

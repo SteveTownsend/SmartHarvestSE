@@ -391,6 +391,9 @@
     <None Include="Collections\Examples\SHSE.Collections.Errors.json">
       <Filter>Collections\Examples</Filter>
     </None>
+    <None Include="Collections\Examples\SHSE.Collections.ManualLoot.json">
+      <Filter>Collections\Examples</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Interface\translations\SmartHarvestSE_czech.txt">

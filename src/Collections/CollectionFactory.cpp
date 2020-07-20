@@ -54,6 +54,24 @@ std::unique_ptr<FormListCondition> CollectionFactory::ParseFormList(const nlohma
 	return std::make_unique<FormListCondition>(pluginFormLists);
 }
 
+std::unique_ptr<FormsCondition> CollectionFactory::ParseForms(const nlohmann::json& formsRule) const
+{
+	std::vector<std::pair<std::string, std::vector<std::string>>> forms;
+	forms.reserve(formsRule.size());
+	std::transform(formsRule.begin(), formsRule.end(), std::back_inserter(forms),
+		[&](const nlohmann::json& next)
+	{
+		std::vector<std::string> formIDs;
+		formIDs.reserve(next["form"].size());
+		for (const std::string& form : next["form"])
+		{
+			formIDs.push_back(form);
+		}
+		return std::make_pair(next["plugin"].get<std::string>(), formIDs);
+	});
+	return std::make_unique<FormsCondition>(forms);
+}
+
 std::unique_ptr<KeywordCondition> CollectionFactory::ParseKeyword(const nlohmann::json& keywordRule) const
 {
 	std::vector<std::string> keywords;
@@ -83,7 +101,7 @@ std::unique_ptr<ScopeCondition> CollectionFactory::ParseScope(const nlohmann::js
 
 CollectionPolicy CollectionFactory::ParsePolicy(const nlohmann::json& policy) const
 {
-	return CollectionPolicy(ParseSpecialObjectHandling(policy["action"].get<std::string>()),
+	return CollectionPolicy(ParseCollectibleHandling(policy["action"].get<std::string>()),
 		policy["notify"].get<bool>(), policy["repeat"].get<bool>());
 }
 
@@ -115,6 +133,10 @@ std::unique_ptr<ConditionTree> CollectionFactory::ParseFilter(const nlohmann::js
 		else if (condition.key() == "formList")
 		{
 			root->AddCondition(ParseFormList(condition.value()));
+		}
+		else if (condition.key() == "forms")
+		{
+			root->AddCondition(ParseForms(condition.value()));
 		}
 		else if (condition.key() == "keyword")
 		{

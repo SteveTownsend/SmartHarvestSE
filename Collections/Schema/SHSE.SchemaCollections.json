@@ -38,6 +38,27 @@
       }
     },
 
+    "formsType": {
+      "type": "object",
+      "required": [ "plugin", "form" ],
+      "properties": {
+        "plugin": {
+          "type": "string"
+        },
+        "form": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "[0-9 a-f A-F]{8}"
+          },
+          "description": "FormID in plugin, discounting load order"
+        }
+      }
+    },
+
     "signatureType": {
       "type": "string",
       "enum": [ "ALCH", "ARMO", "BOOK", "INGR", "KEYM", "MISC", "SLGM", "WEAP" ]
@@ -45,7 +66,7 @@
 
     "actionType": {
       "type": "string",
-      "enum": [ "leave", "take", "glow" ]
+      "enum": [ "leave", "take", "glow", "print" ]
     },
 
     "scopeType": {
@@ -55,25 +76,37 @@
 
     "conditionType": {
       "type": "object",
-      "$comment": "we need 'signature', 'plugin', 'keyword', 'formList' (FLST form ID) in a leaf node as they are highly restrictive, or 'subFilter' which defers the decision",
-      "anyOf": [
+      "$comment": "we need highly restrictive fields in a leaf node, or 'subFilter' which defers the decision",
+      "oneOf": [
         {
-          "required": [ "plugin" ]
+          "allOf": [
+            {
+              "required": [ "forms" ]
+            }
+          ]
         },
         {
-          "required": [ "keyword" ]
-        },
-        {
-          "required": [ "formList" ]
-        },
-        {
-          "required": [ "signature" ]
-        },
-        {
-          "required": [ "subFilter" ]
+          "anyOf": [
+            {
+              "required": [ "plugin" ]
+            },
+            {
+              "required": [ "keyword" ]
+            },
+            {
+              "required": [ "formList" ]
+            },
+            {
+              "required": [ "signature" ]
+            },
+            {
+              "required": [ "subFilter" ]
+            }
+          ]
         }
       ],
-      "properties": {
+      "properties":
+      {
         "plugin": {
           "type": "array",
           "minItems": 1,
@@ -105,6 +138,14 @@
           "uniqueItems": true,
           "items": { "$ref": "#/definitions/signatureType" },
           "description": "TESV Object must have RecordHeader.Signature in this list"
+        },
+        "forms": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/formsType" },
+          "description": "FormIDs that uniquely identify Plugin Forms in a load order"
         },
         "scope": {
           "type": "array",

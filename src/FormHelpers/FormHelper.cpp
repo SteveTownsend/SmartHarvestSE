@@ -90,7 +90,7 @@ SInt32 TESFormHelper::GetGoldValue() const
 	return pValue->value;
 }
 
-std::pair<bool, SpecialObjectHandling> TESFormHelper::TreatAsCollectible(void) const
+std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(void) const
 {
 	// ignore whitelist - we need the underlying object type
 	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher);

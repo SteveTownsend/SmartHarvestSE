@@ -23,6 +23,23 @@ void ParseFormList(const nlohmann::json& formListRule)
 	});
 }
 
+void ParseForms(const nlohmann::json& formsRule)
+{
+	std::vector<std::pair<std::string, std::vector<std::string>>> forms;
+	forms.reserve(formsRule.size());
+	std::transform(formsRule.begin(), formsRule.end(), std::back_inserter(forms),
+		[&](const nlohmann::json& next)
+	{
+		std::vector<std::string> formIDs;
+		formIDs.reserve(next["form"].size());
+		for (const std::string& form : next["form"])
+		{
+			formIDs.push_back(form);
+		}
+		return std::make_pair(next["plugin"].get<std::string>(), formIDs);
+	});
+}
+
 void ParseKeyword(const nlohmann::json& keywordRule)
 {
 	std::vector<std::string> keywords;
@@ -81,6 +98,10 @@ void ParseFilter(const nlohmann::json& filter)
 		else if (condition.key() == "formList")
 		{
 			ParseFormList(condition.value());
+		}
+		else if (condition.key() == "forms")
+		{
+			ParseForms(condition.value());
 		}
 		else if (condition.key() == "keyword")
 		{

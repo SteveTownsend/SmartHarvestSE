@@ -149,8 +149,8 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
-		// Do not record if the policy indicates to LeaveBehind (blacklist)
-		if (collection->second->Policy().Action() != SpecialObjectHandling::DoNotLoot &&
+		// Do not record if the policy indicates per-item history not required
+		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
 			collection->second->IsMemberOf(form))
 		{
 			// record membership
@@ -159,7 +159,7 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	}
 }
 
-std::pair<bool, SpecialObjectHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
+std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
 {
 	if (!IsActive() || !matcher.Form())
 		return NotCollectible;
@@ -177,14 +177,14 @@ std::pair<bool, SpecialObjectHandling> CollectionManager::TreatAsCollectible(con
 	}
 
 	// It is in at least one collection. Find the most aggressive action for any where we are in scope and a usable member.
-	SpecialObjectHandling action(SpecialObjectHandling::DoNotLoot);
+	CollectibleHandling action(CollectibleHandling::Leave);
 	bool actionable(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
 		if (collection->second->InScopeAndCollectibleFor(matcher))
 		{
 			actionable = true;
-			action = UpdateSpecialObjectHandling(collection->second->Policy().Action(), action);
+			action = UpdateCollectibleHandling(collection->second->Policy().Action(), action);
 		}
 	}
 	return std::make_pair(actionable, action);
@@ -227,7 +227,10 @@ bool CollectionManager::LoadCollectionGroup(
 		validator.validate(collectionGroupData);
 		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(collectionGroupData, groupName));
 		BuildDecisionTrees(collectionGroup);
-		m_fileNamesByGroupName.insert(std::make_pair(groupName, defFile.string()));
+		if (collectionGroup->UseMCM())
+		{
+			m_mcmVisibleFileByGroupName.insert(std::make_pair(groupName, defFile.string()));
+		}
 		m_allGroupsByName.insert(std::make_pair(groupName, collectionGroup));
 		return true;
 	}
@@ -310,14 +313,14 @@ void CollectionManager::PrintMembership(void) const
 int CollectionManager::NumberOfFiles(void) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	return static_cast<int>(m_fileNamesByGroupName.size());
+	return static_cast<int>(m_mcmVisibleFileByGroupName.size());
 }
 
 std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	size_t index(0);
-	for (const auto& group : m_fileNamesByGroupName)
+	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
 			return group.first;
@@ -330,7 +333,7 @@ std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	size_t index(0);
-	for (const auto& group : m_fileNamesByGroupName)
+	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
 			return group.second;
@@ -345,7 +348,7 @@ int CollectionManager::NumberOfCollections(const std::string& groupName) const
 	return static_cast<int>(m_collectionsByGroupName.count(groupName));
 }
 
-std::string CollectionManager::NameByGroupIndex(const std::string& groupName, const int collectionIndex) const
+std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matches(m_collectionsByGroupName.equal_range(groupName));
@@ -362,9 +365,9 @@ std::string CollectionManager::NameByGroupIndex(const std::string& groupName, co
 	return std::string();
 }
 
-std::string CollectionManager::DescriptionByGroupIndex(const std::string& groupName, const int collectionIndex) const
+std::string CollectionManager::DescriptionByIndexInGroup(const std::string& groupName, const int collectionIndex) const
 {
-	std::string collectionName(NameByGroupIndex(groupName, collectionIndex));
+	std::string collectionName(NameByIndexInGroup(groupName, collectionIndex));
 	const auto matchedGroup(m_allGroupsByName.find(groupName));
 	if (matchedGroup != m_allGroupsByName.cend() && !collectionName.empty())
 	{
@@ -408,7 +411,7 @@ bool CollectionManager::PolicyNotify(const std::string& groupName, const std::st
 	return false;
 }
 
-SpecialObjectHandling CollectionManager::PolicyAction(const std::string& groupName, const std::string& collectionName) const
+CollectibleHandling CollectionManager::PolicyAction(const std::string& groupName, const std::string& collectionName) const
 {
 	const std::string label(MakeLabel(groupName, collectionName));
 	RecursiveLockGuard guard(m_collectionLock);
@@ -417,7 +420,7 @@ SpecialObjectHandling CollectionManager::PolicyAction(const std::string& groupNa
 	{
 		return matched->second->Policy().Action();
 	}
-	return SpecialObjectHandling::DoNotLoot;
+	return CollectibleHandling::Leave;
 }
 
 void CollectionManager::PolicySetRepeat(const std::string& groupName, const std::string& collectionName, const bool allowRepeats)
@@ -444,7 +447,7 @@ void CollectionManager::PolicySetNotify(const std::string& groupName, const std:
 	}
 }
 
-void CollectionManager::PolicySetAction(const std::string& groupName, const std::string& collectionName, const SpecialObjectHandling action)
+void CollectionManager::PolicySetAction(const std::string& groupName, const std::string& collectionName, const CollectibleHandling action)
 {
 	const std::string label(MakeLabel(groupName, collectionName));
 	RecursiveLockGuard guard(m_collectionLock);
@@ -478,7 +481,7 @@ bool CollectionManager::GroupPolicyNotify(const std::string& groupName) const
 	return false;
 }
 
-SpecialObjectHandling CollectionManager::GroupPolicyAction(const std::string& groupName) const
+CollectibleHandling CollectionManager::GroupPolicyAction(const std::string& groupName) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matched(m_allGroupsByName.find(groupName));
@@ -486,7 +489,7 @@ SpecialObjectHandling CollectionManager::GroupPolicyAction(const std::string& gr
 	{
 		return matched->second->Policy().Action();
 	}
-	return SpecialObjectHandling::DoNotLoot;
+	return CollectibleHandling::Leave;
 }
 
 void CollectionManager::GroupPolicySetRepeat(const std::string& groupName, const bool allowRepeats)
@@ -511,7 +514,7 @@ void CollectionManager::GroupPolicySetNotify(const std::string& groupName, const
 	}
 }
 
-void CollectionManager::GroupPolicySetAction(const std::string& groupName, const SpecialObjectHandling action)
+void CollectionManager::GroupPolicySetAction(const std::string& groupName, const CollectibleHandling action)
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matched(m_allGroupsByName.find(groupName));
@@ -752,6 +755,15 @@ void CollectionManager::ResolveMembership(void)
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Resolve Collection Membership");
 #endif
+	// record static members before resolving
+	for (const auto& collection : m_allCollectionsByLabel)
+	{
+		for (const auto member : collection.second->Members())
+		{
+			m_collectionsByFormID.insert({ member->GetFormID(), collection.second });
+		}
+	}
+
 	std::unordered_set<RE::TESForm*> uniquePlaced;
 	std::unordered_set<RE::TESForm*> uniqueMembers;
 	for (const auto& signature : SignatureCondition::ValidSignatures())

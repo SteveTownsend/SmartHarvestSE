@@ -29,7 +29,7 @@ namespace shse
 ContainerLister::ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
 	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false),
-	m_hasCollectibleItem(false), m_collectibleAction(SpecialObjectHandling::DoNotLoot)
+	m_hasCollectibleItem(false), m_collectibleAction(CollectibleHandling::Leave)
 {
 }
 
@@ -111,7 +111,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 					{
 						// use the most permissive action
 						m_hasCollectibleItem = true;
-						m_collectibleAction = UpdateSpecialObjectHandling(m_collectibleAction, collectible.second);
+						m_collectibleAction = UpdateCollectibleHandling(m_collectibleAction, collectible.second);
 					}
 				}
 			}

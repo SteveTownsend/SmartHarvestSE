@@ -43,14 +43,14 @@ private:
 
 class CollectionPolicy {
 public:
-	CollectionPolicy(const SpecialObjectHandling action, const bool notify, const bool repeat) :
+	CollectionPolicy(const CollectibleHandling action, const bool notify, const bool repeat) :
 		m_action(action), m_notify(notify), m_repeat(repeat)
 	{}
 
-	inline SpecialObjectHandling Action() const { return m_action; }
+	inline CollectibleHandling Action() const { return m_action; }
 	inline bool Notify() const { return m_notify; }
 	inline bool Repeat() const { return m_repeat; }
-	inline void SetAction(const SpecialObjectHandling action) { m_action = action; }
+	inline void SetAction(const CollectibleHandling action) { m_action = action; }
 	inline void SetNotify(const bool notify) { m_notify = notify; }
 	inline void SetRepeat(const bool repeat) { m_repeat = repeat; }
 
@@ -61,7 +61,7 @@ public:
 	}
 
 private:
-	SpecialObjectHandling m_action;
+	CollectibleHandling m_action;
 	bool m_notify;
 	bool m_repeat;
 };
@@ -69,6 +69,21 @@ private:
 void to_json(nlohmann::json& j, const CollectionPolicy& collection);
 
 class Collection {
+protected:
+	size_t PlacedMembers(void) const;
+
+	// inputs
+	std::string m_name;
+	std::string m_description;
+	// may inherit Policy from Group or override
+	CollectionPolicy m_effectivePolicy;
+	bool m_overridesGroup;
+	std::unique_ptr<ConditionTree> m_rootFilter;
+	// derived
+	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
+	mutable std::unordered_set<const RE::TESForm*> m_members;
+	std::vector<INIFile::SecondaryType> m_scopes;
+
 public:
 	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
 		const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
@@ -92,21 +107,7 @@ public:
 	std::string PrintDefinition(void) const;
 	std::string PrintMembers(void) const;
 	inline void SetScopes(const std::vector<INIFile::SecondaryType>& scopes) { m_scopes = scopes; }
-
-protected:
-	size_t PlacedMembers(void) const;
-
-	// inputs
-	std::string m_name;
-	std::string m_description;
-	// may inherit Policy from Group or override
-	CollectionPolicy m_effectivePolicy;
-	bool m_overridesGroup;
-	std::unique_ptr<ConditionTree> m_rootFilter;
-	// derived
-	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
-	mutable std::unordered_set<const RE::TESForm*> m_members;
-	std::vector<INIFile::SecondaryType> m_scopes;
+	inline decltype(m_members) Members() const { return m_members; }
 };
 
 void to_json(nlohmann::json& j, const Collection& collection);
@@ -117,6 +118,7 @@ public:
 	inline const std::vector<std::shared_ptr<Collection>>& Collections() const { return m_collections; }
 	std::shared_ptr<Collection> CollectionByName(const std::string& collectionName) const;
 	inline std::string Name() const { return m_name; }
+	inline bool UseMCM() const { return m_useMCM; }
 	void AsJSON(nlohmann::json& j) const;
 	inline const CollectionPolicy& Policy() const { return m_policy; }
 	inline CollectionPolicy& Policy() { return m_policy; }

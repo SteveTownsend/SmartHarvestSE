@@ -32,6 +32,7 @@ public:
 private:
 	std::unique_ptr<PluginCondition> ParsePlugin(const nlohmann::json& pluginRule) const;
 	std::unique_ptr<FormListCondition> ParseFormList(const nlohmann::json& formListRule) const;
+	std::unique_ptr<FormsCondition> ParseForms(const nlohmann::json& formsRule) const;
 	std::unique_ptr<KeywordCondition> ParseKeyword(const nlohmann::json& keywordRule) const;
 	std::unique_ptr<SignatureCondition> ParseSignature(const nlohmann::json& signatureRule) const;
 	std::unique_ptr<ScopeCondition> ParseScope(const nlohmann::json& scopeRule) const;
