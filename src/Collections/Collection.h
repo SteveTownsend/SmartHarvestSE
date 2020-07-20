@@ -88,6 +88,7 @@ public:
 	nlohmann::json MakeJSON() const;
 	void AsJSON(nlohmann::json& j) const;
 	std::string Name(void) const;
+	std::string Description(void) const;
 	std::string PrintDefinition(void) const;
 	std::string PrintMembers(void) const;
 	inline void SetScopes(const std::vector<INIFile::SecondaryType>& scopes) { m_scopes = scopes; }
@@ -114,6 +115,7 @@ class CollectionGroup {
 public:
 	CollectionGroup(const std::string& name, const CollectionPolicy& policy, const bool useMCM, const nlohmann::json& collections);
 	inline const std::vector<std::shared_ptr<Collection>>& Collections() const { return m_collections; }
+	std::shared_ptr<Collection> CollectionByName(const std::string& collectionName) const;
 	inline std::string Name() const { return m_name; }
 	void AsJSON(nlohmann::json& j) const;
 	inline const CollectionPolicy& Policy() const { return m_policy; }

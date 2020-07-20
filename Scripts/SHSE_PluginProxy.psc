@@ -45,6 +45,7 @@ String Function CollectionGroupName(int fileIndex) global native
 String Function CollectionGroupFile(int fileIndex) global native
 int Function CollectionsInGroup(String groupName) global native
 String Function CollectionNameByIndexInGroup(String groupName, int collectionIndex) global native
+String Function CollectionDescriptionByIndexInGroup(String groupName, int collectionIndex) global native
 bool Function CollectionAllowsRepeats(String groupName, String collectionName) global native
 bool Function CollectionNotifies(String groupName, String collectionName) global native
 int Function CollectionAction(String groupName, String collectionName) global native

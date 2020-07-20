@@ -122,6 +122,11 @@ std::string Collection::Name(void) const
 	return m_name;
 }
 
+std::string Collection::Description(void) const
+{
+	return m_description;
+}
+
 std::string Collection::PrintDefinition() const
 {
 	std::ostringstream collectionStr;
@@ -199,6 +204,15 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());
 		}
 	});
+}
+
+std::shared_ptr<Collection> CollectionGroup::CollectionByName(const std::string& collectionName) const
+{
+	const auto matched(std::find_if(m_collections.cbegin(), m_collections.cend(), [&](const std::shared_ptr<Collection>& collection) -> bool
+	{
+		return collection->Name() == collectionName;
+	}));
+	return matched != m_collections.cend()  ? *matched : std::shared_ptr<Collection>();
 }
 
 void CollectionGroup::SyncDefaultPolicy()

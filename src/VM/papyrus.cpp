@@ -419,6 +419,11 @@ namespace papyrus
 		return shse::CollectionManager::Instance().NameByGroupIndex(groupName, collectionIndex);
 	}
 
+	std::string CollectionDescriptionByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
+	{
+		return shse::CollectionManager::Instance().DescriptionByGroupIndex(groupName, collectionIndex);
+	}
+
 	bool CollectionAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
 	{
 		return shse::CollectionManager::Instance().PolicyRepeat(groupName, collectionName);
@@ -569,6 +574,7 @@ namespace papyrus
 		a_vm->RegisterFunction("CollectionGroupFile", SHSE_PROXY, papyrus::CollectionGroupFile);
 		a_vm->RegisterFunction("CollectionsInGroup", SHSE_PROXY, papyrus::CollectionsInGroup);
 		a_vm->RegisterFunction("CollectionNameByIndexInGroup", SHSE_PROXY, papyrus::CollectionNameByIndexInGroup);
+		a_vm->RegisterFunction("CollectionDescriptionByIndexInGroup", SHSE_PROXY, papyrus::CollectionDescriptionByIndexInGroup);
 		a_vm->RegisterFunction("CollectionAllowsRepeats", SHSE_PROXY, papyrus::CollectionAllowsRepeats);
 		a_vm->RegisterFunction("CollectionNotifies", SHSE_PROXY, papyrus::CollectionNotifies);
 		a_vm->RegisterFunction("CollectionAction", SHSE_PROXY, papyrus::CollectionAction);

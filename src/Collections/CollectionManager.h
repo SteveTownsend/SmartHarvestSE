@@ -44,6 +44,7 @@ public:
 	std::string GroupFileByIndex(const int fileIndex) const;
 	int NumberOfCollections(const std::string& groupName) const;
 	std::string NameByGroupIndex(const std::string& groupName, const int collectionIndex) const;
+	std::string DescriptionByGroupIndex(const std::string& groupName, const int collectionIndex) const;
 	static std::string MakeLabel(const std::string& groupName, const std::string& collectionName);
 
 	bool PolicyRepeat(const std::string& groupName, const std::string& collectionName) const;

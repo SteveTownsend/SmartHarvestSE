@@ -362,6 +362,21 @@ std::string CollectionManager::NameByGroupIndex(const std::string& groupName, co
 	return std::string();
 }
 
+std::string CollectionManager::DescriptionByGroupIndex(const std::string& groupName, const int collectionIndex) const
+{
+	std::string collectionName(NameByGroupIndex(groupName, collectionIndex));
+	const auto matchedGroup(m_allGroupsByName.find(groupName));
+	if (matchedGroup != m_allGroupsByName.cend() && !collectionName.empty())
+	{
+		const auto collection(matchedGroup->second->CollectionByName(collectionName));
+		if (collection)
+		{
+			return collection->Description();
+		}
+	}
+	return std::string();
+}
+
 std::string CollectionManager::MakeLabel(const std::string& groupName, const std::string& collectionName)
 {
 	std::ostringstream labelStream;

@@ -104,6 +104,7 @@ int collectionCount
 ; Collection cursor within Group
 int collectionIndex
 string[] collectionNames
+string[] collectionDescriptions
 string lastKnownPolicy
 ; Current Collection state
 int collectibleAction
@@ -433,7 +434,8 @@ Function SetMiscDefaults(bool firstTime)
     valuableItemLoot = 2
     valuableItemThreshold = 500
     InstallCollections()
-    InstallCollectionGroups()
+    InstallCollectionGroupPolicy()
+    InstallCollectionDescriptions()
 EndFunction
 
 Function InstallCollections()
@@ -446,18 +448,18 @@ Function InstallCollections()
     collectionCount = 0
     collectionIndex = 0
     lastKnownPolicy = ""
-
-    ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
-    collectibleAction = 2
-    collectionAddNotify = true
-    collectDuplicates = false
 EndFunction
 
-Function InstallCollectionGroups()
+Function InstallCollectionGroupPolicy()
     ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
     groupCollectibleAction = 2
     groupCollectionAddNotify = true
     groupCollectDuplicates = false
+EndFunction
+
+Function InstallCollectionDescriptions()
+    ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
+    collectionDescriptions = new String[128]
 EndFunction
 
 Function InstallVerticalRadiusAndDoorRule()
@@ -601,7 +603,7 @@ Event OnVersionUpdate(int a_version)
     endIf
     if (a_version >= 32 && CurrentVersion < 32)
         ;defaults for all new settings
-        InstallCollectionGroups()
+        InstallCollectionGroupPolicy()
     endIf
     if (a_version >= 33 && CurrentVersion < 33)
         ;arrow damage loot options - no V/W
@@ -610,6 +612,7 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 34 && CurrentVersion < 34)
         ;adds reset-to-defaults
         InitSettingsFileOptions()
+        InstallCollectionDescriptions()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -746,6 +749,7 @@ Function PopulateCollectionsForGroup(String groupName)
     int index = 0
     while index < collectionCount
         collectionNames[index] = CollectionNameByIndexInGroup(groupName, index)
+        collectionDescriptions[index] = CollectionDescriptionByIndexInGroup(groupName, index)
         index = index + 1
     endWhile
     while index < 128
@@ -1863,8 +1867,8 @@ state chooseCollectionIndex
     endEvent
 
     event OnMenuAcceptST(int index)
-        SetMenuOptionValueST(collectionNames[index])
         collectionIndex = index
+        SetMenuOptionValueST(collectionNames[collectionIndex])
         GetCollectionPolicy(collectionNames[collectionIndex])
     endEvent
 
@@ -1875,7 +1879,7 @@ state chooseCollectionIndex
     endEvent
 
     event OnHighlightST()
-        SetInfoText(collectionNames[collectionIndex])
+        SetInfoText(collectionDescriptions[collectionIndex])
     endEvent
 endState
 
