@@ -18,7 +18,7 @@ Function PutSetting(int m_section_first, int m_section_second, string m_key, flo
 Function PutSettingObjectArrayEntry(int section_first, int section_second, int index, float value) global native
 
 bool Function Reconfigure() global native
-Function LoadIniFile() global native
+Function LoadIniFile(bool useDefaults) global native
 Function SaveIniFile() global native
 
 Function SetLootableForProducer(Form producer, Form lootable) global native

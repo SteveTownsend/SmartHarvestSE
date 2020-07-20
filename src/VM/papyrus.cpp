@@ -234,10 +234,10 @@ namespace papyrus
 		return false;
 	}
 
-	void LoadIniFile(RE::StaticFunctionTag* base)
+	void LoadIniFile(RE::StaticFunctionTag* base, const bool useDefaults)
 	{
 		INIFile* ini = INIFile::GetInstance();
-		if (!ini || !ini->LoadFile())
+		if (!ini || !ini->LoadFile(useDefaults))
 		{
 			REL_ERROR("LoadFile error");
 		}

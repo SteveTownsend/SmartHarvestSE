@@ -226,7 +226,7 @@ function CheckFirstTimeEver()
         ;DebugTrace("CheckFirstTimeEver - init required")
         AllocateItemCategoryArrays()
 
-        LoadIniFile()
+        LoadIniFile(True)
         ApplySettingsFromFile()
 
         g_InitComplete.SetValue(1)
@@ -486,17 +486,22 @@ Function InitPages()
     Pages[5] = "$SHSE_COLLECTIONS_PAGENAME"
 EndFunction
 
+Function InitSettingsFileOptions()
+    s_iniSaveLoadArray = New String[4]
+    iniSaveLoad = 0
+    s_iniSaveLoadArray[0] = "$SHSE_PRESET_DO_NOTHING"
+    s_iniSaveLoadArray[1] = "$SHSE_PRESET_RESTORE"
+    s_iniSaveLoadArray[2] = "$SHSE_PRESET_STORE"
+    s_iniSaveLoadArray[3] = "$SHSE_PRESET_RESET"
+EndFunction
+
 ; called when new game started or mod installed mid-playthrough
 Event OnConfigInit()
     ;DebugTrace("** OnConfigInit start **")
     CheckFirstTimeEver()
 
     ModName = "$SHSE_MOD_NAME"
-
-    s_iniSaveLoadArray = New String[3]
-    s_iniSaveLoadArray[0] = "$SHSE_PRESET_DO_NOTHING"
-    s_iniSaveLoadArray[1] = "$SHSE_PRESET_RESTORE"
-    s_iniSaveLoadArray[2] = "$SHSE_PRESET_STORE"
+    InitSettingsFileOptions()
 
     s_populationCenterArray = New String[4]
     s_populationCenterArray[0] = "$SHSE_POPULATION_ALLOW_IN_ALL"
@@ -550,7 +555,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 33
+    return 34
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -601,6 +606,10 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 33 && CurrentVersion < 33)
         ;arrow damage loot options - no V/W
         InstallDamageLootOptions()
+    endIf
+    if (a_version >= 34 && CurrentVersion < 34)
+        ;adds reset-to-defaults
+        InitSettingsFileOptions()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -1446,7 +1455,10 @@ state iniSaveLoad
             list_warning = "$SHSE_LOAD_WARNING_MSG"
         elseif (index == 2)
             list_warning = "$SHSE_SAVE_WARNING_MSG"
+        elseif (index == 3)
+            list_warning = "$SHSE_RESET_WARNING_MSG"
         else
+            ; no op - user changed their mind
             return
         endif
         bool continue = ShowMessage(list_warning, true, "$SHSE_OK", "$SHSE_CANCEL")
@@ -1454,12 +1466,14 @@ state iniSaveLoad
         if (continue)
             SetMenuOptionValueST(s_iniSaveLoadArray[iniSaveLoad])
             iniSaveLoad = index
-            if (iniSaveLoad == 1) ; load/restore
-                ;DebugTrace("loading from file")
-                LoadIniFile()
+            if (iniSaveLoad == 1) ; load from My Custom Settings file
+                LoadIniFile(False)
                 ApplySettingsFromFile()
-            elseif (iniSaveLoad == 2) ; save/store
+            elseif (iniSaveLoad == 2) ; save to My Custom Settings Files
                 SaveIniFile()
+            elseif (iniSaveLoad == 3) ; load from Default Settings file
+                LoadIniFile(True)
+                ApplySettingsFromFile()
             endif
         endif
     endEvent
