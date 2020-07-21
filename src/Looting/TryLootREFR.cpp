@@ -217,7 +217,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// ** if configured as permitted ** collectible objects are always looted silently
 			if (CanLootCollectible(collectibleAction))
 			{
-				DBG_VMESSAGE("Lootable REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
+				skipLooting = forbidden != Lootability::Lootable;
+				DBG_VMESSAGE("Lootable REFR to collectible 0x%08x, skip = %s", m_candidate->GetBaseObject()->formID,
+				    skipLooting ? "true" : "false");
 				lootingType = LootingType::LootAlwaysSilent;
 			}
 			else
