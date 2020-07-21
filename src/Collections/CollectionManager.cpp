@@ -46,7 +46,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_ready(false), m_enabled(false), m_gameTime(0.0)
+CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false), m_gameTime(0.0)
 {
 }
 
@@ -54,7 +54,7 @@ CollectionManager::CollectionManager() : m_ready(false), m_enabled(false), m_gam
 void CollectionManager::ProcessDefinitions(void)
 {
 	// call only once
-	if (IsActive())
+	if (IsAvailable())
 		return;
 
 	__try {
@@ -72,7 +72,7 @@ void CollectionManager::ProcessDefinitions(void)
 void CollectionManager::Refresh() const
 {
 	// request added items and game time to be pushed to us while we are sleeping
-	if (IsActive())
+	if (IsAvailable())
 		EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
@@ -84,7 +84,7 @@ void CollectionManager::UpdateGameTime(const float gameTime)
 
 void CollectionManager::CheckEnqueueAddedItem(const RE::FormID formID)
 {
-	if (!IsActive())
+	if (!IsAvailable())
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
 	// only pass this along if it is in >= 1 collection
@@ -101,7 +101,7 @@ void CollectionManager::EnqueueAddedItem(const RE::FormID formID)
 
 void CollectionManager::ProcessAddedItems()
 {
-	if (!IsActive())
+	if (!IsAvailable())
 		return;
 
 #ifdef _PROFILING
@@ -149,6 +149,9 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
+		// skip disabled collections
+		if (!collection->second->IsActive())
+			continue;
 		// Do not record if the policy indicates per-item history not required
 		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
 			collection->second->IsMemberOf(form))
@@ -161,7 +164,7 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 
 std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
 {
-	if (!IsActive() || !matcher.Form())
+	if (!IsAvailable() || !matcher.Form())
 		return NotCollectible;
 	RecursiveLockGuard guard(m_collectionLock);
 	if (m_nonCollectionForms.contains(matcher.Form()->GetFormID()))
@@ -181,6 +184,9 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 	bool actionable(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
+		// skip disabled collections
+		if (!collection->second->IsActive())
+			continue;
 		if (collection->second->InScopeAndCollectibleFor(matcher))
 		{
 			actionable = true;
@@ -781,7 +787,6 @@ void CollectionManager::ResolveMembership(void)
 
 					DBG_VMESSAGE("Record %s/0x%08x as collectible", form->GetName(), form->GetFormID());
 					m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection.second));
-					collection.second->AddMemberID(form);
 					if (CollectionManager::Instance().IsPlacedObject(form))
 					{
 						uniquePlaced.insert(form);
@@ -806,10 +811,10 @@ void CollectionManager::OnGameReload()
 	m_lastInventoryItems.clear();
 
 	// logic depends on prior and new state
-	bool wasEnabled(m_enabled);
-	m_enabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
-	REL_MESSAGE("Collections are %s", m_enabled ? "enabled" : "disabled");
-	if (m_enabled)
+	bool wasEnabled(m_mcmEnabled);
+	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
+	REL_MESSAGE("Collections are %s", m_mcmEnabled ? "enabled" : "disabled");
+	if (m_mcmEnabled)
 	{
 		// TODO load Collections data from saved game
 		// Flush membership state to allow testing

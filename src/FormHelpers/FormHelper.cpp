@@ -171,11 +171,4 @@ UInt32 TESFormHelper::GetFormID() const
 	return m_form->formID;
 }
 
-bool IsPlayable(const RE::TESForm* pForm)
-{
-	if (!pForm)
-		return false;
-	return pForm->GetPlayable();
-}
-
 }

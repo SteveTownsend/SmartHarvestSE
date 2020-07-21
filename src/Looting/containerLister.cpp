@@ -73,7 +73,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 			entryData != exChanges->changes->entryList->end(); ++entryData)
 		{
 			RE::TESBoundObject* item = (*entryData)->object;
-			if (!IsPlayable(item))
+			if (!item || !item->GetPlayable())
 				continue;
 
 			RE::TESFullName* fullName = item->As<RE::TESFullName>();

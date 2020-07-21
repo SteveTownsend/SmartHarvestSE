@@ -81,6 +81,4 @@ inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectT
 	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
 }
 
-bool IsPlayable(const RE::TESForm * pForm);
-
 }

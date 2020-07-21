@@ -40,9 +40,10 @@ void to_json(nlohmann::json& j, const CollectionPolicy& policy)
 	policy.AsJSON(j);
 }
 
-Collection::Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
-	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
-	m_name(name), m_description(description), m_effectivePolicy(policy), m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
+Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
+	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
+	m_owningGroup(owningGroup), m_name(name), m_description(description), m_effectivePolicy(policy),
+	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
 	// if this collection has static members, add them now to seed the list
 	m_members = m_rootFilter->StaticMembers();
@@ -77,6 +78,12 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 
 	// if (always collectible OR not observed) AND a member of this collection
 	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
+}
+
+bool Collection::IsActive() const
+{
+	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
+	return !m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled();
 }
 
 bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
@@ -200,7 +207,7 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 	{
 		try {
 			// Group Policy is the default for Group Member Collection
-			m_collections.push_back(CollectionFactory::Instance().ParseCollection(collection, m_policy));
+			m_collections.push_back(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
 		}
 		catch (const std::exception& exc) {
 			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());

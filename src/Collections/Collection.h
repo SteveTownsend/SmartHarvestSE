@@ -27,6 +27,8 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse {
 
+class CollectionGroup;
+
 class CollectionEntry {
 public:
 	CollectionEntry(const RE::TESForm* form, const float gameTime, const RE::TESForm* place, const Position position) :
@@ -71,6 +73,7 @@ void to_json(nlohmann::json& j, const CollectionPolicy& collection);
 class Collection {
 protected:
 	size_t PlacedMembers(void) const;
+	bool AddMemberID(const RE::TESForm* form) const;
 
 	// inputs
 	std::string m_name;
@@ -83,14 +86,15 @@ protected:
 	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
 	mutable std::unordered_set<const RE::TESForm*> m_members;
 	std::vector<INIFile::SecondaryType> m_scopes;
+	const CollectionGroup* m_owningGroup;
 
 public:
-	Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
-		const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
+	Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
+		const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
+	bool IsActive() const;
 	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
 	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
-	bool AddMemberID(const RE::TESForm* form) const;
 	inline const CollectionPolicy& Policy() const { return m_effectivePolicy; }
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
 	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }

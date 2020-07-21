@@ -155,14 +155,15 @@ std::unique_ptr<ConditionTree> CollectionFactory::ParseFilter(const nlohmann::js
 	return root;
 }
 
-std::shared_ptr<Collection> CollectionFactory::ParseCollection(const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const
+std::shared_ptr<Collection> CollectionFactory::ParseCollection(
+	const CollectionGroup* owningGroup, const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const
 {
 	const auto policy(collection.find("policy"));
 	const std::string name(collection["name"].get<std::string>());
 	bool overridesPolicy(policy != collection.cend());
 	DBG_VMESSAGE("Collection %s, overrides Policy = %s", name.c_str(), overridesPolicy ? "true" : "false");
 
-	return std::make_shared<Collection>(name, collection["description"].get<std::string>(),
+	return std::make_shared<Collection>(owningGroup, name, collection["description"].get<std::string>(),
 		policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, overridesPolicy, ParseFilter(collection["rootFilter"], 0));
 }
 

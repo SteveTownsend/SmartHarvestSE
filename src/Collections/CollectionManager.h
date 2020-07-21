@@ -34,7 +34,7 @@ public:
 	void UpdateGameTime(const float gameTime);
 	void CheckEnqueueAddedItem(const RE::FormID formID);
 	void ProcessAddedItems();
-	inline bool IsActive() const { return m_enabled && m_ready; }
+	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
 	void OnGameReload(void);
 	void PrintDefinitions(void) const;
@@ -83,8 +83,10 @@ private:
 	void EnqueueAddedItem(const RE::FormID formID);
 
 	static std::unique_ptr<CollectionManager> m_instance;
+	// data loaded ok?
 	bool m_ready;
-	bool m_enabled;
+	// enabled for MCM management? if false, administrative Collection Groups will still be used
+	bool m_mcmEnabled;
 	float m_gameTime;
 
 	mutable RecursiveLock m_collectionLock;

@@ -166,7 +166,7 @@ void DumpContainer(const LootableREFR& refr)
 			}
 			else
 			{
-				bool bPlayable = IsPlayable(itemEx.Form());
+				bool bPlayable = itemEx.Form()->GetPlayable();
 				const RE::TESFullName* name = itemEx.Form()->As<RE::TESFullName>();
 				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form()));
 
@@ -193,7 +193,7 @@ void DumpContainer(const LootableREFR& refr)
 		{
 			TESFormHelper itemEx(const_cast<RE::InventoryEntryData*>(entryData)->GetObject(), refr.Scope());
 
-			bool bPlayable = IsPlayable(itemEx.Form());
+			bool bPlayable = itemEx.Form()->GetPlayable();
 			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form()));
 			const RE::TESFullName *name = itemEx.Form()->As<RE::TESFullName>();
 			DBG_MESSAGE("ExtraContainerChanges %08x [%s] %p count=%d playable=%d  - %s", itemEx.Form()->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());

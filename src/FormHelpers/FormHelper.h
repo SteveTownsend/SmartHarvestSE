@@ -48,14 +48,4 @@ protected:
 	virtual SInt32 CalculateWorth(void) const override;
 };
 
-bool IsPlayable(const RE::TESForm* pForm);
-
-template <typename FORM> RE::BGSKeywordForm* KeywordFormCast(const RE::TESForm* form)
-{
-	FORM* waypoint(form->As<FORM>());
-	if (waypoint)
-		return waypoint->As<RE::BGSKeywordForm>();
-	return nullptr;
-}
-
 }
