@@ -341,7 +341,7 @@ enum class Lootability {
 	ManualLootTarget,
 	BaseObjectOnBlacklist,
 	CannotLootQuestObject,
-	CannotLootCollectibleObject,
+	ObjectIsInBlacklistCollection,
 	CannotLootValuableObject,
 	CannotLootAmmo,
 	PlayerOwned,
@@ -363,10 +363,11 @@ enum class Lootability {
 	ContainerHasValuableObject,
 	ContainerIsBlacklisted,
 	CannotGetAshPile,
+	ProducerHasNoLootable,
 	MAX
 };
 
-inline bool LootIfCollectible(const Lootability lootability)
+inline bool LootOwnedItemIfCollectible(const Lootability lootability)
 {
 	return lootability == Lootability::PlayerOwned ||
 		lootability == Lootability::CellOrItemOwnerPreventsOwnerlessLooting;

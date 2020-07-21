@@ -103,10 +103,17 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				{
 					DBG_VMESSAGE("glow collectible object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 					UpdateGlowReason(GlowReason::Collectible);
+					result = Lootability::CollectibleItemSetToGlow;
 				}
 				else
 				{
-					result = Lootability::CannotLootCollectibleObject;
+					if (!dryRun)
+					{
+						// this is a blacklist collection, blacklist the item forever
+						DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
+						data->BlockFormPermanently(m_candidate->GetBaseObject(), Lootability::ObjectIsInBlacklistCollection);
+					}
+					return Lootability::ObjectIsInBlacklistCollection;
 				}
 			}
 		}
@@ -208,38 +215,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			CollectibleHandling collectibleAction(collectible.second);
 			// ** if configured as permitted ** collectible objects are always looted silently
-			DBG_VMESSAGE("check REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
-			skipLooting = forbidden != Lootability::Lootable || !CanLootCollectible(collectibleAction);
-			if (!CanLootCollectible(collectibleAction))
+			if (CanLootCollectible(collectibleAction))
 			{
-				lootingType = LootingType::LeaveBehind;
-				// skipLooting is true by construction
-				if (collectibleAction == CollectibleHandling::Leave)
-				{
-					if (!dryRun)
-					{
-						// this is a blacklist collection
-						DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
-						data->BlockForm(m_candidate->GetBaseObject());
-					}
-					result = Lootability::ItemInBlacklistCollection;
-				}
-				else if (collectibleAction == CollectibleHandling::Print)
-				{
-					if (!dryRun)
-					{
-						ProcessManualLootItem(m_candidate);
-					}
-					result = Lootability::ManualLootTarget;
-				}
-				else
-				{
-					result = Lootability::CollectibleItemSetToGlow;
-				}
-			}
-			else if (!skipLooting)
-			{
+				DBG_VMESSAGE("Lootable REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
 				lootingType = LootingType::LootAlwaysSilent;
+			}
+			else
+			{
+				DBG_VMESSAGE("Unlootable REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
+				skipLooting = true;
 			}
 		}
 		else if (ManagedList::WhiteList().Contains(m_candidate->GetBaseObject()))
@@ -285,7 +269,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					if (!dryRun)
 					{
 						DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
-						data->BlockForm(m_candidate->GetBaseObject());
+						data->BlockForm(m_candidate->GetBaseObject(), Lootability::ValueWeightPreventsLooting);
 					}
 					skipLooting = true;
 					result = Lootability::ValueWeightPreventsLooting;
@@ -592,14 +576,14 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				if (lootingType == LootingType::LeaveBehind)
 				{
 					DBG_VMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
-					data->BlockForm(target);
+					data->BlockForm(target, Lootability::ItemTypeIsSetToPreventLooting);
 					continue;
 				}
 				else if (LootingDependsOnValueWeight(lootingType, objType) &&
 					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot())
 				{
 					DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
-					data->BlockForm(target);
+					data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
 					continue;
 				}
 			}
@@ -742,9 +726,9 @@ void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bo
 Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible)
 {
 	Lootability result(LootingLegality(INIFile::SecondaryType::itemObjects));
-	if (isCollectible && LootIfCollectible(result))
+	if (isCollectible && LootOwnedItemIfCollectible(result))
 	{
-		DBG_VMESSAGE("Collectible REFR 0x%08x overrides Legality %s for %s/0x%08x", m_candidate->GetFormID(), LootabilityName(result),
+		DBG_VMESSAGE("Collectible REFR 0x%08x overrides Legality %s for %s/0x%08x", m_candidate->GetFormID(), LootabilityName(result).c_str(),
 			m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID());
 		result = Lootability::Lootable;
 	}

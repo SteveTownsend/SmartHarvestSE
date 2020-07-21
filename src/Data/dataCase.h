@@ -43,17 +43,18 @@ public:
 	void ForgetFirehoseSources();
 
 	bool BlockReference(const RE::TESObjectREFR* refr, const Lootability reason);
-	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr);
+	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr) const;
 	void ClearBlockedReferences(const bool gameReload);
 
 	// permanent REFR blacklist, reset on game reload
 	bool BlacklistReference(const RE::TESObjectREFR* refr);
-	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr);
+	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const;
 	void ClearReferenceBlacklist();
 
-	bool BlockForm(const RE::TESForm* form);
-	bool IsFormBlocked(const RE::TESForm* form);
+	bool BlockForm(const RE::TESForm* form, const Lootability reason);
+	Lootability IsFormBlocked(const RE::TESForm* form) const;
 	void ResetBlockedForms();
+	bool BlockFormPermanently(const RE::TESForm* form, const Lootability reason);
 
 	bool ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const;
 
@@ -109,8 +110,8 @@ private:
 	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
 	std::unordered_set<const RE::TESObjectREFR*> m_offLimitsContainers;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
-	std::unordered_set<const RE::TESForm*> m_permanentBlockedForms;
-	std::unordered_set<const RE::TESForm*> m_blockForm;
+	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
+	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_map<RE::FormID, Lootability> m_blockRefr;
 	std::unordered_set<RE::FormID> m_blacklistRefr;
@@ -433,8 +434,6 @@ private:
 		}
 		return typedForm;
 	}
-
-	RE::TESForm* FindExactMatchRaw(const std::string& defaultESP, const RE::FormID maskedFormID);
 
 	template <typename T>
 	T* FindBestMatch(const std::string& defaultESP, const RE::FormID maskedFormID, const std::string& name)
