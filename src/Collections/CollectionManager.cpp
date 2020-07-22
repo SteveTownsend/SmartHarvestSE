@@ -647,8 +647,9 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 }
 
-// This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we can check again then.
-// TODO check if this does work on cell load, and that the REFRs are still valid after we relocate
+// This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we can
+// check again then.
+// TODO check if this does work on cell load, and that the REFRs are still valid after we change location
 void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 {
 	if (!m_checkedForPlacedObjects.insert(cell).second)

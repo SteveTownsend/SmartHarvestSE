@@ -114,11 +114,10 @@ bool IsPlayerOwned(const RE::TESObjectREFR* refr)
 void ProcessManualLootItem(const RE::TESObjectREFR* refr)
 {
 	// notify about these, just once
-	std::string notificationText;
 	static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));
 	if (!manualLootText.empty())
 	{
-		notificationText = manualLootText;
+		std::string notificationText(manualLootText);
 		StringUtils::Replace(notificationText, "{ITEMNAME}", refr->GetName());
 		if (!notificationText.empty())
 		{
