@@ -100,6 +100,8 @@ private:
 	std::unordered_set<const RE::TESForm*> m_placedItems;
 	std::unordered_multimap<const RE::TESForm*, const RE::TESObjectREFR*> m_placedObjects;
 	std::unordered_set<const RE::TESObjectCELL*> m_checkedForPlacedObjects;
+	// for CELL connectivity checking during data load
+	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 
 	std::vector<RE::FormID> m_addedItemQueue;
 	std::unordered_set<RE::FormID> m_lastInventoryItems;

@@ -647,6 +647,8 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 }
 
+// This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we can check again then.
+// TODO check if this does work on cell load, and that the REFRs are still valid after we relocate
 void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 {
 	if (!m_checkedForPlacedObjects.insert(cell).second)
@@ -664,32 +666,19 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 			const RE::TESObjectREFR* refr(refptr.get());
 			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
 			{
-				if (refr->extraList.HasType<RE::ExtraTeleport>())
+				// check Worldspace connection
+				const auto linkage(m_linkingDoors.find(refr));
+				if (linkage != m_linkingDoors.cend())
 				{
-					const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
-					const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
-					if (!target)
+					if (linkage->second->parentCell && IsCellLocatable(linkage->second->parentCell))
 					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via RefHandle %d", refr->GetFormID(),
-							FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), teleport->teleportData->linkedDoor);
-						continue;
+						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x can teleport via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+							cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second->parentCell).c_str(), linkage->second->parentCell->GetFormID());
+						connected = true;
+						break;
 					}
-					if (!target->parentCell)
-					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via REFR 0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-							cell->GetFormID(), target->GetFormID());
-						continue;
-					}
-					if (!IsCellLocatable(target->parentCell))
-					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
-						continue;
-					}
-					DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport connects to CELL %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-						cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
-					connected = true;
-					break;
+					DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x cannot teleport via REFR %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+						cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second).c_str(), linkage->second->GetFormID());
 				}
 			}
 		}
@@ -711,6 +700,9 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 // TODO might miss some stray CELLs
 bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 {
+#if 1
+	return true;
+#else
 	const RE::ExtraLocation* extraLocation(cell->extraList.GetByType<RE::ExtraLocation>());
 	if (extraLocation && extraLocation->location)
 	{
@@ -725,6 +717,7 @@ bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 	}
 	DBG_VMESSAGE("CELL %s/0x%08x unlocatable", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
 	return false;
+#endif
 }
 
 void CollectionManager::RecordPlacedObjects(void)
@@ -734,6 +727,70 @@ void CollectionManager::RecordPlacedObjects(void)
 #endif
 
 	// list all placed objects of interest for Collections - don't quest for anything we cannot see
+	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
+	{
+		if (!worldSpace->persistentCell)
+			continue;
+		// find all DOORs in the persistent CELL, these link other CELLs
+		DBG_MESSAGE("Search for DOORs %d REFRs in persistent cell for WorldSpace %s/0x%08x", worldSpace->persistentCell->references.size(), worldSpace->GetName(), worldSpace->GetFormID());
+		for (const auto& refPtr : worldSpace->persistentCell->references)
+		{
+			const RE::TESObjectREFR* refr(refPtr.get());
+			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
+			{
+				if (refr->extraList.HasType<RE::ExtraTeleport>())
+				{
+					// Store door link representing entry from either direction
+					const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
+					const RE::TESObjectREFR* targetDoorRefr(teleport->teleportData->linkedDoor.get().get());
+					m_linkingDoors.insert({ refr, targetDoorRefr });
+					m_linkingDoors.insert({ targetDoorRefr, refr });
+					DBG_VMESSAGE("Linking Doors 0x%08x and 0x%08x", refr->GetFormID(), targetDoorRefr->GetFormID());
+				}
+			}
+		}
+		// check direct CELL to CELL connection
+		for (const auto cellEntry : worldSpace->cellMap)
+		{
+			const auto cell(cellEntry.second);
+			for (const auto& refPtr : cell->references)
+			{
+				const RE::TESObjectREFR* refr(refPtr.get());
+				if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
+				{
+					if (refr->extraList.HasType<RE::ExtraTeleport>())
+					{
+						const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
+						const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
+						if (!target)
+						{
+							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via RefHandle 0x%08x", refr->GetFormID(),
+								FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), teleport->teleportData->linkedDoor);
+							continue;
+						}
+						if (!target->parentCell)
+						{
+							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via REFR 0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+								cell->GetFormID(), target->GetFormID());
+							continue;
+						}
+						if (!IsCellLocatable(target->parentCell))
+						{
+							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+								cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
+							continue;
+						}
+						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport connects to CELL %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
+						m_linkingDoors.insert({ refr, target });
+						m_linkingDoors.insert({ target, refr });
+					}
+				}
+			}
+		}
+	}
+
+	// Process CELLs now linking DOORs are identified
 	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
 		DBG_MESSAGE("Process %d CELLs in WorldSpace Map for %s/0x%08x", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
@@ -809,23 +866,19 @@ void CollectionManager::OnGameReload()
 	RecursiveLockGuard guard(m_collectionLock);
 	/// reset player inventory last-known-good
 	m_lastInventoryItems.clear();
+	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
+	m_addedItemQueue.clear();
+
+	m_gameTime = 0.0;
 
 	// logic depends on prior and new state
-	bool wasEnabled(m_mcmEnabled);
 	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
-	REL_MESSAGE("Collections are %s", m_mcmEnabled ? "enabled" : "disabled");
-	if (m_mcmEnabled)
+	REL_MESSAGE("User Collections are %s", m_mcmEnabled ? "enabled" : "disabled");
+	// TODO load Collections data from saved game
+	// Flush membership state to allow testing
+	for (auto collection : m_allCollectionsByLabel)
 	{
-		// TODO load Collections data from saved game
-		// Flush membership state to allow testing
-		for (auto collection : m_allCollectionsByLabel)
-		{
-			collection.second->Reset();
-		}
-	}
-	else
-	{
-		// TODO maybe more state to clean out
+		collection.second->Reset();
 	}
 }
 
