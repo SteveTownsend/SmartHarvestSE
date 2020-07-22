@@ -30,7 +30,7 @@ namespace shse
 
 void CollectionPolicy::AsJSON(nlohmann::json& j) const
 {
-	j["action"] = SpecialObjectHandlingJSON(m_action);
+	j["action"] = CollectibleHandlingJSON(m_action);
 	j["notify"] = m_notify;
 	j["repeat"] = m_repeat;
 }
@@ -40,10 +40,13 @@ void to_json(nlohmann::json& j, const CollectionPolicy& policy)
 	policy.AsJSON(j);
 }
 
-Collection::Collection(const std::string& name, const std::string& description, const CollectionPolicy& policy,
-	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
-	m_name(name), m_description(description), m_effectivePolicy(policy), m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
+Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
+	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
+	m_owningGroup(owningGroup), m_name(name), m_description(description), m_effectivePolicy(policy),
+	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
+	// if this collection has static members, add them now to seed the list
+	m_members = m_rootFilter->StaticMembers();
 }
 
 bool Collection::AddMemberID(const RE::TESForm* form)const 
@@ -75,6 +78,12 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 
 	// if (always collectible OR not observed) AND a member of this collection
 	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
+}
+
+bool Collection::IsActive() const
+{
+	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
+	return !m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled();
 }
 
 bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
@@ -120,6 +129,11 @@ void Collection::Reset()
 std::string Collection::Name(void) const
 {
 	return m_name;
+}
+
+std::string Collection::Description(void) const
+{
+	return m_description;
 }
 
 std::string Collection::PrintDefinition() const
@@ -193,12 +207,21 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 	{
 		try {
 			// Group Policy is the default for Group Member Collection
-			m_collections.push_back(CollectionFactory::Instance().ParseCollection(collection, m_policy));
+			m_collections.push_back(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
 		}
 		catch (const std::exception& exc) {
 			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());
 		}
 	});
+}
+
+std::shared_ptr<Collection> CollectionGroup::CollectionByName(const std::string& collectionName) const
+{
+	const auto matched(std::find_if(m_collections.cbegin(), m_collections.cend(), [&](const std::shared_ptr<Collection>& collection) -> bool
+	{
+		return collection->Name() == collectionName;
+	}));
+	return matched != m_collections.cend()  ? *matched : std::shared_ptr<Collection>();
 }
 
 void CollectionGroup::SyncDefaultPolicy()

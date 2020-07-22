@@ -178,7 +178,9 @@ void DataCase::StoreActivationVerbs()
 	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_CRITTER", ObjectType::critter);
 	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_FLORA", ObjectType::flora);
 	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_OREVEIN", ObjectType::oreVein);
-	ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
+	// https://github.com/SteveTownsend/SmartHarvestSE/issues/133
+	// retired in favour of Collections-based solution
+	//ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
 }
 
 ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activationText) const
@@ -583,8 +585,7 @@ void DataCase::GetAmmoData()
 			continue;
 		}
 
-		std::string name;
-		name = PluginUtils::GetBaseName(ammo);
+		std::string name(ammo->GetName());
 		if (name.empty())
 		{
 			DBG_VMESSAGE("base name empty");
@@ -630,7 +631,7 @@ bool DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability r
 	return (m_blockRefr.insert({ refr->GetFormID(), reason })).second;
 }
 
-Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr)
+Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return Lootability::NullReference;
@@ -689,7 +690,7 @@ bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 	return (m_blacklistRefr.insert(refr->GetFormID())).second;
 }
 
-bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr)
+bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
@@ -707,7 +708,7 @@ void DataCase::ClearReferenceBlacklist()
 	m_blacklistRefr.clear();
 }
 
-bool DataCase::BlockForm(const RE::TESForm* form)
+bool DataCase::BlockForm(const RE::TESForm* form, const Lootability reason)
 {
 	if (!form)
 		return false;
@@ -715,25 +716,43 @@ bool DataCase::BlockForm(const RE::TESForm* form)
 	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (m_blockForm.insert(form)).second;
+	return (m_blockForm.insert({ form, reason })).second;
 }
 
-bool DataCase::IsFormBlocked(const RE::TESForm* form)
+Lootability DataCase::IsFormBlocked(const RE::TESForm* form) const
 {
 	if (!form)
-		return false;
+		return Lootability::NullReference;
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (form->IsDynamicForm())
-		return false;
+		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_blockForm.contains(form);
+	const auto matched(m_blockForm.find(form));
+	if (matched != m_blockForm.cend())
+	{
+		return matched->second;
+	}
+	return Lootability::Lootable;
 }
 
 void DataCase::ResetBlockedForms()
 {
 	DBG_MESSAGE("Reset Blocked Forms");
 	RecursiveLockGuard guard(m_blockListLock);
-	m_blockForm.clear();
+	m_blockForm = m_permanentBlockedForms;
+}
+
+// used for BlackList Collections. Also blocks the form for this loaded game, and on reload.
+bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability reason)
+{
+	if (!form)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (form->IsDynamicForm())
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	BlockForm(form, reason);
+	return (m_permanentBlockedForms.insert({ form, reason })).second;
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const

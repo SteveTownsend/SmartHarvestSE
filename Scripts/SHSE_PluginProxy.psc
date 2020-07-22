@@ -7,7 +7,8 @@ string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
-Function BlockFirehose(ObjectReference refr)  global native
+Function BlockFirehose(ObjectReference refr) global native
+Function NotifyManualLootItem(ObjectReference manualREFR) global native
 
 string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypeByName(string name) global native
@@ -18,7 +19,7 @@ Function PutSetting(int m_section_first, int m_section_second, string m_key, flo
 Function PutSettingObjectArrayEntry(int section_first, int section_second, int index, float value) global native
 
 bool Function Reconfigure() global native
-Function LoadIniFile() global native
+Function LoadIniFile(bool useDefaults) global native
 Function SaveIniFile() global native
 
 Function SetLootableForProducer(Form producer, Form lootable) global native
@@ -45,6 +46,7 @@ String Function CollectionGroupName(int fileIndex) global native
 String Function CollectionGroupFile(int fileIndex) global native
 int Function CollectionsInGroup(String groupName) global native
 String Function CollectionNameByIndexInGroup(String groupName, int collectionIndex) global native
+String Function CollectionDescriptionByIndexInGroup(String groupName, int collectionIndex) global native
 bool Function CollectionAllowsRepeats(String groupName, String collectionName) global native
 bool Function CollectionNotifies(String groupName, String collectionName) global native
 int Function CollectionAction(String groupName, String collectionName) global native

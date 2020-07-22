@@ -104,8 +104,10 @@ int collectionCount
 ; Collection cursor within Group
 int collectionIndex
 string[] collectionNames
+string[] collectionDescriptions
 string lastKnownPolicy
 ; Current Collection state
+string[] s_collectibleActions
 int collectibleAction
 bool collectionAddNotify
 bool collectDuplicates
@@ -226,7 +228,7 @@ function CheckFirstTimeEver()
         ;DebugTrace("CheckFirstTimeEver - init required")
         AllocateItemCategoryArrays()
 
-        LoadIniFile()
+        LoadIniFile(True)
         ApplySettingsFromFile()
 
         g_InitComplete.SetValue(1)
@@ -433,7 +435,8 @@ Function SetMiscDefaults(bool firstTime)
     valuableItemLoot = 2
     valuableItemThreshold = 500
     InstallCollections()
-    InstallCollectionGroups()
+    InstallCollectionGroupPolicy()
+    InstallCollectionDescriptionsActions()
 EndFunction
 
 Function InstallCollections()
@@ -446,18 +449,23 @@ Function InstallCollections()
     collectionCount = 0
     collectionIndex = 0
     lastKnownPolicy = ""
-
-    ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
-    collectibleAction = 2
-    collectionAddNotify = true
-    collectDuplicates = false
 EndFunction
 
-Function InstallCollectionGroups()
+Function InstallCollectionGroupPolicy()
     ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
     groupCollectibleAction = 2
     groupCollectionAddNotify = true
     groupCollectDuplicates = false
+EndFunction
+
+Function InstallCollectionDescriptionsActions()
+    ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
+    collectionDescriptions = new String[128]
+    ; do not allow Print in MCM
+    s_collectibleActions = New String[3]
+    s_collectibleActions[0] = "$SHSE_DONT_PICK_UP"
+    s_collectibleActions[1] = "$SHSE_PICK_UP"
+    s_collectibleActions[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
 EndFunction
 
 Function InstallVerticalRadiusAndDoorRule()
@@ -486,17 +494,22 @@ Function InitPages()
     Pages[5] = "$SHSE_COLLECTIONS_PAGENAME"
 EndFunction
 
+Function InitSettingsFileOptions()
+    s_iniSaveLoadArray = New String[4]
+    iniSaveLoad = 0
+    s_iniSaveLoadArray[0] = "$SHSE_PRESET_DO_NOTHING"
+    s_iniSaveLoadArray[1] = "$SHSE_PRESET_RESTORE"
+    s_iniSaveLoadArray[2] = "$SHSE_PRESET_STORE"
+    s_iniSaveLoadArray[3] = "$SHSE_PRESET_RESET"
+EndFunction
+
 ; called when new game started or mod installed mid-playthrough
 Event OnConfigInit()
     ;DebugTrace("** OnConfigInit start **")
     CheckFirstTimeEver()
 
     ModName = "$SHSE_MOD_NAME"
-
-    s_iniSaveLoadArray = New String[3]
-    s_iniSaveLoadArray[0] = "$SHSE_PRESET_DO_NOTHING"
-    s_iniSaveLoadArray[1] = "$SHSE_PRESET_RESTORE"
-    s_iniSaveLoadArray[2] = "$SHSE_PRESET_STORE"
+    InitSettingsFileOptions()
 
     s_populationCenterArray = New String[4]
     s_populationCenterArray[0] = "$SHSE_POPULATION_ALLOW_IN_ALL"
@@ -550,7 +563,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 33
+    return 34
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -596,11 +609,16 @@ Event OnVersionUpdate(int a_version)
     endIf
     if (a_version >= 32 && CurrentVersion < 32)
         ;defaults for all new settings
-        InstallCollectionGroups()
+        InstallCollectionGroupPolicy()
     endIf
     if (a_version >= 33 && CurrentVersion < 33)
         ;arrow damage loot options - no V/W
         InstallDamageLootOptions()
+    endIf
+    if (a_version >= 34 && CurrentVersion < 34)
+        ;adds reset-to-defaults
+        InitSettingsFileOptions()
+        InstallCollectionDescriptionsActions()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -699,7 +717,7 @@ EndFunction
 
 Function SyncCollectionPolicyUI()
         SetToggleOptionValueST(collectDuplicates, false, "collectDuplicates")
-        SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction], false, "collectibleAction")
+        SetTextOptionValueST(s_collectibleActions[collectibleAction], false, "collectibleAction")
         SetToggleOptionValueST(collectionAddNotify, false, "collectionAddNotify")
         string displayCollected = Replace(Replace(GetTranslation("$SHSE_COLLECTION_PROGRESS"), "{TOTAL}", collectionTotal), "{OBTAINED}", collectionObtained)
         SetTextOptionValueST(displayCollected, false, "itemsCollected")
@@ -719,7 +737,7 @@ EndFunction
 
 Function SyncCollectionGroupPolicyUI()
     SetToggleOptionValueST(groupCollectDuplicates, false, "groupCollectDuplicates")
-    SetTextOptionValueST(s_specialObjectHandlingArray[groupCollectibleAction], false, "groupCollectibleAction")
+    SetTextOptionValueST(s_collectibleActions[groupCollectibleAction], false, "groupCollectibleAction")
     SetToggleOptionValueST(groupCollectionAddNotify, false, "groupCollectionAddNotify")
 EndFunction
 
@@ -737,6 +755,7 @@ Function PopulateCollectionsForGroup(String groupName)
     int index = 0
     while index < collectionCount
         collectionNames[index] = CollectionNameByIndexInGroup(groupName, index)
+        collectionDescriptions[index] = CollectionDescriptionByIndexInGroup(groupName, index)
         index = index + 1
     endWhile
     while index < 128
@@ -925,7 +944,7 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_COLLECTIONS_GLOBAL_HEADER")
         AddToggleOptionST("collectionsEnabled", "$SHSE_COLLECTIONS_ENABLED", collectionsEnabled)
         AddMenuOptionST("chooseCollectionGroup", "$SHSE_CHOOSE_COLLECTION_GROUP", initialGroupName, flags)
-        AddTextOptionST("groupCollectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_specialObjectHandlingArray[groupCollectibleAction], flags)
+        AddTextOptionST("groupCollectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_collectibleActions[groupCollectibleAction], flags)
         AddToggleOptionST("groupCollectionAddNotify", "$SHSE_COLLECTION_ADD_NOTIFY", groupCollectionAddNotify, flags)
         AddToggleOptionST("groupCollectDuplicates", "$SHSE_COLLECT_DUPLICATES", groupCollectDuplicates, flags)
 
@@ -933,7 +952,7 @@ event OnPageReset(string currentPage)
         SetCursorPosition(1)
         AddHeaderOption("$SHSE_COLLECTION_GROUP_HEADER")
         AddMenuOptionST("chooseCollectionIndex", "$SHSE_CHOOSE_COLLECTION", "", flags)
-        AddTextOptionST("collectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_specialObjectHandlingArray[collectibleAction], flags)
+        AddTextOptionST("collectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_collectibleActions[collectibleAction], flags)
         AddToggleOptionST("collectionAddNotify", "$SHSE_COLLECTION_ADD_NOTIFY", collectionAddNotify, flags)
         AddToggleOptionST("collectDuplicates", "$SHSE_COLLECT_DUPLICATES", collectDuplicates, flags)
         AddTextOptionST("itemsCollected", "", "", flags)
@@ -1446,7 +1465,10 @@ state iniSaveLoad
             list_warning = "$SHSE_LOAD_WARNING_MSG"
         elseif (index == 2)
             list_warning = "$SHSE_SAVE_WARNING_MSG"
+        elseif (index == 3)
+            list_warning = "$SHSE_RESET_WARNING_MSG"
         else
+            ; no op - user changed their mind
             return
         endif
         bool continue = ShowMessage(list_warning, true, "$SHSE_OK", "$SHSE_CANCEL")
@@ -1454,12 +1476,14 @@ state iniSaveLoad
         if (continue)
             SetMenuOptionValueST(s_iniSaveLoadArray[iniSaveLoad])
             iniSaveLoad = index
-            if (iniSaveLoad == 1) ; load/restore
-                ;DebugTrace("loading from file")
-                LoadIniFile()
+            if (iniSaveLoad == 1) ; load from My Custom Settings file
+                LoadIniFile(False)
                 ApplySettingsFromFile()
-            elseif (iniSaveLoad == 2) ; save/store
+            elseif (iniSaveLoad == 2) ; save to My Custom Settings Files
                 SaveIniFile()
+            elseif (iniSaveLoad == 3) ; load from Default Settings file
+                LoadIniFile(True)
+                ApplySettingsFromFile()
             endif
         endif
     endEvent
@@ -1849,8 +1873,8 @@ state chooseCollectionIndex
     endEvent
 
     event OnMenuAcceptST(int index)
-        SetMenuOptionValueST(collectionNames[index])
         collectionIndex = index
+        SetMenuOptionValueST(collectionNames[collectionIndex])
         GetCollectionPolicy(collectionNames[collectionIndex])
     endEvent
 
@@ -1861,21 +1885,21 @@ state chooseCollectionIndex
     endEvent
 
     event OnHighlightST()
-        SetInfoText(collectionNames[collectionIndex])
+        SetInfoText(collectionDescriptions[collectionIndex])
     endEvent
 endState
 
 state groupCollectibleAction
     event OnSelectST()
-        int size = s_specialObjectHandlingArray.length
+        int size = s_collectibleActions.length
         groupCollectibleAction = CycleInt(groupCollectibleAction, size)
-        SetTextOptionValueST(s_specialObjectHandlingArray[groupCollectibleAction])
+        SetTextOptionValueST(s_collectibleActions[groupCollectibleAction])
         PutCollectionGroupAction(collectionGroupNames[collectionGroup], groupCollectibleAction)
     endEvent
 
     event OnDefaultST()
         groupCollectibleAction = 2
-        SetTextOptionValueST(s_specialObjectHandlingArray[groupCollectibleAction])
+        SetTextOptionValueST(s_collectibleActions[groupCollectibleAction])
         PutCollectionGroupAction(collectionGroupNames[collectionGroup], groupCollectibleAction)
     endEvent
 
@@ -1924,13 +1948,13 @@ state collectibleAction
     event OnSelectST()
         int size = s_specialObjectHandlingArray.length
         collectibleAction = CycleInt(collectibleAction, size)
-        SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction])
+        SetTextOptionValueST(s_collectibleActions[collectibleAction])
         PutCollectionAction(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectibleAction)
     endEvent
 
     event OnDefaultST()
         collectibleAction = 2
-        SetTextOptionValueST(s_specialObjectHandlingArray[collectibleAction])
+        SetTextOptionValueST(s_collectibleActions[collectibleAction])
         PutCollectionAction(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectibleAction)
     endEvent
 

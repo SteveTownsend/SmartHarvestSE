@@ -44,6 +44,7 @@ private:
 bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsPlayerOwned(const RE::TESObjectREFR* refr);
+void ProcessManualLootItem(const RE::TESObjectREFR* refr);
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsLocked(const RE::TESObjectREFR * refr);
@@ -79,7 +80,5 @@ inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectT
 	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.
 	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
 }
-
-bool IsPlayable(const RE::TESForm * pForm);
 
 }

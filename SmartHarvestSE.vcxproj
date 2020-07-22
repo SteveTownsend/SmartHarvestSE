@@ -302,12 +302,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas" />
+    <None Include="Collections\Examples\SHSE.Collections.BlackList.json" />
     <None Include="Collections\Examples\SHSE.Collections.Errors.json" />
     <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
     <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
+    <None Include="Collections\Examples\SHSE.Collections.ManualLoot.json" />
     <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
     <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
     <None Include="Collections\Schema\SHSE.SchemaCollections.json" />
+    <None Include="Config\SmartHarvestSE.Defaults.ini" />
     <None Include="Config\SmartHarvestSE.ini" />
     <None Include="exports.def" />
     <None Include="Scripts\SHSE_EventsAlias.psc" />

@@ -34,7 +34,7 @@ public:
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
 	SInt32 GetGoldValue(void) const;
-	std::pair<bool, SpecialObjectHandling> TreatAsCollectible(void) const;
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	inline const RE::TESForm* Form() const { return m_form; }
 
 	virtual double GetWeight(void) const override;
@@ -47,15 +47,5 @@ protected:
 	virtual UInt32 GetFormID() const override;
 	virtual SInt32 CalculateWorth(void) const override;
 };
-
-bool IsPlayable(const RE::TESForm* pForm);
-
-template <typename FORM> RE::BGSKeywordForm* KeywordFormCast(const RE::TESForm* form)
-{
-	FORM* waypoint(form->As<FORM>());
-	if (waypoint)
-		return waypoint->As<RE::BGSKeywordForm>();
-	return nullptr;
-}
 
 }

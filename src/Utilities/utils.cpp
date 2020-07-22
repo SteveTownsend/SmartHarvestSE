@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/utils.h"
 
 #include <shlobj.h>
+#include <psapi.h>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -140,6 +141,15 @@ namespace WindowsUtils
 		}
 		else {
 			return GetTickCount64() * 1000UL;
+		}
+	}
+
+	void LogProcessWorkingSet()
+	{
+		PROCESS_MEMORY_COUNTERS pmc;
+		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+		{
+			REL_MESSAGE("Working Set is %.3f MB", double(pmc.WorkingSetSize) / (1024.0 * 1024.0));
 		}
 	}
 

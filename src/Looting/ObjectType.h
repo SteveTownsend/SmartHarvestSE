@@ -56,8 +56,7 @@ enum class ObjectType : UInt8
 	drink,
 	oreVein,
 	container,
-	actor,
-	manualLoot
+	actor
 };
 
 enum class ResourceType : UInt8

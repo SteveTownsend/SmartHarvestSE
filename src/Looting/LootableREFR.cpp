@@ -54,7 +54,7 @@ bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
 	return extraListEx.IsQuestObject(requireFullQuestFlags);
 }
 
-std::pair<bool, SpecialObjectHandling> LootableREFR::TreatAsCollectible(void) const
+std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.TreatAsCollectible();

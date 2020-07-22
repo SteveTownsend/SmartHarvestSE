@@ -51,7 +51,7 @@ bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESFor
 		if (!lootable)
 		{
 			REL_WARNING("Producer %s/0x%08x has no lootable", producer->GetName(), producer->formID);
-			DataCase::GetInstance()->BlockForm(producer);
+			DataCase::GetInstance()->BlockForm(producer, Lootability::ProducerHasNoLootable);
 		}
 		else
 		{

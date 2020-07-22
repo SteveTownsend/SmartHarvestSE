@@ -93,6 +93,16 @@ inline LootingType LootingTypeFromIniSetting(const double iniSetting)
 	return static_cast<LootingType>(intSetting);
 }
 
+enum class CollectibleHandling {
+	Leave = 0,
+	Take,
+	Glow,
+	Print,
+	MAX
+};
+
+constexpr std::pair<bool, CollectibleHandling> NotCollectible = { false, CollectibleHandling::Leave };
+
 enum class SpecialObjectHandling {
 	DoNotLoot = 0,
 	DoLoot,
@@ -100,22 +110,24 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
-constexpr std::pair<bool, SpecialObjectHandling> NotCollectible = { false, SpecialObjectHandling::DoNotLoot };
-
-inline SpecialObjectHandling UpdateSpecialObjectHandling(const SpecialObjectHandling initial, const SpecialObjectHandling next)
+inline CollectibleHandling UpdateCollectibleHandling(const CollectibleHandling initial, const CollectibleHandling next)
 {
 	// update if new is more permissive
-	if (next == SpecialObjectHandling::DoLoot)
+	if (next == CollectibleHandling::Take)
 	{
 		return next;
 	}
-	else if (next == SpecialObjectHandling::GlowTarget)
+	else if (next == CollectibleHandling::Print)
 	{
-		return initial == SpecialObjectHandling::DoLoot ? initial : next;
+		return initial == CollectibleHandling::Take ? initial : next;
+	}
+	else if (next == CollectibleHandling::Glow)
+	{
+		return initial == CollectibleHandling::Take || initial == CollectibleHandling::Print ? initial : next;
 	}
 	else
 	{
-		// this is the least permissive - initial cannot be any less so
+		// leave - this is the least permissive - initial cannot be any less so
 		return initial;
 	}
 }
@@ -125,26 +137,50 @@ inline bool IsSpecialObjectLootable(const SpecialObjectHandling specialObjectHan
 	return specialObjectHandling == SpecialObjectHandling::DoLoot;
 }
 
-inline std::string SpecialObjectHandlingJSON(const SpecialObjectHandling specialObjectHandling)
+inline bool CanLootCollectible(const CollectibleHandling collectibleHandling)
 {
-	switch (specialObjectHandling) {
-	case SpecialObjectHandling::DoLoot:
+	return collectibleHandling == CollectibleHandling::Take;
+}
+
+inline bool CollectibleHistoryNeeded(const CollectibleHandling collectibleHandling)
+{
+	return collectibleHandling == CollectibleHandling::Take || collectibleHandling == CollectibleHandling::Glow;
+}
+
+inline std::string CollectibleHandlingJSON(const CollectibleHandling collectibleHandling)
+{
+	switch (collectibleHandling) {
+	case CollectibleHandling::Take:
 		return "take";
-	case SpecialObjectHandling::GlowTarget:
+	case CollectibleHandling::Glow:
 		return "glow";
-	case SpecialObjectHandling::DoNotLoot:
+	case CollectibleHandling::Print:
+		return "print";
+	case CollectibleHandling::Leave:
 	default:
 		return "leave";
 	}
 }
 
-inline SpecialObjectHandling ParseSpecialObjectHandling(const std::string& action)
+inline CollectibleHandling ParseCollectibleHandling(const std::string& action)
 {
 	if (action == "take")
-		return SpecialObjectHandling::DoLoot;
+		return CollectibleHandling::Take;
 	if (action == "glow")
-		return SpecialObjectHandling::GlowTarget;
-	return SpecialObjectHandling::DoNotLoot;
+		return CollectibleHandling::Glow;
+	if (action == "print")
+		return CollectibleHandling::Print;
+	return CollectibleHandling::Leave;
+}
+
+inline CollectibleHandling CollectibleHandlingFromIniSetting(const double iniSetting)
+{
+	UInt32 intSetting(static_cast<UInt32>(iniSetting));
+	if (intSetting >= static_cast<SInt32>(CollectibleHandling::MAX))
+	{
+		return CollectibleHandling::Leave;
+	}
+	return static_cast<CollectibleHandling>(intSetting);
 }
 
 inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double iniSetting)
@@ -305,7 +341,7 @@ enum class Lootability {
 	ManualLootTarget,
 	BaseObjectOnBlacklist,
 	CannotLootQuestObject,
-	CannotLootCollectibleObject,
+	ObjectIsInBlacklistCollection,
 	CannotLootValuableObject,
 	CannotLootAmmo,
 	PlayerOwned,
@@ -325,12 +361,13 @@ enum class Lootability {
 	ContainerIsBossChest,
 	ContainerHasQuestObject,
 	ContainerHasValuableObject,
-	ContainerHasCollectibleObject,
 	ContainerIsBlacklisted,
+	CannotGetAshPile,
+	ProducerHasNoLootable,
 	MAX
 };
 
-inline bool LootIfCollectible(const Lootability lootability)
+inline bool LootOwnedItemIfCollectible(const Lootability lootability)
 {
 	return lootability == Lootability::PlayerOwned ||
 		lootability == Lootability::CellOrItemOwnerPreventsOwnerlessLooting;
