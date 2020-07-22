@@ -310,6 +310,7 @@
     <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
     <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
     <None Include="Collections\Schema\SHSE.SchemaCollections.json" />
+    <None Include="Config\SmartHarvestSE.Defaults.ini" />
     <None Include="Config\SmartHarvestSE.ini" />
     <None Include="exports.def" />
     <None Include="Scripts\SHSE_EventsAlias.psc" />
