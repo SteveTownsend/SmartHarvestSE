@@ -9,7 +9,7 @@
   "useMCM": true,
   "collections": [
     {
-      "name": "Bad Gremlins",
+      "name": "Thirsty!",
       "description": "Items added by Bad Gremlins Collectables",
       "rootFilter": {
         "operator": "AND",
@@ -21,13 +21,25 @@
     },
 
     {
-      "name": "Skyrim's Unique Treasures",
+      "name": "SUTch a Great Find",
       "description": "Items added by Skyrim's Unique Treasures",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "plugin": [ "SkyrimsUniqueTreasures.esp" ],
           "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "X Marks the Spot",
+      "description": "New Treasure Hunt SSE Maps",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "treasure_hunt.esl" ],
+          "signature": [ "BOOK" ]
         }
       }
     },
@@ -57,8 +69,8 @@
     },
 
     {
-      "name": "Morrowloot-ed",
-      "description": "Items added by MLU and Patches",
+      "name": "Fetcher",
+      "description": "Items added by Morrowloot Ultimate and Patches",
       "rootFilter": {
         "operator": "AND",
         "condition": {

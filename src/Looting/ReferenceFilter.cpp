@@ -85,13 +85,14 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 		return Lootability::NullReference;
 
 	DataCase* data = DataCase::GetInstance();
-	if (data->IsFormBlocked(refr->GetBaseObject()))
+	Lootability blockReason(data->IsFormBlocked(refr->GetBaseObject()));
+	if (blockReason != Lootability::Lootable)
 	{
 		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
-		return Lootability::BaseObjectBlocked;
+		return blockReason;
 	}
 
-	Lootability blockReason(data->IsReferenceBlocked(refr));
+	blockReason = data->IsReferenceBlocked(refr);
 	if (blockReason != Lootability::Lootable)
 	{
 		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);

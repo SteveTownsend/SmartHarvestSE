@@ -36,15 +36,16 @@ INIFile::INIFile()
 {
 }
 
-bool INIFile::LoadFile()
+bool INIFile::LoadFile(const bool useDefaults)
 {
 	Free();
 
-	bool result = Load(GetFileName());
+	std::string fileName(GetFileName(useDefaults));
+	bool result = Load(fileName);
 
 	if (result)
 	{
-		REL_MESSAGE("Loaded %s OK", GetFileName().c_str());
+		REL_MESSAGE("Loaded %s OK", fileName.c_str());
 #if _DEBUG
 		SimpleIni::SectionIterator itSection;
 		SimpleIni::KeyIterator itKey;
@@ -55,7 +56,7 @@ bool INIFile::LoadFile()
 		}
 #endif
 	}
-return result;
+	return result;
 }
 
 
@@ -63,6 +64,7 @@ bool INIFile::CreateSectionString(PrimaryType m_section_first, SecondaryType m_s
 {
 	std::string section[3];
 	if (!IsType(m_section_first) || !IsType(m_section_second))
+
 		return false;
 	if ((section[1] = PrimaryTypeString(m_section_first)).empty() || (section[2] = SecondaryTypeString(m_section_second)).empty())
 		return false;
@@ -70,18 +72,16 @@ bool INIFile::CreateSectionString(PrimaryType m_section_first, SecondaryType m_s
 	return true;
 }
 
-const std::string INIFile::GetFileName(void)
+const std::string INIFile::GetFileName(const bool useDefaults)
 {
-	if (iniFilePath.empty())
-	{
-		std::string RuntimeDir = FileUtils::GetGamePath();
-		if (RuntimeDir.empty())
-			return false;
+	std::string iniFilePath;
+	std::string RuntimeDir = FileUtils::GetGamePath();
+	if (RuntimeDir.empty())
+		return false;
 
-		iniFilePath = RuntimeDir + "Data\\SKSE\\Plugins\\";
-		iniFilePath += INI_FILE;
-		DBG_MESSAGE("INI file at %s", iniFilePath.c_str());
-	}
+	iniFilePath = RuntimeDir + "Data\\SKSE\\Plugins\\";
+	iniFilePath += (useDefaults ? INI_FILE_DEFAULTS : INI_FILE);
+	DBG_MESSAGE("INI file at %s", iniFilePath.c_str());
 	return iniFilePath.c_str();
 }
 
@@ -139,5 +139,6 @@ double INIFile::GetVerticalFactor()
 
 void INIFile::SaveFile(void)
 {
-	SaveAs(GetFileName());
+	static const bool useDefaults(false);
+	SaveAs(GetFileName(useDefaults));
 }

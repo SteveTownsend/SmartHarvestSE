@@ -46,7 +46,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_ready(false), m_enabled(false), m_gameTime(0.0)
+CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false), m_gameTime(0.0)
 {
 }
 
@@ -54,7 +54,7 @@ CollectionManager::CollectionManager() : m_ready(false), m_enabled(false), m_gam
 void CollectionManager::ProcessDefinitions(void)
 {
 	// call only once
-	if (IsActive())
+	if (IsAvailable())
 		return;
 
 	__try {
@@ -72,7 +72,7 @@ void CollectionManager::ProcessDefinitions(void)
 void CollectionManager::Refresh() const
 {
 	// request added items and game time to be pushed to us while we are sleeping
-	if (IsActive())
+	if (IsAvailable())
 		EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
@@ -84,7 +84,7 @@ void CollectionManager::UpdateGameTime(const float gameTime)
 
 void CollectionManager::CheckEnqueueAddedItem(const RE::FormID formID)
 {
-	if (!IsActive())
+	if (!IsAvailable())
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
 	// only pass this along if it is in >= 1 collection
@@ -101,7 +101,7 @@ void CollectionManager::EnqueueAddedItem(const RE::FormID formID)
 
 void CollectionManager::ProcessAddedItems()
 {
-	if (!IsActive())
+	if (!IsAvailable())
 		return;
 
 #ifdef _PROFILING
@@ -149,8 +149,11 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
-		// Do not record if the policy indicates to LeaveBehind (blacklist)
-		if (collection->second->Policy().Action() != SpecialObjectHandling::DoNotLoot &&
+		// skip disabled collections
+		if (!collection->second->IsActive())
+			continue;
+		// Do not record if the policy indicates per-item history not required
+		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
 			collection->second->IsMemberOf(form))
 		{
 			// record membership
@@ -159,9 +162,9 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 	}
 }
 
-std::pair<bool, SpecialObjectHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
+std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
 {
-	if (!IsActive() || !matcher.Form())
+	if (!IsAvailable() || !matcher.Form())
 		return NotCollectible;
 	RecursiveLockGuard guard(m_collectionLock);
 	if (m_nonCollectionForms.contains(matcher.Form()->GetFormID()))
@@ -177,14 +180,17 @@ std::pair<bool, SpecialObjectHandling> CollectionManager::TreatAsCollectible(con
 	}
 
 	// It is in at least one collection. Find the most aggressive action for any where we are in scope and a usable member.
-	SpecialObjectHandling action(SpecialObjectHandling::DoNotLoot);
+	CollectibleHandling action(CollectibleHandling::Leave);
 	bool actionable(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
+		// skip disabled collections
+		if (!collection->second->IsActive())
+			continue;
 		if (collection->second->InScopeAndCollectibleFor(matcher))
 		{
 			actionable = true;
-			action = UpdateSpecialObjectHandling(collection->second->Policy().Action(), action);
+			action = UpdateCollectibleHandling(collection->second->Policy().Action(), action);
 		}
 	}
 	return std::make_pair(actionable, action);
@@ -227,7 +233,10 @@ bool CollectionManager::LoadCollectionGroup(
 		validator.validate(collectionGroupData);
 		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(collectionGroupData, groupName));
 		BuildDecisionTrees(collectionGroup);
-		m_fileNamesByGroupName.insert(std::make_pair(groupName, defFile.string()));
+		if (collectionGroup->UseMCM())
+		{
+			m_mcmVisibleFileByGroupName.insert(std::make_pair(groupName, defFile.string()));
+		}
 		m_allGroupsByName.insert(std::make_pair(groupName, collectionGroup));
 		return true;
 	}
@@ -310,14 +319,14 @@ void CollectionManager::PrintMembership(void) const
 int CollectionManager::NumberOfFiles(void) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	return static_cast<int>(m_fileNamesByGroupName.size());
+	return static_cast<int>(m_mcmVisibleFileByGroupName.size());
 }
 
 std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	size_t index(0);
-	for (const auto& group : m_fileNamesByGroupName)
+	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
 			return group.first;
@@ -330,7 +339,7 @@ std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	size_t index(0);
-	for (const auto& group : m_fileNamesByGroupName)
+	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
 			return group.second;
@@ -345,7 +354,7 @@ int CollectionManager::NumberOfCollections(const std::string& groupName) const
 	return static_cast<int>(m_collectionsByGroupName.count(groupName));
 }
 
-std::string CollectionManager::NameByGroupIndex(const std::string& groupName, const int collectionIndex) const
+std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matches(m_collectionsByGroupName.equal_range(groupName));
@@ -358,6 +367,21 @@ std::string CollectionManager::NameByGroupIndex(const std::string& groupName, co
 			return group->second.substr(groupName.length() + 1);
 		}
 		++index;
+	}
+	return std::string();
+}
+
+std::string CollectionManager::DescriptionByIndexInGroup(const std::string& groupName, const int collectionIndex) const
+{
+	std::string collectionName(NameByIndexInGroup(groupName, collectionIndex));
+	const auto matchedGroup(m_allGroupsByName.find(groupName));
+	if (matchedGroup != m_allGroupsByName.cend() && !collectionName.empty())
+	{
+		const auto collection(matchedGroup->second->CollectionByName(collectionName));
+		if (collection)
+		{
+			return collection->Description();
+		}
 	}
 	return std::string();
 }
@@ -393,7 +417,7 @@ bool CollectionManager::PolicyNotify(const std::string& groupName, const std::st
 	return false;
 }
 
-SpecialObjectHandling CollectionManager::PolicyAction(const std::string& groupName, const std::string& collectionName) const
+CollectibleHandling CollectionManager::PolicyAction(const std::string& groupName, const std::string& collectionName) const
 {
 	const std::string label(MakeLabel(groupName, collectionName));
 	RecursiveLockGuard guard(m_collectionLock);
@@ -402,7 +426,7 @@ SpecialObjectHandling CollectionManager::PolicyAction(const std::string& groupNa
 	{
 		return matched->second->Policy().Action();
 	}
-	return SpecialObjectHandling::DoNotLoot;
+	return CollectibleHandling::Leave;
 }
 
 void CollectionManager::PolicySetRepeat(const std::string& groupName, const std::string& collectionName, const bool allowRepeats)
@@ -429,7 +453,7 @@ void CollectionManager::PolicySetNotify(const std::string& groupName, const std:
 	}
 }
 
-void CollectionManager::PolicySetAction(const std::string& groupName, const std::string& collectionName, const SpecialObjectHandling action)
+void CollectionManager::PolicySetAction(const std::string& groupName, const std::string& collectionName, const CollectibleHandling action)
 {
 	const std::string label(MakeLabel(groupName, collectionName));
 	RecursiveLockGuard guard(m_collectionLock);
@@ -463,7 +487,7 @@ bool CollectionManager::GroupPolicyNotify(const std::string& groupName) const
 	return false;
 }
 
-SpecialObjectHandling CollectionManager::GroupPolicyAction(const std::string& groupName) const
+CollectibleHandling CollectionManager::GroupPolicyAction(const std::string& groupName) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matched(m_allGroupsByName.find(groupName));
@@ -471,7 +495,7 @@ SpecialObjectHandling CollectionManager::GroupPolicyAction(const std::string& gr
 	{
 		return matched->second->Policy().Action();
 	}
-	return SpecialObjectHandling::DoNotLoot;
+	return CollectibleHandling::Leave;
 }
 
 void CollectionManager::GroupPolicySetRepeat(const std::string& groupName, const bool allowRepeats)
@@ -496,7 +520,7 @@ void CollectionManager::GroupPolicySetNotify(const std::string& groupName, const
 	}
 }
 
-void CollectionManager::GroupPolicySetAction(const std::string& groupName, const SpecialObjectHandling action)
+void CollectionManager::GroupPolicySetAction(const std::string& groupName, const CollectibleHandling action)
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matched(m_allGroupsByName.find(groupName));
@@ -623,6 +647,9 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 }
 
+// This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we can
+// check again then.
+// TODO check if this does work on cell load, and that the REFRs are still valid after we change location
 void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 {
 	if (!m_checkedForPlacedObjects.insert(cell).second)
@@ -640,32 +667,19 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 			const RE::TESObjectREFR* refr(refptr.get());
 			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
 			{
-				if (refr->extraList.HasType<RE::ExtraTeleport>())
+				// check Worldspace connection
+				const auto linkage(m_linkingDoors.find(refr));
+				if (linkage != m_linkingDoors.cend())
 				{
-					const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
-					const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
-					if (!target)
+					if (linkage->second->parentCell && IsCellLocatable(linkage->second->parentCell))
 					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via RefHandle %d", refr->GetFormID(),
-							FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), teleport->teleportData->linkedDoor);
-						continue;
+						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x can teleport via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+							cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second->parentCell).c_str(), linkage->second->parentCell->GetFormID());
+						connected = true;
+						break;
 					}
-					if (!target->parentCell)
-					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via REFR 0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-							cell->GetFormID(), target->GetFormID());
-						continue;
-					}
-					if (!IsCellLocatable(target->parentCell))
-					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
-						continue;
-					}
-					DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport connects to CELL %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-						cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
-					connected = true;
-					break;
+					DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x cannot teleport via REFR %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+						cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second).c_str(), linkage->second->GetFormID());
 				}
 			}
 		}
@@ -687,6 +701,9 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 // TODO might miss some stray CELLs
 bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 {
+#if 1
+	return true;
+#else
 	const RE::ExtraLocation* extraLocation(cell->extraList.GetByType<RE::ExtraLocation>());
 	if (extraLocation && extraLocation->location)
 	{
@@ -701,6 +718,7 @@ bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 	}
 	DBG_VMESSAGE("CELL %s/0x%08x unlocatable", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
 	return false;
+#endif
 }
 
 void CollectionManager::RecordPlacedObjects(void)
@@ -710,6 +728,70 @@ void CollectionManager::RecordPlacedObjects(void)
 #endif
 
 	// list all placed objects of interest for Collections - don't quest for anything we cannot see
+	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
+	{
+		if (!worldSpace->persistentCell)
+			continue;
+		// find all DOORs in the persistent CELL, these link other CELLs
+		DBG_MESSAGE("Search for DOORs %d REFRs in persistent cell for WorldSpace %s/0x%08x", worldSpace->persistentCell->references.size(), worldSpace->GetName(), worldSpace->GetFormID());
+		for (const auto& refPtr : worldSpace->persistentCell->references)
+		{
+			const RE::TESObjectREFR* refr(refPtr.get());
+			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
+			{
+				if (refr->extraList.HasType<RE::ExtraTeleport>())
+				{
+					// Store door link representing entry from either direction
+					const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
+					const RE::TESObjectREFR* targetDoorRefr(teleport->teleportData->linkedDoor.get().get());
+					m_linkingDoors.insert({ refr, targetDoorRefr });
+					m_linkingDoors.insert({ targetDoorRefr, refr });
+					DBG_VMESSAGE("Linking Doors 0x%08x and 0x%08x", refr->GetFormID(), targetDoorRefr->GetFormID());
+				}
+			}
+		}
+		// check direct CELL to CELL connection
+		for (const auto cellEntry : worldSpace->cellMap)
+		{
+			const auto cell(cellEntry.second);
+			for (const auto& refPtr : cell->references)
+			{
+				const RE::TESObjectREFR* refr(refPtr.get());
+				if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
+				{
+					if (refr->extraList.HasType<RE::ExtraTeleport>())
+					{
+						const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
+						const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
+						if (!target)
+						{
+							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via RefHandle 0x%08x", refr->GetFormID(),
+								FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), teleport->teleportData->linkedDoor);
+							continue;
+						}
+						if (!target->parentCell)
+						{
+							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via REFR 0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+								cell->GetFormID(), target->GetFormID());
+							continue;
+						}
+						if (!IsCellLocatable(target->parentCell))
+						{
+							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+								cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
+							continue;
+						}
+						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport connects to CELL %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
+						m_linkingDoors.insert({ refr, target });
+						m_linkingDoors.insert({ target, refr });
+					}
+				}
+			}
+		}
+	}
+
+	// Process CELLs now linking DOORs are identified
 	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
 		DBG_MESSAGE("Process %d CELLs in WorldSpace Map for %s/0x%08x", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
@@ -737,6 +819,15 @@ void CollectionManager::ResolveMembership(void)
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Resolve Collection Membership");
 #endif
+	// record static members before resolving
+	for (const auto& collection : m_allCollectionsByLabel)
+	{
+		for (const auto member : collection.second->Members())
+		{
+			m_collectionsByFormID.insert({ member->GetFormID(), collection.second });
+		}
+	}
+
 	std::unordered_set<RE::TESForm*> uniquePlaced;
 	std::unordered_set<RE::TESForm*> uniqueMembers;
 	for (const auto& signature : SignatureCondition::ValidSignatures())
@@ -754,7 +845,6 @@ void CollectionManager::ResolveMembership(void)
 
 					DBG_VMESSAGE("Record %s/0x%08x as collectible", form->GetName(), form->GetFormID());
 					m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection.second));
-					collection.second->AddMemberID(form);
 					if (CollectionManager::Instance().IsPlacedObject(form))
 					{
 						uniquePlaced.insert(form);
@@ -777,23 +867,19 @@ void CollectionManager::OnGameReload()
 	RecursiveLockGuard guard(m_collectionLock);
 	/// reset player inventory last-known-good
 	m_lastInventoryItems.clear();
+	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
+	m_addedItemQueue.clear();
+
+	m_gameTime = 0.0;
 
 	// logic depends on prior and new state
-	bool wasEnabled(m_enabled);
-	m_enabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
-	REL_MESSAGE("Collections are %s", m_enabled ? "enabled" : "disabled");
-	if (m_enabled)
+	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
+	REL_MESSAGE("User Collections are %s", m_mcmEnabled ? "enabled" : "disabled");
+	// TODO load Collections data from saved game
+	// Flush membership state to allow testing
+	for (auto collection : m_allCollectionsByLabel)
 	{
-		// TODO load Collections data from saved game
-		// Flush membership state to allow testing
-		for (auto collection : m_allCollectionsByLabel)
-		{
-			collection.second->Reset();
-		}
-	}
-	else
-	{
-		// TODO maybe more state to clean out
+		collection.second->Reset();
 	}
 }
 

@@ -34,6 +34,7 @@ namespace shse {
 		virtual bool operator()(const ConditionMatcher& matcher) const = 0;
 		virtual nlohmann::json MakeJSON() const = 0;
 		virtual void AsJSON(nlohmann::json& j) const = 0;
+		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const;
 	protected:
 		Condition();
 	};
@@ -60,6 +61,19 @@ namespace shse {
 		void FlattenMembers(const RE::BGSListForm* formList);
 		std::vector<std::pair<RE::BGSListForm*, std::string>> m_formLists;
 		std::unordered_set<const RE::TESForm*> m_listMembers;
+	};
+
+	class FormsCondition : public Condition {
+	public:
+		FormsCondition(const std::vector<std::pair<std::string, std::vector<std::string>>>& pluginForms);
+		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const override;
+		virtual bool operator()(const ConditionMatcher& matcher) const;
+		virtual nlohmann::json MakeJSON() const;
+		virtual void AsJSON(nlohmann::json& j) const override;
+
+	private:
+		std::unordered_set<const RE::TESForm*> m_allForms;
+		std::unordered_map<std::string, std::vector<RE::TESForm*>> m_formsByPlugin;
 	};
 
 	class KeywordCondition : public Condition {
@@ -117,6 +131,7 @@ namespace shse {
 		void AddCondition(std::unique_ptr<Condition> condition);
 		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
+		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const;
 
 	private:
 		std::vector<std::unique_ptr<Condition>> m_conditions;
@@ -126,6 +141,7 @@ namespace shse {
 
 	void to_json(nlohmann::json& j, const PluginCondition& p);
 	void to_json(nlohmann::json& j, const FormListCondition& p);
+	void to_json(nlohmann::json& j, const FormsCondition& p);
 	void to_json(nlohmann::json& j, const KeywordCondition& p);
 	void to_json(nlohmann::json& j, const SignatureCondition& p);
 	void to_json(nlohmann::json& j, const ScopeCondition& p);
@@ -148,5 +164,4 @@ namespace shse {
 	};
 }
 
-std::string SecondaryTypeAsScope(const INIFile::SecondaryType scope);
 std::ostream& operator<<(std::ostream& os, const shse::Condition& condition);

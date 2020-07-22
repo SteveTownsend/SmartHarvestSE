@@ -56,9 +56,11 @@ bool PluginFacade::Init()
 		__try
 		{
 			// Use structured exception handling during game data load
-			REL_MESSAGE("Plugin not synced up - Game Data load executing");
+			REL_MESSAGE("Plugin not initialized - Game Data load executing");
+			WindowsUtils::LogProcessWorkingSet();
 			if (!Load())
 				return false;
+			WindowsUtils::LogProcessWorkingSet();
 		}
 		__except (LogStackWalker::LogStack(GetExceptionInformation()))
 		{
@@ -132,8 +134,7 @@ bool PluginFacade::Load()
 
 void PluginFacade::TakeNap()
 {
-	double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
-		LocationTracker::Instance().IsPlayerIndoors() ? "IndoorsIntervalSeconds" : "IntervalSeconds"));
+	double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds"));
 	delay = std::max(MinThreadDelaySeconds, delay);
 	if (ScanGovernor::Instance().Calibrating())
 	{

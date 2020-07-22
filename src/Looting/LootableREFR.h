@@ -31,9 +31,8 @@ public:
 	explicit LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope);
 
 	SInt16 GetItemCount();
-	RE::NiTimeController* GetTimeController(void) const;
 	bool IsQuestItem(const bool requireFullQuestFlags);
-	std::pair<bool, SpecialObjectHandling> TreatAsCollectible(void) const;
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	bool IsValuable(void) const;
 
 	RE::TESForm* GetLootable() const;

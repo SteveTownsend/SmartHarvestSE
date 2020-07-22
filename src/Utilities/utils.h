@@ -55,6 +55,7 @@ namespace utils
 namespace WindowsUtils
 {
 	long long microsecondsNow();
+	void LogProcessWorkingSet();
 
 	class ScopedTimer {
 	public:
@@ -84,20 +85,6 @@ namespace WindowsUtils
 		std::unordered_map<int, std::unique_ptr<ScopedTimer>> m_timerByHandle;
 		int m_nextHandle;
 	};
-}
-
-namespace PluginUtils
-{
-	inline std::string GetBaseName(RE::TESForm* thisForm)
-	{
-		return thisForm ? thisForm->GetName() : std::string();
-	}
-	inline RE::FormID AsRaw(const RE::FormID rawID)
-	{
-		if ((rawID & ESPFETypeMask) == ESPFETypeMask)
-			return rawID & ESPFERawMask;
-		return rawID & FullRawMask;
-	}
 }
 
 namespace FormUtils

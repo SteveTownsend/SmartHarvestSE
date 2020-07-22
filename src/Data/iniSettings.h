@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #define INI_FILE "SmartHarvestSE.ini"
+#define INI_FILE_DEFAULTS "SmartHarvestSE.Defaults.ini"
 #include "SimpleIni.h"
 
 class INIFile : public SimpleIni
@@ -95,12 +96,11 @@ public:
 	double GetSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key);
 	void PutSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key, double m_value);
 	void SaveFile(void);
-	bool LoadFile(void);
+	bool LoadFile(const bool useDefaults);
 
 private:
 	bool CreateSectionString(PrimaryType m_section_first, SecondaryType m_section_second, std::string& m_result);
 	static INIFile* s_instance;
-	const std::string GetFileName(void);
-	std::string iniFilePath;
+	const std::string GetFileName(const bool useDefaults);
 	INIFile(void);
 };

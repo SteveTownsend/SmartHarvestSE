@@ -341,6 +341,10 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
 			RE::TESObjectREFR* original(refr);
 			refr = GetAshPile(refr);
+			if (!refr)
+			{
+				return Lootability::CannotGetAshPile;
+			}
 			DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), original->GetFormID());
 
 			// avoid double dipping for immediate-loot case

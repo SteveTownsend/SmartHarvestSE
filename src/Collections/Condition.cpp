@@ -30,6 +30,12 @@ namespace shse
 Condition::Condition() {}
 Condition::~Condition() {}
 
+// default - no static members
+std::unordered_set<const RE::TESForm*> Condition::StaticMembers() const
+{
+	return std::unordered_set<const RE::TESForm*>();
+}
+
 bool CanBeCollected(RE::TESForm* form)
 {
 	RE::FormType formType(form->GetFormType());
@@ -91,10 +97,10 @@ FormListCondition::FormListCondition(const std::vector<std::pair<std::string, st
 		std::stringstream ss;
 		ss << std::hex << entry.second;
 		ss >> formID;
-		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(PluginUtils::AsRaw(formID), entry.first));
+		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(LoadOrder::Instance().AsRaw(formID), entry.first));
 		if (!formList)
 		{
-			REL_ERROR("Collection Condition requires a FormList 0x%08x", formID);
+			REL_ERROR("FormListCondition cannot resolve FormList %s/0x%08x", entry.first.c_str(), formID);
 			return;
 		}
 		DBG_VMESSAGE("Resolved FormList 0x%08x", formID);
@@ -142,6 +148,65 @@ void FormListCondition::AsJSON(nlohmann::json& j) const
 		next["formID"] = formStr.str();
 		next["listPlugin"] = "";
 		j["formList"].push_back(next);
+	}
+}
+
+FormsCondition::FormsCondition(const std::vector<std::pair<std::string, std::vector<std::string>>>& pluginForms)
+{
+	for (const auto& entry : pluginForms)
+	{
+		std::vector<RE::TESForm*> newForms;
+		newForms.reserve(entry.second.size());
+		for (const auto nextID : entry.second)
+		{
+			// schema enforces 8-char HEX format
+			RE::FormID formID;
+			std::stringstream ss;
+			ss << std::hex << nextID;
+			ss >> formID;
+			RE::TESForm* form(RE::TESDataHandler::GetSingleton()->LookupForm(LoadOrder::Instance().AsRaw(formID), entry.first));
+			if (!form)
+			{
+				REL_ERROR("FormsCondition requires valid Forms, got %s/0x%08x", entry.first.c_str(), formID);
+				return;
+			}
+			DBG_VMESSAGE("Resolved Form 0x%08x", formID);
+			newForms.push_back(form);
+		}
+		m_formsByPlugin.insert({ entry.first, newForms });
+		m_allForms.insert(newForms.cbegin(), newForms.cend());
+	}
+}
+
+std::unordered_set<const RE::TESForm*> FormsCondition::StaticMembers() const
+{ 
+	return m_allForms;
+}
+
+bool FormsCondition::operator()(const ConditionMatcher& matcher) const
+{
+	return m_allForms.contains(matcher.Form());
+}
+
+nlohmann::json FormsCondition::MakeJSON() const
+{
+	return nlohmann::json(*this);
+}
+
+void FormsCondition::AsJSON(nlohmann::json& j) const
+{
+	j["forms"] = nlohmann::json::array();
+	for (const auto pluginData : m_formsByPlugin)
+	{
+		auto next(nlohmann::json::object());
+		next["plugin"] = pluginData.first;
+		next["form"] = nlohmann::json::array();
+		for (const auto form : pluginData.second)
+		{
+			std::ostringstream formStr;
+			formStr << std::hex << std::setfill('0') << std::setw(8) << form->GetFormID();
+			next["form"].push_back(formStr.str());
+		}
 	}
 }
 
@@ -385,12 +450,28 @@ void ConditionTree::AsJSON(nlohmann::json& j) const
 	}
 }
 
+std::unordered_set<const RE::TESForm*> ConditionTree::StaticMembers() const
+{
+	std::unordered_set<const RE::TESForm*> aggregated;
+	for (const auto& condition : m_conditions)
+	{
+		auto forms(condition->StaticMembers());
+		aggregated.insert(forms.cbegin(), forms.cend());
+	}
+	return aggregated;
+}
+
 void to_json(nlohmann::json& j, const PluginCondition& condition)
 {
 	condition.AsJSON(j);
 }
 
 void to_json(nlohmann::json& j, const FormListCondition& condition)
+{
+	condition.AsJSON(j);
+}
+
+void to_json(nlohmann::json& j, const FormsCondition& condition)
 {
 	condition.AsJSON(j);
 }

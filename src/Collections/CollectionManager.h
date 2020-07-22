@@ -29,36 +29,39 @@ public:
 
 	CollectionManager();
 	void ProcessDefinitions(void);
-	std::pair<bool, SpecialObjectHandling> TreatAsCollectible(const ConditionMatcher& matcher);
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	void Refresh() const;
 	void UpdateGameTime(const float gameTime);
 	void CheckEnqueueAddedItem(const RE::FormID formID);
 	void ProcessAddedItems();
-	inline bool IsActive() const { return m_enabled && m_ready; }
+	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
 	void OnGameReload(void);
 	void PrintDefinitions(void) const;
 	void PrintMembership(void) const;
+	// these functions only apply to MCM-visible Collection Groups
 	int NumberOfFiles(void) const;
 	std::string GroupNameByIndex(const int fileIndex) const;
 	std::string GroupFileByIndex(const int fileIndex) const;
+	// end of functions for MCM-visible Collection Groups
 	int NumberOfCollections(const std::string& groupName) const;
-	std::string NameByGroupIndex(const std::string& groupName, const int collectionIndex) const;
+	std::string NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
+	std::string DescriptionByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	static std::string MakeLabel(const std::string& groupName, const std::string& collectionName);
 
 	bool PolicyRepeat(const std::string& groupName, const std::string& collectionName) const;
 	bool PolicyNotify(const std::string& groupName, const std::string& collectionName) const;
-	SpecialObjectHandling PolicyAction(const std::string& groupName, const std::string& collectionName) const;
+	CollectibleHandling PolicyAction(const std::string& groupName, const std::string& collectionName) const;
 	void PolicySetRepeat(const std::string& groupName, const std::string& collectionName, const bool allowRepeats);
 	void PolicySetNotify(const std::string& groupName, const std::string& collectionName, const bool notify);
-	void PolicySetAction(const std::string& groupName, const std::string& collectionName, const SpecialObjectHandling action);
+	void PolicySetAction(const std::string& groupName, const std::string& collectionName, const CollectibleHandling action);
 
 	bool GroupPolicyRepeat(const std::string& groupName) const;
 	bool GroupPolicyNotify(const std::string& groupName) const;
-	SpecialObjectHandling GroupPolicyAction(const std::string& groupName) const;
+	CollectibleHandling GroupPolicyAction(const std::string& groupName) const;
 	void GroupPolicySetRepeat(const std::string& groupName, const bool allowRepeats);
 	void GroupPolicySetNotify(const std::string& groupName, const bool notify);
-	void GroupPolicySetAction(const std::string& groupName, const SpecialObjectHandling action);
+	void GroupPolicySetAction(const std::string& groupName, const CollectibleHandling action);
 
 	size_t TotalItems(const std::string& groupName, const std::string& collectionName) const;
 	size_t ItemsObtained(const std::string& groupName, const std::string& collectionName) const;
@@ -80,14 +83,16 @@ private:
 	void EnqueueAddedItem(const RE::FormID formID);
 
 	static std::unique_ptr<CollectionManager> m_instance;
+	// data loaded ok?
 	bool m_ready;
-	bool m_enabled;
+	// enabled for MCM management? if false, administrative Collection Groups will still be used
+	bool m_mcmEnabled;
 	float m_gameTime;
 
 	mutable RecursiveLock m_collectionLock;
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;
 	std::multimap<std::string, std::string> m_collectionsByGroupName;
-	std::unordered_map<std::string, std::string> m_fileNamesByGroupName;
+	std::unordered_map<std::string, std::string> m_mcmVisibleFileByGroupName;
 	std::unordered_map<std::string, std::shared_ptr<CollectionGroup>> m_allGroupsByName;
 	// Link each Form to the Collections in which it belongs
 	std::unordered_multimap<RE::FormID, std::shared_ptr<Collection>> m_collectionsByFormID;
@@ -95,6 +100,8 @@ private:
 	std::unordered_set<const RE::TESForm*> m_placedItems;
 	std::unordered_multimap<const RE::TESForm*, const RE::TESObjectREFR*> m_placedObjects;
 	std::unordered_set<const RE::TESObjectCELL*> m_checkedForPlacedObjects;
+	// for CELL connectivity checking during data load
+	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 
 	std::vector<RE::FormID> m_addedItemQueue;
 	std::unordered_set<RE::FormID> m_lastInventoryItems;
