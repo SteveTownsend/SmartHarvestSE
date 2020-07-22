@@ -77,10 +77,6 @@ private:
 	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
 	bool IsCellLocatable(const RE::TESObjectCELL* cell);
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
-	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
-	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
-	bool IsCellLocatable(const RE::TESObjectCELL* cell);
-	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 	void ResolveMembership(void);
 	void AddToRelevantCollections(RE::FormID itemID);
 	std::vector<RE::FormID> ReconcileInventory();
