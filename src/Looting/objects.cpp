@@ -298,7 +298,8 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 const std::unordered_map<std::string, ResourceType> resourceTypeByName({
 	{"Ore", ResourceType::ore},
 	{"Geode", ResourceType::geode},
-	{"Volcanic", ResourceType::volcanic}
+	{"Volcanic", ResourceType::volcanic},
+	{"VolcanicDigSite", ResourceType::volcanicDigSite}
 	});
 
 ResourceType ResourceTypeByName(const std::string& name)
