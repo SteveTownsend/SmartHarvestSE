@@ -29,17 +29,8 @@ inline bool IsBookObject(ObjectType objType)
 	return objType >= ObjectType::book && objType <= ObjectType::skillbookRead;
 }
 
-class ActorHelper
-{
-public:
-	ActorHelper(RE::Actor* actor) : m_actor(actor) {}
-	bool IsSneaking(void) const;
-	bool IsPlayerAlly(void) const;
-	bool IsEssential(void) const;
-	bool IsSummoned(void) const;
-private:
-	RE::Actor* m_actor;
-};
+PlayerAffinity GetPlayerAffinity(const RE::Actor* actor);
+bool IsSummoned(const RE::Actor* actor);
 
 bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);

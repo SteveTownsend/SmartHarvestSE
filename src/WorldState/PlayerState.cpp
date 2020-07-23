@@ -75,8 +75,13 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 
 	if (onGameReload || onMCMPush)
 	{
-		// reset carry weight and menu-active state
-		shse::PlayerState::Instance().ResetCarryWeight(onGameReload);
+		// reset carry weight state
+		ResetCarryWeight(onGameReload);
+		// reset location history after game reload - also forces proper recalculation of carry-weight
+		if (onGameReload)
+		{
+			LocationTracker::Instance().Reset();
+		}
 	}
 	else
 	{
@@ -84,7 +89,7 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	}
 
 	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
-	const bool sneaking(IsSneaking());
+	const bool sneaking(RE::PlayerCharacter::GetSingleton()->IsSneaking());
 	if (onGameReload || onMCMPush || m_sneaking != sneaking)
 	{
 		m_sneaking = sneaking;
@@ -265,12 +270,6 @@ void PlayerState::ResetCarryWeight(const bool reloaded)
 	{
 		DBG_VMESSAGE("Reset carry weight skipped, it's not managed");
 	}
-
-	// reset location to force proper recalculation, after game reload
-	if (reloaded)
-	{
-		LocationTracker::Instance().Reset();
-	}
 }
 
 // used for PlayerCharacter
@@ -287,11 +286,6 @@ bool PlayerState::IsMagicallyConcealed(RE::MagicTarget* target) const
 		return true;
 	}
 	return false;
-}
-
-bool PlayerState::IsSneaking() const
-{
-	return RE::PlayerCharacter::GetSingleton()->IsSneaking();
 }
 
 void PlayerState::ExcludeMountedIfForbidden(void)

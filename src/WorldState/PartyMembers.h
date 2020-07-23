@@ -19,35 +19,36 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include <deque>
+
 namespace shse
 {
 
-class ReferenceFilter
-{
+class PartyUpdate {
 public:
-	ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeCheck, const bool respectDoors, const size_t limit);
-	static Lootability CheckLootable(const RE::TESObjectREFR* refr);
-	void FindLootableReferences();
-	void FindAllCandidates();
-	void FindFollowers();
+	PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventType, const float gameTime);
 
 private:
-	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
-	void FilterNearbyReferences();
-	void RecordCellReferences(const RE::TESObjectCELL* cell);
+	const RE::Actor* m_follower;
+	const PartyUpdateType m_eventType;
+	const float m_gameTime;
+};
 
-	Lootability AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const;
-	// predicates supported
-	bool CanLoot(const RE::TESObjectREFR* refr) const;
-	bool IsLootCandidate(const RE::TESObjectREFR* refr) const;
-	bool IsFollower(const RE::TESObjectREFR* refr) const;
+typedef std::unordered_set<const RE::Actor*> Followers;
+class PartyMembers
+{
+public:
+	static PartyMembers& Instance();
+	PartyMembers() {}
 
-	DistanceToTarget& m_refs;
-	IRangeChecker& m_rangeCheck;
-	const bool m_respectDoors;
-	double m_nearestDoor;
-	size_t m_limit;
-	mutable REFRPredicate m_predicate;
+	void Reset();
+	void AdjustParty(const Followers& followers, const float gameTime);
+
+private:
+	static std::unique_ptr<PartyMembers> m_instance;
+	std::deque<PartyUpdate> m_partyUpdates;
+	Followers m_followers;
+	mutable RecursiveLock m_partyLock;
 };
 
 }

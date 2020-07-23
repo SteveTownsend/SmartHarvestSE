@@ -207,6 +207,30 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	return true;
 }
 
+bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
+{
+	static const bool dryRun(false);
+	return AnalyzeREFR(refr, dryRun) == Lootability::Lootable;
+}
+
+bool ReferenceFilter::IsFollower(const RE::TESObjectREFR* refr) const
+{
+	const RE::Actor* actor(refr->As<RE::Actor>());
+	if (actor && !actor->IsDead(true) && GetPlayerAffinity(actor) == PlayerAffinity::Follower)
+	{
+		DBG_VMESSAGE("NPC %s/0x%08x is Follower", actor->GetName(), actor->GetFormID());
+		ActorTracker::Instance().AddFollower(actor);
+		return true;
+	}
+	return false;
+}
+
+void ReferenceFilter::FindFollowers()
+{
+	m_predicate = std::bind(&ReferenceFilter::IsFollower, this, std::placeholders::_1);
+	FilterNearbyReferences();
+}
+
 void ReferenceFilter::FindLootableReferences()
 {
 	m_predicate = std::bind(&ReferenceFilter::CanLoot, this, std::placeholders::_1);
@@ -296,13 +320,19 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 			bool withinRange(m_rangeCheck.IsValid(refr));
 			// Record this REFR if it represents a potential player-detecting NPC, unless Stealing operation is in progress already
 			// Bypass this logic if stealing is currently disallowed for player.
-			if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected &&
-				!TheftCoordinator::Instance().StealingItems() &&
-				PlayerState::Instance().WithinDetectionRange(m_rangeCheck.Distance()) &&	// sneak detection range is not the same as looting
-				refr->formType == RE::FormType::ActorCharacter && !refr->IsDead(true))
+			RE::Actor* actor(refr->As<RE::Actor>());
+			if (actor && !actor->IsDead(true))
 			{
-				RE::Actor* actor(refr->As<RE::Actor>());
-				if (actor && !ActorHelper(actor).IsPlayerAlly())
+				PlayerAffinity affinity(GetPlayerAffinity(actor));
+				if (affinity == PlayerAffinity::Follower)
+				{
+					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+					ActorTracker::Instance().AddFollower(actor);
+				}
+				else if (affinity == PlayerAffinity::Unaffiliated &&
+					PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected &&
+					!TheftCoordinator::Instance().StealingItems() &&
+					PlayerState::Instance().WithinDetectionRange(m_rangeCheck.Distance()))	// sneak detection range is not the same as looting
 				{
 					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f may detect player", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
 					ActorTracker::Instance().AddDetective(actor, m_rangeCheck.Distance());
@@ -330,8 +360,9 @@ void ReferenceFilter::FilterNearbyReferences()
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
 #endif
-	// reset the possible detecting Actor list
+	// reset the possible detecting Actor and Follower lists
 	ActorTracker::Instance().ClearDetectives();
+	ActorTracker::Instance().ClearFollowers();
 
 	const RE::TESObjectCELL* cell(LocationTracker::Instance().PlayerCell());
 	if (!cell)

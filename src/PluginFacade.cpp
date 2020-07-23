@@ -155,10 +155,6 @@ bool PluginFacade::IsSynced() const {
 void PluginFacade::ScanThread()
 {
 	REL_MESSAGE("Starting SHSE Worker Thread");
-	// record a message periodically if mod remains idle
-	constexpr std::chrono::milliseconds TellUserIAmIdle(60000LL);
-	std::chrono::time_point<std::chrono::steady_clock> lastScanEndTime(std::chrono::high_resolution_clock::now());
-	std::chrono::time_point<std::chrono::steady_clock> lastIdleLogTime(lastScanEndTime);
 	while (true)
 	{
 		// Delay the scan for each loop
@@ -181,14 +177,6 @@ void PluginFacade::ScanThread()
 		if (!UIState::Instance().OKForSearch())
 		{
 			DBG_MESSAGE("UI state not good to loot");
-			const auto timeNow(std::chrono::high_resolution_clock::now());
-			const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
-			const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
-			if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
-			{
-				REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
-				lastIdleLogTime = timeNow;
-			}
 			continue;
 		}
 
@@ -207,40 +195,35 @@ void PluginFacade::ScanThread()
 		shse::CollectionManager::Instance().ProcessAddedItems();
 
 		// Skip loot-OK checks if calibrating
-		if (!ScanGovernor::Instance().Calibrating())
+		ReferenceScanType scanType(ReferenceScanType::NoLoot);
+		if (ScanGovernor::Instance().Calibrating())
+		{
+			scanType = ReferenceScanType::Calibration;
+		}
+		else
 		{
 			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 			static const bool allowIfRestricted(true);
 			if (!LocationTracker::Instance().IsPlayerInLootablePlace(LocationTracker::Instance().PlayerCell(), allowIfRestricted))
 			{
 				DBG_MESSAGE("Location cannot be looted");
-				continue;
 			}
-			if (!shse::PlayerState::Instance().CanLoot())
+			else if (!shse::PlayerState::Instance().CanLoot())
 			{
 				DBG_MESSAGE("Player State prevents looting");
-				continue;
 			}
-			if (!ScanGovernor::Instance().IsAllowed())
+			else if (!ScanGovernor::Instance().IsAllowed())
 			{
 				DBG_MESSAGE("search disallowed");
-				const auto timeNow(std::chrono::high_resolution_clock::now());
-				const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
-				const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
-				if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
-				{
-					REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
-					lastIdleLogTime = timeNow;
-				}
-				continue;
+			}
+			else
+			{
+				// looting is allowed
+				scanType = ReferenceScanType::Loot;
 			}
 		}
 
-		ScanGovernor::Instance().DoPeriodicSearch();
-
-		// request added items to be pushed to us while we are sleeping
-		shse::CollectionManager::Instance().Refresh();
-		lastScanEndTime = std::chrono::high_resolution_clock::now();
+		ScanGovernor::Instance().DoPeriodicSearch(scanType);
 	}
 }
 

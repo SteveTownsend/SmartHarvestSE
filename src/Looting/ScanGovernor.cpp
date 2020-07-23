@@ -263,17 +263,16 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			RE::Actor* actor(refr->As<RE::Actor>());
 			if (actor)
 			{
-				ActorHelper actorEx(actor);
 				Lootability exclusionType(Lootability::Lootable);
-				if (actorEx.IsPlayerAlly())
+				if (GetPlayerAffinity(actor) != PlayerAffinity::Unaffiliated)
 				{
 					exclusionType = Lootability::DeadBodyIsPlayerAlly;
 				}
-				else if (actorEx.IsEssential())
+				else if (actor->IsEssential())
 				{
 					exclusionType = Lootability::DeadBodyIsEssential;
 				}
-				else if (actorEx.IsSummoned())
+				else if (IsSummoned(actor))
 				{
 					exclusionType = Lootability::DeadBodyIsSummoned;
 				}
@@ -403,6 +402,13 @@ void ScanGovernor::LootAllEligible()
 	}
 }
 
+void ScanGovernor::LocateFollowers()
+{
+	DistanceToTarget targets;
+	AlwaysInRange rangeCheck;
+	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindFollowers();
+}
+
 const RE::Actor* ScanGovernor::ActorByIndex(const int actorIndex) const
 {
 	RecursiveLockGuard guard(m_searchLock);
@@ -411,20 +417,30 @@ const RE::Actor* ScanGovernor::ActorByIndex(const int actorIndex) const
 	return nullptr;
 }
 
-void ScanGovernor::DoPeriodicSearch()
+void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 {
 	bool sneaking(false);
-	if (m_calibrating)
+	if (scanType == ReferenceScanType::Calibration)
 	{
 		ProgressGlowDemo();
 	}
-	else
+	else if (scanType == ReferenceScanType::Loot)
 	{
 		LootAllEligible();
 
 		// after checking all REFRs, trigger async undetected-theft
 		TheftCoordinator::Instance().StealIfUndetected();
 	}
+	else
+	{
+		// if not looting, run a more limited scan
+		LocateFollowers();
+	}
+
+	// Refresh player party of followers
+	PartyMembers::Instance().AdjustParty(ActorTracker::Instance().GetFollowers(), CollectionManager::Instance().CurrentGameTime());
+	// request added items to be pushed to us while we are sleeping - including items not auto-looted
+	CollectionManager::Instance().Refresh();
 }
 
 void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
@@ -450,7 +466,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	// check player detection state if relevant
 	if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
 	{
-		m_detectiveWannabes = ActorTracker::Instance().ReadDetectives();
+		m_detectiveWannabes = ActorTracker::Instance().GetDetectives();
 		DBG_VMESSAGE("Detection check to steal under the nose of %d Actors", m_detectiveWannabes.size());
 		static const bool dryRun(true);
 		EventPublisher::Instance().TriggerStealIfUndetected(m_detectiveWannabes.size(), dryRun);

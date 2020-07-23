@@ -100,7 +100,7 @@ void Collection::RecordItem(const RE::FormID itemID, const RE::TESForm* form, co
 {
 	DBG_VMESSAGE("Collect %s/0x%08x in %s", form->GetName(), form->GetFormID(), m_name.c_str());
 	if (m_observed.insert(
-		std::make_pair(itemID, CollectionEntry(form, gameTime, place, PlayerState::Instance().GetPosition()))).second)
+		std::make_pair(itemID, CollectionEntry(form, gameTime))).second)
 	{
 		if (m_effectivePolicy.Notify())
 		{

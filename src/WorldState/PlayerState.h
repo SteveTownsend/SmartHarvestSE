@@ -48,7 +48,6 @@ private:
 	void CheckPerks(const bool force);
 	void ResetCarryWeight(const bool reloaded);
 	void AdjustCarryWeight();
-	bool IsSneaking() const;
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
 
 	static std::unique_ptr<PlayerState> m_instance;

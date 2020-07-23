@@ -375,4 +375,28 @@ inline bool LootOwnedItemIfCollectible(const Lootability lootability)
 
 std::string LootabilityName(const Lootability lootability);
 
+enum class PlayerAffinity
+{
+	Unaffiliated = 0,
+	TeamMate,
+	Follower,
+	MAX
+};
+
+enum class PartyUpdateType
+{
+	Joined = 0,
+	Departed,
+	Died,
+	MAX
+};
+
+enum class ReferenceScanType
+{
+	Loot = 0,
+	NoLoot,
+	Calibration,
+	MAX
+};
+
 }

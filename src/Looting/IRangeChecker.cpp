@@ -20,6 +20,19 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "IRangeChecker.h"
 
+bool AlwaysInRange::IsValid(const RE::TESObjectREFR* refr) const 
+{ 
+	return true;
+}
+double AlwaysInRange::Radius() const
+{ 
+	return 0.0;
+}
+double AlwaysInRange::Distance() const 
+{ 
+	return 0.0;
+}
+
 AbsoluteRange::AbsoluteRange(const RE::TESObjectREFR* source, const double radius, const double zFactor) :
 	m_sourceX(source->GetPositionX()), m_sourceY(source->GetPositionY()), m_sourceZ(source->GetPositionZ()),
 	m_radius(radius), m_zLimit(radius * zFactor)

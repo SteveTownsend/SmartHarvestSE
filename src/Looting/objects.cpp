@@ -134,37 +134,26 @@ RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
 	return (node && node->GetControllers()) ? node->GetControllers() : nullptr;
 }
 
-bool ActorHelper::IsSneaking() const
+PlayerAffinity GetPlayerAffinity(const RE::Actor* actor)
 {
-	return m_actor->IsSneaking();
-}
-
-bool ActorHelper::IsPlayerAlly() const
-{
-	if (m_actor->IsPlayerTeammate())
-	{
-		DBG_DMESSAGE("Actor is teammate");
-		return true;
-	}
 	static const RE::TESFaction* followerFaction = RE::TESForm::LookupByID(CurrentFollowerFaction)->As<RE::TESFaction>();
-	if (followerFaction)
+	if (followerFaction && actor->IsInFaction(followerFaction))
 	{
-		bool result(m_actor->IsInFaction(followerFaction));
-		DBG_DMESSAGE("Actor is follower = %s", result ? "true" : "false");
-		return result;
+		DBG_DMESSAGE("Actor %s/0x%08x is follower", actor->GetName(), actor->GetFormID());
+		return PlayerAffinity::Follower;
 	}
-	return false;
-}
-
-bool ActorHelper::IsEssential() const 
-{
-	return m_actor->IsEssential();
+	if (actor->IsPlayerTeammate())
+	{
+		DBG_DMESSAGE("Actor %s/0x%08x is teammate", actor->GetName(), actor->GetFormID());
+		return PlayerAffinity::TeamMate;
+	}
+	return PlayerAffinity::Unaffiliated;
 }
 
 // applies only if NPC
-bool ActorHelper::IsSummoned(void) const
+bool IsSummoned(const RE::Actor* actor)
 {
-	const RE::TESNPC* npc(m_actor->GetActorBase());
+	const RE::TESNPC* npc(actor->GetActorBase());
 	bool result(npc && npc->IsSummonable());
 	DBG_DMESSAGE("Actor summoned = %s", result ? "true" : "false");
 	return result;

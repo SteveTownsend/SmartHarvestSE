@@ -23,10 +23,12 @@ http://www.fsf.org/licensing/licenses
 #include <numbers>
 
 #include "WorldState/LocationTracker.h"
+#include "Collections/CollectionManager.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
+#include "WorldState/VisitedPlaces.h"
 #include "Looting/ScanGovernor.h"
 #include "VM/papyrus.h"
 #include "Utilities/utils.h"
@@ -330,6 +332,7 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 
 void LocationTracker::Reset()
 {
+	VisitedPlaces::Instance().Reset();
 	DBG_MESSAGE("Reset Location Tracking after reload");
 	RecursiveLockGuard guard(m_locationLock);
 	m_tellPlayerIfCanLootAfterLoad = true;
@@ -392,6 +395,7 @@ bool LocationTracker::Refresh()
 		return false;
 	}
 
+	bool playerMoved(false);
 	RecursiveLockGuard guard(m_locationLock);
 
 	// Reset blocked lists if player cell has changed
@@ -399,6 +403,7 @@ bool LocationTracker::Refresh()
 	if (playerCell != m_playerCell)
 	{
 		m_playerCell = playerCell;
+		playerMoved = true;
 		if (m_playerCell)
 		{
 			DBG_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
@@ -430,6 +435,8 @@ bool LocationTracker::Refresh()
 	const RE::BGSLocation* playerLocation(player->currentLocation);
 	if (playerLocation != m_playerLocation || m_tellPlayerIfCanLootAfterLoad)
 	{
+		playerMoved = true;
+
 		// Output messages for any looting-restriction place change
 		static const bool allowIfRestricted(false);
 
@@ -444,7 +451,7 @@ bool LocationTracker::Refresh()
 		// check if it is a new player house
 		if (!IsPlayerAtHome())
 		{
-			if (PlayerHouses::Instance().IsValidHouse(m_playerLocation))
+			if (m_playerLocation && PlayerHouses::Instance().IsValidHouse(m_playerLocation))
 			{
 				// record as a player house and notify as it is a new one in this game load
 				DBG_MESSAGE("Player House %s detected", m_playerLocation->GetName());
@@ -498,6 +505,11 @@ bool LocationTracker::Refresh()
 
 		// once any change is processed, reset sentinel for game reload
 		m_tellPlayerIfCanLootAfterLoad = false;
+	}
+	if (playerMoved)
+	{
+		VisitedPlaces::Instance().RecordNew(
+			m_playerParentWorld, m_playerLocation, m_playerCell, CollectionManager::Instance().CurrentGameTime());
 	}
 	return true;
 }

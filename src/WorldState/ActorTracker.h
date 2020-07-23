@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include <deque>
 #include "Looting/IRangeChecker.h"
+#include "WorldState/PartyMembers.h"
 
 namespace shse
 {
@@ -38,8 +39,12 @@ public:
 	void RecordTimeOfDeath(RE::TESObjectREFR* actorRef);
 	void ReleaseIfReliablyDead(DistanceToTarget& refs);
 	void AddDetective(const RE::Actor*, const double distance);
-	std::vector<const RE::Actor*> ReadDetectives();
+	std::vector<const RE::Actor*> GetDetectives();
 	void ClearDetectives();
+
+	void AddFollower(const RE::Actor* detective);
+	inline Followers GetFollowers() const {	return m_followers; }
+	void ClearFollowers();
 
 private:
 	static std::unique_ptr<ActorTracker> m_instance;
@@ -57,6 +62,8 @@ private:
 	std::unordered_set<const RE::TESObjectREFR*> m_seenAlive;
 	// possible detecting NPCs, ordered by proximity to Player to expedite detection
 	std::map<double, const RE::Actor*> m_detectives;
+	// Followers in range i.e. the player's current party
+	Followers m_followers;
 
 	mutable RecursiveLock m_actorLock;
 };

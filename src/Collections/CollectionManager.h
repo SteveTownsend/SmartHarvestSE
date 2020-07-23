@@ -32,6 +32,7 @@ public:
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	void Refresh() const;
 	void UpdateGameTime(const float gameTime);
+	inline float CurrentGameTime() const { return m_gameTime; }
 	void CheckEnqueueAddedItem(const RE::FormID formID);
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
@@ -78,7 +79,7 @@ private:
 	bool IsCellLocatable(const RE::TESObjectCELL* cell);
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 	void ResolveMembership(void);
-	void AddToRelevantCollections(RE::FormID itemID);
+	void AddToRelevantCollections(RE::FormID itemID, const RE::TESForm* currentPlace);
 	std::vector<RE::FormID> ReconcileInventory();
 	void EnqueueAddedItem(const RE::FormID formID);
 

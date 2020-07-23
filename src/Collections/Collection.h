@@ -31,16 +31,14 @@ class CollectionGroup;
 
 class CollectionEntry {
 public:
-	CollectionEntry(const RE::TESForm* form, const float gameTime, const RE::TESForm* place, const Position position) :
-		m_form(form), m_gameTime(gameTime), m_place(place), m_position(position)
+	CollectionEntry(const RE::TESForm* form, const float gameTime) :
+		m_form(form), m_gameTime(gameTime)
 	{
 	}
 
 private:
 	const RE::TESForm* m_form;
 	const float m_gameTime;
-	const RE::TESForm* m_place;
-	const Position m_position;
 };
 
 class CollectionPolicy {

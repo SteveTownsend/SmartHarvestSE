@@ -123,13 +123,14 @@ void CollectionManager::ProcessAddedItems()
 
 	decltype(m_addedItemQueue) queuedItems;
 	queuedItems.swap(m_addedItemQueue);
+	const RE::TESForm* currentPlace(LocationTracker::Instance().CurrentPlayerPlace());
 	for (const auto formID : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
 		if (m_collectionsByFormID.contains(formID))
 		{
 			DBG_VMESSAGE("Check collectability of added item 0x%08x", formID);
-			AddToRelevantCollections(formID);
+			AddToRelevantCollections(formID, currentPlace);
 		}
 		else if (m_nonCollectionForms.insert(formID).second)
 		{
@@ -139,7 +140,7 @@ void CollectionManager::ProcessAddedItems()
 }
 
 // bucket newly-received items in any matching collections
-void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
+void CollectionManager::AddToRelevantCollections(const RE::FormID itemID, const RE::TESForm* currentPlace)
 {
 	// resolve ID to Form
 	RE::TESForm* form(RE::TESForm::LookupByID(itemID));
@@ -157,7 +158,7 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 			collection->second->IsMemberOf(form))
 		{
 			// record membership
-			collection->second->RecordItem(itemID, form, m_gameTime, LocationTracker::Instance().CurrentPlayerPlace());
+			collection->second->RecordItem(itemID, form, m_gameTime, currentPlace);
 		}
 	}
 }
