@@ -305,12 +305,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else
 		{
 			bool isSilent = !LootingRequiresNotification(lootingType);
-			DBG_VMESSAGE("SmartHarvest %s/0x%08x for REFR 0x%08x", m_candidate->GetBaseObject()->GetName(),
-				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
 			// don't let the backlog of messages get too large, it's about 1 per second
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
 				return Lootability::HarvestOperationPending;
+			DBG_VMESSAGE("SmartHarvest %s/0x%08x for REFR 0x%08x, collectible=%s", m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());

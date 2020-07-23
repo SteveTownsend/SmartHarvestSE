@@ -385,18 +385,24 @@ namespace papyrus
 		return shse::CollectionManager::Instance().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag* base, const float gameTime, std::vector<int> formIDs, const int itemCount)
+	void FlushAddedItems(RE::StaticFunctionTag* base, const float gameTime, const std::vector<const RE::TESForm*> forms, const int itemCount)
 	{
-		auto formID(formIDs.cbegin());
+		DBG_MESSAGE("Flush %d/%d added items", itemCount, forms.size());
+		auto form(forms.cbegin());
 		int current(0);
 		shse::CollectionManager::Instance().UpdateGameTime(gameTime);
 		while (current < itemCount)
 		{
 			// checked API
-			shse::CollectionManager::Instance().CheckEnqueueAddedItem(RE::FormID(*formID));
+			shse::CollectionManager::Instance().CheckEnqueueAddedItem(*form);
 			++current;
-			++formID;
+			++form;
 		}
+	}
+
+	void PushGameTime(RE::StaticFunctionTag* base, const float gameTime)
+	{
+		shse::CollectionManager::Instance().UpdateGameTime(gameTime);
 	}
 
 	int CollectionGroups(RE::StaticFunctionTag* base)
@@ -575,6 +581,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
 		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
+		a_vm->RegisterFunction("PushGameTime", SHSE_PROXY, papyrus::PushGameTime);
 		a_vm->RegisterFunction("CollectionGroups", SHSE_PROXY, papyrus::CollectionGroups);
 		a_vm->RegisterFunction("CollectionGroupName", SHSE_PROXY, papyrus::CollectionGroupName);
 		a_vm->RegisterFunction("CollectionGroupFile", SHSE_PROXY, papyrus::CollectionGroupFile);

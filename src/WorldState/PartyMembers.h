@@ -19,8 +19,6 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-#include <deque>
-
 namespace shse
 {
 
@@ -46,7 +44,7 @@ public:
 
 private:
 	static std::unique_ptr<PartyMembers> m_instance;
-	std::deque<PartyUpdate> m_partyUpdates;
+	std::vector<PartyUpdate> m_partyUpdates;
 	Followers m_followers;
 	mutable RecursiveLock m_partyLock;
 };

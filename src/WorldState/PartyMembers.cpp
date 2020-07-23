@@ -57,15 +57,17 @@ void PartyMembers::AdjustParty(const Followers& followers, const float gameTime)
 		{
 			updated = true;
 			m_partyUpdates.push_back(PartyUpdate(newFollower, PartyUpdateType::Joined, gameTime));
+			DBG_MESSAGE("Follower %s/0x%08x joined party at %.3f", newFollower->GetName(), newFollower->GetFormID(), gameTime);
 		}
 	}
 	for (const auto existingFollower : m_followers)
 	{
-		if (followers.find(existingFollower) == m_followers.cend())
+		if (followers.find(existingFollower) == followers.cend())
 		{
 			updated = true;
 			PartyUpdateType updateType(existingFollower->IsDead(true) ? PartyUpdateType::Died : PartyUpdateType::Departed);
 			m_partyUpdates.push_back(PartyUpdate(existingFollower, updateType, gameTime));
+			DBG_MESSAGE("Follower %s/0x%08x left party at %.3f", existingFollower->GetName(), existingFollower->GetFormID(), gameTime);
 		}
 	}
 	if (updated)

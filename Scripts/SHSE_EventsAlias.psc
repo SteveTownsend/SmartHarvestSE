@@ -26,7 +26,7 @@ int objType_Book
 int objType_skillBookRead
 
 Actor player
-int[] addedItemIDs
+Form[] addedItems
 int maxAddedItems
 
 int currentAddedItem
@@ -221,7 +221,7 @@ Function ResetCollections()
         return
     endIf
     ;DebugTrace("eventScript.ResetCollections")
-    addedItemIDs = New Int[128]
+    addedItems = New Form[128]
     maxAddedItems = 128
     currentAddedItem = 0
 EndFunction
@@ -273,6 +273,7 @@ Function ApplySetting(bool reload, int oreMining)
     if reload
         ; only need to check Collections requisite data structure on reload, not MCM close
         ResetCollections()
+        PushGameTime(Utility.GetCurrentGameTime())
     endIf
     SyncLists(reload)
     if (reload)
@@ -445,10 +446,10 @@ Function RecordItem(Form akBaseItem)
     endIf
     if currentAddedItem == maxAddedItems
         ; list is full, flush to the plugin
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItemIDs, currentAddedItem)
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, currentAddedItem)
         currentAddedItem = 0
     endif
-    addedItemIDs[currentAddedItem] = akBaseItem.GetFormID()
+    addedItems[currentAddedItem] = akBaseItem
     currentAddedItem += 1
 EndFunction
 
@@ -809,8 +810,12 @@ EndEvent
 Event OnFlushAddedItems()
     ;DebugTrace("Request to flush added items")
     ; always respond to poll so plugin DLL keeps in sync with game-time
-    FlushAddedItems(Utility.GetCurrentGameTime(), addedItemIDs, currentAddedItem)
-    currentAddedItem = 0
+    if currentAddedItem > 0
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, currentAddedItem)
+        currentAddedItem = 0
+    else
+        PushGameTime(Utility.GetCurrentGameTime())
+    endIf
 EndEvent
 
 bool Function OKToScan()

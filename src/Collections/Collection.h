@@ -81,7 +81,7 @@ protected:
 	bool m_overridesGroup;
 	std::unique_ptr<ConditionTree> m_rootFilter;
 	// derived
-	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
+	std::unordered_map<const RE::TESForm*, float> m_observed;
 	mutable std::unordered_set<const RE::TESForm*> m_members;
 	std::vector<INIFile::SecondaryType> m_scopes;
 	const CollectionGroup* m_owningGroup;
@@ -100,7 +100,7 @@ public:
 	inline void SetOverridesGroup() { m_overridesGroup = true; }
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
-	void RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place);
+	void RecordItem(const RE::TESForm* form, const float gameTime);
 	void Reset();
 	nlohmann::json MakeJSON() const;
 	void AsJSON(nlohmann::json& j) const;

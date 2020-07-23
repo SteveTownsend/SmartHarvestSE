@@ -72,31 +72,31 @@ void CollectionManager::ProcessDefinitions(void)
 void CollectionManager::Refresh() const
 {
 	// request added items and game time to be pushed to us while we are sleeping
-	if (IsAvailable())
-		EventPublisher::Instance().TriggerFlushAddedItems();
+	EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
 void CollectionManager::UpdateGameTime(const float gameTime)
 {
 	RecursiveLockGuard guard(m_collectionLock);
+	DBG_MESSAGE("GameTime is now %.3f", gameTime);
 	m_gameTime = gameTime;
 }
 
-void CollectionManager::CheckEnqueueAddedItem(const RE::FormID formID)
+void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form)
 {
 	if (!IsAvailable())
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
 	// only pass this along if it is in >= 1 collection
-	if (m_collectionsByFormID.contains(formID))
+	if (m_collectionsByFormID.contains(form->GetFormID()))
 	{
-		EnqueueAddedItem(formID);
+		EnqueueAddedItem(form);
 	}
 }
 
-void CollectionManager::EnqueueAddedItem(const RE::FormID formID)
+void CollectionManager::EnqueueAddedItem(const RE::TESForm* form)
 {
-	m_addedItemQueue.emplace_back(formID);
+	m_addedItemQueue.push_back(form);
 }
 
 void CollectionManager::ProcessAddedItems()
@@ -123,31 +123,29 @@ void CollectionManager::ProcessAddedItems()
 
 	decltype(m_addedItemQueue) queuedItems;
 	queuedItems.swap(m_addedItemQueue);
-	const RE::TESForm* currentPlace(LocationTracker::Instance().CurrentPlayerPlace());
-	for (const auto formID : queuedItems)
+	for (const auto form : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
-		if (m_collectionsByFormID.contains(formID))
+		if (m_collectionsByFormID.contains(form->GetFormID()))
 		{
-			DBG_VMESSAGE("Check collectability of added item 0x%08x", formID);
-			AddToRelevantCollections(formID, currentPlace);
+			DBG_VMESSAGE("Check collectability of added item 0x%08x", form->GetFormID());
+			AddToRelevantCollections(form);
 		}
-		else if (m_nonCollectionForms.insert(formID).second)
+		else if (m_nonCollectionForms.insert(form->GetFormID()).second)
 		{
-			DBG_VMESSAGE("Recorded 0x%08x as non-collectible", formID);
+			DBG_VMESSAGE("Recorded 0x%08x as non-collectible", form->GetFormID());
 		}
 	}
 }
 
 // bucket newly-received items in any matching collections
-void CollectionManager::AddToRelevantCollections(const RE::FormID itemID, const RE::TESForm* currentPlace)
+void CollectionManager::AddToRelevantCollections(const RE::TESForm* item)
 {
 	// resolve ID to Form
-	RE::TESForm* form(RE::TESForm::LookupByID(itemID));
-	if (!form)
+	if (!item)
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
-	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
+	const auto targets(m_collectionsByFormID.equal_range(item->GetFormID()));
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
 		// skip disabled collections
@@ -155,10 +153,10 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID, const 
 			continue;
 		// Do not record if the policy indicates per-item history not required
 		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
-			collection->second->IsMemberOf(form))
+			collection->second->IsMemberOf(item))
 		{
 			// record membership
-			collection->second->RecordItem(itemID, form, m_gameTime, currentPlace);
+			collection->second->RecordItem(item, m_gameTime);
 		}
 	}
 }
@@ -199,22 +197,22 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
 // We don't do this on every pass as it's a decent amount of work
-std::vector<RE::FormID> CollectionManager::ReconcileInventory()
+std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
 {
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 	if (!player)
-		return std::vector<RE::FormID>();
+		return std::vector<const RE::TESForm*>();
 
 	// use delta vs last pass to speed this up (resets on game reload)
 	decltype(m_lastInventoryItems) newInventoryItems;
-	std::vector<RE::FormID> candidates;
+	std::vector<const RE::TESForm*> candidates;
 	const auto inv = player->GetInventory([&](RE::TESBoundObject* candidate) -> bool {
 		RE::FormID formID(candidate->GetFormID());
-		newInventoryItems.insert(formID);
-		if (!m_lastInventoryItems.contains(formID) && m_collectionsByFormID.contains(formID))
+		newInventoryItems.insert(candidate);
+		if (!m_lastInventoryItems.contains(candidate) && m_collectionsByFormID.contains(formID))
 		{
 			DBG_VMESSAGE("Collectible %s/0x%08x new in inventory", candidate->GetName(), formID);
-			candidates.push_back(formID);
+			candidates.push_back(candidate);
 		}
 		return false;
 	});

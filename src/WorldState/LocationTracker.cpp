@@ -25,6 +25,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/LocationTracker.h"
 #include "Collections/CollectionManager.h"
 #include "Looting/ManagedLists.h"
+#include "WorldState/PartyMembers.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
@@ -333,6 +334,7 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 void LocationTracker::Reset()
 {
 	VisitedPlaces::Instance().Reset();
+	PartyMembers::Instance().Reset();
 	DBG_MESSAGE("Reset Location Tracking after reload");
 	RecursiveLockGuard guard(m_locationLock);
 	m_tellPlayerIfCanLootAfterLoad = true;

@@ -19,8 +19,6 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-#include <deque>
-
 namespace shse
 {
 
@@ -51,7 +49,7 @@ public:
 
 private:
 	static std::unique_ptr<VisitedPlaces> m_instance;
-	std::deque<VisitedPlace> m_visited;
+	std::vector<VisitedPlace> m_visited;
 	VisitedPlace m_lastVisited;
 	mutable RecursiveLock m_visitedLock;
 };

@@ -77,7 +77,7 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 	}
 
 	// if (always collectible OR not observed) AND a member of this collection
-	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
+	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form())) && IsMemberOf(matcher.Form());
 }
 
 bool Collection::IsActive() const
@@ -96,11 +96,10 @@ bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
 	return false;
 }
 
-void Collection::RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place)
+void Collection::RecordItem(const RE::TESForm* form, const float gameTime)
 {
 	DBG_VMESSAGE("Collect %s/0x%08x in %s", form->GetName(), form->GetFormID(), m_name.c_str());
-	if (m_observed.insert(
-		std::make_pair(itemID, CollectionEntry(form, gameTime))).second)
+	if (m_observed.insert({ form, gameTime }).second)
 	{
 		if (m_effectivePolicy.Notify())
 		{

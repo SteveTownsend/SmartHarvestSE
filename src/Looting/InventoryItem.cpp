@@ -109,7 +109,7 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	if (m_inlineTransfer)
 	{
 		// safe to handle here - record the item for Collection correlation before moving
-		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject()->GetFormID());
+		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject());
 		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else

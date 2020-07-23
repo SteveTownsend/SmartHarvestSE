@@ -324,7 +324,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 			if (actor && !actor->IsDead(true))
 			{
 				PlayerAffinity affinity(GetPlayerAffinity(actor));
-				if (affinity == PlayerAffinity::Follower)
+				if (affinity == PlayerAffinity::Follower || affinity == PlayerAffinity::TeamMate)
 				{
 					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
 					ActorTracker::Instance().AddFollower(actor);

@@ -33,7 +33,7 @@ public:
 	void Refresh() const;
 	void UpdateGameTime(const float gameTime);
 	inline float CurrentGameTime() const { return m_gameTime; }
-	void CheckEnqueueAddedItem(const RE::FormID formID);
+	void CheckEnqueueAddedItem(const RE::TESForm* form);
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
@@ -79,9 +79,9 @@ private:
 	bool IsCellLocatable(const RE::TESObjectCELL* cell);
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 	void ResolveMembership(void);
-	void AddToRelevantCollections(RE::FormID itemID, const RE::TESForm* currentPlace);
-	std::vector<RE::FormID> ReconcileInventory();
-	void EnqueueAddedItem(const RE::FormID formID);
+	void AddToRelevantCollections(const RE::TESForm* item);
+	std::vector<const RE::TESForm*> ReconcileInventory();
+	void EnqueueAddedItem(const RE::TESForm* form);
 
 	static std::unique_ptr<CollectionManager> m_instance;
 	// data loaded ok?
@@ -104,8 +104,8 @@ private:
 	// for CELL connectivity checking during data load
 	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 
-	std::vector<RE::FormID> m_addedItemQueue;
-	std::unordered_set<RE::FormID> m_lastInventoryItems;
+	std::vector<const RE::TESForm*> m_addedItemQueue;
+	std::unordered_set<const RE::TESForm*> m_lastInventoryItems;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 };
 
