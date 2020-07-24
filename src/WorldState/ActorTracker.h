@@ -32,17 +32,21 @@ namespace shse
 class PartyVictim {
 public:
 	PartyVictim(const RE::Actor* victim, const float gameTime);
+	void AsJSON(nlohmann::json& j) const;
 
 private:
 	const std::string m_victim;
 	const float m_gameTime;
 };
 
+void to_json(nlohmann::json& j, const PartyVictim& partyVictim);
+
 class ActorTracker
 {
 public:
 	static ActorTracker& Instance();
 	ActorTracker();
+	void AsJSON(nlohmann::json& j) const;
 
 	void Reset();
 	void RecordLiveSighting(const RE::TESObjectREFR* actorRef);
@@ -83,5 +87,7 @@ private:
 
 	mutable RecursiveLock m_actorLock;
 };
+
+void to_json(nlohmann::json& j, const ActorTracker& actorTracker);
 
 }

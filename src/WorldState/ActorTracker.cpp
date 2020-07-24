@@ -29,6 +29,17 @@ PartyVictim::PartyVictim(const RE::Actor* victim, const float gameTime)
 {
 }
 
+void PartyVictim::AsJSON(nlohmann::json& j) const
+{
+	j["name"] = m_victim;
+	j["time"] = m_gameTime;
+}
+
+void to_json(nlohmann::json& j, const PartyVictim& partyVictim)
+{
+	partyVictim.AsJSON(j);
+}
+
 std::unique_ptr<ActorTracker> ActorTracker::m_instance;
 
 ActorTracker& ActorTracker::Instance()
@@ -153,6 +164,21 @@ void ActorTracker::ClearFollowers()
 {
 	RecursiveLockGuard guard(m_actorLock);
 	m_followers.clear();
+}
+
+void ActorTracker::AsJSON(nlohmann::json& j) const
+{
+	nlohmann::json victims(nlohmann::json::array());
+	for (const auto& victim : m_victims)
+	{
+		victims.push_back(victim);
+	}
+	j["victims"] = victims;
+}
+
+void to_json(nlohmann::json& j, const ActorTracker& actorTracker)
+{
+	actorTracker.AsJSON(j);
 }
 
 }

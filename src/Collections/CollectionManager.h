@@ -67,6 +67,8 @@ public:
 	bool IsPlacedObject(const RE::TESForm* form) const;
 	void RecordPlacedObjects(void);
 
+	void AsJSON(nlohmann::json& j) const;
+
 private:
 	bool LoadData(void);
 	bool LoadCollectionGroup(
@@ -106,5 +108,7 @@ private:
 	std::unordered_set<const RE::TESForm*> m_lastInventoryItems;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 };
+
+void to_json(nlohmann::json& j, const CollectionManager& collectionManager);
 
 }

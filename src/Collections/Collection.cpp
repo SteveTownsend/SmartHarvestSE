@@ -190,6 +190,20 @@ void Collection::AsJSON(nlohmann::json& j) const
 	j["description"] = m_description;
 	j["policy"] = nlohmann::json(m_effectivePolicy);
 	j["rootFilter"] = nlohmann::json(*m_rootFilter);
+	nlohmann::json members(nlohmann::json::array());
+	for (const auto form : m_members)
+	{
+		nlohmann::json memberObj(nlohmann::json::object());
+		memberObj["form"] = form->GetFormID();
+		const auto observed(m_observed.find(form));
+		if (observed != m_observed.cend())
+		{
+			// optional, observed member only
+			memberObj["time"] = observed->second;
+		}
+		members.push_back(memberObj);
+	}
+	j["members"] = members;
 }
 
 void to_json(nlohmann::json& j, const Collection& collection)
@@ -236,6 +250,7 @@ void CollectionGroup::SyncDefaultPolicy()
 
 void CollectionGroup::AsJSON(nlohmann::json& j) const
 {
+	j["name"] = m_name;
 	j["groupPolicy"] = nlohmann::json(m_policy);
 	j["useMCM"] = m_useMCM;
 	j["collections"] = nlohmann::json::array();

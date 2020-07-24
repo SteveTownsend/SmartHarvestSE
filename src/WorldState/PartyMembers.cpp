@@ -29,6 +29,18 @@ PartyUpdate::PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventT
 {
 }
 
+void PartyUpdate::AsJSON(nlohmann::json& j) const
+{
+	j["follower"] = m_follower->GetFormID();
+	j["event"] = int(m_eventType);
+	j["time"] = m_gameTime;
+}
+
+void to_json(nlohmann::json& j, const PartyUpdate& partyUpdate)
+{
+	partyUpdate.AsJSON(j);
+}
+
 std::unique_ptr<PartyMembers> PartyMembers::m_instance;
 
 PartyMembers& PartyMembers::Instance()
@@ -74,6 +86,21 @@ void PartyMembers::AdjustParty(const Followers& followers, const float gameTime)
 	{
 		m_followers = followers;
 	}
+}
+
+void PartyMembers::AsJSON(nlohmann::json& j) const
+{
+	nlohmann::json updates(nlohmann::json::array());
+	for (const auto& update : m_partyUpdates)
+	{
+		updates.push_back(update);
+	}
+	j["updates"] = updates;
+}
+
+void to_json(nlohmann::json& j, const PartyMembers& partyMembers)
+{
+	partyMembers.AsJSON(j);
 }
 
 }

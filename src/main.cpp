@@ -25,13 +25,24 @@ http://www.fsf.org/licensing/licenses
 #include "VM/papyrus.h"
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
+#include "Collections/CollectionManager.h"
+#include "WorldState/VisitedPlaces.h"
+#include "WorldState/PartyMembers.h"
+#include "WorldState/ActorTracker.h"
 
 #include <shlobj.h>
 #include <sstream>
 #include <KnownFolders.h>
 #include <filesystem>
 
-constexpr const char* SAVEDATAFILE("SaveData.compressed.json");
+if 0
+constexpr const char* LORDFILE("LORD.compressed.json");
+constexpr const char* COLLFILE("COLL.compressed.json");
+constexpr const char* PLACFILE("PLAC.compressed.json");
+constexpr const char* PRTYFILE("PRTY.compressed.json");
+constexpr const char* VCTMFILE("VCTM.compressed.json");
+#endif
+
 void SaveCallback(SKSE::SerializationInterface* a_intfc)
 {
 	DBG_MESSAGE("Serialization Save hook called");
@@ -39,27 +50,84 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	WindowsUtils::ScopedTimer elapsed("Serialization Save hook");
 #endif
 	// Serialize JSON and compress per https://github.com/google/brotli
-	// output LoadOrder
-	// output Collection Defs
-	// output Collection contents
-	// output Location history
-	// output Followers-in-Party history
-	// output Party Kills history
-
-	nlohmann::json j(shse::LoadOrder::Instance());
-	DBG_MESSAGE("LORD:\n%s", j.dump().c_str());
-	std::string compressed(CompressionUtils::EncodeBrotli(j));
-	std::ofstream saveData(SAVEDATAFILE, std::ios::out | std::ios::binary);
-	saveData.write(compressed.c_str(), compressed.length());
-	saveData.close();
 #if 0
-	if (!a_intfc->WriteRecord('LORD', 1, CompressionUtils::EncodeBrotli(j).c_str())) 
+	// output LoadOrder
+	{
+		nlohmann::json j(shse::LoadOrder::Instance());
+		DBG_MESSAGE("Wrote %s :\n%s", LORDFILE, j.dump().c_str());
+		std::string compressed(CompressionUtils::EncodeBrotli(j));
+		std::ofstream saveData(LORDFILE, std::ios::out | std::ios::binary);
+		saveData.write(compressed.c_str(), compressed.length());
+		saveData.close();
+	}
+	// output Collection Groups - Definitions and Members
+	{
+		nlohmann::json j(shse::CollectionManager::Instance());
+		DBG_MESSAGE("Wrote %s :\n%s", COLLFILE, j.dump().c_str());
+		std::string compressed(CompressionUtils::EncodeBrotli(j));
+		std::ofstream saveData(COLLFILE, std::ios::out | std::ios::binary);
+		saveData.write(compressed.c_str(), compressed.length());
+		saveData.close();
+	}
+	// output Location history
+	{
+		nlohmann::json j(shse::VisitedPlaces::Instance());
+		DBG_MESSAGE("Wrote %s :\n%s", PLACFILE, j.dump().c_str());
+		std::string compressed(CompressionUtils::EncodeBrotli(j));
+		std::ofstream saveData(PLACFILE, std::ios::out | std::ios::binary);
+		saveData.write(compressed.c_str(), compressed.length());
+		saveData.close();
+	}
+	// output Followers-in-Party history
+	{
+		nlohmann::json j(shse::PartyMembers::Instance());
+		DBG_MESSAGE("Wrote %s :\n%s", PRTYFILE, j.dump().c_str());
+		std::string compressed(CompressionUtils::EncodeBrotli(j));
+		std::ofstream saveData(PRTYFILE, std::ios::out | std::ios::binary);
+		saveData.write(compressed.c_str(), compressed.length());
+		saveData.close();
+	}
+	// output Party Kills history
+	{
+		nlohmann::json j(shse::ActorTracker::Instance());
+		DBG_MESSAGE("Wrote %s :\n%s", VCTMFILE, j.dump().c_str());
+		std::string compressed(CompressionUtils::EncodeBrotli(j));
+		std::ofstream saveData(VCTMFILE, std::ios::out | std::ios::binary);
+		saveData.write(compressed.c_str(), compressed.length());
+		saveData.close();
+	}
+#else
+	// output LoadOrder
+	std::string lordRecord(CompressionUtils::EncodeBrotli(shse::LoadOrder::Instance()));
+	if (!a_intfc->WriteRecord('LORD', 1, lordRecord.c_str(), static_cast<UInt32>(lordRecord.length())))
 	{
 		REL_ERROR("Failed to serialize LORD");
 	}
+	// output Collection Groups - Definitions and Members
+	std::string collRecord(CompressionUtils::EncodeBrotli(shse::CollectionManager::Instance()));
+	if (!a_intfc->WriteRecord('COLL', 1, collRecord.c_str(), static_cast<UInt32>(collRecord.length())))
+	{
+		REL_ERROR("Failed to serialize COLL");
+	}
+	// output Location history
+	std::string placRecord(CompressionUtils::EncodeBrotli(shse::VisitedPlaces::Instance()));
+	if (!a_intfc->WriteRecord('PLAC', 1, placRecord.c_str(), static_cast<UInt32>(placRecord.length())))
+	{
+		REL_ERROR("Failed to serialize PLAC");
+	}
+	// output Followers-in-Party history
+	std::string prtyRecord(CompressionUtils::EncodeBrotli(shse::PartyMembers::Instance()));
+	if (!a_intfc->WriteRecord('PRTY', 1, prtyRecord.c_str(), static_cast<UInt32>(prtyRecord.length())))
+	{
+		REL_ERROR("Failed to serialize PRTY");
+	}
+	std::string vctmRecord(CompressionUtils::EncodeBrotli(shse::ActorTracker::Instance()));
+	if (!a_intfc->WriteRecord('VCTM', 1, vctmRecord.c_str(), static_cast<UInt32>(vctmRecord.length())))
+	{
+		REL_ERROR("Failed to serialize VCTM");
+	}
 #endif
 }
-
 
 void LoadCallback(SKSE::SerializationInterface* a_intfc)
 {
@@ -67,62 +135,113 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Serialization Load hook");
 #endif
+#if 0
 	try {
 		// decompress per https://github.com/google/brotli and rehydrate to JSON
-		size_t fileSize(std::filesystem::file_size(SAVEDATAFILE));
-		std::ifstream readData(SAVEDATAFILE, std::ios::in | std::ios::binary);
+		size_t fileSize(std::filesystem::file_size(LORDFILE));
+		std::ifstream readData(LORDFILE, std::ios::in | std::ios::binary);
 		std::string roundTrip(fileSize, 0);
 		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
 		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read:\n%s", jRead.dump().c_str());
+		DBG_MESSAGE("Read %s:\n%s", LORDFILE, jRead.dump().c_str());
 	}
 	catch (const std::exception& exc)
 	{
-		DBG_ERROR("LoadFile error on %s: %s", SAVEDATAFILE, exc.what());
+		DBG_ERROR("Load error on %s: %s", LORDFILE, exc.what());
 	}
-	// read LoadOrder
-	// read Collection Defs
-	// read Collection contents
-	// read Location history
-	// read Followers-in-Party history
-	// read Party Kills history
-#if 0
-	SInt32 num;
-	std::vector<SInt32> arr;
-
-	UInt32 type;
+	try {
+		// decompress per https://github.com/google/brotli and rehydrate to JSON
+		size_t fileSize(std::filesystem::file_size(COLLFILE));
+		std::ifstream readData(COLLFILE, std::ios::in | std::ios::binary);
+		std::string roundTrip(fileSize, 0);
+		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
+		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
+		DBG_MESSAGE("Read %s:\n%s", COLLFILE, jRead.dump().c_str());
+	}
+	catch (const std::exception& exc)
+	{
+		DBG_ERROR("Load error on %s: %s", COLLFILE, exc.what());
+	}
+	try {
+		// decompress per https://github.com/google/brotli and rehydrate to JSON
+		size_t fileSize(std::filesystem::file_size(PLACFILE));
+		std::ifstream readData(PLACFILE, std::ios::in | std::ios::binary);
+		std::string roundTrip(fileSize, 0);
+		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
+		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
+		DBG_MESSAGE("Read %s:\n%s", PLACFILE, jRead.dump().c_str());
+	}
+	catch (const std::exception& exc)
+	{
+		DBG_ERROR("Load error on %s: %s", PLACFILE, exc.what());
+	}
+	try {
+		// decompress per https://github.com/google/brotli and rehydrate to JSON
+		size_t fileSize(std::filesystem::file_size(PRTYFILE));
+		std::ifstream readData(PRTYFILE, std::ios::in | std::ios::binary);
+		std::string roundTrip(fileSize, 0);
+		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
+		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
+		DBG_MESSAGE("Read %s:\n%s", PRTYFILE, jRead.dump().c_str());
+	}
+	catch (const std::exception& exc)
+	{
+		DBG_ERROR("Load error on %s: %s", PRTYFILE, exc.what());
+	}
+	try {
+		// decompress per https://github.com/google/brotli and rehydrate to JSON
+		size_t fileSize(std::filesystem::file_size(VCTMFILE));
+		std::ifstream readData(VCTMFILE, std::ios::in | std::ios::binary);
+		std::string roundTrip(fileSize, 0);
+		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
+		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
+		DBG_MESSAGE("Read %s:\n%s", VCTMFILE, jRead.dump().c_str());
+	}
+	catch (const std::exception& exc)
+	{
+		DBG_ERROR("Load error on %s: %s", VCTMFILE, exc.what());
+	}
+#else
+	UInt32 readType;
 	UInt32 version;
 	UInt32 length;
-	while (a_intfc->GetNextRecordInfo(type, version, length)) {
-		switch (type) {
-		case 'NUM_':
-			if (!a_intfc->ReadRecordData(num)) {
-				_ERROR("Failed to load num!");
-			}
-			break;
-		case 'ARR_':
+	std::unordered_map<shse::SerializationRecordType, nlohmann::json> records;
+	std::string saveData;
+	while (a_intfc->GetNextRecordInfo(readType, version, length)) {
+		saveData.resize(length);
+		if (!a_intfc->ReadRecordData(const_cast<char*>(saveData.c_str()), length))
 		{
-			std::size_t size;
-			if (!a_intfc->ReadRecordData(size)) {
-				_ERROR("Failed to load size!");
-				break;
-			}
-
-			for (UInt32 i = 0; i < size; ++i) {
-				SInt32 elem;
-				if (!a_intfc->ReadRecordData(elem)) {
-					_ERROR("Failed to load elem!");
-					break;
-				}
-				else {
-					arr.push_back(elem);
-				}
-			}
+			REL_ERROR("Failed to load record %d", readType);
 		}
-		break;
-		default:
-			_ERROR("Unrecognized signature type!");
+		shse::SerializationRecordType recordType(shse::SerializationRecordType::MAX);
+		switch (readType) {
+		case 'LORD':
+			// Load Order
+			recordType = shse::SerializationRecordType::LoadOrder;
 			break;
+		case 'COLL':
+			// Collection Groups - Definitions and Members
+			recordType = shse::SerializationRecordType::Collections;
+			break;
+		case 'PLAC':
+			// Visited Places
+			recordType = shse::SerializationRecordType::PlacesVisited;
+			break;
+		case 'PRTY':
+			// Party Membership
+			recordType = shse::SerializationRecordType::PartyUpdates;
+			break;
+		case 'VCTM':
+			// Party Victims
+			recordType = shse::SerializationRecordType::Victims;
+			break;
+		default:
+			REL_ERROR("Unrecognized signature type %d", readType);
+			break;
+		}
+		if (recordType != shse::SerializationRecordType::MAX)
+		{
+			records.insert({ recordType, CompressionUtils::DecodeBrotli(saveData) });
 		}
 	}
 #endif

@@ -253,37 +253,37 @@ namespace GameSettingUtils
 	}
 }
 
-
 namespace CompressionUtils
 {
 	nlohmann::json DecodeBrotli(const std::string& compressed)
 	{
-		// TODO this is not Production-ready
 		size_t inputSize(compressed.length());
-		std::string inflated(inputSize * 5, 0);
+		// TODO should not have to guess
+		std::string inflated(inputSize * 15, 0);
 		size_t outputSize;
-		if (BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str()),
-			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))) == BROTLI_DECODER_RESULT_SUCCESS)
+		BrotliDecoderResult result(BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str()),
+			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))));
+		if (result == BROTLI_DECODER_RESULT_SUCCESS)
 		{
-			REL_MESSAGE("Inflated %d bytes to %d bytes", inputSize, outputSize);
+			REL_MESSAGE("Inflated %d bytes to %d", inputSize, outputSize);
 			inflated.resize(outputSize);
 			return nlohmann::json(inflated);
 		}
-		REL_ERROR("Inflating %d bytes failed", inputSize);
+		REL_ERROR("Inflating %d bytes failed, error %d", inputSize, result);
 		return nlohmann::json();
 	}
 
 	std::string EncodeBrotli(const nlohmann::json& j)
 	{
 		std::string jsonStr(j.dump());
-		size_t outputSize(jsonStr.length());
-		// TODO this is not Production-ready
+		size_t outputSize(BrotliEncoderMaxCompressedSize(jsonStr.length()));
 		std::string encodedStr(outputSize, 0);
-		if (BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
+		static constexpr int BrotliQuality(1);	// favour fast speed over small size
+		if (BrotliEncoderCompress(BrotliQuality, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
 			jsonStr.length(), reinterpret_cast<const uint8_t*>(jsonStr.c_str()), &outputSize,
 			reinterpret_cast<uint8_t*>(const_cast<char*>(encodedStr.c_str()))) != BROTLI_FALSE)
 		{
-			REL_MESSAGE("Compressed %d bytes to %d bytes", jsonStr.length(), outputSize);
+			REL_MESSAGE("Compressed %d bytes to %d, ratio %.3f", jsonStr.length(), outputSize, double(jsonStr.length()) / double(outputSize));
 			encodedStr.resize(outputSize);
 			return encodedStr;
 		}

@@ -26,11 +26,15 @@ class PartyUpdate {
 public:
 	PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventType, const float gameTime);
 
+	void AsJSON(nlohmann::json& j) const;
+
 private:
 	const RE::Actor* m_follower;
 	const PartyUpdateType m_eventType;
 	const float m_gameTime;
 };
+
+void to_json(nlohmann::json& j, const PartyUpdate& partyUpdate);
 
 typedef std::unordered_set<const RE::Actor*> Followers;
 class PartyMembers
@@ -42,11 +46,15 @@ public:
 	void Reset();
 	void AdjustParty(const Followers& followers, const float gameTime);
 
+	void AsJSON(nlohmann::json& j) const;
+
 private:
 	static std::unique_ptr<PartyMembers> m_instance;
 	std::vector<PartyUpdate> m_partyUpdates;
 	Followers m_followers;
 	mutable RecursiveLock m_partyLock;
 };
+
+void to_json(nlohmann::json& j, const PartyMembers& partyMembers);
 
 }

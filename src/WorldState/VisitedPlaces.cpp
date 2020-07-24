@@ -40,6 +40,27 @@ VisitedPlace& VisitedPlace::operator=(const VisitedPlace& rhs)
 	return *this;
 }
 
+void VisitedPlace::AsJSON(nlohmann::json& j) const
+{
+	if (m_worldspace)
+	{
+		j["worldspace"] = m_worldspace->GetFormID();
+	}
+	if (m_location)
+	{
+		j["location"] = m_location->GetFormID();
+	}
+	if (m_cell)
+	{
+		j["cell"] = m_cell->GetFormID();
+	}
+}
+
+void to_json(nlohmann::json& j, const VisitedPlace& visitedPlace)
+{
+	visitedPlace.AsJSON(j);
+}
+
 std::unique_ptr<VisitedPlaces> VisitedPlaces::m_instance;
 
 VisitedPlaces& VisitedPlaces::Instance()
@@ -51,8 +72,7 @@ VisitedPlaces& VisitedPlaces::Instance()
 	return *m_instance;
 }
 
-VisitedPlaces::VisitedPlaces() :
-	m_lastVisited(nullptr, nullptr, nullptr, 0.0)
+VisitedPlaces::VisitedPlaces()
 {
 }
 
@@ -64,12 +84,36 @@ void VisitedPlaces::Reset()
 
 void VisitedPlaces::RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime)
 {
+	bool isNew(false);
 	RecursiveLockGuard guard(m_visitedLock);
-	if (worldspace != m_lastVisited.Worldspace() || location != m_lastVisited.Location() || cell != m_lastVisited.Cell())
-	{ 
-		m_lastVisited = VisitedPlace(worldspace, location, cell, gameTime);
-		m_visited.push_back(m_lastVisited);
+	if (m_visited.empty())
+	{
+		isNew = true;
 	}
+	else
+	{
+		const VisitedPlace& currentPlace(m_visited.back());
+		isNew = worldspace != currentPlace.Worldspace() || location != currentPlace.Location() || cell != currentPlace.Cell();
+	}
+	if (isNew)
+	{ 
+		m_visited.emplace_back(worldspace, location, cell, gameTime);
+	}
+}
+
+void VisitedPlaces::AsJSON(nlohmann::json& j) const
+{
+	RecursiveLockGuard guard(m_visitedLock);
+	j["visited"] = nlohmann::json::array();
+	for (const auto& visited : m_visited)
+	{
+		j["visited"].push_back(visited);
+	}
+}
+
+void to_json(nlohmann::json& j, const VisitedPlaces& visitedPlaces)
+{
+	visitedPlaces.AsJSON(j);
 }
 
 }

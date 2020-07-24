@@ -421,7 +421,7 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 	case SerializationRecordType::PartyUpdates:
 		return "PRTY";
 	case SerializationRecordType::Victims:
-		return "VICT";
+		return "VCTM";
 	default:
 		return "????";
 	}

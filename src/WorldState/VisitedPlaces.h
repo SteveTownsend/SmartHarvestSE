@@ -27,6 +27,8 @@ public:
 	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime);
 	VisitedPlace& operator=(const VisitedPlace& rhs);
 
+	void AsJSON(nlohmann::json& j) const;
+
 	inline const RE::TESWorldSpace* Worldspace() const { return m_worldspace; }
 	inline const RE::BGSLocation* Location() const { return m_location; }
 	inline const RE::TESObjectCELL* Cell() const { return m_cell; }
@@ -38,6 +40,8 @@ private:
 	const float m_gameTime;
 };
 
+void to_json(nlohmann::json& j, const VisitedPlace& visitedPlace);
+
 class VisitedPlaces
 {
 public:
@@ -47,11 +51,14 @@ public:
 	void Reset();
 	void RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime);
 
+	void AsJSON(nlohmann::json& j) const;
+
 private:
 	static std::unique_ptr<VisitedPlaces> m_instance;
 	std::vector<VisitedPlace> m_visited;
-	VisitedPlace m_lastVisited;
 	mutable RecursiveLock m_visitedLock;
 };
+
+void to_json(nlohmann::json& j, const VisitedPlaces& visitedPlaces);
 
 }

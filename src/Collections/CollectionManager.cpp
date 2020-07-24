@@ -874,4 +874,20 @@ void CollectionManager::OnGameReload()
 	}
 }
 
+void CollectionManager::AsJSON(nlohmann::json& j) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	j["time"] = m_gameTime;
+	j["groups"] = nlohmann::json::array();
+	for (const auto& collectionGroup : m_allGroupsByName)
+	{
+		j["groups"].push_back(*collectionGroup.second);
+	}
+}
+
+void to_json(nlohmann::json& j, const CollectionManager& collectionManager)
+{
+	collectionManager.AsJSON(j);
+}
+
 }
