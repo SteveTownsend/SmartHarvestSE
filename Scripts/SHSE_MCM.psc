@@ -563,7 +563,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 34
+    return 35
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -619,6 +619,10 @@ Event OnVersionUpdate(int a_version)
         ;adds reset-to-defaults
         InitSettingsFileOptions()
         InstallCollectionDescriptionsActions()
+    endIf
+    if (a_version >= 35 && CurrentVersion < 35)
+        ;fixes missing entry in plugin
+        eventScript.SyncVeinResourceTypes()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
