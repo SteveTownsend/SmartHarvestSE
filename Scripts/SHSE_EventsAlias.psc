@@ -180,6 +180,13 @@ Function SetShaders()
     lootedShader = Game.GetFormFromFile(0x813, "SmartHarvestSE.esp") as EffectShader        ; silver
 EndFunction
 
+Function SyncVeinResourceTypes()
+    resource_Ore = GetResourceTypeByName("Ore")
+    resource_Geode = GetResourceTypeByName("Geode")
+    resource_Volcanic = GetResourceTypeByName("Volcanic")
+    resource_VolcanicDigSite = GetResourceTypeByName("VolcanicDigSite")
+EndFunction
+
 ; must line up with enumerations from C++
 Function SyncNativeDataTypes()
     objType_Flora = GetObjectTypeByName("flora")
@@ -190,10 +197,7 @@ Function SyncNativeDataTypes()
     objType_Book = GetObjectTypeByName("book")
     objType_skillBookRead = GetObjectTypeByName("skillbookread")
 
-    resource_Ore = GetResourceTypeByName("Ore")
-    resource_Geode = GetResourceTypeByName("Geode")
-    resource_Volcanic = GetResourceTypeByName("Volcanic")
-    resource_VolcanicDigSite = GetResourceTypeByName("VolcanicDigSite")
+    SyncVeinResourceTypes()
 
     glowReasonLockedContainer = 1
     glowReasonBossContainer = 2
