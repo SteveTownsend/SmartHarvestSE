@@ -51,7 +51,8 @@ PlayerState::PlayerState() :
 	m_sneaking(false),
 	m_ownershipRule(OwnershipRule::MAX),
 	m_belongingsCheck(SpecialObjectHandling::MAX),
-	m_disableWhileMounted(false)
+	m_disableWhileMounted(false),
+	m_gameTime(0.0)
 {
 }
 
@@ -319,6 +320,13 @@ bool PlayerState::WithinDetectionRange(const double distance) const
 {
 	double maxDistance(LocationTracker::Instance().IsPlayerIndoors() ? SneakDistanceInterior() : SneakDistanceExterior());
 	return distance <= maxDistance;
+}
+
+void PlayerState::UpdateGameTime(const float gameTime)
+{
+	RecursiveLockGuard guard(m_playerLock);
+	DBG_MESSAGE("GameTime is now %.3f", gameTime);
+	m_gameTime = gameTime;
 }
 
 }

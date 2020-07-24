@@ -24,6 +24,11 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
+PartyVictim::PartyVictim(const RE::Actor* victim, const float gameTime)
+	: m_victim(victim->GetName()), m_gameTime(gameTime)
+{
+}
+
 std::unique_ptr<ActorTracker> ActorTracker::m_instance;
 
 ActorTracker& ActorTracker::Instance()
@@ -46,6 +51,7 @@ void ActorTracker::Reset()
 	m_apparentTimeOfDeath.clear();
 	m_detectives.clear();
 	m_followers.clear();
+	m_checkedBodies.clear();
 }
 
 void ActorTracker::RecordLiveSighting(const RE::TESObjectREFR* actorRef)
@@ -69,6 +75,23 @@ void ActorTracker::RecordTimeOfDeath(RE::TESObjectREFR* refr)
 	DBG_MESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
 }
 
+void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
+{
+	RecursiveLockGuard guard(m_actorLock);
+	// only record the perpetrator of this heinous crime once
+	if (!victim || !m_checkedBodies.insert(victim).second)
+		return;
+	RE::Actor* killer(victim->myKiller.get().get());
+	// it's always the player even if a FOllower did the deed
+	if (killer == RE::PlayerCharacter::GetSingleton())
+	{
+		DBG_MESSAGE("Record killing of %s/0x%08x", victim->GetName(), victim->GetFormID());
+		m_victims.emplace_back(victim, PlayerState::Instance().CurrentGameTime());
+	}
+}
+
+// looting during combat is unstable, so if that option is enabled, we store the combat victims and loot them once combat ends, no sooner 
+// than N seconds after their death
 void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 {
 	RecursiveLockGuard guard(m_actorLock);
@@ -77,7 +100,8 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 	while (!m_apparentTimeOfDeath.empty() && m_apparentTimeOfDeath.front().second <= cutoffPoint)
 	{
 		// this actor died long enough ago that we trust actor->GetContainer not to crash, provided the ID is still usable
-		RE::TESObjectREFR* refr(m_apparentTimeOfDeath.front().first);
+		const auto nextActor(m_apparentTimeOfDeath.front());
+		RE::TESObjectREFR* refr(nextActor.first);
 		if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID()))
 		{
 			DBG_MESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
@@ -85,6 +109,11 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 		else
 		{
 			DBG_MESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
+		}
+		RE::Actor* actor(refr->As<RE::Actor>());
+		if (actor)
+		{
+			RecordIfKilledByParty(actor);
 		}
 		m_apparentTimeOfDeath.pop_front();
 		// use distance 0. to prioritize looting

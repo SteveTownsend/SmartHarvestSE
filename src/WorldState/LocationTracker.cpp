@@ -511,7 +511,7 @@ bool LocationTracker::Refresh()
 	if (playerMoved)
 	{
 		VisitedPlaces::Instance().RecordNew(
-			m_playerParentWorld, m_playerLocation, m_playerCell, CollectionManager::Instance().CurrentGameTime());
+			m_playerParentWorld, m_playerLocation, m_playerCell, PlayerState::Instance().CurrentGameTime());
 	}
 	return true;
 }

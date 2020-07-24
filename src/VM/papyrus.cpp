@@ -34,6 +34,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
+#include "WorldState/PlayerState.h"
 
 namespace
 {
@@ -390,7 +391,7 @@ namespace papyrus
 		DBG_MESSAGE("Flush %d/%d added items", itemCount, forms.size());
 		auto form(forms.cbegin());
 		int current(0);
-		shse::CollectionManager::Instance().UpdateGameTime(gameTime);
+		shse::PlayerState::Instance().UpdateGameTime(gameTime);
 		while (current < itemCount)
 		{
 			// checked API
@@ -402,7 +403,7 @@ namespace papyrus
 
 	void PushGameTime(RE::StaticFunctionTag* base, const float gameTime)
 	{
-		shse::CollectionManager::Instance().UpdateGameTime(gameTime);
+		shse::PlayerState::Instance().UpdateGameTime(gameTime);
 	}
 
 	int CollectionGroups(RE::StaticFunctionTag* base)

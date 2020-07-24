@@ -105,3 +105,9 @@ namespace StringUtils
 	bool Replace(std::string &str, const std::string target, const std::string replacement);
 	std::string FromUnicode(const std::wstring& input);
 }
+
+namespace CompressionUtils
+{
+	nlohmann::json DecodeBrotli(const std::string& compressed);
+	std::string EncodeBrotli(const nlohmann::json& plainText);
+}

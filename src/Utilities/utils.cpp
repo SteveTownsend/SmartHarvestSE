@@ -30,6 +30,8 @@ http://www.fsf.org/licensing/licenses
 #include <algorithm> //Trim
 #include <math.h>	// pow
 
+#include <brotli/decode.h>
+#include <brotli/encode.h>
 
 namespace FileUtils
 {
@@ -251,3 +253,41 @@ namespace GameSettingUtils
 	}
 }
 
+
+namespace CompressionUtils
+{
+	nlohmann::json DecodeBrotli(const std::string& compressed)
+	{
+		// TODO this is not Production-ready
+		size_t inputSize(compressed.length());
+		std::string inflated(inputSize * 5, 0);
+		size_t outputSize;
+		if (BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str()),
+			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))) == BROTLI_DECODER_RESULT_SUCCESS)
+		{
+			REL_MESSAGE("Inflated %d bytes to %d bytes", inputSize, outputSize);
+			inflated.resize(outputSize);
+			return nlohmann::json(inflated);
+		}
+		REL_ERROR("Inflating %d bytes failed", inputSize);
+		return nlohmann::json();
+	}
+
+	std::string EncodeBrotli(const nlohmann::json& j)
+	{
+		std::string jsonStr(j.dump());
+		size_t outputSize(jsonStr.length());
+		// TODO this is not Production-ready
+		std::string encodedStr(outputSize, 0);
+		if (BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
+			jsonStr.length(), reinterpret_cast<const uint8_t*>(jsonStr.c_str()), &outputSize,
+			reinterpret_cast<uint8_t*>(const_cast<char*>(encodedStr.c_str()))) != BROTLI_FALSE)
+		{
+			REL_MESSAGE("Compressed %d bytes to %d bytes", jsonStr.length(), outputSize);
+			encodedStr.resize(outputSize);
+			return encodedStr;
+		}
+		REL_ERROR("Compressing %d bytes failed", jsonStr.length());
+		return std::string();
+	}
+}

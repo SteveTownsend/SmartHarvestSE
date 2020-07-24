@@ -308,6 +308,8 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 				return Lootability::DeadBodyPossibleDuplicate;
 			}
+			// record Killer of dynamic REFR that we will loot immediately
+			ActorTracker::Instance().RecordIfKilledByParty(actor);
 			m_possibleDupes.push_back(refr);
 		}
 		else if (refr->GetBaseObject()->As<RE::TESContainer>())
@@ -402,11 +404,11 @@ void ScanGovernor::LootAllEligible()
 	}
 }
 
-void ScanGovernor::LocateFollowers()
+void ScanGovernor::TrackActors()
 {
 	DistanceToTarget targets;
 	AlwaysInRange rangeCheck;
-	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindFollowers();
+	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindActors();
 }
 
 const RE::Actor* ScanGovernor::ActorByIndex(const int actorIndex) const
@@ -434,11 +436,11 @@ void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 	else
 	{
 		// if not looting, run a more limited scan
-		LocateFollowers();
+		TrackActors();
 	}
 
 	// Refresh player party of followers
-	PartyMembers::Instance().AdjustParty(ActorTracker::Instance().GetFollowers(), CollectionManager::Instance().CurrentGameTime());
+	PartyMembers::Instance().AdjustParty(ActorTracker::Instance().GetFollowers(), PlayerState::Instance().CurrentGameTime());
 	// request added items to be pushed to us while we are sleeping - including items not auto-looted
 	CollectionManager::Instance().Refresh();
 }

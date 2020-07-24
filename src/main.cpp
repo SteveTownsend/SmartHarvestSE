@@ -24,48 +24,38 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/version.h"
 #include "VM/papyrus.h"
 #include "Data/dataCase.h"
+#include "Data/LoadOrder.h"
 
 #include <shlobj.h>
 #include <sstream>
 #include <KnownFolders.h>
+#include <filesystem>
 
+constexpr const char* SAVEDATAFILE("SaveData.compressed.json");
 void SaveCallback(SKSE::SerializationInterface* a_intfc)
 {
 	DBG_MESSAGE("Serialization Save hook called");
-	// JSON Initially
-	// then add compression per https://github.com/google/brotli
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Serialization Save hook");
+#endif
+	// Serialize JSON and compress per https://github.com/google/brotli
 	// output LoadOrder
 	// output Collection Defs
 	// output Collection contents
-	// implement and output Location history
-	// implement and output Followers-in-Party history
+	// output Location history
+	// output Followers-in-Party history
+	// output Party Kills history
+
+	nlohmann::json j(shse::LoadOrder::Instance());
+	DBG_MESSAGE("LORD:\n%s", j.dump().c_str());
+	std::string compressed(CompressionUtils::EncodeBrotli(j));
+	std::ofstream saveData(SAVEDATAFILE, std::ios::out | std::ios::binary);
+	saveData.write(compressed.c_str(), compressed.length());
+	saveData.close();
 #if 0
-	SInt32 num = 42;
-	std::vector<SInt32> arr;
-	for (std::size_t i = 0; i < 10; ++i) {
-		arr.push_back(i);
-	}
-
-	if (!a_intfc->WriteRecord('NUM_', 1, num)) {
-		_ERROR("Failed to serialize num!");
-	}
-
-	if (!a_intfc->OpenRecord('ARR_', 1)) {
-		_ERROR("Failed to open record for arr!");
-	}
-	else {
-		std::size_t size = arr.size();
-		if (!a_intfc->WriteRecordData(size)) {
-			_ERROR("Failed to write size of arr!");
-		}
-		else {
-			for (auto& elem : arr) {
-				if (!a_intfc->WriteRecordData(elem)) {
-					_ERROR("Failed to write data for elem!");
-					break;
-				}
-			}
-		}
+	if (!a_intfc->WriteRecord('LORD', 1, CompressionUtils::EncodeBrotli(j).c_str())) 
+	{
+		REL_ERROR("Failed to serialize LORD");
 	}
 #endif
 }
@@ -74,12 +64,28 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 void LoadCallback(SKSE::SerializationInterface* a_intfc)
 {
 	DBG_MESSAGE("Serialization Load hook called");
-	// JSON Initially, then compressed
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Serialization Load hook");
+#endif
+	try {
+		// decompress per https://github.com/google/brotli and rehydrate to JSON
+		size_t fileSize(std::filesystem::file_size(SAVEDATAFILE));
+		std::ifstream readData(SAVEDATAFILE, std::ios::in | std::ios::binary);
+		std::string roundTrip(fileSize, 0);
+		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
+		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
+		DBG_MESSAGE("Read:\n%s", jRead.dump().c_str());
+	}
+	catch (const std::exception& exc)
+	{
+		DBG_ERROR("LoadFile error on %s: %s", SAVEDATAFILE, exc.what());
+	}
 	// read LoadOrder
 	// read Collection Defs
 	// read Collection contents
 	// read Location history
 	// read Followers-in-Party history
+	// read Party Kills history
 #if 0
 	SInt32 num;
 	std::vector<SInt32> arr;
@@ -200,7 +206,7 @@ bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 	auto serialization = SKSE::GetSerializationInterface();
 	serialization->SetUniqueID('SHSE');
 	serialization->SetSaveCallback(SaveCallback);
-	serialization->SetSaveCallback(LoadCallback);
+	serialization->SetLoadCallback(LoadCallback);
 
 	return true;
 }

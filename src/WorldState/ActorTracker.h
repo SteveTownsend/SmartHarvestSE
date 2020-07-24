@@ -20,11 +20,23 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include <deque>
+
 #include "Looting/IRangeChecker.h"
 #include "WorldState/PartyMembers.h"
+#include "Collections/CollectionManager.h"
 
 namespace shse
 {
+
+
+class PartyVictim {
+public:
+	PartyVictim(const RE::Actor* victim, const float gameTime);
+
+private:
+	const std::string m_victim;
+	const float m_gameTime;
+};
 
 class ActorTracker
 {
@@ -37,6 +49,7 @@ public:
 	bool SeenAlive(const RE::TESObjectREFR* actorRef) const;
 
 	void RecordTimeOfDeath(RE::TESObjectREFR* actorRef);
+	void RecordIfKilledByParty(const RE::Actor* actor);
 	void ReleaseIfReliablyDead(DistanceToTarget& refs);
 	void AddDetective(const RE::Actor*, const double distance);
 	std::vector<const RE::Actor*> GetDetectives();
@@ -47,6 +60,7 @@ public:
 	void ClearFollowers();
 
 private:
+
 	static std::unique_ptr<ActorTracker> m_instance;
 
 	// allow extended interval before looting if 'leveled list on death' perks apply to player
@@ -60,10 +74,12 @@ private:
 
 	// Actors we encountered alive at any point of this visit to the cell
 	std::unordered_set<const RE::TESObjectREFR*> m_seenAlive;
+	std::unordered_set<const RE::Actor*> m_checkedBodies;
 	// possible detecting NPCs, ordered by proximity to Player to expedite detection
 	std::map<double, const RE::Actor*> m_detectives;
 	// Followers in range i.e. the player's current party
 	Followers m_followers;
+	std::vector<PartyVictim> m_victims;
 
 	mutable RecursiveLock m_actorLock;
 };

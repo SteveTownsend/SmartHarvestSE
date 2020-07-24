@@ -79,7 +79,7 @@ public:
 private:
 	void ProgressGlowDemo();
 	void LootAllEligible();
-	void LocateFollowers();
+	void TrackActors();
 
 	Lootability ValidateTarget(RE::TESObjectREFR*& refr, const bool dryRun);
 	void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr) const;

@@ -140,7 +140,7 @@ PlayerAffinity GetPlayerAffinity(const RE::Actor* actor)
 	if (followerFaction && actor->IsInFaction(followerFaction))
 	{
 		DBG_DMESSAGE("Actor %s/0x%08x is follower", actor->GetName(), actor->GetFormID());
-		return PlayerAffinity::Follower;
+		return PlayerAffinity::FollowerFaction;
 	}
 	if (actor->IsPlayerTeammate())
 	{

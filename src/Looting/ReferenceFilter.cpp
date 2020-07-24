@@ -213,21 +213,32 @@ bool ReferenceFilter::CanLoot(const RE::TESObjectREFR* refr) const
 	return AnalyzeREFR(refr, dryRun) == Lootability::Lootable;
 }
 
-bool ReferenceFilter::IsFollower(const RE::TESObjectREFR* refr) const
+bool ReferenceFilter::IsFollowerOrDead(const RE::TESObjectREFR* refr) const
 {
 	const RE::Actor* actor(refr->As<RE::Actor>());
-	if (actor && !actor->IsDead(true) && GetPlayerAffinity(actor) == PlayerAffinity::Follower)
+	if (actor)
 	{
-		DBG_VMESSAGE("NPC %s/0x%08x is Follower", actor->GetName(), actor->GetFormID());
-		ActorTracker::Instance().AddFollower(actor);
-		return true;
+		if (!actor->IsDead(true)) 
+		{
+			PlayerAffinity affinity(GetPlayerAffinity(actor));
+			if (affinity == PlayerAffinity::TeamMate || affinity == PlayerAffinity::FollowerFaction)
+			{
+				DBG_VMESSAGE("NPC %s/0x%08x is Teammate/Follower", actor->GetName(), actor->GetFormID());
+				ActorTracker::Instance().AddFollower(actor);
+				return true;
+			}
+		}
+		else
+		{
+			ActorTracker::Instance().RecordIfKilledByParty(actor);
+		}
 	}
 	return false;
 }
 
-void ReferenceFilter::FindFollowers()
+void ReferenceFilter::FindActors()
 {
-	m_predicate = std::bind(&ReferenceFilter::IsFollower, this, std::placeholders::_1);
+	m_predicate = std::bind(&ReferenceFilter::IsFollowerOrDead, this, std::placeholders::_1);
 	FilterNearbyReferences();
 }
 
@@ -324,7 +335,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 			if (actor && !actor->IsDead(true))
 			{
 				PlayerAffinity affinity(GetPlayerAffinity(actor));
-				if (affinity == PlayerAffinity::Follower || affinity == PlayerAffinity::TeamMate)
+				if (affinity == PlayerAffinity::FollowerFaction || affinity == PlayerAffinity::TeamMate)
 				{
 					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
 					ActorTracker::Instance().AddFollower(actor);

@@ -46,7 +46,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false), m_gameTime(0.0)
+CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false)
 {
 }
 
@@ -73,13 +73,6 @@ void CollectionManager::Refresh() const
 {
 	// request added items and game time to be pushed to us while we are sleeping
 	EventPublisher::Instance().TriggerFlushAddedItems();
-}
-
-void CollectionManager::UpdateGameTime(const float gameTime)
-{
-	RecursiveLockGuard guard(m_collectionLock);
-	DBG_MESSAGE("GameTime is now %.3f", gameTime);
-	m_gameTime = gameTime;
 }
 
 void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form)
@@ -123,13 +116,14 @@ void CollectionManager::ProcessAddedItems()
 
 	decltype(m_addedItemQueue) queuedItems;
 	queuedItems.swap(m_addedItemQueue);
+	const float gameTime(PlayerState::Instance().CurrentGameTime());
 	for (const auto form : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
 		if (m_collectionsByFormID.contains(form->GetFormID()))
 		{
 			DBG_VMESSAGE("Check collectability of added item 0x%08x", form->GetFormID());
-			AddToRelevantCollections(form);
+			AddToRelevantCollections(form, gameTime);
 		}
 		else if (m_nonCollectionForms.insert(form->GetFormID()).second)
 		{
@@ -139,7 +133,7 @@ void CollectionManager::ProcessAddedItems()
 }
 
 // bucket newly-received items in any matching collections
-void CollectionManager::AddToRelevantCollections(const RE::TESForm* item)
+void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const float gameTime)
 {
 	// resolve ID to Form
 	if (!item)
@@ -156,7 +150,7 @@ void CollectionManager::AddToRelevantCollections(const RE::TESForm* item)
 			collection->second->IsMemberOf(item))
 		{
 			// record membership
-			collection->second->RecordItem(item, m_gameTime);
+			collection->second->RecordItem(item, gameTime);
 		}
 	}
 }
@@ -868,8 +862,6 @@ void CollectionManager::OnGameReload()
 	m_lastInventoryItems.clear();
 	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
 	m_addedItemQueue.clear();
-
-	m_gameTime = 0.0;
 
 	// logic depends on prior and new state
 	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;

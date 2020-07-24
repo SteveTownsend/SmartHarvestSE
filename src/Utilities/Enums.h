@@ -379,7 +379,7 @@ enum class PlayerAffinity
 {
 	Unaffiliated = 0,
 	TeamMate,
-	Follower,
+	FollowerFaction,
 	MAX
 };
 
@@ -398,5 +398,33 @@ enum class ReferenceScanType
 	Calibration,
 	MAX
 };
+
+enum class SerializationRecordType
+{
+	LoadOrder = 0,
+	Collections,
+	PlacesVisited,
+	PartyUpdates,
+	Victims,
+	MAX
+};
+
+inline std::string SerializationRecordName(const SerializationRecordType recordType)
+{
+	switch (recordType) {
+	case SerializationRecordType::LoadOrder:
+		return "LORD";
+	case SerializationRecordType::Collections:
+		return "COLL";
+	case SerializationRecordType::PlacesVisited:
+		return "PLAC";
+	case SerializationRecordType::PartyUpdates:
+		return "PRTY";
+	case SerializationRecordType::Victims:
+		return "VICT";
+	default:
+		return "????";
+	}
+}
 
 }
