@@ -49,8 +49,8 @@ bool PopulationCenters::CannotLoot(const RE::BGSLocation* location) const
 
 PopulationCenterSize PopulationCenters::PopulationCenterSizeFromIniSetting(const double iniSetting) const
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(PopulationCenterSize::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(PopulationCenterSize::MAX))
 	{
 		return PopulationCenterSize::Cities;
 	}
@@ -75,10 +75,10 @@ void PopulationCenters::Categorize()
 	for (RE::BGSLocation* location : dhnd->GetFormArray<RE::BGSLocation>())
 	{
 		// Scan location keywords to check if it's a settlement
-		UInt32 numKeywords(location->GetNumKeywords());
+		uint32_t numKeywords(location->GetNumKeywords());
 		PopulationCenterSize size(PopulationCenterSize::None);
 		std::string largestMatch;
-		for (UInt32 next = 0; next < numKeywords; ++next)
+		for (uint32_t next = 0; next < numKeywords; ++next)
 		{
 			std::optional<RE::BGSKeyword*> keyword(location->GetKeywordAt(next));
 			if (!keyword.has_value() || !keyword.value())
@@ -97,12 +97,12 @@ void PopulationCenters::Categorize()
 		// record population center size in case looting is selectively prevented
 		if (size != PopulationCenterSize::None)
 		{
-			DBG_MESSAGE("%s/0x%08x is population center of type %s", location->GetName(), location->GetFormID(), largestMatch.c_str());
+			DBG_MESSAGE("{}/0x{:08x} is population center of type {}", location->GetName(), location->GetFormID(), largestMatch.c_str());
 			m_centers.insert(std::make_pair(location, size));
 		}
 		else
 		{
-			DBG_MESSAGE("%s/0x%08x is not a population center", location->GetName(), location->GetFormID());
+			DBG_MESSAGE("{}/0x{:08x} is not a population center", location->GetName(), location->GetFormID());
 		}
 	}
 
@@ -132,7 +132,7 @@ void PopulationCenters::Categorize()
 			if (matched != m_centers.cend())
 			{
 				parentSize = matched->second;
-				DBG_MESSAGE("%s/0x%08x is a descendant of population center %s/0x%08x with size %d", location->GetName(), location->GetFormID(),
+				DBG_MESSAGE("{}/0x{:08x} is a descendant of population center {}/0x{:08x} with size {}", location->GetName(), location->GetFormID(),
 					antecedent->GetName(), antecedent->GetFormID(), parentSize);
 				break;
 			}
@@ -143,9 +143,9 @@ void PopulationCenters::Categorize()
 			continue;
 
 		// Scan location keywords to determine if lootable, or bucketed with its population center antecedent
-		UInt32 numKeywords(location->GetNumKeywords());
+		uint32_t numKeywords(location->GetNumKeywords());
 		bool allowLooting(false);
-		for (UInt32 next = 0; !allowLooting && next < numKeywords; ++next)
+		for (uint32_t next = 0; !allowLooting && next < numKeywords; ++next)
 		{
 			std::optional<RE::BGSKeyword*> keyword(location->GetKeywordAt(next));
 			if (!keyword.has_value() || !keyword.value())
@@ -158,7 +158,7 @@ void PopulationCenters::Categorize()
 			if (lootableChildLocations.find(keywordName) != lootableChildLocations.cend())
 			{
 				allowLooting = true;
-				DBG_MESSAGE("%s/0x%08x is lootable child location due to keyword %s", location->GetName(), location->GetFormID(), keywordName.c_str());
+				DBG_MESSAGE("{}/0x{:08x} is lootable child location due to keyword {}", location->GetName(), location->GetFormID(), keywordName.c_str());
 				break;
 			}
 		}
@@ -167,14 +167,14 @@ void PopulationCenters::Categorize()
 
 		// Store the child location with the same criterion as parent, unless it's inherently lootable
 		// e.g. dungeon within the city limits like Whiterun Sewers, parts of the Ratway
-		DBG_MESSAGE("%s/0x%08x stored with same rule as its parent population center", location->GetName(), location->GetFormID());
+		DBG_MESSAGE("{}/0x{:08x} stored with same rule as its parent population center", location->GetName(), location->GetFormID());
 		m_centers.insert(std::make_pair(location, parentSize));
 	}
 #if _DEBUG
 	// this debug output from a given load order drives the list of 'really lootable' child location types above
 	for (const std::string& keyword : childKeywords)
 	{
-		DBG_MESSAGE("Population center child keyword: %s", keyword.c_str());
+		DBG_MESSAGE("Population center child keyword: {}", keyword.c_str());
 	}
 #endif
 }

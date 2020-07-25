@@ -41,7 +41,7 @@ namespace FileUtils
 		if (s_runtimeDirectory.empty())
 		{
 			char	runtimePathBuf[MAX_PATH];
-			UInt32	runtimePathLength = GetModuleFileName(GetModuleHandle(NULL), runtimePathBuf, sizeof(runtimePathBuf));
+			uint32_t	runtimePathLength = GetModuleFileName(GetModuleHandle(NULL), runtimePathBuf, sizeof(runtimePathBuf));
 			if (runtimePathLength && (runtimePathLength < sizeof(runtimePathBuf)))
 			{
 				std::string	runtimePath(runtimePathBuf, runtimePathLength);
@@ -49,7 +49,7 @@ namespace FileUtils
 				if (lastSlash != std::string::npos)
 					s_runtimeDirectory = runtimePath.substr(0, lastSlash + 1);
 			}
-			DBG_MESSAGE("GetGamePath result: %s", s_runtimeDirectory.c_str());
+			DBG_MESSAGE("GetGamePath result: {}", s_runtimeDirectory.c_str());
 		}
 		return s_runtimeDirectory;
 	}
@@ -66,12 +66,12 @@ namespace FileUtils
 				(LPCSTR)&GetPluginPath, &hm) == 0)
 			{
 				int ret = GetLastError();
-				REL_ERROR("GetModuleHandle failed, error = %d\n", ret);
+				REL_ERROR("GetModuleHandle failed, error = {}\n", ret);
 			}
 			else if (GetModuleFileName(hm, path, sizeof(path)) == 0)
 			{
 				int ret = GetLastError();
-				REL_ERROR("GetModuleFileName failed, error = %d\n", ret);
+				REL_ERROR("GetModuleFileName failed, error = {}\n", ret);
 			}
 			else
 			{
@@ -100,7 +100,7 @@ namespace FileUtils
 					if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
 					{
 					    s_skseDirectory = path;
-						REL_MESSAGE("GetPluginPath result: %s", s_skseDirectory.c_str());
+						REL_MESSAGE("GetPluginPath result: {}", s_skseDirectory.c_str());
 					}
 				}
 			}
@@ -124,7 +124,7 @@ namespace utils
 			return 0.0;
 
 		double result(setting->GetFloat());
-		DBG_MESSAGE("Game Setting(%s)=%.3f", name.c_str(), result);
+		DBG_MESSAGE("Game Setting({})={:0.3f}", name.c_str(), result);
 		return result;
 	}
 }
@@ -151,7 +151,7 @@ namespace WindowsUtils
 		PROCESS_MEMORY_COUNTERS pmc;
 		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
 		{
-			REL_MESSAGE("Working Set is %.3f MB", double(pmc.WorkingSetSize) / (1024.0 * 1024.0));
+			REL_MESSAGE("Working Set is {:0.3f} MB", double(pmc.WorkingSetSize) / (1024.0 * 1024.0));
 		}
 	}
 
@@ -167,7 +167,7 @@ namespace WindowsUtils
 	ScopedTimer::~ScopedTimer()
 	{
 		long long endTime(microsecondsNow());
-		REL_MESSAGE("TIME(%s)=%d micros", m_context.c_str(), endTime - m_startTime);
+		REL_MESSAGE("TIME({})={} micros", m_context.c_str(), endTime - m_startTime);
 	}
 
 	std::unique_ptr<ScopedTimerFactory> ScopedTimerFactory::m_instance;
@@ -265,11 +265,11 @@ namespace CompressionUtils
 			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))));
 		if (result == BROTLI_DECODER_RESULT_SUCCESS)
 		{
-			REL_MESSAGE("Inflated %d bytes to %d", inputSize, outputSize);
+			REL_MESSAGE("Inflated {} bytes to {}", inputSize, outputSize);
 			inflated.resize(outputSize);
 			return nlohmann::json(inflated);
 		}
-		REL_ERROR("Inflating %d bytes failed, error %d", inputSize, result);
+		REL_ERROR("Inflating {} bytes failed, error {}", inputSize, result);
 		return nlohmann::json();
 	}
 
@@ -283,11 +283,11 @@ namespace CompressionUtils
 			jsonStr.length(), reinterpret_cast<const uint8_t*>(jsonStr.c_str()), &outputSize,
 			reinterpret_cast<uint8_t*>(const_cast<char*>(encodedStr.c_str()))) != BROTLI_FALSE)
 		{
-			REL_MESSAGE("Compressed %d bytes to %d, ratio %.3f", jsonStr.length(), outputSize, double(jsonStr.length()) / double(outputSize));
+			REL_MESSAGE("Compressed {} bytes to {}, ratio {:0.3f}", jsonStr.length(), outputSize, double(jsonStr.length()) / double(outputSize));
 			encodedStr.resize(outputSize);
 			return encodedStr;
 		}
-		REL_ERROR("Compressing %d bytes failed", jsonStr.length());
+		REL_ERROR("Compressing {} bytes failed", jsonStr.length());
 		return std::string();
 	}
 }

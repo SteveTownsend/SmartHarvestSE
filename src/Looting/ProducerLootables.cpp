@@ -41,7 +41,7 @@ bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESFor
 	RecursiveLockGuard guard(m_producerIngredientLock);
 	if (!lootable)
 	{
-		DBG_VMESSAGE("Producer %s/0x%08x needs resolving to lootable", producer->GetName(), producer->formID);
+		DBG_VMESSAGE("Producer {}/0x{:08x} needs resolving to lootable", producer->GetName(), producer->formID);
 		// return value signals entry pending resolution found/not found
 		return m_producerLootable.insert(std::make_pair(producer, nullptr)).second;
 	}
@@ -50,12 +50,12 @@ bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESFor
 		// lootable/nonIngredientLootable could be a FormList possibly empty, or a simple Form: resolved by script
 		if (!lootable)
 		{
-			REL_WARNING("Producer %s/0x%08x has no lootable", producer->GetName(), producer->formID);
+			REL_WARNING("Producer {}/0x{:08x} has no lootable", producer->GetName(), producer->formID);
 			DataCase::GetInstance()->BlockForm(producer, Lootability::ProducerHasNoLootable);
 		}
 		else
 		{
-			DBG_VMESSAGE("Producer %s/0x%08x has lootable %s/0x%08x", producer->GetName(), producer->formID, lootable->GetName(), lootable->formID);
+			DBG_VMESSAGE("Producer {}/0x{:08x} has lootable {}/0x{:08x}", producer->GetName(), producer->formID, lootable->GetName(), lootable->formID);
 			m_producerLootable[producer] = lootable;
 		}
 		return true;

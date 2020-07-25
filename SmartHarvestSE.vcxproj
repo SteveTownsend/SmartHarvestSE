@@ -337,6 +337,9 @@
     <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
       <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\spdlog\spdlog.vcxproj">
+      <Project>{ad50131a-1d1f-43ba-b242-783363efc510}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SmartHarvestSE.rc" />

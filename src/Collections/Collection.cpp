@@ -72,7 +72,7 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 	// check Scope - if Collection is scoped, scope for this autoloot check must be valid
 	if (!m_scopes.empty() && std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) == m_scopes.cend())
 	{
-		DBG_VMESSAGE("%s/0x%08x has invalid scope %d", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
+		DBG_VMESSAGE("{}/0x{:08x} has invalid scope {}", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
 		return false;
 	}
 
@@ -98,7 +98,7 @@ bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
 
 void Collection::RecordItem(const RE::TESForm* form, const float gameTime)
 {
-	DBG_VMESSAGE("Collect %s/0x%08x in %s", form->GetName(), form->GetFormID(), m_name.c_str());
+	DBG_VMESSAGE("Collect {}/0x{:08x} in {}", form->GetName(), form->GetFormID(), m_name.c_str());
 	if (m_observed.insert({ form, gameTime }).second)
 	{
 		if (m_effectivePolicy.Notify())
@@ -223,7 +223,7 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 			m_collections.push_back(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
 		}
 		catch (const std::exception& exc) {
-			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());
+			REL_ERROR("Error {} parsing Collection\n{}", exc.what(), collection.dump(2).c_str());
 		}
 	});
 }

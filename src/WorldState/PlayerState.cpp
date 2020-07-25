@@ -125,7 +125,7 @@ void PlayerState::AdjustCarryWeight()
 		{
 			carryWeightChange += playerInOwnHouse ? InfiniteWeight : -InfiniteWeight;
 			m_carryAdjustedForPlayerHome = playerInOwnHouse;
-			DBG_MESSAGE("Carry weight delta after in-player-home adjustment %d", carryWeightChange);
+			DBG_MESSAGE("Carry weight delta after in-player-home adjustment {}", carryWeightChange);
 		}
 	}
 
@@ -137,7 +137,7 @@ void PlayerState::AdjustCarryWeight()
 		{
 			carryWeightChange += playerInCombat ? InfiniteWeight : -InfiniteWeight;
 			m_carryAdjustedForCombat = playerInCombat;
-			DBG_MESSAGE("Carry weight delta after in-combat adjustment %d", carryWeightChange);
+			DBG_MESSAGE("Carry weight delta after in-combat adjustment {}", carryWeightChange);
 		}
 	}
 
@@ -149,7 +149,7 @@ void PlayerState::AdjustCarryWeight()
 		{
 			carryWeightChange += isWeaponDrawn ? InfiniteWeight : -InfiniteWeight;
 			m_carryAdjustedForDrawnWeapon = isWeaponDrawn;
-			DBG_MESSAGE("Carry weight delta after drawn weapon adjustment %d", carryWeightChange);
+			DBG_MESSAGE("Carry weight delta after drawn weapon adjustment {}", carryWeightChange);
 		}
 	}
 	if (carryWeightChange != m_currentCarryWeightChange)
@@ -157,7 +157,7 @@ void PlayerState::AdjustCarryWeight()
 		int requiredWeightDelta(carryWeightChange - m_currentCarryWeightChange);
 		m_currentCarryWeightChange = carryWeightChange;
 		// handle carry weight update via a script event
-		DBG_MESSAGE("Adjust carry weight by delta %d", requiredWeightDelta);
+		DBG_MESSAGE("Adjust carry weight by delta {}", requiredWeightDelta);
 		EventPublisher::Instance().TriggerCarryWeightDelta(requiredWeightDelta);
 	}
 }
@@ -222,11 +222,11 @@ void PlayerState::CheckPerks(const bool force)
 		if (player)
 		{
 			m_perksAddLeveledItemsOnDeath = DataCase::GetInstance()->PerksAddLeveledItemsOnDeath(player);
-			DBG_MESSAGE("Leveled items added on death by perks? %s", m_perksAddLeveledItemsOnDeath ? "true" : "false");
+			DBG_MESSAGE("Leveled items added on death by perks? {}", m_perksAddLeveledItemsOnDeath ? "true" : "false");
 		}
 
 		m_harvestedIngredientMultiplier = DataCase::GetInstance()->PerkIngredientMultiplier(player);
-		DBG_VMESSAGE("Perk for harvesting -> multiplier %.2f", m_harvestedIngredientMultiplier);
+		DBG_VMESSAGE("Perk for harvesting -> multiplier {:0.2f}", m_harvestedIngredientMultiplier);
 
 		m_lastPerkCheck = timeNow;
 	}
@@ -256,7 +256,7 @@ void PlayerState::ResetCarryWeight(const bool reloaded)
 	if (manageDuringCombat || manageIfWeaponDrawn || managePlayerHome)
 	{
 		RecursiveLockGuard guard(m_playerLock);
-		DBG_MESSAGE("Reset carry weight delta %d, in-player-home=%s, in-combat=%s, weapon-drawn=%s", m_currentCarryWeightChange,
+		DBG_MESSAGE("Reset carry weight delta {}, in-player-home={}, in-combat={}, weapon-drawn={}", m_currentCarryWeightChange,
 			m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
 		m_carryAdjustedForCombat = false;
 		m_carryAdjustedForPlayerHome = false;
@@ -325,7 +325,7 @@ bool PlayerState::WithinDetectionRange(const double distance) const
 void PlayerState::UpdateGameTime(const float gameTime)
 {
 	RecursiveLockGuard guard(m_playerLock);
-	DBG_MESSAGE("GameTime is now %.3f", gameTime);
+	DBG_MESSAGE("GameTime is now {:0.3f}", gameTime);
 	m_gameTime = gameTime;
 }
 

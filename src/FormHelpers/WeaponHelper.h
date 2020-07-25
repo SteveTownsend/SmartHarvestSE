@@ -26,8 +26,8 @@ class TESObjectWEAPHelper
 {
 public:
 	TESObjectWEAPHelper(const RE::TESObjectWEAP* weapon) : m_weapon(weapon) {}
-	SInt16 GetMaxCharge(void) const;
-	UInt32 GetGoldValue(void) const;
+	int16_t GetMaxCharge(void) const;
+	uint32_t GetGoldValue(void) const;
 private:
 	const RE::TESObjectWEAP* m_weapon;
 };

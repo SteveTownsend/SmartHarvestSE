@@ -65,7 +65,7 @@ void ManagedList::Reset(const bool reloadGame)
 
 void ManagedList::Add(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item %s/0x%08x %s for looting", entry->GetName(), entry->GetFormID(),
+	DBG_MESSAGE("Location/cell/item {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert(entry);
@@ -73,7 +73,7 @@ void ManagedList::Add(const RE::TESForm* entry)
 
 void ManagedList::Drop(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item %s/0x%08x no longer %s for looting", entry->GetName(), entry->GetFormID(),
+	DBG_MESSAGE("Location/cell/item {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.erase(entry);

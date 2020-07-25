@@ -88,14 +88,14 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 	Lootability blockReason(data->IsFormBlocked(refr->GetBaseObject()));
 	if (blockReason != Lootability::Lootable)
 	{
-		DBG_VMESSAGE("skip REFR 0x%08x, blocked base form 0x%08x", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
+		DBG_VMESSAGE("skip REFR 0x{:08x}, blocked base form 0x{:08x}", refr->formID, refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
 		return blockReason;
 	}
 
 	blockReason = data->IsReferenceBlocked(refr);
 	if (blockReason != Lootability::Lootable)
 	{
-		DBG_VMESSAGE("skip blocked REFR for object/container 0x%08x", refr->formID);
+		DBG_VMESSAGE("skip blocked REFR for object/container 0x{:08x}", refr->formID);
 		return blockReason;
 	}
 
@@ -103,7 +103,7 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 	// as observed in play testing
 	if (data->IsReferenceOnBlacklist(refr))
 	{
-		DBG_VMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
+		DBG_VMESSAGE("skip blacklisted REFR 0x{:08x}", refr->GetFormID());
 		return Lootability::ReferenceBlacklisted;
 	}
 
@@ -113,14 +113,14 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 		if (!dryRun)
 		{
 			data->BlacklistReference(refr);
-			DBG_VMESSAGE("blacklist REFR with blank name 0x%08x, base form 0x%08x", refr->formID, refr->GetBaseObject()->GetFormID());
+			DBG_VMESSAGE("blacklist REFR with blank name 0x{:08x}, base form 0x{:08x}", refr->formID, refr->GetBaseObject()->GetFormID());
 		}
 		return Lootability::UnnamedReference;
 	}
 
 	if (refr == RE::PlayerCharacter::GetSingleton())
 	{
-		DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+		DBG_VMESSAGE("skip PlayerCharacter {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return Lootability::ReferenceIsPlayer;
 	}
 
@@ -131,7 +131,7 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 		{
 			if (!dryRun)
 			{
-				DBG_VMESSAGE("skip living Actor/NPC %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				DBG_VMESSAGE("skip living Actor/NPC {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 				shse::ActorTracker::Instance().RecordLiveSighting(refr);
 			}
 			return Lootability::ReferenceIsLiveActor;
@@ -141,18 +141,18 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 	if ((refr->GetBaseObject()->formType == RE::FormType::Flora || refr->GetBaseObject()->formType == RE::FormType::Tree) &&
 		((refr->formFlags & RE::TESObjectREFR::RecordFlags::kHarvested) == RE::TESObjectREFR::RecordFlags::kHarvested))
 	{
-		DBG_VMESSAGE("skip REFR 0x%08x to harvested Flora %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		DBG_VMESSAGE("skip REFR 0x{:08x} to harvested Flora {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		return Lootability::FloraHarvested;
 	}
 
 	if (ScanGovernor::Instance().IsLockedForHarvest(refr))
 	{
-		DBG_VMESSAGE("skip REFR, harvest pending %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+		DBG_VMESSAGE("skip REFR, harvest pending {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return Lootability::PendingHarvest;
 	}
 	if (ScanGovernor::Instance().IsLootedContainer(refr))
 	{
-		DBG_VMESSAGE("skip looted container %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+		DBG_VMESSAGE("skip looted container {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 		return Lootability::ContainerLootedAlready;
 	}
 
@@ -160,11 +160,11 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
-		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
+		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x{:08x}", (void*)(refr), dynamicForm);
 		return Lootability::DynamicContainerLootedAlready;
 	}
 
-	DBG_VMESSAGE("lootable candidate 0x%08x", refr->formID);
+	DBG_VMESSAGE("lootable candidate 0x{:08x}", refr->formID);
 	return Lootability::Lootable;
 }
 
@@ -175,7 +175,7 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	// as observed in play testing
 	if (data->IsReferenceOnBlacklist(refr))
 	{
-		DBG_VMESSAGE("skip blacklisted REFR 0x%08x", refr->GetFormID());
+		DBG_VMESSAGE("skip blacklisted REFR 0x{:08x}", refr->GetFormID());
 		return false;
 	}
 
@@ -183,7 +183,7 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	{
 		if (refr == RE::PlayerCharacter::GetSingleton())
 		{
-			DBG_VMESSAGE("skip PlayerCharacter %s/0x%08x", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+			DBG_VMESSAGE("skip PlayerCharacter {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 			return false;
 		}
 	}
@@ -192,18 +192,18 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
-		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x%08x", refr, dynamicForm);
+		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x{:08x}", (void*)(refr), dynamicForm);
 		return false;
 	}
 	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
 		data->BlacklistReference(refr);
-		DBG_VMESSAGE("blacklist REFR with blank name 0x%08x", refr->formID);
+		DBG_VMESSAGE("blacklist REFR with blank name 0x{:08x}", refr->formID);
 		return false;
 	}
 
-	DBG_VMESSAGE("permissive lootable candidate 0x%08x", refr->formID);
+	DBG_VMESSAGE("permissive lootable candidate 0x{:08x}", refr->formID);
 	return true;
 }
 
@@ -223,7 +223,7 @@ bool ReferenceFilter::IsFollowerOrDead(const RE::TESObjectREFR* refr) const
 			PlayerAffinity affinity(GetPlayerAffinity(actor));
 			if (affinity == PlayerAffinity::TeamMate || affinity == PlayerAffinity::FollowerFaction)
 			{
-				DBG_VMESSAGE("NPC %s/0x%08x is Teammate/Follower", actor->GetName(), actor->GetFormID());
+				DBG_VMESSAGE("NPC {}/0x{:08x} is Teammate/Follower", actor->GetName(), actor->GetFormID());
 				ActorTracker::Instance().AddFollower(actor);
 				return true;
 			}
@@ -261,7 +261,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 	if (!cell->IsAttached())
 		return;
 
-	DBG_MESSAGE("Filter %d REFRS in CELL 0x%08x", cell->references.size(), cell->GetFormID());
+	DBG_MESSAGE("Filter {} REFRS in CELL 0x{:08x}", cell->references.size(), cell->GetFormID());
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
 		RE::TESObjectREFR* refr(refptr.get());
@@ -269,19 +269,19 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 		{
 			if (!refr->GetBaseObject())
 			{
-				DBG_VMESSAGE("null base object for REFR 0x%08x", refr->GetFormID());
+				DBG_VMESSAGE("null base object for REFR 0x{:08x}", refr->GetFormID());
 				continue;
 			}
 
 			// if 3D not loaded do not measure
 			if (!refr->Is3DLoaded())
 			{
-				DBG_VMESSAGE("skip REFR 0x%08x, 3D not loaded %s/0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
 				continue;
 			}
 
 			// If Looting through Doors is not allowed, check distance and record if this is the nearest so far
-			RE::FormType formType(refr->GetBaseObject()->formType);
+			RE::FormType formType(refr->GetBaseObject()->GetFormType());
 			if (formType == RE::FormType::Door)
 			{
 				if (m_respectDoors)
@@ -294,26 +294,26 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 					if (IsLocked(refr))
 					{
 						doorLimit = std::max(MinLootingRangeUnits, doorLimit - DoorToleranceUnits);
-						DBG_VMESSAGE("Locked in-range Door 0x%08x(%s) tightened proximity to %.2f",
+						DBG_VMESSAGE("Locked in-range Door 0x{:08x}({}) tightened proximity to {:0.2f}",
 							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
 					}
 					else
 					{
 						// by the same token, an unlocked Display Case requires some leeway to autoloot its contents
 						doorLimit = std::min(m_rangeCheck.Radius(), doorLimit + DoorToleranceUnits);
-						DBG_VMESSAGE("Unlocked in-range Door 0x%08x(%s) relaxed allowed proximity to %.2f",
+						DBG_VMESSAGE("Unlocked in-range Door 0x{:08x}({}) relaxed allowed proximity to {:0.2f}",
 							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
 					}
 					if (m_nearestDoor == 0. || doorLimit < m_nearestDoor)
 					{
-						DBG_VMESSAGE("New nearest Door 0x%08x(%s) at distance %.2f", refr->GetFormID(),
+						DBG_VMESSAGE("New nearest Door 0x{:08x}({}) at distance {:0.2f}", refr->GetFormID(),
 							refr->GetBaseObject()->GetName(), doorLimit);
 						m_nearestDoor = doorLimit;
 					}
 				}
 				else
 				{
-					DBG_VMESSAGE("skip Door 0x%08x", refr->GetFormID(), refr->GetBaseObject()->GetName());
+					DBG_VMESSAGE("skip Door 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName());
 				}
 				continue;
 			}
@@ -324,7 +324,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				formType == RE::FormType::MovableStatic ||
 				formType == RE::FormType::Static)
 			{
-				DBG_VMESSAGE("invalid formtype %d for 0x%08x", formType, refr->GetFormID());
+				DBG_VMESSAGE("invalid formtype {} for 0x{:08x}", formType, refr->GetFormID());
 				continue;
 			}
 
@@ -337,7 +337,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				PlayerAffinity affinity(GetPlayerAffinity(actor));
 				if (affinity == PlayerAffinity::FollowerFaction || affinity == PlayerAffinity::TeamMate)
 				{
-					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+					DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
 					ActorTracker::Instance().AddFollower(actor);
 				}
 				else if (affinity == PlayerAffinity::Unaffiliated &&
@@ -345,21 +345,21 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 					!TheftCoordinator::Instance().StealingItems() &&
 					PlayerState::Instance().WithinDetectionRange(m_rangeCheck.Distance()))	// sneak detection range is not the same as looting
 				{
-					DBG_VMESSAGE("NPC %s/0x%08x at distance %.2f may detect player", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+					DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} may detect player", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
 					ActorTracker::Instance().AddDetective(actor, m_rangeCheck.Distance());
 				}
 			}
 			if (!withinRange)
 			{
-				DBG_VMESSAGE("omit out of range REFR 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
+				DBG_VMESSAGE("omit out of range REFR 0x{:08x}({})", refr->GetFormID(), refr->GetBaseObject()->GetName());
 				continue;
 			}
 			if (!m_predicate(refr))
 			{
-				DBG_VMESSAGE("omit ineligible REFR 0x%08x(%s)", refr->GetFormID(), refr->GetBaseObject()->GetName());
+				DBG_VMESSAGE("omit ineligible REFR 0x{:08x}({})", refr->GetFormID(), refr->GetBaseObject()->GetName());
 				continue;
 			}
-			DBG_VMESSAGE("add REFR 0x%08x(%s), distance %.2f, formtype %d", refr->GetFormID(),
+			DBG_VMESSAGE("add REFR 0x{:08x}({}), distance {:0.2f}, formtype {}", refr->GetFormID(),
 				refr->GetBaseObject()->GetName(), m_rangeCheck.Distance(), formType);
 			m_refs.emplace_back(m_rangeCheck.Distance(), refr);
 		}
@@ -384,7 +384,7 @@ void ReferenceFilter::FilterNearbyReferences()
 	RecordCellReferences(cell);
 	if (!LocationTracker::Instance().IsPlayerIndoors())
 	{
-		DBG_VMESSAGE("Scan cells adjacent to 0x%08x", cell->GetFormID());
+		DBG_VMESSAGE("Scan cells adjacent to 0x{:08x}", cell->GetFormID());
 		for (const auto& adjacentCell : LocationTracker::Instance().AdjacentCells())
 		{
 			// sanity checks
@@ -393,14 +393,14 @@ void ReferenceFilter::FilterNearbyReferences()
 				DBG_VMESSAGE("Adjacent cell null or unattached");
 				continue;
 			}
-			DBG_VMESSAGE("Check adjacent cell 0x%08x", adjacentCell->GetFormID());
+			DBG_VMESSAGE("Check adjacent cell 0x{:08x}", adjacentCell->GetFormID());
 			RecordCellReferences(adjacentCell);
 		}
 	}
 
 	// Postprocess the list into ascending distance order and truncate if too long
 	// We must confirm distance is valid because the Radius may update adjusted on the fly as Doors are processed
-	DBG_MESSAGE("Sort and truncate %d eligible REFRs", m_refs.size());
+	DBG_MESSAGE("Sort and truncate {} eligible REFRs", m_refs.size());
 
 	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
 	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
@@ -419,7 +419,7 @@ void ReferenceFilter::FilterNearbyReferences()
 			return target.first > effectiveRadius;
 		}));
 
-		DBG_MESSAGE("Erase %d out-of-range REFRs", std::distance(tooFarAway, m_refs.end()));
+		DBG_MESSAGE("Erase {} out-of-range REFRs", std::distance(tooFarAway, m_refs.end()));
 		m_refs.erase(tooFarAway, m_refs.end());
 	}
 }

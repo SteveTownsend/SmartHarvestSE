@@ -35,7 +35,12 @@ http://www.fsf.org/licensing/licenses
 #include <KnownFolders.h>
 #include <filesystem>
 
-if 0
+#include <spdlog/sinks/basic_file_sink.h>
+
+std::shared_ptr<spdlog::logger> SHSELogger;
+const std::string LoggerName = "SHSE_Logger";
+
+#if 0
 constexpr const char* LORDFILE("LORD.compressed.json");
 constexpr const char* COLLFILE("COLL.compressed.json");
 constexpr const char* PLACFILE("PLAC.compressed.json");
@@ -54,7 +59,7 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	// output LoadOrder
 	{
 		nlohmann::json j(shse::LoadOrder::Instance());
-		DBG_MESSAGE("Wrote %s :\n%s", LORDFILE, j.dump().c_str());
+		DBG_MESSAGE("Wrote {} :\n{}", LORDFILE, j.dump().c_str());
 		std::string compressed(CompressionUtils::EncodeBrotli(j));
 		std::ofstream saveData(LORDFILE, std::ios::out | std::ios::binary);
 		saveData.write(compressed.c_str(), compressed.length());
@@ -63,7 +68,7 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	// output Collection Groups - Definitions and Members
 	{
 		nlohmann::json j(shse::CollectionManager::Instance());
-		DBG_MESSAGE("Wrote %s :\n%s", COLLFILE, j.dump().c_str());
+		DBG_MESSAGE("Wrote {} :\n{}", COLLFILE, j.dump().c_str());
 		std::string compressed(CompressionUtils::EncodeBrotli(j));
 		std::ofstream saveData(COLLFILE, std::ios::out | std::ios::binary);
 		saveData.write(compressed.c_str(), compressed.length());
@@ -72,7 +77,7 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	// output Location history
 	{
 		nlohmann::json j(shse::VisitedPlaces::Instance());
-		DBG_MESSAGE("Wrote %s :\n%s", PLACFILE, j.dump().c_str());
+		DBG_MESSAGE("Wrote {} :\n{}", PLACFILE, j.dump().c_str());
 		std::string compressed(CompressionUtils::EncodeBrotli(j));
 		std::ofstream saveData(PLACFILE, std::ios::out | std::ios::binary);
 		saveData.write(compressed.c_str(), compressed.length());
@@ -81,7 +86,7 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	// output Followers-in-Party history
 	{
 		nlohmann::json j(shse::PartyMembers::Instance());
-		DBG_MESSAGE("Wrote %s :\n%s", PRTYFILE, j.dump().c_str());
+		DBG_MESSAGE("Wrote {} :\n{}", PRTYFILE, j.dump().c_str());
 		std::string compressed(CompressionUtils::EncodeBrotli(j));
 		std::ofstream saveData(PRTYFILE, std::ios::out | std::ios::binary);
 		saveData.write(compressed.c_str(), compressed.length());
@@ -90,7 +95,7 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	// output Party Kills history
 	{
 		nlohmann::json j(shse::ActorTracker::Instance());
-		DBG_MESSAGE("Wrote %s :\n%s", VCTMFILE, j.dump().c_str());
+		DBG_MESSAGE("Wrote {} :\n{}", VCTMFILE, j.dump().c_str());
 		std::string compressed(CompressionUtils::EncodeBrotli(j));
 		std::ofstream saveData(VCTMFILE, std::ios::out | std::ios::binary);
 		saveData.write(compressed.c_str(), compressed.length());
@@ -99,30 +104,30 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 #else
 	// output LoadOrder
 	std::string lordRecord(CompressionUtils::EncodeBrotli(shse::LoadOrder::Instance()));
-	if (!a_intfc->WriteRecord('LORD', 1, lordRecord.c_str(), static_cast<UInt32>(lordRecord.length())))
+	if (!a_intfc->WriteRecord('LORD', 1, lordRecord.c_str(), static_cast<uint32_t>(lordRecord.length())))
 	{
 		REL_ERROR("Failed to serialize LORD");
 	}
 	// output Collection Groups - Definitions and Members
 	std::string collRecord(CompressionUtils::EncodeBrotli(shse::CollectionManager::Instance()));
-	if (!a_intfc->WriteRecord('COLL', 1, collRecord.c_str(), static_cast<UInt32>(collRecord.length())))
+	if (!a_intfc->WriteRecord('COLL', 1, collRecord.c_str(), static_cast<uint32_t>(collRecord.length())))
 	{
 		REL_ERROR("Failed to serialize COLL");
 	}
 	// output Location history
 	std::string placRecord(CompressionUtils::EncodeBrotli(shse::VisitedPlaces::Instance()));
-	if (!a_intfc->WriteRecord('PLAC', 1, placRecord.c_str(), static_cast<UInt32>(placRecord.length())))
+	if (!a_intfc->WriteRecord('PLAC', 1, placRecord.c_str(), static_cast<uint32_t>(placRecord.length())))
 	{
 		REL_ERROR("Failed to serialize PLAC");
 	}
 	// output Followers-in-Party history
 	std::string prtyRecord(CompressionUtils::EncodeBrotli(shse::PartyMembers::Instance()));
-	if (!a_intfc->WriteRecord('PRTY', 1, prtyRecord.c_str(), static_cast<UInt32>(prtyRecord.length())))
+	if (!a_intfc->WriteRecord('PRTY', 1, prtyRecord.c_str(), static_cast<uint32_t>(prtyRecord.length())))
 	{
 		REL_ERROR("Failed to serialize PRTY");
 	}
 	std::string vctmRecord(CompressionUtils::EncodeBrotli(shse::ActorTracker::Instance()));
-	if (!a_intfc->WriteRecord('VCTM', 1, vctmRecord.c_str(), static_cast<UInt32>(vctmRecord.length())))
+	if (!a_intfc->WriteRecord('VCTM', 1, vctmRecord.c_str(), static_cast<uint32_t>(vctmRecord.length())))
 	{
 		REL_ERROR("Failed to serialize VCTM");
 	}
@@ -143,11 +148,11 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 		std::string roundTrip(fileSize, 0);
 		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
 		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read %s:\n%s", LORDFILE, jRead.dump().c_str());
+		DBG_MESSAGE("Read {}:\n{}", LORDFILE, jRead.dump().c_str());
 	}
 	catch (const std::exception& exc)
 	{
-		DBG_ERROR("Load error on %s: %s", LORDFILE, exc.what());
+		DBG_ERROR("Load error on {}: {}", LORDFILE, exc.what());
 	}
 	try {
 		// decompress per https://github.com/google/brotli and rehydrate to JSON
@@ -156,11 +161,11 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 		std::string roundTrip(fileSize, 0);
 		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
 		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read %s:\n%s", COLLFILE, jRead.dump().c_str());
+		DBG_MESSAGE("Read {}:\n{}", COLLFILE, jRead.dump().c_str());
 	}
 	catch (const std::exception& exc)
 	{
-		DBG_ERROR("Load error on %s: %s", COLLFILE, exc.what());
+		DBG_ERROR("Load error on {}: {}", COLLFILE, exc.what());
 	}
 	try {
 		// decompress per https://github.com/google/brotli and rehydrate to JSON
@@ -169,11 +174,11 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 		std::string roundTrip(fileSize, 0);
 		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
 		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read %s:\n%s", PLACFILE, jRead.dump().c_str());
+		DBG_MESSAGE("Read {}:\n{}", PLACFILE, jRead.dump().c_str());
 	}
 	catch (const std::exception& exc)
 	{
-		DBG_ERROR("Load error on %s: %s", PLACFILE, exc.what());
+		DBG_ERROR("Load error on {}: {}", PLACFILE, exc.what());
 	}
 	try {
 		// decompress per https://github.com/google/brotli and rehydrate to JSON
@@ -182,11 +187,11 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 		std::string roundTrip(fileSize, 0);
 		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
 		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read %s:\n%s", PRTYFILE, jRead.dump().c_str());
+		DBG_MESSAGE("Read {}:\n{}", PRTYFILE, jRead.dump().c_str());
 	}
 	catch (const std::exception& exc)
 	{
-		DBG_ERROR("Load error on %s: %s", PRTYFILE, exc.what());
+		DBG_ERROR("Load error on {}: {}", PRTYFILE, exc.what());
 	}
 	try {
 		// decompress per https://github.com/google/brotli and rehydrate to JSON
@@ -195,23 +200,23 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 		std::string roundTrip(fileSize, 0);
 		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
 		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read %s:\n%s", VCTMFILE, jRead.dump().c_str());
+		DBG_MESSAGE("Read {}:\n{}", VCTMFILE, jRead.dump().c_str());
 	}
 	catch (const std::exception& exc)
 	{
-		DBG_ERROR("Load error on %s: %s", VCTMFILE, exc.what());
+		DBG_ERROR("Load error on {}: {}", VCTMFILE, exc.what());
 	}
 #else
-	UInt32 readType;
-	UInt32 version;
-	UInt32 length;
+	uint32_t readType;
+	uint32_t version;
+	uint32_t length;
 	std::unordered_map<shse::SerializationRecordType, nlohmann::json> records;
 	std::string saveData;
 	while (a_intfc->GetNextRecordInfo(readType, version, length)) {
 		saveData.resize(length);
 		if (!a_intfc->ReadRecordData(const_cast<char*>(saveData.c_str()), length))
 		{
-			REL_ERROR("Failed to load record %d", readType);
+			REL_ERROR("Failed to load record {}", readType);
 		}
 		shse::SerializationRecordType recordType(shse::SerializationRecordType::MAX);
 		switch (readType) {
@@ -236,7 +241,7 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 			recordType = shse::SerializationRecordType::Victims;
 			break;
 		default:
-			REL_ERROR("Unrecognized signature type %d", readType);
+			REL_ERROR("Unrecognized signature type {}", readType);
 			break;
 		}
 		if (recordType != shse::SerializationRecordType::MAX)
@@ -282,41 +287,48 @@ extern "C"
 
 bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_info)
 {
-	std::wostringstream path;
-	path << L"/My Games/Skyrim Special Edition/SKSE/" << std::wstring(L_SHSE_NAME) << L".log";
-	std::wstring wLogPath(path.str());
-	SKSE::Logger::OpenRelative(FOLDERID_Documents, wLogPath);
-	SKSE::Logger::SetPrintLevel(SKSE::Logger::Level::kDebugMessage);
-	SKSE::Logger::SetFlushLevel(SKSE::Logger::Level::kDebugMessage);
-	SKSE::Logger::UseLogStamp(true);
-	SKSE::Logger::UseTimeStamp(true);
-	SKSE::Logger::UseThreadID(true);
+	std::filesystem::path logPath(SKSE::log::log_directory());
+	try
+	{
+		std::string fileName(logPath.generic_string());
+		fileName.append("/");
+		fileName.append(SHSE_NAME);
+		fileName.append(".log");
+		SHSELogger = spdlog::basic_logger_mt(LoggerName, fileName, true);
+		SHSELogger->set_pattern("%Y-%m-%d %T.%e %8l %6t %v");
+	}
+	catch (const spdlog::spdlog_ex&)
+	{
+		return false;
+	}	
+	spdlog::set_level(spdlog::level::trace); // Set global log level
+#if 0
 #if _DEBUG
-	SKSE::Logger::HookPapyrusLog(true);
+	SKSE::add_papyrus_sink();	// TODO what goes in here now
 #endif
-	REL_MESSAGE("%s v%s", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
+#endif
+	REL_MESSAGE("{} v{}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
 
 	a_info->infoVersion = SKSE::PluginInfo::kVersion;
 	a_info->name = SHSE_NAME;
 	a_info->version = VersionInfo::Instance().GetVersionMajor();
 
 	if (a_skse->IsEditor()) {
-		REL_FATALERROR("Loaded in editor, marking as incompatible!\n");
+		REL_FATALERROR("Loaded in editor, marking as incompatible");
 		return false;
 	}
 	SKSE::Version runtimeVer(a_skse->RuntimeVersion());
 	if (runtimeVer < SKSE::RUNTIME_1_5_73)
 	{
-		REL_FATALERROR("Unsupported runtime version %08x!\n", runtimeVer);
+		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.GetString());
 		return false;
 	}
-
 	return true;
 }
 
 bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 {
-	REL_MESSAGE("%s plugin loaded", SHSE_NAME);
+	REL_MESSAGE("{} plugin loaded", SHSE_NAME);
 	if (!SKSE::Init(skse)) {
 		return false;
 	}

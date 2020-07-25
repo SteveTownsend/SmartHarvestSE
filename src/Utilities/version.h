@@ -30,12 +30,12 @@ class VersionInfo
 public:
 	static VersionInfo& Instance();
 	std::string GetPluginVersionString() const;
-	UInt32 GetVersionMajor() const;
+	uint32_t GetVersionMajor() const;
 
 private:
 	VersionInfo() : m_majorVersion(0) {}
 	static VersionInfo* m_instance;
 	void GetPluginVersionInfo();
 	std::string m_versionString;
-	UInt32 m_majorVersion;
+	uint32_t m_majorVersion;
 };

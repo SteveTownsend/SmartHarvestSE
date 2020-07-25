@@ -83,7 +83,7 @@ void ActorTracker::RecordTimeOfDeath(RE::TESObjectREFR* refr)
 {
 	RecursiveLockGuard guard(m_actorLock);
 	m_apparentTimeOfDeath.emplace_back(std::make_pair(refr, std::chrono::high_resolution_clock::now()));
-	DBG_MESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
+	DBG_MESSAGE("Enqueued dead body to loot later 0x{:08x}", refr->GetFormID());
 }
 
 void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
@@ -96,7 +96,7 @@ void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 	// it's always the player even if a FOllower did the deed
 	if (killer == RE::PlayerCharacter::GetSingleton())
 	{
-		DBG_MESSAGE("Record killing of %s/0x%08x", victim->GetName(), victim->GetFormID());
+		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->GetName(), victim->GetFormID());
 		m_victims.emplace_back(victim, PlayerState::Instance().CurrentGameTime());
 	}
 }
@@ -115,11 +115,11 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 		RE::TESObjectREFR* refr(nextActor.first);
 		if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID()))
 		{
-			DBG_MESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
+			DBG_MESSAGE("Process enqueued dead body 0x{:08x}", refr->GetFormID());
 		}
 		else
 		{
-			DBG_MESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
+			DBG_MESSAGE("Suspect enqueued dead body ID 0x{:08x}", refr->GetFormID());
 		}
 		RE::Actor* actor(refr->As<RE::Actor>());
 		if (actor)

@@ -142,7 +142,11 @@ void PluginFacade::TakeNap()
 		delay = CalibrationThreadDelaySeconds;
 	}
 
-	DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
+	DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delay * 1000.0));
+
+	// flush log output here
+	SHSELogger->flush();
+
 	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
 	std::this_thread::sleep_until(nextRunTime);
 }

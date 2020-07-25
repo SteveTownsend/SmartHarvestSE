@@ -85,8 +85,8 @@ inline bool LootingRequiresNotification(const LootingType lootingType)
 
 inline LootingType LootingTypeFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(LootingType::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(LootingType::MAX))
 	{
 		return LootingType::LeaveBehind;
 	}
@@ -175,8 +175,8 @@ inline CollectibleHandling ParseCollectibleHandling(const std::string& action)
 
 inline CollectibleHandling CollectibleHandlingFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(CollectibleHandling::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(CollectibleHandling::MAX))
 	{
 		return CollectibleHandling::Leave;
 	}
@@ -185,8 +185,8 @@ inline CollectibleHandling CollectibleHandlingFromIniSetting(const double iniSet
 
 inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(SpecialObjectHandling::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(SpecialObjectHandling::MAX))
 	{
 		return SpecialObjectHandling::DoNotLoot;
 	}
@@ -214,8 +214,8 @@ enum class DeadBodyLooting {
 
 inline DeadBodyLooting DeadBodyLootingFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(DeadBodyLooting::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(DeadBodyLooting::MAX))
 	{
 		return DeadBodyLooting::DoNotLoot;
 	}
@@ -269,8 +269,8 @@ enum class OwnershipRule {
 
 inline OwnershipRule OwnershipRuleFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(OwnershipRule::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(OwnershipRule::MAX))
 	{
 		return OwnershipRule::Ownerless;
 	}

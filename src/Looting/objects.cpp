@@ -84,7 +84,7 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 	if (!extraList)
 		return nullptr;
 
-	RE::ObjectRefHandle ashHandle = const_cast<RE::ExtraDataList*>(extraList)->GetAshPileRefHandle();
+	RE::ObjectRefHandle ashHandle = const_cast<RE::ExtraDataList*>(extraList)->GetAshPileRef();
 	return ashHandle.get().get();
 }
 
@@ -124,7 +124,7 @@ void ProcessManualLootItem(const RE::TESObjectREFR* refr)
 			RE::DebugNotification(notificationText.c_str());
 		}
 	}
-	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", refr->GetFormID());
+	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x{:08x}", refr->GetFormID());
 	DataCase::GetInstance()->BlockReference(refr, Lootability::ManualLootTarget);
 }
 
@@ -139,12 +139,12 @@ PlayerAffinity GetPlayerAffinity(const RE::Actor* actor)
 	static const RE::TESFaction* followerFaction = RE::TESForm::LookupByID(CurrentFollowerFaction)->As<RE::TESFaction>();
 	if (followerFaction && actor->IsInFaction(followerFaction))
 	{
-		DBG_DMESSAGE("Actor %s/0x%08x is follower", actor->GetName(), actor->GetFormID());
+		DBG_DMESSAGE("Actor {}/0x{:08x} is follower", actor->GetName(), actor->GetFormID());
 		return PlayerAffinity::FollowerFaction;
 	}
 	if (actor->IsPlayerTeammate())
 	{
-		DBG_DMESSAGE("Actor %s/0x%08x is teammate", actor->GetName(), actor->GetFormID());
+		DBG_DMESSAGE("Actor {}/0x{:08x} is teammate", actor->GetName(), actor->GetFormID());
 		return PlayerAffinity::TeamMate;
 	}
 	return PlayerAffinity::Unaffiliated;
@@ -155,7 +155,7 @@ bool IsSummoned(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
 	bool result(npc && npc->IsSummonable());
-	DBG_DMESSAGE("Actor summoned = %s", result ? "true" : "false");
+	DBG_DMESSAGE("Actor summoned = {}", result ? "true" : "false");
 	return result;
 }
 
@@ -276,11 +276,11 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 	{
 		if (nextPair.second == lcName)
 		{
-			DBG_VMESSAGE("Mapped name %s to ObjectType %d", name.c_str(), nextPair.first);
+			DBG_VMESSAGE("Mapped name {} to ObjectType {}", name.c_str(), nextPair.first);
 			return nextPair.first;
 		}
 	}
-	DBG_WARNING("Unmapped ObjectType name %s", name.c_str());
+	DBG_WARNING("Unmapped ObjectType name {}", name.c_str());
 	return ObjectType::unknown;
 }
 

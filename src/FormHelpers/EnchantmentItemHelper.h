@@ -23,7 +23,7 @@ class EnchantmentItemHelper
 {
 public:
 	EnchantmentItemHelper(RE::EnchantmentItem* item) : m_item(item) {}
-	UInt32 GetGoldValue(void);
+	uint32_t GetGoldValue(void);
 private:
 	RE::EnchantmentItem* m_item;
 };

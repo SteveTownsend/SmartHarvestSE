@@ -41,7 +41,7 @@ namespace
 	std::string GetPluginName(RE::TESForm* thisForm)
 	{
 		std::string result;
-		UInt8 loadOrder = (thisForm->formID) >> 24;
+		uint8_t loadOrder = (thisForm->formID) >> 24;
 		if (loadOrder < 0xFF)
 		{
 			RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
@@ -63,7 +63,7 @@ namespace
 			c = toupper(c);
 	}
 
-	std::string ToStringID(UInt32 id)
+	std::string ToStringID(uint32_t id)
 	{
 		std::stringstream ss;
 		ss << std::hex << std::setfill('0') << std::setw(8) << std::uppercase << id;
@@ -76,13 +76,13 @@ namespace papyrus
 	// available in release build, but typically unused
 	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		DBG_MESSAGE("%s", str.c_str());
+		DBG_MESSAGE("{}", str.c_str());
 	}
 
 	// available in release build for important output
 	void AlwaysTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
 	{
-		REL_MESSAGE("%s", str.c_str());
+		REL_MESSAGE("{}", str.c_str());
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
@@ -111,7 +111,7 @@ namespace papyrus
 		return (!result.empty()) ? result.c_str() : nullptr;
 	}
 
-	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag* base, SInt32 objectNumber)
+	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag* base, int32_t objectNumber)
 	{
 		RE::BSFixedString result;
 		std::string str = shse::GetObjectTypeName(ObjectType(objectNumber));
@@ -121,17 +121,17 @@ namespace papyrus
 			return str.c_str();
 	}
 
-	SInt32 GetObjectTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString objectTypeName)
+	int32_t GetObjectTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString objectTypeName)
 	{
-		return static_cast<SInt32>(shse::GetObjectTypeByTypeName(objectTypeName.c_str()));
+		return static_cast<int32_t>(shse::GetObjectTypeByTypeName(objectTypeName.c_str()));
 	}
 
-	SInt32 GetResourceTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString resourceTypeName)
+	int32_t GetResourceTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString resourceTypeName)
 	{
-		return static_cast<SInt32>(shse::ResourceTypeByName(resourceTypeName.c_str()));
+		return static_cast<int32_t>(shse::ResourceTypeByName(resourceTypeName.c_str()));
 	}
 
-	float GetSetting(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSFixedString key)
+	float GetSetting(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, RE::BSFixedString key)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -144,11 +144,11 @@ namespace papyrus
 		::ToLower(str);
 
 		float result(static_cast<float>(ini->GetSetting(first, second, str.c_str())));
-		DBG_VMESSAGE("Config setting %d/%d/%s = %f", first, second, str.c_str(), result);
+		DBG_VMESSAGE("Config setting {}/{}/{} = {}", first, second, str.c_str(), result);
 		return result;
 	}
 
-	float GetSettingObjectArrayEntry(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, SInt32 index)
+	float GetSettingObjectArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int32_t index)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -190,11 +190,11 @@ namespace papyrus
 				value = static_cast<float>(tmp_value);
 			}
 		}
-		DBG_VMESSAGE("Config setting %d/%d/%s = %f", first, second, key.c_str(), value);
+		DBG_VMESSAGE("Config setting {}/{}/{} = {}", first, second, key.c_str(), value);
 		return value;
 	}
 
-	void PutSetting(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, RE::BSFixedString key, float value)
+	void PutSetting(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, RE::BSFixedString key, float value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -209,7 +209,7 @@ namespace papyrus
 		ini->PutSetting(first, second, str.c_str(), static_cast<double>(value));
 	}
 
-	void PutSettingObjectArrayEntry(RE::StaticFunctionTag* base, SInt32 section_first, SInt32 section_second, int index, float value)
+	void PutSettingObjectArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int index, float value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -220,7 +220,7 @@ namespace papyrus
 
 		std::string key = shse::GetObjectTypeName(ObjectType(index));
 		::ToLower(key);
-		DBG_VMESSAGE("Put config setting (array) %d/%d/%s = %f", first, second, key.c_str(), value);
+		DBG_VMESSAGE("Put config setting (array) {}/{}/{} = {}", first, second, key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 
@@ -341,7 +341,7 @@ namespace papyrus
 		std::ostringstream formIDStr;
 		formIDStr << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<RE::FormID>(formID);
 		std::string result(formIDStr.str());
-		DBG_VMESSAGE("FormID 0x%08x mapped to %s", formID, result.c_str());
+		DBG_VMESSAGE("FormID 0x{:08x} mapped to {}", formID, result.c_str());
 		return RE::BSFixedString(result.c_str());
 	}
 
@@ -388,7 +388,7 @@ namespace papyrus
 
 	void FlushAddedItems(RE::StaticFunctionTag* base, const float gameTime, const std::vector<const RE::TESForm*> forms, const int itemCount)
 	{
-		DBG_MESSAGE("Flush %d/%d added items", itemCount, forms.size());
+		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
 		auto form(forms.cbegin());
 		int current(0);
 		shse::PlayerState::Instance().UpdateGameTime(gameTime);

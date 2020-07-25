@@ -75,7 +75,7 @@ bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr) const
 	// risk exists if REFR or its concrete object is dynamic
 	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
 	{
-		DBG_VMESSAGE("dynamic REFR 0x%08x or base 0x%08x for %s", refr->GetFormID(),
+		DBG_VMESSAGE("dynamic REFR 0x{:08x} or base 0x{:08x} for {}", refr->GetFormID(),
 			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
 		// record looting so we don't rescan
 		MarkDynamicContainerLooted(refr);
@@ -143,14 +143,14 @@ bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) con
 		// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If they don't
 		// want this, they should configure 'Loot locked container'. Such a container will glow locked even after player
 		// unlocks.
-		DBG_VMESSAGE("Check REFR 0x%08x to not-locked container %s/0x%08x", refr->GetFormID(),
+		DBG_VMESSAGE("Check REFR 0x{:08x} to not-locked container {}/0x{:08x}", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		return m_lockedContainers.find(refr) != m_lockedContainers.cend();
 	}
 	// container is locked - save if not already known
 	else if (m_lockedContainers.insert(refr).second)
 	{
-		DBG_VMESSAGE("Remember REFR 0x%08x to locked container %s/0x%08x", refr->GetFormID(),
+		DBG_VMESSAGE("Remember REFR 0x{:08x} to locked container {}/0x{:08x}", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 	}
 	return true;
@@ -203,7 +203,7 @@ void ScanGovernor::ProgressGlowDemo()
 	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindAllCandidates();
 	for (auto target : targets)
 	{
-		DBG_VMESSAGE("Trigger glow for %s/0x%08x at distance %.2f units", target.second->GetName(), target.second->formID, target.first);
+		DBG_VMESSAGE("Trigger glow for {}/0x{:08x} at distance {:0.2f} units", target.second->GetName(), target.second->formID, target.first);
 		EventPublisher::Instance().TriggerObjectGlow(target.second, ObjectGlowDurationCalibrationSeconds,
 			m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
 	}
@@ -238,7 +238,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 	{
 		if (!dryRun)
 		{
-			DBG_WARNING("REFR 0x%08x has no Base Object", refr->GetFormID());
+			DBG_WARNING("REFR 0x{:08x} has no Base Object", refr->GetFormID());
 			DataCase::GetInstance()->BlacklistReference(refr);
 		}
 		return Lootability::NoBaseObject;
@@ -246,7 +246,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 	else
 	{
 		m_targetType = INIFile::SecondaryType::itemObjects;
-		DBG_VMESSAGE("Process REFR 0x%08x with base object %s/0x%08x", refr->GetFormID(),
+		DBG_VMESSAGE("Process REFR 0x{:08x} with base object {}/0x{:08x}", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 #ifdef _PROFILING
 		WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
@@ -280,7 +280,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 				{
 					if (!dryRun)
 					{
-						DBG_VMESSAGE("Block ineligible Actor 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+						DBG_VMESSAGE("Block ineligible Actor 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
 							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 						DataCase::GetInstance()->BlockReference(refr, exclusionType);
 					}
@@ -304,7 +304,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			// avoid double dipping for immediate-loot case
 			if (std::find(m_possibleDupes.cbegin(), m_possibleDupes.cend(), refr) != m_possibleDupes.cend())
 			{
-				DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+				DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
 					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 				return Lootability::DeadBodyPossibleDuplicate;
 			}
@@ -346,12 +346,12 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			{
 				return Lootability::CannotGetAshPile;
 			}
-			DBG_MESSAGE("Got ash-pile REFR 0x%08x from REFR 0x%08x", refr->GetFormID(), original->GetFormID());
+			DBG_MESSAGE("Got ash-pile REFR 0x{:08x} from REFR 0x{:08x}", refr->GetFormID(), original->GetFormID());
 
 			// avoid double dipping for immediate-loot case
 			if (std::find(m_possibleDupes.cbegin(), m_possibleDupes.cend(), refr) != m_possibleDupes.cend())
 			{
-				DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x%08x, base = %s/0x%08x", refr->GetFormID(),
+				DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
 					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 				return Lootability::DeadBodyPossibleDuplicate;
 			}
@@ -469,7 +469,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
 	{
 		m_detectiveWannabes = ActorTracker::Instance().GetDetectives();
-		DBG_VMESSAGE("Detection check to steal under the nose of %d Actors", m_detectiveWannabes.size());
+		DBG_VMESSAGE("Detection check to steal under the nose of {} Actors", m_detectiveWannabes.size());
 		static const bool dryRun(true);
 		EventPublisher::Instance().TriggerStealIfUndetected(m_detectiveWannabes.size(), dryRun);
 	}
@@ -487,13 +487,13 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	}
 	std::string message(resultStr.str());
 	RE::DebugNotification(message.c_str());
-	REL_MESSAGE("Lootability checked for %s", message.c_str());
+	REL_MESSAGE("Lootability checked for {}", message.c_str());
 	resultStr.str("");
 
 	resultStr << LootabilityName(result) << ' ' << LocationTracker::Instance().PlayerExactLocation();
 	message = resultStr.str();
 	RE::DebugNotification(message.c_str());
-	REL_MESSAGE("Lootability result: %s", message.c_str());
+	REL_MESSAGE("Lootability result: {}", message.c_str());
 }
 
 void ScanGovernor::Allow()
@@ -588,7 +588,7 @@ void ScanGovernor::ToggleCalibration(const bool glowDemo)
 {
 	RecursiveLockGuard guard(m_searchLock);
 	m_calibrating = !m_calibrating;
-	REL_MESSAGE("Calibration of Looting range %s, test shaders %s",	m_calibrating ? "started" : "stopped", m_glowDemo ? "true" : "false");
+	REL_MESSAGE("Calibration of Looting range {}, test shaders {}",	m_calibrating ? "started" : "stopped", m_glowDemo ? "true" : "false");
 	if (m_calibrating)
 	{
 		m_glowDemo = glowDemo;
@@ -625,7 +625,7 @@ void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const
 		return;
 	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0));
 	m_glowExpiration[refr] = expiry;
-	DBG_VMESSAGE("Trigger glow for %s/0x%08x", refr->GetName(), refr->formID);
+	DBG_VMESSAGE("Trigger glow for {}/0x{:08x}", refr->GetName(), refr->formID);
 	EventPublisher::Instance().TriggerObjectGlow(refr, duration, glowReason);
 }
 

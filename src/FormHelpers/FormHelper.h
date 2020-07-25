@@ -33,7 +33,7 @@ public:
 
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
-	SInt32 GetGoldValue(void) const;
+	int32_t GetGoldValue(void) const;
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	inline const RE::TESForm* Form() const { return m_form; }
 
@@ -44,8 +44,8 @@ protected:
 	const shse::ConditionMatcher m_matcher;
 
 	virtual const char* GetName() const override;
-	virtual UInt32 GetFormID() const override;
-	virtual SInt32 CalculateWorth(void) const override;
+	virtual uint32_t GetFormID() const override;
+	virtual int32_t CalculateWorth(void) const override;
 };
 
 }
