@@ -261,7 +261,7 @@ void PluginFacade::SyncDone()
 
 void PluginFacade::ResetState(const bool gameReload)
 {
-	// TODO review to make sure this does not deadlock
+	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
 	ScanGovernor::Instance().Clear(gameReload);

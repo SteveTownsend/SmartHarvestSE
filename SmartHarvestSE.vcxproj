@@ -197,6 +197,7 @@
     <ClCompile Include="src\Collections\CollectionFactory.cpp" />
     <ClCompile Include="src\Collections\CollectionManager.cpp" />
     <ClCompile Include="src\Collections\Condition.cpp" />
+    <ClCompile Include="src\Data\CosaveData.cpp" />
     <ClCompile Include="src\Data\dataCase.cpp" />
     <ClCompile Include="src\Data\iniSettings.cpp" />
     <ClCompile Include="src\Data\LoadOrder.cpp" />
@@ -258,6 +259,7 @@
     <ClInclude Include="src\Collections\CollectionFactory.h" />
     <ClInclude Include="src\Collections\CollectionManager.h" />
     <ClInclude Include="src\Collections\Condition.h" />
+    <ClInclude Include="src\Data\CosaveData.h" />
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
     <ClInclude Include="src\Data\LoadOrder.h" />

@@ -563,6 +563,7 @@ void DataCase::RecordOffLimitsLocations()
 void DataCase::BlockOffLimitsContainers()
 {
 	// block all the known off-limits containers - list is invariant during gaming session
+	RecursiveLockGuard guard(m_blockListLock);
 	for (const auto refr : m_offLimitsContainers)
 	{
 		BlockReference(refr, Lootability::ContainerPermanentlyOffLimits);
