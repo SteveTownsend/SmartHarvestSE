@@ -30,6 +30,7 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/CollectionManager.h"
 #include "Collections/CollectionFactory.h"
 #include "Data/DataCase.h"
+#include "Data/iniSettings.h"
 #include "Looting/ManagedLists.h"
 
 namespace shse
@@ -198,18 +199,27 @@ std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
 		return std::vector<const RE::TESForm*>();
 
 	// use delta vs last pass to speed this up (resets on game reload)
+	static const bool requireQuestItemAsTarget(false);
+	static const bool checkSpecials(false);
+	LootableItems playerInventory(ContainerLister(
+		INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials).GetOrCheckContainerForms());
 	decltype(m_lastInventoryItems) newInventoryItems;
 	std::vector<const RE::TESForm*> candidates;
-	const auto inv = player->GetInventory([&](RE::TESBoundObject* candidate) -> bool {
-		RE::FormID formID(candidate->GetFormID());
-		newInventoryItems.insert(candidate);
-		if (!m_lastInventoryItems.contains(candidate) && m_collectionsByFormID.contains(formID))
+	for (const auto& candidate : playerInventory)
+	{
+		const auto item(candidate.BoundObject());
+		RE::FormID formID(item->GetFormID());
+		newInventoryItems.insert(item);
+		if (!m_lastInventoryItems.contains(item) && m_collectionsByFormID.contains(formID))
 		{
-			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", candidate->GetName(), formID);
-			candidates.push_back(candidate);
+			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), formID);
+			candidates.push_back(item);
 		}
-		return false;
-	});
+		else
+		{
+			DBG_VMESSAGE("Skip {}/0x{:08x} in inventory", item->GetName(), formID);
+		}
+	}
 	m_lastInventoryItems.swap(newInventoryItems);
 	return candidates;
 }
@@ -858,7 +868,7 @@ void CollectionManager::ResolveMembership(void)
 void CollectionManager::OnGameReload()
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	/// reset player inventory last-known-good
+	// reset player inventory last-known-good
 	m_lastInventoryItems.clear();
 	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
 	m_addedItemQueue.clear();
@@ -877,7 +887,6 @@ void CollectionManager::OnGameReload()
 void CollectionManager::AsJSON(nlohmann::json& j) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	j["time"] = m_gameTime;
 	j["groups"] = nlohmann::json::array();
 	for (const auto& collectionGroup : m_allGroupsByName)
 	{

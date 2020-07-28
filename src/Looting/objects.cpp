@@ -136,6 +136,8 @@ RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
 
 PlayerAffinity GetPlayerAffinity(const RE::Actor* actor)
 {
+	if (actor == RE::PlayerCharacter::GetSingleton())
+		return PlayerAffinity::Player;
 	static const RE::TESFaction* followerFaction = RE::TESForm::LookupByID(CurrentFollowerFaction)->As<RE::TESFaction>();
 	if (followerFaction && actor->IsInFaction(followerFaction))
 	{

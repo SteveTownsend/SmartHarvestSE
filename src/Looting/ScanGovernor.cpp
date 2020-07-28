@@ -264,7 +264,8 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			if (actor)
 			{
 				Lootability exclusionType(Lootability::Lootable);
-				if (GetPlayerAffinity(actor) != PlayerAffinity::Unaffiliated)
+				PlayerAffinity playerAffinity(GetPlayerAffinity(actor));
+				if (playerAffinity != PlayerAffinity::Unaffiliated && playerAffinity != PlayerAffinity::Player)
 				{
 					exclusionType = Lootability::DeadBodyIsPlayerAlly;
 				}

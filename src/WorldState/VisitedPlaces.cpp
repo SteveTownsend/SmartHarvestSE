@@ -42,6 +42,7 @@ VisitedPlace& VisitedPlace::operator=(const VisitedPlace& rhs)
 
 void VisitedPlace::AsJSON(nlohmann::json& j) const
 {
+	j["time"] = m_gameTime;
 	if (m_worldspace)
 	{
 		j["worldspace"] = m_worldspace->GetFormID();

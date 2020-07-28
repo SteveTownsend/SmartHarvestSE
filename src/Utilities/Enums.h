@@ -380,6 +380,7 @@ enum class PlayerAffinity
 	Unaffiliated = 0,
 	TeamMate,
 	FollowerFaction,
+	Player,
 	MAX
 };
 

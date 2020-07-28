@@ -128,26 +128,18 @@ bool PluginFacade::Load()
 	shse::CollectionManager::Instance().ProcessDefinitions();
 
 	m_pluginOK = true;
-	REL_MESSAGE("Plugin now in sync - Game Data load complete!");
+	REL_MESSAGE("Plugin Data load complete!");
 	return true;
 }
 
-void PluginFacade::TakeNap()
+void PluginFacade::TakeNap(const double delaySeconds)
 {
-	double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds"));
-	delay = std::max(MinThreadDelaySeconds, delay);
-	if (ScanGovernor::Instance().Calibrating())
-	{
-		// use hard-coded delay to make UX comprehensible
-		delay = CalibrationThreadDelaySeconds;
-	}
-
-	DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delay * 1000.0));
+	DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delaySeconds * 1000.0));
 
 	// flush log output here
 	SHSELogger->flush();
 
-	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
+	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delaySeconds * 1000.0));
 	std::this_thread::sleep_until(nextRunTime);
 }
 
@@ -162,7 +154,15 @@ void PluginFacade::ScanThread()
 	while (true)
 	{
 		// Delay the scan for each loop
-		Instance().TakeNap();
+		double delaySeconds(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds"));
+		delaySeconds = std::max(MinThreadDelaySeconds, delaySeconds);
+		if (ScanGovernor::Instance().Calibrating())
+		{
+			// use hard-coded delay to make UX comprehensible
+			delaySeconds = CalibrationThreadDelaySeconds;
+		}
+
+		Instance().TakeNap(delaySeconds);
 		{
 			// Go no further if game load is in progress.
 			if (!Instance().IsSynced())
@@ -281,7 +281,7 @@ void PluginFacade::ResetState(const bool gameReload)
 void PluginFacade::OnGoodToGo()
 {
 	REL_MESSAGE("UI/controls now good-to-go, wait before first scan");
-	TakeNap();
+	TakeNap(OnMCMClosedThreadDelaySeconds);
 }
 
 // lock not required, by construction

@@ -88,7 +88,6 @@ private:
 	bool m_ready;
 	// enabled for MCM management? if false, administrative Collection Groups will still be used
 	bool m_mcmEnabled;
-	float m_gameTime;
 
 	mutable RecursiveLock m_collectionLock;
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;

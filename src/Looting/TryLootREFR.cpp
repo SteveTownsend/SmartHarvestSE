@@ -328,7 +328,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
-		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget);
+		static const bool checkSpecials(true);
+		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget, checkSpecials);
 		LootableItems lootableItems(lister.GetOrCheckContainerForms());
 		if (lootableItems.empty())
 		{
