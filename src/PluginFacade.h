@@ -27,7 +27,7 @@ public:
 	static PluginFacade& Instance();
 	PluginFacade();
 
-	bool Init(void);
+	bool Init(const bool onGameReload);
 	void PrepareForReload();
 	void AfterReload();
 	void SyncDone();

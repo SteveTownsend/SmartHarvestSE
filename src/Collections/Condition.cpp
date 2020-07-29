@@ -93,10 +93,7 @@ FormListCondition::FormListCondition(const std::vector<std::pair<std::string, st
 	for (const auto& entry : pluginFormList)
 	{
 		// schema enforces 8-char HEX format
-		RE::FormID formID;
-		std::stringstream ss;
-		ss << std::hex << entry.second;
-		ss >> formID;
+		RE::FormID formID(StringUtils::ToFormID(entry.second));
 		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(LoadOrder::Instance().AsRaw(formID), entry.first));
 		if (!formList)
 		{
@@ -142,10 +139,8 @@ void FormListCondition::AsJSON(nlohmann::json& j) const
 	j["formList"] = nlohmann::json::array();
 	for (const auto formList : m_formLists)
 	{
-		std::ostringstream formStr;
-		formStr << std::hex << std::setfill('0') << std::setw(8) << formList.first->GetFormID();
 		auto next(nlohmann::json::object());
-		next["formID"] = formStr.str();
+		next["formID"] = StringUtils::FromFormID(formList.first->GetFormID());
 		next["listPlugin"] = "";
 		j["formList"].push_back(next);
 	}
@@ -160,10 +155,7 @@ FormsCondition::FormsCondition(const std::vector<std::pair<std::string, std::vec
 		for (const auto nextID : entry.second)
 		{
 			// schema enforces 8-char HEX format
-			RE::FormID formID;
-			std::stringstream ss;
-			ss << std::hex << nextID;
-			ss >> formID;
+			RE::FormID formID(StringUtils::ToFormID(nextID));
 			RE::TESForm* form(RE::TESDataHandler::GetSingleton()->LookupForm(LoadOrder::Instance().AsRaw(formID), entry.first));
 			if (!form)
 			{
@@ -203,9 +195,7 @@ void FormsCondition::AsJSON(nlohmann::json& j) const
 		next["form"] = nlohmann::json::array();
 		for (const auto form : pluginData.second)
 		{
-			std::ostringstream formStr;
-			formStr << std::hex << std::setfill('0') << std::setw(8) << form->GetFormID();
-			next["form"].push_back(formStr.str());
+			next["form"].push_back(StringUtils::FromFormID(form->GetFormID()));
 		}
 	}
 }

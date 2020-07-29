@@ -188,13 +188,11 @@ std::string LocationTracker::PlayerExactLocation() const
 	std::ostringstream locationStr;
 	if (m_playerLocation)
 	{
-		locationStr << "at " << m_playerLocation->GetName() << "/0x"
-			<< std::hex << std::setw(8) << std::setfill('0') << m_playerLocation->GetFormID() << ' ';
+		locationStr << "at " << m_playerLocation->GetName() << "/0x" << StringUtils::FromFormID(m_playerLocation->GetFormID()) << ' ';
 	}
 	if (m_playerCell)
 	{
-		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x"
-			<< std::hex << std::setw(8) << std::setfill('0') << m_playerCell->GetFormID();
+		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x" << StringUtils::FromFormID(m_playerCell->GetFormID());
 	}
 	return locationStr.str();
 }
@@ -333,8 +331,6 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 
 void LocationTracker::Reset()
 {
-	VisitedPlaces::Instance().Reset();
-	PartyMembers::Instance().Reset();
 	DBG_MESSAGE("Reset Location Tracking after reload");
 	RecursiveLockGuard guard(m_locationLock);
 	m_tellPlayerIfCanLootAfterLoad = true;

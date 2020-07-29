@@ -47,6 +47,7 @@ public:
 	void AdjustParty(const Followers& followers, const float gameTime);
 
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& j);
 
 private:
 	static std::unique_ptr<PartyMembers> m_instance;

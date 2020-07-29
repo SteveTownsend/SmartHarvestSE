@@ -29,6 +29,11 @@ PartyVictim::PartyVictim(const RE::Actor* victim, const float gameTime)
 {
 }
 
+PartyVictim::PartyVictim(const std::string& name, const float gameTime)
+	: m_victim(name), m_gameTime(gameTime)
+{
+}
+
 void PartyVictim::AsJSON(nlohmann::json& j) const
 {
 	j["name"] = m_victim;
@@ -166,6 +171,12 @@ void ActorTracker::ClearFollowers()
 	m_followers.clear();
 }
 
+void ActorTracker::ClearVictims()
+{
+	RecursiveLockGuard guard(m_actorLock);
+	m_victims.clear();
+}
+
 void ActorTracker::AsJSON(nlohmann::json& j) const
 {
 	nlohmann::json victims(nlohmann::json::array());
@@ -174,6 +185,19 @@ void ActorTracker::AsJSON(nlohmann::json& j) const
 		victims.push_back(victim);
 	}
 	j["victims"] = victims;
+}
+
+// rehydrate from cosave data
+void ActorTracker::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Party Victims\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_actorLock);
+	m_victims.clear();
+	m_victims.reserve(j["victims"].size());
+	for (const nlohmann::json& victim : j["victims"])
+	{
+		m_victims.emplace_back(victim["name"].get<std::string>(), victim["time"].get<float>());
+	}
 }
 
 void to_json(nlohmann::json& j, const ActorTracker& actorTracker)

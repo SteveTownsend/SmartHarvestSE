@@ -476,11 +476,11 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	}
 
 	std::ostringstream resultStr;
-	resultStr << "REFR 0x" << std::setw(8) << std::hex << std::setfill('0') << (refr ? refr->GetFormID() : InvalidForm);
+	resultStr << "REFR 0x" << StringUtils::FromFormID(refr ? refr->GetFormID() : InvalidForm);
 	const auto baseObject(refr ? refr->GetBaseObject() : nullptr);
 	if (baseObject)
 	{
-		resultStr << " -> " << baseObject->GetName() << "/0x" << std::setw(8) << std::hex << std::setfill('0') << baseObject->GetFormID();
+		resultStr << " -> " << baseObject->GetName() << "/0x" << StringUtils::FromFormID(baseObject->GetFormID());
 	}
 	if (!typeName.empty())
 	{

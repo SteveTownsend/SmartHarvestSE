@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/versiondb.h"
 #include "Collections/CollectionManager.h"
+#include "Data/CosaveData.h"
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
 #include "VM/UIState.h"
@@ -49,7 +50,7 @@ PluginFacade::PluginFacade() : m_pluginOK(false), m_threadStarted(false), m_plug
 {
 }
 
-bool PluginFacade::Init()
+bool PluginFacade::Init(const bool onGameReload)
 {
 	if (!m_pluginOK)
 	{
@@ -67,6 +68,11 @@ bool PluginFacade::Init()
 			REL_FATALERROR("Fatal Exception during Game Data load");
 			return false;
 		}
+	}
+	if (onGameReload)
+	{
+		// seed state using cosave data
+		CosaveData::Instance().SeedState();
 	}
 	if (!m_threadStarted)
 	{
@@ -161,15 +167,13 @@ void PluginFacade::ScanThread()
 			// use hard-coded delay to make UX comprehensible
 			delaySeconds = CalibrationThreadDelaySeconds;
 		}
-
 		Instance().TakeNap(delaySeconds);
+
+		// Go no further if game load is in progress.
+		if (!Instance().IsSynced())
 		{
-			// Go no further if game load is in progress.
-			if (!Instance().IsSynced())
-			{
-				REL_MESSAGE("Plugin sync still pending");
-				continue;
-			}
+			REL_MESSAGE("Plugin sync still pending");
+			continue;
 		}
 
 		if (!EventPublisher::Instance().GoodToGo())
@@ -234,6 +238,7 @@ void PluginFacade::ScanThread()
 void PluginFacade::PrepareForReload()
 {
 	UIState::Instance().Reset();
+	CosaveData::Instance().Clear();
 
 	// Do not scan again until we are in sync with the scripts
 	RecursiveLockGuard guard(m_pluginLock);

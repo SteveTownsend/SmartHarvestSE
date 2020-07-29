@@ -27,13 +27,15 @@ public:
 	static CosaveData& Instance();
 	CosaveData();
 	void Clear();
-	void Serialize(SKSE::SerializationInterface* intf);
-	void Deserialize(SKSE::SerializationInterface* intf);
+	void SeedState();
+
+	bool Serialize(SKSE::SerializationInterface* intf);
+	bool Deserialize(SKSE::SerializationInterface* intf);
 
 private:
 	static std::unique_ptr<CosaveData> m_instance;
 	mutable RecursiveLock m_cosaveLock;
-	std::unordered_map<shse::SerializationRecordType, nlohmann::json> m_records;
+	std::map<shse::SerializationRecordType, nlohmann::json> m_records;
 };
 
 }

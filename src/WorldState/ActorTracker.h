@@ -32,6 +32,7 @@ namespace shse
 class PartyVictim {
 public:
 	PartyVictim(const RE::Actor* victim, const float gameTime);
+	PartyVictim(const std::string& name, const float gameTime);
 	void AsJSON(nlohmann::json& j) const;
 
 private:
@@ -47,6 +48,7 @@ public:
 	static ActorTracker& Instance();
 	ActorTracker();
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& j);
 
 	void Reset();
 	void RecordLiveSighting(const RE::TESObjectREFR* actorRef);
@@ -62,6 +64,7 @@ public:
 	void AddFollower(const RE::Actor* detective);
 	inline Followers GetFollowers() const {	return m_followers; }
 	void ClearFollowers();
+	void ClearVictims();
 
 private:
 

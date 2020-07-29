@@ -35,6 +35,7 @@ public:
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
+	void Clear(void);
 	void OnGameReload(void);
 	void PrintDefinitions(void) const;
 	void PrintMembership(void) const;
@@ -68,6 +69,7 @@ public:
 	void RecordPlacedObjects(void);
 
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& j);
 
 private:
 	bool LoadData(void);

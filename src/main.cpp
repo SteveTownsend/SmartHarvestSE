@@ -42,7 +42,11 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Serialization Save hook");
 #endif
-	shse::CosaveData::Instance().Serialize(a_intfc);
+	if (!shse::CosaveData::Instance().Serialize(a_intfc))
+	{
+		REL_ERROR("Cosave data write failed");
+		shse::CosaveData::Instance().Clear();
+	}
 }
 
 void LoadCallback(SKSE::SerializationInterface* a_intfc)
@@ -51,7 +55,10 @@ void LoadCallback(SKSE::SerializationInterface* a_intfc)
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Serialization Load hook");
 #endif
-	shse::CosaveData::Instance().Deserialize(a_intfc);
+	if (!shse::CosaveData::Instance().Deserialize(a_intfc))
+	{
+		REL_ERROR("Cosave data load failed");
+	}
 }
 
 void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
@@ -72,9 +79,11 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 
 	case SKSE::MessagingInterface::kNewGame:
 	case SKSE::MessagingInterface::kPostLoadGame:
-		REL_MESSAGE("Game load done, initializing Tasks");
+		// at this point CosaveData contains any saved data, if this was a saved-game load
+		const bool onGameReload(msg->type == SKSE::MessagingInterface::kPostLoadGame);
+		REL_MESSAGE("Game ready: new game = {}", onGameReload ? "false" : "true");
 		// if checks fail, abort scanning
-		if (!shse::PluginFacade::Instance().Init())
+		if (!shse::PluginFacade::Instance().Init(onGameReload))
 		{
 			REL_FATALERROR("SearchTask initialization failed - no looting");
 			return;
@@ -105,6 +114,7 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 		return false;
 	}	
 	spdlog::set_level(spdlog::level::trace); // Set global log level
+	spdlog::flush_on(spdlog::level::trace);	// always flush
 #if 0
 #if _DEBUG
 	SKSE::add_papyrus_sink();	// TODO what goes in here now

@@ -31,6 +31,7 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/CollectionFactory.h"
 #include "Data/DataCase.h"
 #include "Data/iniSettings.h"
+#include "Data/LoadOrder.h"
 #include "Looting/ManagedLists.h"
 
 namespace shse
@@ -440,7 +441,7 @@ void CollectionManager::PolicySetRepeat(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetRepeat(allowRepeats);
-		matched->second->SetOverridesGroup();
+		matched->second->SetOverridesGroup(true);
 	}
 }
 
@@ -452,7 +453,7 @@ void CollectionManager::PolicySetNotify(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetNotify(notify);
-		matched->second->SetOverridesGroup();
+		matched->second->SetOverridesGroup(true);
 	}
 }
 
@@ -464,7 +465,7 @@ void CollectionManager::PolicySetAction(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetAction(action);
-		matched->second->SetOverridesGroup();
+		matched->second->SetOverridesGroup(true);
 	}
 }
 
@@ -863,8 +864,17 @@ void CollectionManager::ResolveMembership(void)
 	PrintMembership();
 }
 
+// clear state before game reload
+void CollectionManager::Clear()
+{
+	// Flush membership state to allow testing
+	for (auto collection : m_allCollectionsByLabel)
+	{
+		collection.second->Reset();
+	}
+}
+
 // for game reload, we reset the checked items
-// TODO process SKSE co-save data
 void CollectionManager::OnGameReload()
 {
 	RecursiveLockGuard guard(m_collectionLock);
@@ -876,12 +886,6 @@ void CollectionManager::OnGameReload()
 	// logic depends on prior and new state
 	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
 	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
-	// TODO load Collections data from saved game
-	// Flush membership state to allow testing
-	for (auto collection : m_allCollectionsByLabel)
-	{
-		collection.second->Reset();
-	}
 }
 
 void CollectionManager::AsJSON(nlohmann::json& j) const
@@ -891,6 +895,25 @@ void CollectionManager::AsJSON(nlohmann::json& j) const
 	for (const auto& collectionGroup : m_allGroupsByName)
 	{
 		j["groups"].push_back(*collectionGroup.second);
+	}
+}
+
+// reset Collection state from cosave data
+void CollectionManager::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Collections\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_collectionLock);
+	for (const nlohmann::json& group : j["groups"])
+	{
+		std::string groupName(group["name"].get<std::string>());
+		auto existing(m_allGroupsByName.find(groupName));
+		if (existing == m_allGroupsByName.cend())
+		{
+			REL_WARNING("Cosave contains unknown Collection Group {}", groupName);
+			// TODO keep the data around? But what use will it be?
+			continue;
+		}
+		existing->second->UpdateFrom(group);
 	}
 }
 

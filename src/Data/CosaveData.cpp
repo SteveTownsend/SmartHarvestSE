@@ -54,9 +54,52 @@ CosaveData::CosaveData()
 
 void CosaveData::Clear()
 {
+	// Clear state that we will reseed. LoadOrder preserves current state and compares to cosave version.
+	CollectionManager::Instance().Clear();
+	VisitedPlaces::Instance().Reset();
+	PartyMembers::Instance().Reset();
+	ActorTracker::Instance().ClearVictims();
+
+	RecursiveLockGuard guard(m_cosaveLock);
+	m_records.clear();
 }
 
-void CosaveData::Serialize(SKSE::SerializationInterface* intf)
+void CosaveData::SeedState()
+{
+	// iterate records
+	// TODO make this atomic if any portion fails
+	for (const auto& record : m_records)
+	{
+		REL_MESSAGE("Seed state from cosave data {}", SerializationRecordName(record.first));
+		try {
+			switch (record.first) {
+			case SerializationRecordType::LoadOrder:
+				LoadOrder::Instance().UpdateFrom(record.second);
+				break;
+			case SerializationRecordType::Collections:
+				CollectionManager::Instance().UpdateFrom(record.second);
+				break;
+			case SerializationRecordType::PlacesVisited:
+				VisitedPlaces::Instance().UpdateFrom(record.second);
+				break;
+			case SerializationRecordType::PartyUpdates:
+				PartyMembers::Instance().UpdateFrom(record.second);
+				break;
+			case SerializationRecordType::Victims:
+				ActorTracker::Instance().UpdateFrom(record.second);
+				break;
+			default:
+				break;
+			}
+		}
+		catch (const std::exception& exc) {
+			REL_ERROR("Failed to parse cosave {} record:\n{}", SerializationRecordName(record.first), exc.what());
+			break;
+		}
+	}
+}
+
+bool CosaveData::Serialize(SKSE::SerializationInterface* intf)
 {
 	// Serialize JSON and compress per https://github.com/google/brotli
 #if 0
@@ -107,37 +150,80 @@ void CosaveData::Serialize(SKSE::SerializationInterface* intf)
 	}
 #else
 	// output LoadOrder
-	std::string lordRecord(CompressionUtils::EncodeBrotli(shse::LoadOrder::Instance()));
-	if (!intf->WriteRecord('LORD', 1, lordRecord.c_str(), static_cast<uint32_t>(lordRecord.length())))
+	std::string record;
+	if (!CompressionUtils::EncodeBrotli(shse::LoadOrder::Instance(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('LORD', 1, record.c_str(), static_cast<uint32_t>(record.length())))
 	{
 		REL_ERROR("Failed to serialize LORD");
+		return false;
+	}
+	else
+	{
+		REL_MESSAGE("Wrote LORD record {} bytes", record.length());
 	}
 	// output Collection Groups - Definitions and Members
-	std::string collRecord(CompressionUtils::EncodeBrotli(shse::CollectionManager::Instance()));
-	if (!intf->WriteRecord('COLL', 1, collRecord.c_str(), static_cast<uint32_t>(collRecord.length())))
+	if (!CompressionUtils::EncodeBrotli(shse::CollectionManager::Instance(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('COLL', 1, record.c_str(), static_cast<uint32_t>(record.length())))
 	{
 		REL_ERROR("Failed to serialize COLL");
+		return false;
+	}
+	else
+	{
+		REL_MESSAGE("Wrote COLL record {} bytes", record.length());
 	}
 	// output Location history
-	std::string placRecord(CompressionUtils::EncodeBrotli(shse::VisitedPlaces::Instance()));
-	if (!intf->WriteRecord('PLAC', 1, placRecord.c_str(), static_cast<uint32_t>(placRecord.length())))
+	if (!CompressionUtils::EncodeBrotli(shse::VisitedPlaces::Instance(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('PLAC', 1, record.c_str(), static_cast<uint32_t>(record.length())))
 	{
 		REL_ERROR("Failed to serialize PLAC");
+		return false;
+	}
+	else
+	{
+		REL_MESSAGE("Wrote PLAC record {} bytes", record.length());
 	}
 	// output Followers-in-Party history
-	std::string prtyRecord(CompressionUtils::EncodeBrotli(shse::PartyMembers::Instance()));
-	if (!intf->WriteRecord('PRTY', 1, prtyRecord.c_str(), static_cast<uint32_t>(prtyRecord.length())))
+	if (!CompressionUtils::EncodeBrotli(shse::PartyMembers::Instance(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('PRTY', 1, record.c_str(), static_cast<uint32_t>(record.length())))
 	{
 		REL_ERROR("Failed to serialize PRTY");
+		return false;
 	}
-	std::string vctmRecord(CompressionUtils::EncodeBrotli(shse::ActorTracker::Instance()));
-	if (!intf->WriteRecord('VCTM', 1, vctmRecord.c_str(), static_cast<uint32_t>(vctmRecord.length())))
+	else
+	{
+		REL_MESSAGE("Wrote PRTY record {} bytes", record.length());
+	}
+	if (!CompressionUtils::EncodeBrotli(shse::ActorTracker::Instance(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('VCTM', 1, record.c_str(), static_cast<uint32_t>(record.length())))
 	{
 		REL_ERROR("Failed to serialize VCTM");
+		return false;
 	}
+	else
+	{
+		REL_MESSAGE("Wrote VCTM record {} bytes", record.length());
+	}
+	return true;
 #endif
 }
-void CosaveData::Deserialize(SKSE::SerializationInterface* intf)
+
+bool CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 {
 #if 0
 	try {
@@ -215,27 +301,33 @@ void CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 		if (!intf->ReadRecordData(const_cast<char*>(saveData.c_str()), length))
 		{
 			REL_ERROR("Failed to load record {}", readType);
+			return false;
 		}
 		shse::SerializationRecordType recordType(shse::SerializationRecordType::MAX);
 		switch (readType) {
 		case 'LORD':
 			// Load Order
+			REL_MESSAGE("Read LORD record {} bytes", length);
 			recordType = shse::SerializationRecordType::LoadOrder;
 			break;
 		case 'COLL':
 			// Collection Groups - Definitions and Members
+			REL_MESSAGE("Read COLL record {} bytes", length);
 			recordType = shse::SerializationRecordType::Collections;
 			break;
 		case 'PLAC':
 			// Visited Places
+			REL_MESSAGE("Read PLAC record {} bytes", length);
 			recordType = shse::SerializationRecordType::PlacesVisited;
 			break;
 		case 'PRTY':
 			// Party Membership
+			REL_MESSAGE("Read PRTY record {} bytes", length);
 			recordType = shse::SerializationRecordType::PartyUpdates;
 			break;
 		case 'VCTM':
 			// Party Victims
+			REL_MESSAGE("Read VCTM record {} bytes", length);
 			recordType = shse::SerializationRecordType::Victims;
 			break;
 		default:
@@ -244,9 +336,18 @@ void CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 		}
 		if (recordType != shse::SerializationRecordType::MAX)
 		{
-			m_records.insert({ recordType, CompressionUtils::DecodeBrotli(saveData) });
+			nlohmann::json record;
+			if (CompressionUtils::DecodeBrotli(saveData, record))
+			{
+				m_records.insert({ recordType, record });
+			}
+			else
+			{
+				return false;
+			}
 		}
 	}
+	return true;
 #endif
 }
 

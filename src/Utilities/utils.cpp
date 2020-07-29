@@ -160,7 +160,7 @@ namespace WindowsUtils
 	{
 		std::ostringstream fullContext;
 		fullContext << context << ' ' << (refr ? std::string(refr->GetBaseObject()->GetName()) : std::string()) <<
-			"/0x" << std::hex << std::setw(8) << std::setfill('0') << (refr ? refr->GetBaseObject()->GetFormID() : InvalidForm);
+			"/0x" << StringUtils::FromFormID(refr ? refr->GetBaseObject()->GetFormID() : InvalidForm);
 		m_context = fullContext.str();
 	}
 
@@ -255,39 +255,58 @@ namespace GameSettingUtils
 
 namespace CompressionUtils
 {
-	nlohmann::json DecodeBrotli(const std::string& compressed)
+	// Encoded data consists of its length (type size_t) followed by the compressed version of the input
+	bool DecodeBrotli(const std::string& compressed, nlohmann::json& output)
 	{
+		if (compressed.length() < sizeof(size_t))
+		{
+			REL_ERROR("Inflating {} bytes failed, record too short", compressed.length());
+			return false;
+		}
 		size_t inputSize(compressed.length());
-		// TODO should not have to guess
-		std::string inflated(inputSize * 15, 0);
+		size_t* length(reinterpret_cast<size_t*>(const_cast<char*>(compressed.c_str())));
+		std::string inflated(*length, 0);
 		size_t outputSize;
-		BrotliDecoderResult result(BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str()),
+		BrotliDecoderResult result(BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str() + sizeof(size_t)),
 			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))));
 		if (result == BROTLI_DECODER_RESULT_SUCCESS)
 		{
-			REL_MESSAGE("Inflated {} bytes to {}", inputSize, outputSize);
+			REL_MESSAGE("Inflated {} bytes to {} vs size-hint of {}", inputSize, outputSize, *length);
 			inflated.resize(outputSize);
-			return nlohmann::json(inflated);
+			try {
+				output = nlohmann::json::parse(inflated);
+				return true;
+			}
+			catch (const std::exception& e) {
+				REL_ERROR("Inflated record not JSON-parsable '{}' etc. not loadable, error:\n{}", inflated.substr(0, 25), e.what());
+				return false;
+			}
 		}
-		REL_ERROR("Inflating {} bytes failed, error {}", inputSize, result);
-		return nlohmann::json();
+		else
+		{
+			REL_ERROR("Inflating {} bytes failed, error {}", inputSize, result);
+			return false;
+		}
 	}
 
-	std::string EncodeBrotli(const nlohmann::json& j)
+	bool EncodeBrotli(const nlohmann::json& j, std::string& encoded)
 	{
 		std::string jsonStr(j.dump());
 		size_t outputSize(BrotliEncoderMaxCompressedSize(jsonStr.length()));
-		std::string encodedStr(outputSize, 0);
+		encoded.resize(outputSize + sizeof(size_t), 0);
+		// write inflated string length at the head of the output
+		size_t* length(reinterpret_cast<size_t*>(const_cast<char*>(encoded.c_str())));
+		*length = jsonStr.length();
 		static constexpr int BrotliQuality(1);	// favour fast speed over small size
 		if (BrotliEncoderCompress(BrotliQuality, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
 			jsonStr.length(), reinterpret_cast<const uint8_t*>(jsonStr.c_str()), &outputSize,
-			reinterpret_cast<uint8_t*>(const_cast<char*>(encodedStr.c_str()))) != BROTLI_FALSE)
+			reinterpret_cast<uint8_t*>(const_cast<char*>(encoded.c_str() + sizeof(size_t)))) != BROTLI_FALSE)
 		{
 			REL_MESSAGE("Compressed {} bytes to {}, ratio {:0.3f}", jsonStr.length(), outputSize, double(jsonStr.length()) / double(outputSize));
-			encodedStr.resize(outputSize);
-			return encodedStr;
+			encoded.resize(outputSize + sizeof(size_t));
+			return true;
 		}
 		REL_ERROR("Compressing {} bytes failed", jsonStr.length());
-		return std::string();
+		return false;
 	}
 }

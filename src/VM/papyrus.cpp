@@ -65,9 +65,7 @@ namespace
 
 	std::string ToStringID(uint32_t id)
 	{
-		std::stringstream ss;
-		ss << std::hex << std::setfill('0') << std::setw(8) << std::uppercase << id;
-		return ss.str();
+		return StringUtils::FromFormID(id);
 	}
 }
 

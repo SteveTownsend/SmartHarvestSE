@@ -85,13 +85,18 @@ public:
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
 	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
 	inline bool OverridesGroup() const { return m_overridesGroup; }
-	inline void SetOverridesGroup() { m_overridesGroup = true; }
+	inline void SetOverridesGroup(const bool overridesGroup) { m_overridesGroup = overridesGroup; }
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
 	void RecordItem(const RE::TESForm* form, const float gameTime);
 	void Reset();
+
 	nlohmann::json MakeJSON() const;
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& collectionState, const CollectionPolicy& defaultPolicy);
+	void SetScopesFrom(const nlohmann::json& scopes);
+	void SetMembersFrom(const nlohmann::json& members);
+
 	std::string Name(void) const;
 	std::string Description(void) const;
 	std::string PrintDefinition(void) const;
@@ -109,7 +114,10 @@ public:
 	std::shared_ptr<Collection> CollectionByName(const std::string& collectionName) const;
 	inline std::string Name() const { return m_name; }
 	inline bool UseMCM() const { return m_useMCM; }
+
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& group);
+
 	inline const CollectionPolicy& Policy() const { return m_policy; }
 	inline CollectionPolicy& Policy() { return m_policy; }
 	void SyncDefaultPolicy();

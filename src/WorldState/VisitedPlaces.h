@@ -52,6 +52,7 @@ public:
 	void RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime);
 
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& j);
 
 private:
 	static std::unique_ptr<VisitedPlaces> m_instance;

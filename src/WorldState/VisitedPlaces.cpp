@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "WorldState/VisitedPlaces.h"
+#include "Data/LoadOrder.h"
 
 namespace shse
 {
@@ -45,15 +46,15 @@ void VisitedPlace::AsJSON(nlohmann::json& j) const
 	j["time"] = m_gameTime;
 	if (m_worldspace)
 	{
-		j["worldspace"] = m_worldspace->GetFormID();
+		j["worldspace"] = StringUtils::FromFormID(m_worldspace->GetFormID());
 	}
 	if (m_location)
 	{
-		j["location"] = m_location->GetFormID();
+		j["location"] = StringUtils::FromFormID(m_location->GetFormID());
 	}
 	if (m_cell)
 	{
-		j["cell"] = m_cell->GetFormID();
+		j["cell"] = StringUtils::FromFormID(m_cell->GetFormID());
 	}
 }
 
@@ -109,6 +110,30 @@ void VisitedPlaces::AsJSON(nlohmann::json& j) const
 	for (const auto& visited : m_visited)
 	{
 		j["visited"].push_back(visited);
+	}
+}
+
+// rehydrate from cosave data
+void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Visited Places\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_visitedLock);
+	m_visited.clear();
+	m_visited.reserve(j["visited"].size());
+	for (const nlohmann::json& place : j["visited"])
+	{
+		const float gameTime(place["time"].get<float>());
+		const auto worldspace(place.find("worldspace"));
+		RE::TESWorldSpace* worldspaceForm(worldspace != place.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(worldspace->get<std::string>())) : nullptr);
+		const auto location(place.find("location"));
+		RE::BGSLocation* locationForm(location != place.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr);
+		const auto cell(place.find("cell"));
+		RE::TESObjectCELL* cellForm(cell != place.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESObjectCELL>(StringUtils::ToFormID(cell->get<std::string>())) : nullptr);
+		// the list was already normalized before saving, no need to call RecordNew
+		m_visited.emplace_back(worldspaceForm, locationForm, cellForm, gameTime);
 	}
 }
 

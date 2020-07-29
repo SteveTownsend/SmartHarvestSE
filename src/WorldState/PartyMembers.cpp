@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "WorldState/PartyMembers.h"
+#include "Data/LoadOrder.h"
 
 namespace shse
 {
@@ -96,6 +97,44 @@ void PartyMembers::AsJSON(nlohmann::json& j) const
 		updates.push_back(update);
 	}
 	j["updates"] = updates;
+	nlohmann::json followers(nlohmann::json::array());
+	for (const auto follower : m_followers)
+	{
+		followers.push_back(StringUtils::FromFormID(follower->GetFormID()));
+	}
+	j["followers"] = followers;
+}
+
+void PartyMembers::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Party Members\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_partyLock);
+	m_partyUpdates.clear();
+	m_partyUpdates.reserve(j["updates"].size());
+	for (const nlohmann::json& update : j["updates"])
+	{
+		RE::FormID followerID(StringUtils::ToFormID(update["follower"].get<std::string>()));
+		PartyUpdateType updateType(static_cast<PartyUpdateType>(update["event"].get<int>()));
+		const float gameTime(update["time"].get<float>());
+		RE::Actor* actor(LoadOrder::Instance().RehydrateCosaveFormAs<RE::Actor>(followerID));
+		if (!actor)
+		{
+			REL_WARNING("Historic Follower (Actor) 0x{:08x} not found", followerID);
+			continue;
+		}
+		m_partyUpdates.emplace_back(actor, updateType, gameTime);
+	}
+	m_followers.clear();
+	for (const nlohmann::json& followerID : j["followers"])
+	{
+		RE::Actor* actor(LoadOrder::Instance().RehydrateCosaveFormAs<RE::Actor>(followerID));
+		if (!actor)
+		{
+			REL_WARNING("Current Follower (Actor) 0x{:08x} not found", followerID);
+			continue;
+		}
+		m_followers.insert(actor);
+	}
 }
 
 void to_json(nlohmann::json& j, const PartyMembers& partyMembers)
