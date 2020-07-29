@@ -818,7 +818,7 @@ event OnPageReset(string currentPage)
 
         AddHeaderOption("$SHSE_ITEM_HARVEST_DEFAULT_HEADER")
         AddMenuOptionST("iniSaveLoad", "$SHSE_SETTINGS_FILE_OPERATION", s_iniSaveLoadArray[iniSaveLoad])
-        AddKeyMapOptionST("pauseHotkeyCode", "$SHSE_PAUSE_KEY", pauseHotkeyCode)
+        AddKeyMapOptionST("pauseHotkeyCode", "$SHSE_PAUSE_KEY", pauseHotkeyCode, OPTION_FLAG_WITH_UNMAP)
         AddSliderOptionST("ValueWeightDefault", "$SHSE_VW_DEFAULT", valueWeightDefault as float)
         AddSliderOptionST("Radius", "$SHSE_RADIUS", radius as float, "$SHSE_DISTANCE")
         AddSliderOptionST("Interval", "$SHSE_INTERVAL", interval, "$SHSE_ELAPSED_TIME")
@@ -892,7 +892,7 @@ event OnPageReset(string currentPage)
         endWhile
         
     elseif (currentPage == Pages[3]) ; whiteList
-        AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode)
+        AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
         int size = eventScript.whitelist_form.GetSize()
         if (size == 0)
@@ -912,7 +912,7 @@ event OnPageReset(string currentPage)
         endWhile
 
     elseif (currentPage == Pages[4]) ; blacklist
-        AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode)
+        AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
         int size = eventScript.blacklist_form.GetSize()
         if (size == 0)
