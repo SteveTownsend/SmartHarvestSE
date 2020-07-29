@@ -684,6 +684,21 @@
       }
     },
     {
+      "name": "Library TH Maps",
+      "description": "Display: DBM_SectionLibraryTHMapsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D3002982"
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "DBMDG Dragonborn Hall Midwood Isle",
       "description": "Display: DBM_SectionDBMDGDragonbornHallMidwoodIsleItems",
       "rootFilter": {
@@ -692,7 +707,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200292D"
+              "formID": "D3002965"
             }
           ]
         }
@@ -707,7 +722,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002883"
+              "formID": "D30028BB"
             }
           ]
         }
@@ -722,7 +737,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002656"
+              "formID": "D300268E"
             }
           ]
         }
@@ -737,7 +752,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002619"
+              "formID": "D3002651"
             }
           ]
         }
@@ -752,7 +767,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200260D"
+              "formID": "D3002645"
             }
           ]
         }
@@ -767,7 +782,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20025F4"
+              "formID": "D300262C"
             }
           ]
         }
@@ -782,7 +797,37 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002580"
+              "formID": "D30025B8"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall Skyrim Sewers Alt",
+      "description": "Display: DBM_SectionDBHallSkyrimSewersAltItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D300257A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall Skyrim Sewers",
+      "description": "Display: DBM_SectionDBHallSkyrimSewersItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D3002560"
             }
           ]
         }
@@ -797,7 +842,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002534"
+              "formID": "D3002534"
             }
           ]
         }
@@ -812,7 +857,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002476"
+              "formID": "D3002476"
             }
           ]
         }
@@ -827,7 +872,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200225F"
+              "formID": "D300225F"
             }
           ]
         }
@@ -842,7 +887,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200225A"
+              "formID": "D300225A"
             }
           ]
         }
@@ -857,7 +902,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002248"
+              "formID": "D3002248"
             }
           ]
         }
@@ -872,7 +917,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002246"
+              "formID": "D3002246"
             }
           ]
         }
@@ -887,7 +932,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002233"
+              "formID": "D3002233"
             }
           ]
         }
@@ -902,7 +947,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002230"
+              "formID": "D3002230"
             }
           ]
         }
@@ -917,7 +962,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200222B"
+              "formID": "D300222B"
             }
           ]
         }
@@ -932,7 +977,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002229"
+              "formID": "D3002229"
             }
           ]
         }
@@ -947,7 +992,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002227"
+              "formID": "D3002227"
             }
           ]
         }
@@ -962,7 +1007,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002225"
+              "formID": "D3002225"
             }
           ]
         }
@@ -977,7 +1022,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002223"
+              "formID": "D3002223"
             }
           ]
         }
@@ -992,7 +1037,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002221"
+              "formID": "D3002221"
             }
           ]
         }
@@ -1007,7 +1052,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200221F"
+              "formID": "D300221F"
             }
           ]
         }
@@ -1022,7 +1067,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200221D"
+              "formID": "D300221D"
             }
           ]
         }
@@ -1037,7 +1082,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200221B"
+              "formID": "D300221B"
             }
           ]
         }
@@ -1052,7 +1097,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002219"
+              "formID": "D3002219"
             }
           ]
         }
@@ -1067,7 +1112,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002217"
+              "formID": "D3002217"
             }
           ]
         }
@@ -1082,7 +1127,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002215"
+              "formID": "D3002215"
             }
           ]
         }
@@ -1097,7 +1142,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002213"
+              "formID": "D3002213"
             }
           ]
         }
@@ -1112,7 +1157,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002211"
+              "formID": "D3002211"
             }
           ]
         }
@@ -1127,7 +1172,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200220F"
+              "formID": "D300220F"
             }
           ]
         }
@@ -1142,7 +1187,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200220D"
+              "formID": "D300220D"
             }
           ]
         }
@@ -1157,7 +1202,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002171"
+              "formID": "D3002171"
             }
           ]
         }
@@ -1172,7 +1217,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200216F"
+              "formID": "D300216F"
             }
           ]
         }
@@ -1187,7 +1232,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200216D"
+              "formID": "D300216D"
             }
           ]
         }
@@ -1202,7 +1247,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20020FC"
+              "formID": "D30020FC"
             }
           ]
         }
@@ -1217,7 +1262,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2002074"
+              "formID": "D3002074"
             }
           ]
         }
@@ -1232,7 +1277,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001FEA"
+              "formID": "D3001FEA"
             }
           ]
         }
@@ -1247,7 +1292,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001F66"
+              "formID": "D3001F66"
             }
           ]
         }
@@ -1262,7 +1307,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001F62"
+              "formID": "D3001F62"
             }
           ]
         }
@@ -1277,7 +1322,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001F51"
+              "formID": "D3001F51"
             }
           ]
         }
@@ -1292,7 +1337,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001F12"
+              "formID": "D3001F12"
             }
           ]
         }
@@ -1307,7 +1352,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001D5C"
+              "formID": "D3001D5C"
             }
           ]
         }
@@ -1322,7 +1367,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001B92"
+              "formID": "D3001B92"
             }
           ]
         }
@@ -1337,7 +1382,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001AFA"
+              "formID": "D3001AFA"
             }
           ]
         }
@@ -1352,7 +1397,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001A9B"
+              "formID": "D3001A9B"
             }
           ]
         }
@@ -1367,7 +1412,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001A84"
+              "formID": "D3001A84"
             }
           ]
         }
@@ -1382,7 +1427,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001A68"
+              "formID": "D3001A68"
             }
           ]
         }
@@ -1397,7 +1442,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001741"
+              "formID": "D3001741"
             }
           ]
         }
@@ -1412,7 +1457,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2001587"
+              "formID": "D3001587"
             }
           ]
         }
@@ -1427,7 +1472,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20014AB"
+              "formID": "D30014AB"
             }
           ]
         }
@@ -1442,7 +1487,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200148D"
+              "formID": "D300148D"
             }
           ]
         }
@@ -1457,7 +1502,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20013E6"
+              "formID": "D30013E6"
             }
           ]
         }
@@ -1472,7 +1517,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200118A"
+              "formID": "D300118A"
             }
           ]
         }
@@ -1487,7 +1532,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20010FE"
+              "formID": "D30010FE"
             }
           ]
         }
@@ -1502,7 +1547,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200103A"
+              "formID": "D300103A"
             }
           ]
         }
@@ -1517,7 +1562,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000E47"
+              "formID": "D3000E47"
             }
           ]
         }
@@ -1532,7 +1577,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000E45"
+              "formID": "D3000E45"
             }
           ]
         }
@@ -1547,7 +1592,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20009C1"
+              "formID": "D30009C1"
             }
           ]
         }
@@ -1562,7 +1607,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20009BF"
+              "formID": "D30009BF"
             }
           ]
         }
@@ -1577,7 +1622,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000DE9"
+              "formID": "D3000DE9"
             }
           ]
         }
@@ -1592,7 +1637,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000D3B"
+              "formID": "D3000D3B"
             }
           ]
         }
@@ -1607,7 +1652,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000D3A"
+              "formID": "D3000D3A"
             }
           ]
         }
@@ -1622,7 +1667,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008B4"
+              "formID": "D30008B4"
             }
           ]
         }
@@ -1637,7 +1682,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008B3"
+              "formID": "D30008B3"
             }
           ]
         }
@@ -1652,7 +1697,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008B1"
+              "formID": "D30008B1"
             }
           ]
         }
@@ -1667,7 +1712,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008AF"
+              "formID": "D30008AF"
             }
           ]
         }
@@ -1682,7 +1727,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008AD"
+              "formID": "D30008AD"
             }
           ]
         }
@@ -1697,7 +1742,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008AB"
+              "formID": "D30008AB"
             }
           ]
         }
@@ -1712,7 +1757,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008A9"
+              "formID": "D30008A9"
             }
           ]
         }
@@ -1727,7 +1772,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008A7"
+              "formID": "D30008A7"
             }
           ]
         }
@@ -1742,7 +1787,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008A5"
+              "formID": "D30008A5"
             }
           ]
         }
@@ -1757,7 +1802,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008A3"
+              "formID": "D30008A3"
             }
           ]
         }
@@ -1772,7 +1817,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D20008A1"
+              "formID": "D30008A1"
             }
           ]
         }
@@ -1787,7 +1832,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200089F"
+              "formID": "D300089F"
             }
           ]
         }
@@ -1802,7 +1847,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200089D"
+              "formID": "D300089D"
             }
           ]
         }
@@ -1817,7 +1862,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D200089B"
+              "formID": "D300089B"
             }
           ]
         }
@@ -1832,7 +1877,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000899"
+              "formID": "D3000899"
             }
           ]
         }
@@ -1847,7 +1892,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D2000801"
+              "formID": "D3000801"
             }
           ]
         }
