@@ -116,6 +116,7 @@ void PopulationCenters::Categorize()
 		"LocTypeDungeon",
 		"LocTypeDraugrCrypt",
 		"LocTypeNordicRuin",
+		"LocTypeSprigganGrove",
 		"zzzBMLocVampireDungeon"
 	};
 #if _DEBUG

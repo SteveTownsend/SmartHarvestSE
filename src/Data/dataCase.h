@@ -56,7 +56,7 @@ public:
 	void ResetBlockedForms();
 	bool BlockFormPermanently(const RE::TESForm* form, const Lootability reason);
 
-	bool ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const;
+	bool ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const;
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
@@ -180,8 +180,6 @@ private:
 			if (!target->GetFullNameLength())
 				continue;
 			const char * targetName(target->GetFullName());
-			DBG_VMESSAGE("Checking target {}/0x{:08x}", targetName, target->GetFormID());
-
 			const RE::TESBoundObject* ingredient(target->produceItem);
 			if (!ingredient)
 			{
@@ -252,14 +250,13 @@ private:
 			return;
 		for (T* consumable : dhnd->GetFormArray<T>())
 		{
-			RE::TESFullName* pFullName = consumable->As<RE::TESFullName>();
-			if (!pFullName || pFullName->GetFullNameLength() == 0)
+			if (consumable->GetFullNameLength() == 0)
 			{
 				DBG_VMESSAGE("Skipping unnamed form 0x{:08x}", consumable->GetFormID());
 				continue;
 			}
 
-			std::string formName(pFullName->GetFullName());
+			std::string formName(consumable->GetFullName());
 			if (GetFormObjectType(consumable->GetFormID()) != ObjectType::unknown)
 			{
 				DBG_VMESSAGE("Skipping previously categorized form {}/0x{:08x}", formName.c_str(), consumable->GetFormID());
@@ -319,9 +316,11 @@ private:
 		for (T* typedForm : dhnd->GetFormArray<T>())
 		{
 			if (!typedForm->GetFullNameLength())
+			{
+				DBG_VMESSAGE("0x{:08x} is unnamed", typedForm->GetFormID());
 				continue;
+			}
 			const char* formName(typedForm->GetFullName());
-			DBG_VMESSAGE("Categorizing {}/0x{:08x}", formName, typedForm->GetFormID());
 			if ((typedForm->formFlags & T::RecordFlags::kNonPlayable) == T::RecordFlags::kNonPlayable)
 			{
 				DBG_VMESSAGE("{}/0x{:08x} is NonPlayable", formName, typedForm->GetFormID());
@@ -494,6 +493,8 @@ private:
 
 	void IncludeFossilMiningExcavation();
 	void IncludeCorpseCoinage();
+	void IncludeBSBruma();
+
 	DataCase(void);
 };
 

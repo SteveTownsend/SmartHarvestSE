@@ -597,6 +597,20 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 		DBG_VMESSAGE("REFR 0x{:08x} no base", refr->GetFormID());
 		return;
 	}
+
+	if (!refr->GetBaseObject()->GetPlayable())
+	{
+		DBG_VMESSAGE("REFR 0x{:08x} has non-playable base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
+		return;
+	}
+
+	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
+	if (!fullName || fullName->GetFullNameLength() == 0)
+	{
+		DBG_VMESSAGE("REFR 0x{:08x}has unnamed base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
+		return;
+	}
+
 	// skip if not a valid BaseObject for Collections, or a placed Container or Corpse that we need to introspect
 	if (!SignatureCondition::IsValidFormType(refr->GetBaseObject()->GetFormType()) &&
 		refr->GetBaseObject()->GetFormType() != RE::FormType::Container &&
@@ -623,6 +637,11 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 		if (DataCase::GetInstance()->IsOffLimitsContainer(refr))
 		{
 			DBG_VMESSAGE("Container REFR {}/0x{:08x} is off-limits", refr->GetName(), refr->GetFormID());
+			return;
+		}
+		if (DataCase::GetInstance()->ReferencesBlacklistedContainer(refr))
+		{
+			DBG_VMESSAGE("Container REFR {}/0x{:08x} is blacklisted", refr->GetName(), refr->GetFormID());
 			return;
 		}
 		const RE::TESContainer* container(const_cast<RE::TESObjectREFR*>(refr)->GetContainer());

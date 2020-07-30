@@ -330,7 +330,7 @@ void DataCase::ExcludeFactionContainers()
 	}
 }
 
-bool DataCase::ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const
+bool DataCase::ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_blockListLock);
 	return m_containerBlackList.contains(refr->GetContainer());
@@ -418,8 +418,35 @@ void DataCase::ExcludeVendorContainers()
 			vendorGoldForms.size() - interimSize, modVendorGoldLVLI.size());
 	}
 
+	// mod-added Containers to avoid looting
+	std::vector<std::tuple<std::string, RE::FormID>> modContainers = {
+		// LoTD Museum Shipments
+		{"LegacyoftheDragonborn.esm", 0x1772a6},	// Incoming
+		{"LegacyoftheDragonborn.esm", 0x1772a7}		// Outgoing
+	};
+	for (const auto& container : modContainers)
+	{
+		std::string espName(std::get<0>(container));
+		RE::FormID formID(std::get<1>(container));
+		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
+		if (chestForm)
+		{
+			REL_MESSAGE("CONT {}:0x{:08x} added to Mod Blacklist", espName, chestForm->GetFormID());
+			m_containerBlackList.insert(chestForm);
+		}
+		else
+		{
+			DBG_MESSAGE("CONT {}/0x{:08x} for mod not found", espName, formID);
+		}
+	}
+
 	for (RE::TESObjectCONT* container : dhnd->GetFormArray<RE::TESObjectCONT>())
 	{
+		if (m_containerBlackList.contains(container))
+		{
+			DBG_MESSAGE("SKip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
+			continue;
+		}
 		// does container have VendorGold?
 		bool matched(false);
 		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> bool {
@@ -442,28 +469,6 @@ void DataCase::ExcludeVendorContainers()
 		if (!matched)
 		{
 			DBG_MESSAGE("Ignoring non-Vendor Container {}/0x{:08x}", container->GetName(), container->GetFormID());
-		}
-	}
-
-	// mod-added Containers to avoid looting
-	std::vector<std::tuple<std::string, RE::FormID>> modContainers = {
-		// LoTD Museum Shipments
-		{"LegacyoftheDragonborn.esm", 0x1772a6},	// Incoming
-		{"LegacyoftheDragonborn.esm", 0x1772a7}		// Outgoing
-	};
-	for (const auto& container : modContainers)
-	{
-		std::string espName(std::get<0>(container));
-		RE::FormID formID(std::get<1>(container));
-		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
-		if (chestForm)
-		{
-			REL_MESSAGE("CONT {}:0x{:08x} added to Mod Blacklist", espName, chestForm->GetFormID());
-			m_containerBlackList.insert(chestForm);
-		}
-		else
-		{
-			DBG_MESSAGE("CONT {}/0x{:08x} for mod not found", espName, formID);
 		}
 	}
 }
@@ -538,14 +543,26 @@ void DataCase::IncludeCorpseCoinage()
 	}
 }
 
+void DataCase::IncludeBSBruma()
+{
+	static std::string espName("BSAssets.esm");
+	static RE::FormID ayleidGoldFormID(0x6028dc);
+	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
+	if (ayleidGoldForm)
+	{
+		DBG_MESSAGE("Record BS:Bruma {}(0x{:08x}) as septims", ayleidGoldForm->GetName(), ayleidGoldForm->GetFormID());
+		SetObjectTypeForForm(ayleidGoldForm->GetFormID(), ObjectType::septims);
+	}
+}
+
 void DataCase::RecordOffLimitsLocations()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
-#if NDEBUG && !defined(_PROFILING)
-		{"Skyrim.esm", 0x32ae7}	// QASmoke - Release build blocks, others allow
-#endif
+		{"Skyrim.esm", 0x32ae7},				// QASmoke
+		{"CerwidenCompanion.esp", 0x4a4bb},		// kcfAssetsCell01
+		{"konahrik_accoutrements.esp", 0x625d3}	// KAxTestCell
 	};
 	for (const auto& pluginForm : illegalCells)
 	{
@@ -938,11 +955,13 @@ void DataCase::HandleExceptions()
 {
 	// on first pass, detect off limits containers and other special cases to avoid rescan on game reload
 	DBG_MESSAGE("Pre-emptively handle special cases from Load Order");
-	ExcludeFactionContainers();
-	ExcludeVendorContainers();
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
 	ExcludeMissivesBoards();
+
+	ExcludeFactionContainers();
+	ExcludeVendorContainers();
+
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 
@@ -1041,7 +1060,6 @@ void DataCase::SetObjectTypeByKeywords()
 
 	for (RE::BGSKeyword* keywordDef : dhnd->GetFormArray<RE::BGSKeyword>())
 	{
-		DBG_VMESSAGE("Process KYWD formID 0x{:08x}", keywordDef->GetFormID());
 		std::string keywordName(FormUtils::SafeGetFormEditorID(keywordDef));
 		if (keywordName.empty())
 		{
@@ -1051,11 +1069,13 @@ void DataCase::SetObjectTypeByKeywords()
 		// Store player house keyword for SearchTask usage
 		if (keywordName == "LocTypePlayerHouse")
 		{
+			DBG_VMESSAGE("Found PlayerHouse KYWD formID 0x{:08x}", keywordDef->GetFormID());
 			PlayerHouses::Instance().SetKeyword(keywordDef);
 			continue;
 		}
 		if (glowableBooks.find(keywordName) != glowableBooks.cend())
 		{
+			DBG_VMESSAGE("Found Glowable Book KYWD formID 0x{:08x}", keywordDef->GetFormID());
 			m_glowableBookKeywords.insert(keywordDef->GetFormID());
 		}
 
@@ -1076,15 +1096,15 @@ void DataCase::SetObjectTypeByKeywords()
 				return false;
 			}) != typeByVendorItemSubstring.cend())
 		{
-			DBG_VMESSAGE("0x{:08x} ({}) matched substring, treated as {}", keywordDef->GetFormID(), keywordName, GetObjectTypeName(objectType));
+			DBG_VMESSAGE("KYWD 0x{:08x} ({}) matched substring", keywordDef->GetFormID(), keywordName);
 		}
 		else
 		{
-			DBG_VMESSAGE("0x{:08x} ({}) skipped", keywordDef->GetFormID(), keywordName.c_str());
+			DBG_VMESSAGE("KYWD 0x{:08x} ({}) skipped", keywordDef->GetFormID(), keywordName.c_str());
 			continue;
 		}
 		m_objectTypeByForm[keywordDef->GetFormID()] = DecorateIfEnchanted(keywordDef, objectType);
-		DBG_VMESSAGE("0x{:08x} ({}) stored as {}", keywordDef->GetFormID(), keywordName, GetObjectTypeName(objectType));
+		DBG_VMESSAGE("KYWD 0x{:08x} ({}) stored as {}", keywordDef->GetFormID(), keywordName, GetObjectTypeName(objectType));
 	}
 }
 
