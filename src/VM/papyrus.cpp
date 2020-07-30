@@ -178,8 +178,12 @@ namespace papyrus
 		else
 		{
 			shse::LootingType tmp_value = shse::LootingTypeFromIniSetting(ini->GetSetting(first, second, key.c_str()));
-			// weightless objects and OreVeins are always looted unless explicitly disabled
-			if (shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > shse::LootingType::LootAlwaysSilent)
+			// weightless objects and OreVeins are always looted unless explicitly disabled : oreVeins use a third option for BYOH materials, though
+			if (ObjectType(index) == ObjectType::oreVein)
+			{
+				value = static_cast<float>(std::min(tmp_value, shse::LootingType::LootOreVeinAlways));
+			}
+			else if(shse::IsValueWeightExempt(static_cast<ObjectType>(index)) && tmp_value > shse::LootingType::LootAlwaysSilent)
 			{
 				value = static_cast<float>(tmp_value == shse::LootingType::LootIfValuableEnoughNotify ? shse::LootingType::LootAlwaysNotify : shse::LootingType::LootAlwaysSilent);
 			}

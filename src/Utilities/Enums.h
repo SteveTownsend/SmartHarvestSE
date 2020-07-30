@@ -71,11 +71,13 @@ inline std::string GlowName(const GlowReason glow)
 
 enum class LootingType {
 	LeaveBehind = 0,
-	LootAlwaysSilent,
-	LootAlwaysNotify,
-	LootIfValuableEnoughSilent,
-	LootIfValuableEnoughNotify,
-	MAX
+	LootAlwaysSilent = 1,
+	LootAlwaysNotify = 2,
+	LootIfValuableEnoughSilent = 3,
+	LootIfValuableEnoughNotify = 4,
+	LootOreVeinIfNotBYOH = LootAlwaysSilent,
+	LootOreVeinAlways = LootAlwaysNotify,
+	MAX = 5
 };
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
