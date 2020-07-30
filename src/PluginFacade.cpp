@@ -73,6 +73,7 @@ bool PluginFacade::Init(const bool onGameReload)
 	{
 		// seed state using cosave data
 		CosaveData::Instance().SeedState();
+		WindowsUtils::LogProcessWorkingSet();
 	}
 	if (!m_threadStarted)
 	{

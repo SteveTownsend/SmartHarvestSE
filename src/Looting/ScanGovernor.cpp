@@ -248,9 +248,6 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 		m_targetType = INIFile::SecondaryType::itemObjects;
 		DBG_VMESSAGE("Process REFR 0x{:08x} with base object {}/0x{:08x}", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-#ifdef _PROFILING
-		WindowsUtils::ScopedTimer elapsed("Process Auto-loot Candidate", refr);
-#endif
 		if (refr->GetFormType() == RE::FormType::ActorCharacter)
 		{
 			if (!refr->IsDead(true) ||
@@ -383,6 +380,10 @@ void ScanGovernor::LootAllEligible()
 
 	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
 	// This seems no harm apart but offends my aesthetic sensibilities, so prevent it.
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Loot Eligible Targets");
+#endif
+	std::unordered_map<RE::TESForm*, Lootability> checkedTargets;
 	m_possibleDupes.clear();
 	for (auto target : targets)
 	{
@@ -398,8 +399,25 @@ void ScanGovernor::LootAllEligible()
 		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
 		RE::TESObjectREFR* refr(target.second);
 		static const bool dryRun(false);
-		if (ValidateTarget(refr, dryRun) != Lootability::Lootable)
+		// Scan radius often includes repeated mundane objects e.g. loose septims, several plates. Optimize for that case here.
+		Lootability lootability(Lootability::Lootable);
+		const auto checkedTarget(checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
+		if (checkedTarget != checkedTargets.cend())
+		{
+			lootability = checkedTarget->second;
+			DBG_VMESSAGE("0x{:08x}, base {}/0x{:08x} already checked: {}", refr ? refr->GetFormID() : InvalidForm,
+				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName() : ""),
+				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm), LootabilityName(lootability));
+		}
+		else
+		{
+			lootability = ValidateTarget(refr, dryRun);
+			checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
+		}
+		if (lootability	!= Lootability::Lootable)
+		{
 			continue;
+		}
 		static const bool stolen(false);
 		TryLootREFR(refr, m_targetType, stolen).Process(dryRun);
 	}
