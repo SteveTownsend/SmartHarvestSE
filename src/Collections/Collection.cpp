@@ -222,6 +222,12 @@ void Collection::AsJSON(nlohmann::json& j) const
 // rehydrate collection state from cosave data
 void Collection::UpdateFrom(const nlohmann::json& collectionState, const CollectionPolicy& defaultPolicy)
 {
+	if (collectionState["members"].empty())
+	{
+		// ignore cosave, user can rehydrate from inventory etc
+		REL_WARNING("Collection State {} member list empty in cosave, skipped", m_name);
+		return;
+	}
 	const std::string name(collectionState["name"].get<std::string>());
 	const std::string description(collectionState["description"].get<std::string>());
 	const auto policy(collectionState.find("policy"));
