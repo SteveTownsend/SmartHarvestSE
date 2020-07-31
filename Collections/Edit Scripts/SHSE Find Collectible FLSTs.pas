@@ -24,7 +24,7 @@ begin
   legalTypes.Add('WEAP');
   notFirst := False;
 
-  collectionPreamble := '{ "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections", "$schema": "./SHSE.SchemaCollections.json", "groupPolicy": { "action": "take", "notify": true, "repeat": true }, "useMCM": true, "collections": [ ';
+  collectionPreamble := '{ "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections", "$schema": "./SHSE.SchemaCollections.json", "groupPolicy": { "action": "take", "notify": true, "repeat": false }, "useMCM": true, "collections": [ ';
   collectionTemplate := '{OPTIONALCOMMA}{ "name": "{NAME}", "description": "{DESCRIPTION}", "rootFilter": { "operator": "AND", "condition": { "formList": [ { "listPlugin": "{PLUGIN}" , "formID": "{FORMID}" } ] } } }';
   collectionPostscript := ' ] }';
 
