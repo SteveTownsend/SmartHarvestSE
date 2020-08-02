@@ -73,13 +73,13 @@ void DataCase::GetTranslationData()
 	path += std::string((setting && setting->GetType() == RE::Setting::Type::kString) ? setting->data.s : "ENGLISH");
 	path += std::string(".txt");
 
-	DBG_MESSAGE("Reading translations from %s", path.c_str());
+	DBG_MESSAGE("Reading translations from {}", path.c_str());
 	RE::BSResourceNiBinaryStream fs(path.c_str());
 	if (!fs.good())
 		return;
 
-	UInt16	bom = 0;
-	bool	ret = fs.read(&bom, sizeof(UInt16) / sizeof(wchar_t));
+	uint16_t bom = 0;
+	bool	ret = fs.read(&bom, sizeof(uint16_t) / sizeof(wchar_t));
 	if (!ret)
 	{
 		REL_ERROR("Empty translation file.");
@@ -138,10 +138,10 @@ void DataCase::GetTranslationData()
 		std::string translationS = StringUtils::FromUnicode(translation);
 
 		m_translations[keyS] = translationS;
-		DBG_VMESSAGE("Translation entry: %s -> %s", keyS.c_str(), translationS.c_str());
+		DBG_VMESSAGE("Translation entry: {} -> {}", keyS.c_str(), translationS.c_str());
 
 	}
-	DBG_MESSAGE("* TranslationData(%d)", m_translations.size());
+	DBG_MESSAGE("* TranslationData({})", m_translations.size());
 
 	return;
 }
@@ -156,13 +156,13 @@ void DataCase::ActivationVerbsByType(const char* activationVerbKey, const Object
 		auto inserted(m_objectTypeByActivationVerb.insert(std::make_pair(nextVerb, objectType)));
 		if (inserted.second)
 		{
-			REL_MESSAGE("Activation Verb %s/%s registered as ObjectType %s",
+			REL_MESSAGE("Activation Verb {}/{} registered as ObjectType {}",
 				activationVerbKey, nextVerb.c_str(), GetObjectTypeName(objectType).c_str());
 		}
 		else
 		{
 			// dup verb in Translation file
-			REL_WARNING("Ignoring Activation verb %s/%s already registered as ObjectType %s",
+			REL_WARNING("Ignoring Activation verb {}/{} already registered as ObjectType {}",
 				activationVerbKey, nextVerb.c_str(), GetObjectTypeName(inserted.first->second).c_str());
 		}
 	}
@@ -208,7 +208,7 @@ void DataCase::CategorizeByActivationVerb()
 		if (!activator->GetFullNameLength())
 			continue;
 		const char* formName(activator->GetFullName());
-		DBG_VMESSAGE("Categorizing %s/0x%08x by activation verb", formName, activator->GetFormID());
+		DBG_VMESSAGE("Categorizing {}/0x{:08x} by activation verb", formName, activator->GetFormID());
 
 		ObjectType correctType(ObjectType::unknown);
 		bool hasDefault(false);
@@ -220,7 +220,7 @@ void DataCase::CategorizeByActivationVerb()
 			{
 				if (SetObjectTypeForForm(activator->GetFormID(), activatorType))
 				{
-					DBG_VMESSAGE("%s/0x%08x activated using '%s' categorized as %s", formName, activator->GetFormID(),
+					DBG_VMESSAGE("{}/0x{:08x} activated using '{}' categorized as {}", formName, activator->GetFormID(),
 						GetVerbFromActivationText(activationText).c_str(), GetObjectTypeName(activatorType).c_str());
 					// set resourceType for oreVein
 					if (activatorType == ObjectType::oreVein)
@@ -241,17 +241,17 @@ void DataCase::CategorizeByActivationVerb()
 						resourceType = ResourceType::ore;
 						}
 						m_resourceTypeByOreVein.insert(std::make_pair(activator, resourceType));
-						DBG_VMESSAGE("%s/0x%08x has ResourceType %s", formName, activator->GetFormID(), PrintResourceType(resourceType));
+						DBG_VMESSAGE("{}/0x{:08x} has ResourceType {}", formName, activator->GetFormID(), PrintResourceType(resourceType));
 					}
 				}
 				else
 				{
-				REL_WARNING("%s/0x%08x (%s) already stored, check data", formName, activator->GetFormID(), GetObjectTypeName(activatorType).c_str());
+				REL_WARNING("{}/0x{:08x} ({}) already stored, check data", formName, activator->GetFormID(), GetObjectTypeName(activatorType).c_str());
 				}
 				continue;
 			}
 		}
-		DBG_MESSAGE("%s/0x%08x not mappable, uses verb '%s'", formName, activator->GetFormID(), GetVerbFromActivationText(activationText).c_str());
+		DBG_MESSAGE("{}/0x{:08x} not mappable, uses verb '{}'", formName, activator->GetFormID(), GetVerbFromActivationText(activationText).c_str());
 	}
 }
 
@@ -263,7 +263,7 @@ void DataCase::AnalyzePerks(void)
 
 	for (const RE::BGSPerk* perk : dhnd->GetFormArray<RE::BGSPerk>())
 	{
-		DBG_MESSAGE("Perk %s/0x%08x being checked", perk->GetName(), perk->GetFormID());
+		DBG_MESSAGE("Perk {}/0x{:08x} being checked", perk->GetName(), perk->GetFormID());
 		for (const RE::BGSPerkEntry* perkEntry : perk->perkEntries)
 		{
 			if (perkEntry->GetType() != RE::PERK_ENTRY_TYPE::kEntryPoint)
@@ -273,7 +273,7 @@ void DataCase::AnalyzePerks(void)
 			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kAddLeveledListOnDeath &&
 				entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kAddLeveledList)
 			{
-				REL_MESSAGE("Leveled items added on death by perk %s/0x%08x", perk->GetName(), perk->GetFormID());
+				REL_MESSAGE("Leveled items added on death by perk {}/0x{:08x}", perk->GetName(), perk->GetFormID());
 				m_leveledItemOnDeathPerks.insert(perk);
 			}
 			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kModIngredientsHarvested)
@@ -282,13 +282,13 @@ void DataCase::AnalyzePerks(void)
 					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::FunctionType::kOneValue)
 				{
 					const RE::BGSEntryPointFunctionDataOneValue* oneValued(static_cast<const RE::BGSEntryPointFunctionDataOneValue*>(entryPoint->functionData));
-					REL_MESSAGE("Modify Harvested Ingredients factor %.2f from perk %s/0x%08x", oneValued->data, perk->GetName(), perk->GetFormID());
+					REL_MESSAGE("Modify Harvested Ingredients factor {:0.2f} from perk {}/0x{:08x}", oneValued->data, perk->GetName(), perk->GetFormID());
 					m_modifyHarvestedPerkMultipliers.insert(std::make_pair(perk, oneValued->data));
 				}
 				else
 				{
-					REL_WARNING("Modify Harvested Ingredients unsupported for perk %s/0x%08x, function %d, type %d", perk->GetName(), perk->GetFormID(),
-						entryPoint->entryData.function, entryPoint->functionData ? int(entryPoint->functionData->GetType()) : -1);
+					REL_WARNING("Modify Harvested Ingredients unsupported for perk {}/0x{:08x}, function {}, type {}", perk->GetName(), perk->GetFormID(),
+						entryPoint->entryData.function.get(), entryPoint->functionData ? int(entryPoint->functionData->GetType()) : -1);
 				}
 			}
 		}
@@ -309,7 +309,7 @@ void DataCase::ExcludeFactionContainers()
 			containerRef = faction->vendorData.merchantContainer;
 			if (containerRef)
 			{
-				DBG_VMESSAGE("Blocked faction/vendor container : %s(%08x)", containerRef->GetName(), containerRef->GetFormID());
+				DBG_VMESSAGE("Blocked faction/vendor container : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
 				m_offLimitsContainers.insert(containerRef);
 			}
 		}
@@ -317,20 +317,20 @@ void DataCase::ExcludeFactionContainers()
 		containerRef = faction->crimeData.factionStolenContainer;
 		if (containerRef)
 		{
-			DBG_VMESSAGE("Blocked stolenGoodsContainer : %s(%08x)", containerRef->GetName(), containerRef->GetFormID());
+			DBG_VMESSAGE("Blocked stolenGoodsContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
 			m_offLimitsContainers.insert(containerRef);
 		}
 
 		containerRef = faction->crimeData.factionPlayerInventoryContainer;
 		if (containerRef)
 		{
-			DBG_VMESSAGE("Blocked playerInventoryContainer : %s(%08x)", containerRef->GetName(), containerRef->GetFormID());
+			DBG_VMESSAGE("Blocked playerInventoryContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
 			m_offLimitsContainers.insert(containerRef);
 		}
 	}
 }
 
-bool DataCase::ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const
+bool DataCase::ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_blockListLock);
 	return m_containerBlackList.contains(refr->GetContainer());
@@ -369,17 +369,17 @@ void DataCase::ExcludeVendorContainers()
 		RE::TESLevItem* lvliForm(FindExactMatch<RE::TESLevItem>(espName, formID));
 		if (lvliForm)
 		{
-			REL_MESSAGE("LVLI %s:0x%08x found for Vendor Container contents", espName.c_str(), lvliForm->GetFormID());
+			REL_MESSAGE("LVLI {}:0x{:08x} found for Vendor Container contents", espName, lvliForm->GetFormID());
 			vendorGoldForms.insert(lvliForm);
 		}
 		else
 		{
-			REL_ERROR("LVLI %s/0x%08x not found, should be Vendor Container contents", espName.c_str(), formID);
+			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
 	if (vendorGoldForms.size() != vendorGoldLVLI.size())
 	{
-		REL_ERROR("LVLI count %d (base game) for Vendor Gold inconsistent with expected %d",
+		REL_ERROR("LVLI count {} (base game) for Vendor Gold inconsistent with expected {}",
 			vendorGoldLVLI.size(), vendorGoldForms.size());
 	}
 
@@ -402,47 +402,20 @@ void DataCase::ExcludeVendorContainers()
 		RE::TESLevItem* lvliForm(FindExactMatch<RE::TESLevItem>(espName, formID));
 		if (lvliForm)
 		{
-			REL_MESSAGE("LVLI %s:0x%08x found for Vendor Container contents", espName.c_str(), lvliForm->GetFormID());
+			REL_MESSAGE("LVLI {}:0x{:08x} found for Vendor Container contents", espName, lvliForm->GetFormID());
 			vendorGoldForms.insert(lvliForm);
 		}
 		else
 		{
-			REL_ERROR("LVLI %s/0x%08x not found, should be Vendor Container contents", espName.c_str(), formID);
+			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
 	size_t expectedFromMods(std::count_if(modVendorGoldLVLI.cbegin(), modVendorGoldLVLI.cend(),
 		[&](const auto& espForm) -> bool { return shse::LoadOrder::Instance().IncludesMod(std::get<0>(espForm)); }));
 	if (vendorGoldForms.size() - interimSize != modVendorGoldLVLI.size())
 	{
-		REL_ERROR("LVLI count %d (mods) for Vendor Gold inconsistent with expected %d",
+		REL_ERROR("LVLI count {} (mods) for Vendor Gold inconsistent with expected {}",
 			vendorGoldForms.size() - interimSize, modVendorGoldLVLI.size());
-	}
-
-	for (RE::TESObjectCONT* container : dhnd->GetFormArray<RE::TESObjectCONT>())
-	{
-		// does container have VendorGold?
-		bool matched(false);
-		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
-			auto entryContents(entry->obj);
-			if (vendorGoldForms.find(entryContents->As<RE::TESLevItem>()) != vendorGoldForms.cend())
-			{
-				REL_MESSAGE("Block Vendor Container %s/0x%08x", container->GetName(), container->GetFormID());
-				matched = true;
-				// only continue if insert fails, not that this will likely do much good
-				return !m_containerBlackList.insert(container).second;
-			}
-			else
-			{
-				DBG_MESSAGE("%s/0x%08x in Container %s/0x%08x not VendorGold", entryContents->GetName(), entryContents->GetFormID(),
-					container->GetName(), container->GetFormID());
-			}
-			// continue the scan
-			return true;
-		});
-		if (!matched)
-		{
-			DBG_MESSAGE("Ignoring non-Vendor Container %s/0x%08x", container->GetName(), container->GetFormID());
-		}
 	}
 
 	// mod-added Containers to avoid looting
@@ -458,12 +431,44 @@ void DataCase::ExcludeVendorContainers()
 		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
 		if (chestForm)
 		{
-			REL_MESSAGE("CONT %s:0x%08x added to Mod Blacklist", espName.c_str(), chestForm->GetFormID());
+			REL_MESSAGE("CONT {}:0x{:08x} added to Mod Blacklist", espName, chestForm->GetFormID());
 			m_containerBlackList.insert(chestForm);
 		}
 		else
 		{
-			DBG_MESSAGE("CONT %s/0x%08x for mod not found", espName.c_str(), formID);
+			DBG_MESSAGE("CONT {}/0x{:08x} for mod not found", espName, formID);
+		}
+	}
+
+	for (RE::TESObjectCONT* container : dhnd->GetFormArray<RE::TESObjectCONT>())
+	{
+		if (m_containerBlackList.contains(container))
+		{
+			DBG_MESSAGE("SKip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
+			continue;
+		}
+		// does container have VendorGold?
+		bool matched(false);
+		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> bool {
+			auto entryContents(entry.obj);
+			if (vendorGoldForms.find(entryContents->As<RE::TESLevItem>()) != vendorGoldForms.cend())
+			{
+				REL_MESSAGE("Block Vendor Container {}/0x{:08x}", container->GetName(), container->GetFormID());
+				matched = true;
+				// only continue if insert fails, not that this will likely do much good
+				return !m_containerBlackList.insert(container).second;
+			}
+			else
+			{
+				DBG_MESSAGE("{}/0x{:08x} in Container {}/0x{:08x} not VendorGold", entryContents->GetName(), entryContents->GetFormID(),
+					container->GetName(), container->GetFormID());
+			}
+			// continue the scan
+			return true;
+		});
+		if (!matched)
+		{
+			DBG_MESSAGE("Ignoring non-Vendor Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 		}
 	}
 }
@@ -474,7 +479,7 @@ void DataCase::ExcludeImmersiveArmorsGodChest()
 	RE::TESObjectCONT* godChestForm(FindBestMatch<RE::TESObjectCONT>("Hothtrooper44_ArmorCompilation.esp", 0x4b352, "Auxiliary Armor Storage"));
 	if (godChestForm)
 	{
-		REL_MESSAGE("Block Immersive Armors 'all the loot' chest %s/0x%08x", godChestForm->GetName(), godChestForm->GetFormID());
+		REL_MESSAGE("Block Immersive Armors 'all the loot' chest {}/0x{:08x}", godChestForm->GetName(), godChestForm->GetFormID());
 		m_containerBlackList.insert(godChestForm);
 	}
 }
@@ -485,7 +490,7 @@ void DataCase::ExcludeGrayCowlStonesChest()
 	RE::TESObjectCONT* stonesChestForm(FindExactMatch<RE::TESObjectCONT>("Gray Fox Cowl.esm", 0x1a184));
 	if (stonesChestForm)
 	{
-		REL_MESSAGE("Block Gray Cowl Stones chest %s/0x%08x", stonesChestForm->GetName(), stonesChestForm->GetFormID());
+		REL_MESSAGE("Block Gray Cowl Stones chest {}/0x{:08x}", stonesChestForm->GetName(), stonesChestForm->GetFormID());
 		m_containerBlackList.insert(stonesChestForm);
 	}
 }
@@ -508,8 +513,83 @@ void DataCase::ExcludeMissivesBoards()
 	std::unordered_set<RE::TESObjectCONT*> missivesBoards(FindExactMatchesByName<RE::TESObjectCONT>(containerName));
 	for (const auto missivesBoard : missivesBoards)
 	{
-		REL_MESSAGE("Block Missive Board %s/0x%08x", missivesBoard->GetName(), missivesBoard->GetFormID());
+		REL_MESSAGE("Block Missive Board {}/0x{:08x}", missivesBoard->GetName(), missivesBoard->GetFormID());
 		m_containerBlackList.insert(missivesBoard);
+	}
+}
+
+void DataCase::ExcludeQuestTargets()
+{
+	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
+	{
+		DBG_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
+		for (const auto alias : quest->aliases)
+		{
+			// Blacklist item if it is a quest ref-alias object
+			if (alias->IsQuestObject() && alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID)
+			{
+				RE::BGSRefAlias* refAlias(static_cast<RE::BGSRefAlias*>(alias));
+				if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated)
+				{
+					if (refAlias->fillData.created.object)
+					{
+						if (BlacklistQuestTargetItem(refAlias->fillData.created.object))
+						{
+							DBG_MESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x}",
+								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+						}
+						else
+						{
+							DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
+								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+						}
+					}
+				}
+				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced)
+				{
+					if (refAlias->fillData.forced.forcedRef)
+					{
+						RE::TESObjectREFR* refr(refAlias->fillData.forced.forcedRef.get().get());
+						if (refr && refr->GetBaseObject())
+						{
+							DBG_VMESSAGE("Forced RefAlias has ALFR {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+							if (BlacklistQuestTargetItem(refr->GetBaseObject()))
+							{
+								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item {}/0x{:08x}",
+									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+							}
+							else
+							{
+								DBG_MESSAGE("Skip Forced RefAlias ALFR {}/0x{:08x}",
+									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+							}
+						}
+					}
+				}
+				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
+				{
+					// Quest NPC should not be looted
+					if (refAlias->fillData.uniqueActor.uniqueActor)
+					{
+						if (BlacklistQuestTargetNPC(refAlias->fillData.uniqueActor.uniqueActor))
+						{
+							DBG_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
+								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
+						}
+						else
+						{
+							DBG_VMESSAGE("Skip UniqueActor RefAlias ALUA {}/0x{:08x}",
+								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
+						}
+					}
+				}
+				else
+				{
+					DBG_VMESSAGE("RefAlias skipped for Quest: {}/0x{:08x} - unsupported RefAlias fill-type {}",
+						quest->GetName(), quest->GetFormID(), refAlias->fillType.underlying());
+				}
+			}
+		}
 	}
 }
 
@@ -520,7 +600,7 @@ void DataCase::IncludeFossilMiningExcavation()
 	RE::TESForm* excavationSiteForm(RE::TESDataHandler::GetSingleton()->LookupForm(excavationSiteFormID, espName));
 	if (excavationSiteForm)
 	{
-		DBG_MESSAGE("Record Fossil Mining Excavation Site %s(0x%08x) as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
+		DBG_MESSAGE("Record Fossil Mining Excavation Site {}(0x{:08x}) as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
 		SetObjectTypeForForm(excavationSiteForm->GetFormID(), ObjectType::oreVein);
 		m_resourceTypeByOreVein.insert(std::make_pair(excavationSiteForm->As<RE::TESObjectACTI>(), ResourceType::volcanicDigSite));
 	}
@@ -533,8 +613,20 @@ void DataCase::IncludeCorpseCoinage()
 	RE::TESForm* corpseCoinageForm(RE::TESDataHandler::GetSingleton()->LookupForm(corpseCoinageFormID, espName));
 	if (corpseCoinageForm)
 	{
-		DBG_MESSAGE("Record CorpseToCoinage ACTI %s(0x%08x) as septims", corpseCoinageForm->GetName(), corpseCoinageForm->GetFormID());
+		DBG_MESSAGE("Record CorpseToCoinage ACTI {}(0x{:08x}) as septims", corpseCoinageForm->GetName(), corpseCoinageForm->GetFormID());
 		SetObjectTypeForForm(corpseCoinageForm->GetFormID(), ObjectType::septims);
+	}
+}
+
+void DataCase::IncludeBSBruma()
+{
+	static std::string espName("BSAssets.esm");
+	static RE::FormID ayleidGoldFormID(0x6028dc);
+	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
+	if (ayleidGoldForm)
+	{
+		DBG_MESSAGE("Record BS:Bruma {}(0x{:08x}) as septims", ayleidGoldForm->GetName(), ayleidGoldForm->GetFormID());
+		SetObjectTypeForForm(ayleidGoldForm->GetFormID(), ObjectType::septims);
 	}
 }
 
@@ -543,9 +635,9 @@ void DataCase::RecordOffLimitsLocations()
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
-#if NDEBUG && !defined(_PROFILING)
-		{"Skyrim.esm", 0x32ae7}	// QASmoke - Release build blocks, others allow
-#endif
+		{"Skyrim.esm", 0x32ae7},				// QASmoke
+		{"CerwidenCompanion.esp", 0x4a4bb},		// kcfAssetsCell01
+		{"konahrik_accoutrements.esp", 0x625d3}	// KAxTestCell
 	};
 	for (const auto& pluginForm : illegalCells)
 	{
@@ -554,7 +646,7 @@ void DataCase::RecordOffLimitsLocations()
 		RE::TESObjectCELL* cell(FindExactMatch<RE::TESObjectCELL>(espName, formID));
 		if (cell)
 		{
-			DBG_MESSAGE("No looting in cell %s/0x%08x", cell->GetName(), cell->GetFormID());
+			DBG_MESSAGE("No looting in cell {}/0x{:08x}", cell->GetName(), cell->GetFormID());
 			m_offLimitsLocations.insert(cell);
 		}
 	}
@@ -563,6 +655,7 @@ void DataCase::RecordOffLimitsLocations()
 void DataCase::BlockOffLimitsContainers()
 {
 	// block all the known off-limits containers - list is invariant during gaming session
+	RecursiveLockGuard guard(m_blockListLock);
 	for (const auto refr : m_offLimitsContainers)
 	{
 		BlockReference(refr, Lootability::ContainerPermanentlyOffLimits);
@@ -578,7 +671,7 @@ void DataCase::GetAmmoData()
 	DBG_MESSAGE("Loading AmmoData");
 	for (RE::TESAmmo* ammo : dhnd->GetFormArray<RE::TESAmmo>())
 	{
-		DBG_VMESSAGE("Checking %s", ammo->GetFullName());
+		DBG_VMESSAGE("Checking {}", ammo->GetFullName());
 		if (!ammo->GetPlayable())
 		{
 			DBG_VMESSAGE("Not playable");
@@ -591,17 +684,17 @@ void DataCase::GetAmmoData()
 			DBG_VMESSAGE("base name empty");
 			continue;
      	}
-		DBG_VMESSAGE("base name %s", name.c_str());
+		DBG_VMESSAGE("base name {}", name);
 
 		RE::BGSProjectile* proj = ammo->data.projectile;
 		if (!proj)
 			continue;
 
-		DBG_VMESSAGE("Adding Projectile %s with ammo %s", proj->GetFullName(), ammo->GetFullName());
+		DBG_VMESSAGE("Adding Projectile {} with ammo {}", proj->GetFullName(), ammo->GetFullName());
 		m_ammoList[proj] = ammo;
 	}
 
-	REL_MESSAGE("* AmmoData(%d)", m_ammoList.size());
+	REL_MESSAGE("* AmmoData({})", m_ammoList.size());
 }
 
 void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
@@ -671,7 +764,7 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 			volcanicDigSites.insert(refrID.first);
 		}
 	}
-	DBG_MESSAGE("Reset blocked REFRs apart from %d volcanic and %d firehose",
+	DBG_MESSAGE("Reset blocked REFRs apart from {} volcanic and {} firehose",
 		volcanicDigSites.size() - m_firehoseSources.size(), m_firehoseSources.size());
 	for (const auto digSite : volcanicDigSites)
 	{
@@ -753,6 +846,61 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 	RecursiveLockGuard guard(m_blockListLock);
 	BlockForm(form, reason);
 	return (m_permanentBlockedForms.insert({ form, reason })).second;
+}
+
+// used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
+bool DataCase::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
+{
+	if (!item)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (item->IsDynamicForm())
+		return false;
+	if (!item->GetPlayable())
+		return false;
+	std::string name(item->GetName());
+	if (name.empty())
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	return (m_questTargets.insert(item)).second;
+}
+
+// used for Quest Target NPCs. Blocks autoloot of the NPC, to preserve immersion and avoid breaking Quests.
+bool DataCase::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
+{
+	if (!npc)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (npc->IsDynamicForm())
+		return false;
+	std::string name(npc->GetName());
+	if (name.empty())
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	return (m_questTargets.insert(npc)).second;
+}
+
+Lootability DataCase::ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const
+{
+	if (!refr)
+		return Lootability::NullReference;
+	return QuestTargetLootability(refr->GetBaseObject());
+}
+
+Lootability DataCase::QuestTargetLootability(const RE::TESForm* form) const
+{
+	if (!form)
+		return Lootability::NoBaseObject;
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (form->IsDynamicForm())
+		return Lootability::Lootable;
+	RecursiveLockGuard guard(m_blockListLock);
+	const auto matched(m_questTargets.find(form));
+	if (matched != m_questTargets.cend())
+	{
+		return Lootability::CannotLootQuestTarget;
+	}
+	return Lootability::Lootable;
 }
 
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
@@ -838,7 +986,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	RE::NiPoint3 pos = refr->GetPosition();
 	if (pos == RE::NiPoint3())
 	{
-		DBG_VMESSAGE("Arrow position unknown %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
+		DBG_VMESSAGE("Arrow position unknown {:0.2f},{:0.2f},{:0.2f}", pos.x, pos.y, pos.z);
 		BlockReference(refr, Lootability::CorruptArrowPosition);
 		skip = true;
 	}
@@ -846,7 +994,7 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	RecursiveLockGuard guard(m_blockListLock);
 	if (!m_arrowCheck.contains(refr))
 	{
-		DBG_VMESSAGE("Newly detected, save arrow position %0.2f,%0.2f,%0.2f", pos.x, pos.y, pos.z);
+		DBG_VMESSAGE("Newly detected, save arrow position {:0.2f},{:0.2f},{:0.2f}", pos.x, pos.y, pos.z);
 		m_arrowCheck.insert(std::make_pair(refr, pos));
 		skip = true;
 	}
@@ -858,13 +1006,13 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 		double dz(pos.z - prev.z);
 		if (fabs(dx) > ArrowInFlightUnits || fabs(dy) > ArrowInFlightUnits || fabs(dz) > ArrowInFlightUnits)
 		{
-			DBG_VMESSAGE("In flight, change in arrow position dx=%0.2f,dy=%0.2f,dz=%0.2f", dx, dy, dz);
+			DBG_VMESSAGE("In flight, change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f}", dx, dy, dz);
 			m_arrowCheck[refr] = pos;
 			skip = true;
 		}
 		else
 		{
-			DBG_VMESSAGE("OK, not in flight, change in arrow position dx=%0.2f,dy=%0.2f,dz=%0.2f", dx, dy, dz);
+			DBG_VMESSAGE("OK, not in flight, change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f}", dx, dy, dz);
 			m_arrowCheck.erase(refr);
 		}
 	}
@@ -920,7 +1068,7 @@ void DataCase::CategorizeLootables()
 #if _DEBUG
 	for (const auto& unhandledVerb : m_unhandledActivationVerbs)
 	{
-		DBG_VMESSAGE("Activation verb %s unhandled at present", unhandledVerb.c_str());
+		DBG_VMESSAGE("Activation verb {} unhandled at present", unhandledVerb);
 	}
 #endif
 
@@ -937,11 +1085,15 @@ void DataCase::HandleExceptions()
 {
 	// on first pass, detect off limits containers and other special cases to avoid rescan on game reload
 	DBG_MESSAGE("Pre-emptively handle special cases from Load Order");
-	ExcludeFactionContainers();
-	ExcludeVendorContainers();
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
 	ExcludeMissivesBoards();
+
+	ExcludeFactionContainers();
+	ExcludeVendorContainers();
+
+	ExcludeQuestTargets();
+
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 
@@ -1040,21 +1192,22 @@ void DataCase::SetObjectTypeByKeywords()
 
 	for (RE::BGSKeyword* keywordDef : dhnd->GetFormArray<RE::BGSKeyword>())
 	{
-		DBG_VMESSAGE("Process KYWD formID 0x%08x", keywordDef->GetFormID());
 		std::string keywordName(FormUtils::SafeGetFormEditorID(keywordDef));
 		if (keywordName.empty())
 		{
-			REL_WARNING("KYWD record 0x%08x has missing/blank EDID, skip", keywordDef->GetFormID());
+			REL_WARNING("KYWD record 0x{:08x} has missing/blank EDID, skip", keywordDef->GetFormID());
 			continue;
 		}
 		// Store player house keyword for SearchTask usage
 		if (keywordName == "LocTypePlayerHouse")
 		{
+			DBG_VMESSAGE("Found PlayerHouse KYWD formID 0x{:08x}", keywordDef->GetFormID());
 			PlayerHouses::Instance().SetKeyword(keywordDef);
 			continue;
 		}
 		if (glowableBooks.find(keywordName) != glowableBooks.cend())
 		{
+			DBG_VMESSAGE("Found Glowable Book KYWD formID 0x{:08x}", keywordDef->GetFormID());
 			m_glowableBookKeywords.insert(keywordDef->GetFormID());
 		}
 
@@ -1075,15 +1228,15 @@ void DataCase::SetObjectTypeByKeywords()
 				return false;
 			}) != typeByVendorItemSubstring.cend())
 		{
-			DBG_VMESSAGE("0x%08x (%s) matched substring, treated as %s", keywordDef->GetFormID(), keywordName.c_str(), GetObjectTypeName(objectType).c_str());
+			DBG_VMESSAGE("KYWD 0x{:08x} ({}) matched substring", keywordDef->GetFormID(), keywordName);
 		}
 		else
 		{
-			DBG_VMESSAGE("0x%08x (%s) skipped", keywordDef->GetFormID(), keywordName.c_str());
+			DBG_VMESSAGE("KYWD 0x{:08x} ({}) skipped", keywordDef->GetFormID(), keywordName.c_str());
 			continue;
 		}
 		m_objectTypeByForm[keywordDef->GetFormID()] = DecorateIfEnchanted(keywordDef, objectType);
-		DBG_VMESSAGE("0x%08x (%s) stored as %s", keywordDef->GetFormID(), keywordName.c_str(), GetObjectTypeName(objectType).c_str());
+		DBG_VMESSAGE("KYWD 0x{:08x} ({}) stored as {}", keywordDef->GetFormID(), keywordName, GetObjectTypeName(objectType));
 	}
 }
 
@@ -1132,7 +1285,7 @@ bool DataCase::PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const
 		[=] (const RE::BGSPerk* perk) -> bool { return actor->HasPerk(const_cast<RE::BGSPerk*>(perk)); });
 	if (deathPerk != m_leveledItemOnDeathPerks.cend())
 	{
-		DBG_VMESSAGE("Leveled item added at death for perk %s/0x%08x", (*deathPerk)->GetName(), (*deathPerk)->GetFormID());
+		DBG_VMESSAGE("Leveled item added at death for perk {}/0x{:08x}", (*deathPerk)->GetName(), (*deathPerk)->GetFormID());
 		return true;
 	}
 	return false;
@@ -1149,11 +1302,11 @@ float DataCase::PerkIngredientMultiplier(const RE::Actor* actor) const
 		{
 			if (matched)
 			{
-				DBG_VMESSAGE("Perk conflict ingredient harvesting via %s/0x%08x, discarding", perkEntry.first->GetName(), perkEntry.first->GetFormID());
+				DBG_VMESSAGE("Perk conflict ingredient harvesting via {}/0x{:08x}, discarding", perkEntry.first->GetName(), perkEntry.first->GetFormID());
 			}
 			else
 			{
-				DBG_VMESSAGE("Perk %s/0x%08x used for harvesting, multiplier %.2f", perkEntry.first->GetName(), perkEntry.first->GetFormID(), perkEntry.second);
+				DBG_VMESSAGE("Perk {}/0x{:08x} used for harvesting, multiplier {:0.2f}", perkEntry.first->GetName(), perkEntry.first->GetFormID(), perkEntry.second);
 				matched = perkEntry.first;
 				result = perkEntry.second;
 			}
@@ -1259,37 +1412,37 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 {
 	if (!m_contents)
 	{
-		DBG_VMESSAGE("Target %s/0x%08x has contents type %s in form %s/0x%08x", m_targetName.c_str(), m_rootItem->formID,
-			GetObjectTypeName(itemType).c_str(), itemForm->GetName(), itemForm->formID);
+		DBG_VMESSAGE("Target {}/0x{:08x} has contents type {} in form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
+			GetObjectTypeName(itemType), itemForm->GetName(), itemForm->GetFormID());
 		if (!DataCase::GetInstance()->m_produceFormContents.insert(std::make_pair(m_produceForm, itemForm)).second)
 		{
-			DBG_VMESSAGE("Leveled Item %s/0x%08x contents already present", m_targetName.c_str(), m_rootItem->formID);
+			DBG_VMESSAGE("Leveled Item {}/0x{:08x} contents already present", m_targetName, m_rootItem->GetFormID());
 		}
 		else
 		{
-			DBG_VMESSAGE("Leveled Item %s/0x%08x has contents %s/0x%08x",
-				m_targetName.c_str(), m_rootItem->formID, itemForm->GetName(), itemForm->formID);
-			if (!DataCase::GetInstance()->m_objectTypeByForm.insert(std::make_pair(itemForm->formID, itemType)).second)
+			DBG_VMESSAGE("Leveled Item {}/0x{:08x} has contents {}/0x{:08x}",
+				m_targetName, m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
+			if (!DataCase::GetInstance()->m_objectTypeByForm.insert(std::make_pair(itemForm->GetFormID(), itemType)).second)
 			{
-				DBG_VMESSAGE("Leveled Item %s/0x%08x contents %s/0x%08x already has an ObjectType",
-					m_targetName.c_str(), m_rootItem->formID, itemForm->GetName(), itemForm->formID);
+				DBG_VMESSAGE("Leveled Item {}/0x{:08x} contents {}/0x{:08x} already has an ObjectType",
+					m_targetName, m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
 			}
 			else
 			{
-				DBG_VMESSAGE("Leveled Item %s/0x%08x not stored", m_targetName, m_rootItem->formID);
+				DBG_VMESSAGE("Leveled Item {}/0x{:08x} not stored", m_targetName, m_rootItem->GetFormID());
 			}
 			m_contents = itemForm;
 		}
 	}
 	else if (m_contents == itemForm)
 	{
-		DBG_VMESSAGE("Target %s/0x%08x contents type %s already recorded", m_targetName.c_str(), m_rootItem->formID,
-			GetObjectTypeName(itemType).c_str());
+		DBG_VMESSAGE("Target {}/0x{:08x} contents type {} already recorded", m_targetName, m_rootItem->GetFormID(),
+			GetObjectTypeName(itemType));
 	}
 	else
 	{
-		REL_WARNING("Target %s/0x%08x contents type %s already stored under different form %s/0x%08x", m_targetName.c_str(), m_rootItem->formID,
-			GetObjectTypeName(itemType).c_str(), m_contents->GetName(), m_contents->formID);
+		REL_WARNING("Target {}/0x{:08x} contents type {} already stored under different form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
+			GetObjectTypeName(itemType), m_contents->GetName(), m_contents->GetFormID());
 	}
 }
 

@@ -29,6 +29,7 @@ public:
 	static Lootability CheckLootable(const RE::TESObjectREFR* refr);
 	void FindLootableReferences();
 	void FindAllCandidates();
+	void FindActors();
 
 private:
 	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
@@ -37,11 +38,9 @@ private:
 
 	Lootability AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const;
 	// predicates supported
-	inline bool CanLoot(const RE::TESObjectREFR* refr) const {
-		static const bool dryRun(false);
-		return AnalyzeREFR(refr, dryRun) == Lootability::Lootable;
-	}
+	bool CanLoot(const RE::TESObjectREFR* refr) const;
 	bool IsLootCandidate(const RE::TESObjectREFR* refr) const;
+	bool IsFollowerOrDead(const RE::TESObjectREFR* refr) const;
 
 	DistanceToTarget& m_refs;
 	IRangeChecker& m_rangeCheck;

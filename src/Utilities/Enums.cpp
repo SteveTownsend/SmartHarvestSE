@@ -55,7 +55,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ObjectTypeUnknown : return "ObjectTypeUnknown";
 	case Lootability::ManualLootTarget : return "ManualLootTarget";
 	case Lootability::BaseObjectOnBlacklist : return "BaseObjectOnBlacklist";
-	case Lootability::CannotLootQuestObject : return "CannotLootQuestObject";
+	case Lootability::CannotLootQuestTarget : return "CannotLootQuestTarget";
 	case Lootability::ObjectIsInBlacklistCollection : return "ObjectIsInBlacklistCollection";
 	case Lootability::CannotLootValuableObject : return "CannotLootValuableObject";
 	case Lootability::CannotLootAmmo : return "CannotLootAmmo";

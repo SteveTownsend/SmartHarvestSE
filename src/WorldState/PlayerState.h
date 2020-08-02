@@ -43,12 +43,13 @@ public:
 	Position GetPosition() const;
 	AlglibPosition GetAlglibPosition() const;
 	bool WithinDetectionRange(const double distance) const;
+	void UpdateGameTime(const float gameTime);
+	inline float CurrentGameTime() const { return m_gameTime; }
 
 private:
 	void CheckPerks(const bool force);
 	void ResetCarryWeight(const bool reloaded);
 	void AdjustCarryWeight();
-	bool IsSneaking() const;
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
 
 	static std::unique_ptr<PlayerState> m_instance;
@@ -68,6 +69,8 @@ private:
 	OwnershipRule m_ownershipRule;
 	SpecialObjectHandling m_belongingsCheck;
 	bool m_disableWhileMounted;
+
+	float m_gameTime;
 
 	mutable RecursiveLock m_playerLock;
 };

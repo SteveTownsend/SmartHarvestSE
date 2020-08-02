@@ -61,14 +61,14 @@ RE::BGSRefAlias* EventPublisher::GetScriptTarget(const char* espName, RE::FormID
 		RE::TESForm* questForm(RE::TESDataHandler::GetSingleton()->LookupForm(questID, espName));
 		if (questForm)
 		{
-			DBG_MESSAGE("Got Base Form %s", questForm ? FormUtils::SafeGetFormEditorID(questForm).c_str() : "nullptr");
+			DBG_MESSAGE("Got Base Form {}", questForm ? FormUtils::SafeGetFormEditorID(questForm).c_str() : "nullptr");
 			quest = questForm ? questForm->As<RE::TESQuest>() : nullptr;
-			DBG_MESSAGE("Got Quest Form %s", quest ? FormUtils::SafeGetFormEditorID(quest).c_str() : "nullptr");
+			DBG_MESSAGE("Got Quest Form {}", quest ? FormUtils::SafeGetFormEditorID(quest).c_str() : "nullptr");
 		}
 	}
 	if (quest && quest->IsRunning())
 	{
-		DBG_MESSAGE("Quest %s is running", FormUtils::SafeGetFormEditorID(quest).c_str());
+		DBG_MESSAGE("Quest {} is running", FormUtils::SafeGetFormEditorID(quest).c_str());
 		RE::BGSBaseAlias* baseAlias(quest->aliases[0]);
 		if (!baseAlias)
 		{

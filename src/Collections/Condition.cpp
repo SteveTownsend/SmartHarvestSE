@@ -93,17 +93,14 @@ FormListCondition::FormListCondition(const std::vector<std::pair<std::string, st
 	for (const auto& entry : pluginFormList)
 	{
 		// schema enforces 8-char HEX format
-		RE::FormID formID;
-		std::stringstream ss;
-		ss << std::hex << entry.second;
-		ss >> formID;
+		RE::FormID formID(StringUtils::ToFormID(entry.second));
 		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(LoadOrder::Instance().AsRaw(formID), entry.first));
 		if (!formList)
 		{
-			REL_ERROR("FormListCondition cannot resolve FormList %s/0x%08x", entry.first.c_str(), formID);
+			REL_ERROR("FormListCondition cannot resolve FormList {}/0x{:08x}", entry.first.c_str(), formID);
 			return;
 		}
-		DBG_VMESSAGE("Resolved FormList 0x%08x", formID);
+		DBG_VMESSAGE("Resolved FormList 0x{:08x}", formID);
 		m_formLists.push_back(std::make_pair(formList, entry.first));
 		FlattenMembers(formList);
 	}
@@ -121,7 +118,7 @@ void FormListCondition::FlattenMembers(const RE::BGSListForm* formList)
 		}
 		else if (CanBeCollected(candidate))
 		{
-			DBG_VMESSAGE("FormList Member found %s/0x%08x", candidate->GetName(), candidate->GetFormID());
+			DBG_VMESSAGE("FormList Member found {}/0x{:08x}", candidate->GetName(), candidate->GetFormID());
 			m_listMembers.insert(candidate);
 		}
 	}
@@ -142,10 +139,8 @@ void FormListCondition::AsJSON(nlohmann::json& j) const
 	j["formList"] = nlohmann::json::array();
 	for (const auto formList : m_formLists)
 	{
-		std::ostringstream formStr;
-		formStr << std::hex << std::setfill('0') << std::setw(8) << formList.first->GetFormID();
 		auto next(nlohmann::json::object());
-		next["formID"] = formStr.str();
+		next["formID"] = StringUtils::FromFormID(formList.first->GetFormID());
 		next["listPlugin"] = "";
 		j["formList"].push_back(next);
 	}
@@ -160,17 +155,14 @@ FormsCondition::FormsCondition(const std::vector<std::pair<std::string, std::vec
 		for (const auto nextID : entry.second)
 		{
 			// schema enforces 8-char HEX format
-			RE::FormID formID;
-			std::stringstream ss;
-			ss << std::hex << nextID;
-			ss >> formID;
+			RE::FormID formID(StringUtils::ToFormID(nextID));
 			RE::TESForm* form(RE::TESDataHandler::GetSingleton()->LookupForm(LoadOrder::Instance().AsRaw(formID), entry.first));
 			if (!form)
 			{
-				REL_ERROR("FormsCondition requires valid Forms, got %s/0x%08x", entry.first.c_str(), formID);
+				REL_ERROR("FormsCondition requires valid Forms, got {}/0x{:08x}", entry.first.c_str(), formID);
 				return;
 			}
-			DBG_VMESSAGE("Resolved Form 0x%08x", formID);
+			DBG_VMESSAGE("Resolved Form 0x{:08x}", formID);
 			newForms.push_back(form);
 		}
 		m_formsByPlugin.insert({ entry.first, newForms });
@@ -203,9 +195,7 @@ void FormsCondition::AsJSON(nlohmann::json& j) const
 		next["form"] = nlohmann::json::array();
 		for (const auto form : pluginData.second)
 		{
-			std::ostringstream formStr;
-			formStr << std::hex << std::setfill('0') << std::setw(8) << form->GetFormID();
-			next["form"].push_back(formStr.str());
+			next["form"].push_back(StringUtils::FromFormID(form->GetFormID()));
 		}
 	}
 }
@@ -226,7 +216,7 @@ KeywordCondition::KeywordCondition(const std::vector<std::string>& keywords)
 		if (matched != keywordsLeft.end())
 		{
 			m_keywords.insert(keywordRecord);
-			DBG_VMESSAGE("BGSKeyword recorded for %s", FormUtils::SafeGetFormEditorID(keywordRecord).c_str());
+			DBG_VMESSAGE("BGSKeyword recorded for {}", FormUtils::SafeGetFormEditorID(keywordRecord).c_str());
 			// eliminate the matched candidate input from JSON
 			keywordsLeft.erase(matched);
 
@@ -237,7 +227,7 @@ KeywordCondition::KeywordCondition(const std::vector<std::string>& keywords)
 	}
 	for (const std::string& badKeyword : keywordsLeft)
 	{
-		DBG_WARNING("Collection has invalid KYWD %s", badKeyword.c_str());
+		DBG_WARNING("Collection has invalid KYWD {}", badKeyword.c_str());
 	}
 	if (!keywordsLeft.empty())
 	{
@@ -301,7 +291,7 @@ SignatureCondition::SignatureCondition(const std::vector<std::string>& signature
 		if (matched != m_validSignatures.cend())
 		{
 			m_formTypes.push_back(matched->second);
-			DBG_VMESSAGE("Record Signature %s mapped to FormType %d", signature.c_str(), static_cast<int>(matched->second));
+			DBG_VMESSAGE("Record Signature {} mapped to FormType {}", signature.c_str(), static_cast<int>(matched->second));
 		}
 	}
 }
@@ -362,7 +352,7 @@ ScopeCondition::ScopeCondition(const std::vector<std::string>& scopes)
 		{
 			m_scopes.push_back(matched->second);
 			std::string target(INIFile::GetInstance()->SecondaryTypeString(matched->second));
-			DBG_VMESSAGE("Scope %s mapped to FormType %d", scope.c_str(), target.c_str());
+			DBG_VMESSAGE("Scope {} mapped to FormType {}", scope.c_str(), target.c_str());
 		}
 	}
 }

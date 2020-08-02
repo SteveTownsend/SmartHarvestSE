@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "AlchemyItemHelper.h"
 
-UInt32 AlchemyItemHelper::GetGoldValue() const
+uint32_t AlchemyItemHelper::GetGoldValue() const
 {
 	if (!m_alchemyItem)
 		return 0;
@@ -37,6 +37,6 @@ UInt32 AlchemyItemHelper::GetGoldValue() const
 		costPP += effect->cost;
 	}
 
-	UInt32 result = std::max<UInt32>(static_cast<UInt32>(costPP), 0);
+	uint32_t result = std::max<uint32_t>(static_cast<uint32_t>(costPP), 0);
 	return result;
 }

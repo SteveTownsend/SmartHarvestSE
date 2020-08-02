@@ -30,7 +30,7 @@ public:
 	bool IsValuable() const;
 
 	virtual double GetWeight(void) const = 0;
-	SInt32 GetWorth(void) const;
+	int32_t GetWorth(void) const;
 
 	static constexpr float ValueWeightMaximum = 1000.0f;
 
@@ -39,11 +39,11 @@ protected:
 	virtual ~IHasValueWeight() {}
 
 	virtual const char * GetName() const = 0;
-	virtual UInt32 GetFormID() const = 0;
-	virtual SInt32 CalculateWorth(void) const = 0;
+	virtual uint32_t GetFormID() const = 0;
+	virtual int32_t CalculateWorth(void) const = 0;
 
 	std::string m_typeName;
 	ObjectType m_objectType;
-	mutable SInt32 m_worth;
+	mutable int32_t m_worth;
 	mutable bool m_worthSetup;
 };

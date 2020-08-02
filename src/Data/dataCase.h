@@ -56,7 +56,10 @@ public:
 	void ResetBlockedForms();
 	bool BlockFormPermanently(const RE::TESForm* form, const Lootability reason);
 
-	bool ReferencesBlacklistedContainer(RE::TESObjectREFR* refr) const;
+	bool ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const;
+
+	Lootability ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const;
+	Lootability QuestTargetLootability(const RE::TESForm* form) const;
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
@@ -65,7 +68,7 @@ public:
 	template <typename T>
 	ObjectType GetObjectTypeForForm(T* form) const
 	{
-		ObjectType objectType(GetObjectTypeForFormType(form->formType));
+		ObjectType objectType(GetObjectTypeForFormType(form->GetFormType()));
 		if (objectType == ObjectType::unknown)
 		{
 			objectType = GetFormObjectType(form->formID);
@@ -112,6 +115,7 @@ private:
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
+	std::unordered_set<const RE::TESForm*> m_questTargets;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_map<RE::FormID, Lootability> m_blockRefr;
 	std::unordered_set<RE::FormID> m_blacklistRefr;
@@ -180,12 +184,10 @@ private:
 			if (!target->GetFullNameLength())
 				continue;
 			const char * targetName(target->GetFullName());
-			DBG_VMESSAGE("Checking target %s/0x%08x", targetName, target->GetFormID());
-
 			const RE::TESBoundObject* ingredient(target->produceItem);
 			if (!ingredient)
 			{
-				REL_WARNING("No ingredient for %s/0x%08x", targetName, target->GetFormID());
+				REL_WARNING("No ingredient for {}/0x{:08x}", targetName, target->GetFormID());
 				continue;
 			}
 
@@ -194,7 +196,7 @@ private:
 			const RE::TESLevItem* leveledItem(ingredient->As<RE::TESLevItem>());
 			if (leveledItem)
 			{
-				DBG_VMESSAGE("%s/0x%08x ingredient is Leveled Item", targetName, target->GetFormID());
+				DBG_VMESSAGE("{}/0x{:08x} ingredient is Leveled Item", targetName, target->GetFormID());
 				ProduceFormCategorizer(target, leveledItem, targetName).CategorizeContents();
 			}
 			else
@@ -203,7 +205,7 @@ private:
 				storedType = GetObjectTypeForForm(ingredient);
 				if (storedType != ObjectType::unknown)
 				{
-					DBG_VMESSAGE("Target %s/0x%08x has ingredient %s/0x%08x stored as type %s", targetName, target->GetFormID(),
+					DBG_VMESSAGE("Target {}/0x{:08x} has ingredient {}/0x{:08x} stored as type {}", targetName, target->GetFormID(),
 						ingredient->GetName(), ingredient->GetFormID(), GetObjectTypeName(storedType).c_str());
 					ProducerLootables::Instance().SetLootableForProducer(target, const_cast<RE::TESBoundObject*>(ingredient));
 				}
@@ -216,16 +218,16 @@ private:
 					// Store mapping of Produce holder to ingredient - this is the most correct type for this item producer
 					if (SetObjectTypeForForm(target->GetFormID(), storedType))
 					{
-						DBG_VMESSAGE("Target %s/0x%08x stored as type %s", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
+						DBG_VMESSAGE("Target {}/0x{:08x} stored as type {}", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
 					}
 					else
 					{
-						REL_WARNING("Target %s/0x%08x (%s) already stored, check data", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
+						REL_WARNING("Target {}/0x{:08x} ({}) already stored, check data", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
 					}
 				}
 				else
 				{
-					DBG_VMESSAGE("Target %s/0x%08x not stored", targetName, target->GetFormID());
+					DBG_VMESSAGE("Target {}/0x{:08x} not stored", targetName, target->GetFormID());
 				}
 			}
 		}
@@ -252,22 +254,21 @@ private:
 			return;
 		for (T* consumable : dhnd->GetFormArray<T>())
 		{
-			RE::TESFullName* pFullName = consumable->As<RE::TESFullName>();
-			if (!pFullName || pFullName->GetFullNameLength() == 0)
+			if (consumable->GetFullNameLength() == 0)
 			{
-				DBG_VMESSAGE("Skipping unnamed form 0x%08x", consumable->GetFormID());
+				DBG_VMESSAGE("Skipping unnamed form 0x{:08x}", consumable->GetFormID());
 				continue;
 			}
 
-			std::string formName(pFullName->GetFullName());
+			std::string formName(consumable->GetFullName());
 			if (GetFormObjectType(consumable->GetFormID()) != ObjectType::unknown)
 			{
-				DBG_VMESSAGE("Skipping previously categorized form %s/0x%08x", formName.c_str(), consumable->GetFormID());
+				DBG_VMESSAGE("Skipping previously categorized form {}/0x{:08x}", formName.c_str(), consumable->GetFormID());
 				continue;
 			}
 
 			ObjectType objectType(ConsumableObjectType<T>(consumable));
-			DBG_MESSAGE("Consumable %s/0x%08x has type %s", formName.c_str(), consumable->GetFormID(), GetObjectTypeName(objectType).c_str());
+			DBG_MESSAGE("Consumable {}/0x{:08x} has type {}", formName.c_str(), consumable->GetFormID(), GetObjectTypeName(objectType).c_str());
 			m_objectTypeByForm[consumable->GetFormID()] = objectType;
 		}
 	}
@@ -319,23 +320,25 @@ private:
 		for (T* typedForm : dhnd->GetFormArray<T>())
 		{
 			if (!typedForm->GetFullNameLength())
+			{
+				DBG_VMESSAGE("0x{:08x} is unnamed", typedForm->GetFormID());
 				continue;
+			}
 			const char* formName(typedForm->GetFullName());
-			DBG_VMESSAGE("Categorizing %s/0x%08x", formName, typedForm->GetFormID());
 			if ((typedForm->formFlags & T::RecordFlags::kNonPlayable) == T::RecordFlags::kNonPlayable)
 			{
-				DBG_VMESSAGE("%s/0x%08x is NonPlayable", formName, typedForm->GetFormID());
+				DBG_VMESSAGE("{}/0x{:08x} is NonPlayable", formName, typedForm->GetFormID());
 				continue;
 			}
 			RE::BGSKeywordForm* keywordForm(typedForm->As<RE::BGSKeywordForm>());
 			if (!keywordForm)
 			{
-				DBG_WARNING("%s/0x%08x Not a Keyword", formName, typedForm->GetFormID());
+				DBG_WARNING("{}/0x{:08x} Not a Keyword", formName, typedForm->GetFormID());
 				continue;
 			}
 
 			ObjectType correctType(ObjectType::unknown);
-			for (UInt32 index = 0; index < keywordForm->GetNumKeywords(); ++index)
+			for (uint32_t index = 0; index < keywordForm->GetNumKeywords(); ++index)
 			{
 				std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
 				if (!keyword)
@@ -350,7 +353,7 @@ private:
 					}
 					else if (correctType != ObjectType::unknown)
 					{
-						REL_WARNING("%s/0x%08x mapped to %s already stored with keyword %s, check data", formName, typedForm->GetFormID(),
+						REL_WARNING("{}/0x{:08x} mapped to {} already stored with keyword {}, check data", formName, typedForm->GetFormID(),
 							GetObjectTypeName(matched->second).c_str(), GetObjectTypeName(correctType).c_str());
 					}
 					else
@@ -368,11 +371,11 @@ private:
 			{
 				if (SetObjectTypeForForm(typedForm->GetFormID(), correctType))
 				{
-					DBG_VMESSAGE("%s/0x%08x stored as %s", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
+					DBG_VMESSAGE("{}/0x{:08x} stored as {}", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
 				}
 				else
 				{
-					REL_WARNING("%s/0x%08x (%s) already stored, check data", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
+					REL_WARNING("{}/0x{:08x} ({}) already stored, check data", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
 				}
 				continue;
 			}
@@ -383,15 +386,15 @@ private:
 			{
 				if (SetObjectTypeForForm(typedForm->GetFormID(), ObjectType::clutter))
 				{
-					DBG_VMESSAGE("%s/0x%08x with value %d stored as clutter", formName, typedForm->GetFormID(), std::max(typedForm->value, SInt32(0)));
+					DBG_VMESSAGE("{}/0x{:08x} with value {} stored as clutter", formName, typedForm->GetFormID(), std::max(typedForm->value, int32_t(0)));
 				}
 				else
 				{
-					REL_WARNING("%s/0x%08x (defaulting as clutter) already stored, check data", formName, typedForm->GetFormID());
+					REL_WARNING("{}/0x{:08x} (defaulting as clutter) already stored, check data", formName, typedForm->GetFormID());
 				}
 				continue;
 			}
-			DBG_VMESSAGE("%s/0x%08x not mappable", formName, typedForm->GetFormID());
+			DBG_VMESSAGE("{}/0x{:08x} not mappable", formName, typedForm->GetFormID());
 		}
 	}
 
@@ -417,6 +420,9 @@ private:
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();
+	void ExcludeQuestTargets();
+	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
+	bool BlacklistQuestTargetNPC(const RE::TESNPC* npc);
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
@@ -426,11 +432,11 @@ private:
 		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
 		if (typedForm)
 		{
-			DBG_MESSAGE("Found exact match 0x%08x for %s:0x%06x", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
+			DBG_MESSAGE("Found exact match 0x{:08x} for {}:0x{:06x}", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
 		}
 		else
 		{
-			DBG_MESSAGE("No exact match for %s:0x%06x", defaultESP.c_str(), maskedFormID);
+			DBG_MESSAGE("No exact match for {}:0x{:06x}", defaultESP.c_str(), maskedFormID);
 		}
 		return typedForm;
 	}
@@ -442,7 +448,7 @@ private:
 		// supplied EDID and Name not checked if we match plugin/formID
 		if (match)
 		{
-			DBG_MESSAGE("Returning exact match 0x%08x/%s for %s:0x%06x", match->GetFormID(), match->GetName(),
+			DBG_MESSAGE("Returning exact match 0x{:08x}/{} for {}:0x{:06x}", match->GetFormID(), match->GetName(),
 				defaultESP.c_str(), maskedFormID);
 			return match;
 		}
@@ -459,13 +465,13 @@ private:
 			{
 				if (match)
 				{
-					REL_MESSAGE("Ambiguity in best match 0x%08x vs for 0x%08x for %s:0x%06x/%s",
+					REL_MESSAGE("Ambiguity in best match 0x{:08x} vs for 0x{:08x} for {}:0x{:06x}/{}",
 						match->GetFormID(), container->GetFormID(), defaultESP.c_str(), maskedFormID, name);
 					return nullptr;
 				}
 				else
 				{
-					REL_MESSAGE("Found best match 0x%08x for %s:0x%06x", container->GetFormID(),
+					REL_MESSAGE("Found best match 0x{:08x} for {}:0x{:06x}", container->GetFormID(),
 						defaultESP.c_str(), maskedFormID, name);
 					match = container;
 				}
@@ -494,6 +500,8 @@ private:
 
 	void IncludeFossilMiningExcavation();
 	void IncludeCorpseCoinage();
+	void IncludeBSBruma();
+
 	DataCase(void);
 };
 

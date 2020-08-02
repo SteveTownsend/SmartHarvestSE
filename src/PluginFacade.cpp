@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/versiondb.h"
 #include "Collections/CollectionManager.h"
+#include "Data/CosaveData.h"
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
 #include "VM/UIState.h"
@@ -49,7 +50,7 @@ PluginFacade::PluginFacade() : m_pluginOK(false), m_threadStarted(false), m_plug
 {
 }
 
-bool PluginFacade::Init()
+bool PluginFacade::Init(const bool onGameReload)
 {
 	if (!m_pluginOK)
 	{
@@ -67,6 +68,12 @@ bool PluginFacade::Init()
 			REL_FATALERROR("Fatal Exception during Game Data load");
 			return false;
 		}
+	}
+	if (onGameReload)
+	{
+		// seed state using cosave data
+		CosaveData::Instance().SeedState();
+		WindowsUtils::LogProcessWorkingSet();
 	}
 	if (!m_threadStarted)
 	{
@@ -128,22 +135,18 @@ bool PluginFacade::Load()
 	shse::CollectionManager::Instance().ProcessDefinitions();
 
 	m_pluginOK = true;
-	REL_MESSAGE("Plugin now in sync - Game Data load complete!");
+	REL_MESSAGE("Plugin Data load complete!");
 	return true;
 }
 
-void PluginFacade::TakeNap()
+void PluginFacade::TakeNap(const double delaySeconds)
 {
-	double delay(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds"));
-	delay = std::max(MinThreadDelaySeconds, delay);
-	if (ScanGovernor::Instance().Calibrating())
-	{
-		// use hard-coded delay to make UX comprehensible
-		delay = CalibrationThreadDelaySeconds;
-	}
+	DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delaySeconds * 1000.0));
 
-	DBG_MESSAGE("wait for %d milliseconds", static_cast<long long>(delay * 1000.0));
-	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delay * 1000.0));
+	// flush log output here
+	SHSELogger->flush();
+
+	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delaySeconds * 1000.0));
 	std::this_thread::sleep_until(nextRunTime);
 }
 
@@ -155,21 +158,23 @@ bool PluginFacade::IsSynced() const {
 void PluginFacade::ScanThread()
 {
 	REL_MESSAGE("Starting SHSE Worker Thread");
-	// record a message periodically if mod remains idle
-	constexpr std::chrono::milliseconds TellUserIAmIdle(60000LL);
-	std::chrono::time_point<std::chrono::steady_clock> lastScanEndTime(std::chrono::high_resolution_clock::now());
-	std::chrono::time_point<std::chrono::steady_clock> lastIdleLogTime(lastScanEndTime);
 	while (true)
 	{
 		// Delay the scan for each loop
-		Instance().TakeNap();
+		double delaySeconds(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds"));
+		delaySeconds = std::max(MinThreadDelaySeconds, delaySeconds);
+		if (ScanGovernor::Instance().Calibrating())
 		{
-			// Go no further if game load is in progress.
-			if (!Instance().IsSynced())
-			{
-				REL_MESSAGE("Plugin sync still pending");
-				continue;
-			}
+			// use hard-coded delay to make UX comprehensible
+			delaySeconds = CalibrationThreadDelaySeconds;
+		}
+		Instance().TakeNap(delaySeconds);
+
+		// Go no further if game load is in progress.
+		if (!Instance().IsSynced())
+		{
+			REL_MESSAGE("Plugin sync still pending");
+			continue;
 		}
 
 		if (!EventPublisher::Instance().GoodToGo())
@@ -181,14 +186,6 @@ void PluginFacade::ScanThread()
 		if (!UIState::Instance().OKForSearch())
 		{
 			DBG_MESSAGE("UI state not good to loot");
-			const auto timeNow(std::chrono::high_resolution_clock::now());
-			const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
-			const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
-			if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
-			{
-				REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
-				lastIdleLogTime = timeNow;
-			}
 			continue;
 		}
 
@@ -207,46 +204,42 @@ void PluginFacade::ScanThread()
 		shse::CollectionManager::Instance().ProcessAddedItems();
 
 		// Skip loot-OK checks if calibrating
-		if (!ScanGovernor::Instance().Calibrating())
+		ReferenceScanType scanType(ReferenceScanType::NoLoot);
+		if (ScanGovernor::Instance().Calibrating())
+		{
+			scanType = ReferenceScanType::Calibration;
+		}
+		else
 		{
 			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 			static const bool allowIfRestricted(true);
 			if (!LocationTracker::Instance().IsPlayerInLootablePlace(LocationTracker::Instance().PlayerCell(), allowIfRestricted))
 			{
 				DBG_MESSAGE("Location cannot be looted");
-				continue;
 			}
-			if (!shse::PlayerState::Instance().CanLoot())
+			else if (!shse::PlayerState::Instance().CanLoot())
 			{
 				DBG_MESSAGE("Player State prevents looting");
-				continue;
 			}
-			if (!ScanGovernor::Instance().IsAllowed())
+			else if (!ScanGovernor::Instance().IsAllowed())
 			{
 				DBG_MESSAGE("search disallowed");
-				const auto timeNow(std::chrono::high_resolution_clock::now());
-				const auto timeSinceLastIdleLog(timeNow - lastIdleLogTime);
-				const auto timeSinceLastScanEnd(timeNow - lastScanEndTime);
-				if (timeSinceLastIdleLog > TellUserIAmIdle && timeSinceLastScanEnd > TellUserIAmIdle)
-				{
-					REL_MESSAGE("No loot scan in the past %lld seconds", std::chrono::duration_cast<std::chrono::seconds>(timeSinceLastScanEnd).count());
-					lastIdleLogTime = timeNow;
-				}
-				continue;
+			}
+			else
+			{
+				// looting is allowed
+				scanType = ReferenceScanType::Loot;
 			}
 		}
 
-		ScanGovernor::Instance().DoPeriodicSearch();
-
-		// request added items to be pushed to us while we are sleeping
-		shse::CollectionManager::Instance().Refresh();
-		lastScanEndTime = std::chrono::high_resolution_clock::now();
+		ScanGovernor::Instance().DoPeriodicSearch(scanType);
 	}
 }
 
 void PluginFacade::PrepareForReload()
 {
 	UIState::Instance().Reset();
+	CosaveData::Instance().Clear();
 
 	// Do not scan again until we are in sync with the scripts
 	RecursiveLockGuard guard(m_pluginLock);
@@ -274,7 +267,7 @@ void PluginFacade::SyncDone()
 
 void PluginFacade::ResetState(const bool gameReload)
 {
-	// TODO review to make sure this does not deadlock
+	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
 	ScanGovernor::Instance().Clear(gameReload);
@@ -294,7 +287,7 @@ void PluginFacade::ResetState(const bool gameReload)
 void PluginFacade::OnGoodToGo()
 {
 	REL_MESSAGE("UI/controls now good-to-go, wait before first scan");
-	TakeNap();
+	TakeNap(OnMCMClosedThreadDelaySeconds);
 }
 
 // lock not required, by construction

@@ -19,23 +19,23 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-constexpr char* SHSE_NAME = "SmartHarvestSE";
-constexpr char* SHSE_PROXY = "SHSE_PluginProxy";
-constexpr wchar_t* L_SHSE_NAME = L"SmartHarvestSE";
-constexpr char* MODNAME = "SmartHarvestSE.esp";
-constexpr char* PRIORNAME = "AutoHarvestSE.esp";
-
-class VersionInfo
+namespace shse
 {
+
+class CosaveData {
 public:
-	static VersionInfo& Instance();
-	std::string GetPluginVersionString() const;
-	uint32_t GetVersionMajor() const;
+	static CosaveData& Instance();
+	CosaveData();
+	void Clear();
+	void SeedState();
+
+	bool Serialize(SKSE::SerializationInterface* intf);
+	bool Deserialize(SKSE::SerializationInterface* intf);
 
 private:
-	VersionInfo() : m_majorVersion(0) {}
-	static VersionInfo* m_instance;
-	void GetPluginVersionInfo();
-	std::string m_versionString;
-	uint32_t m_majorVersion;
+	static std::unique_ptr<CosaveData> m_instance;
+	mutable RecursiveLock m_cosaveLock;
+	std::map<shse::SerializationRecordType, nlohmann::json> m_records;
 };
+
+}

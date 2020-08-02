@@ -29,7 +29,7 @@ typedef std::vector<InventoryItem> LootableItems;
 struct ContainerLister
 {
 public:
-	ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget);
+	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget, const bool checkSpecials);
 	LootableItems GetOrCheckContainerForms();
 	inline bool HasQuestItem() const { return m_hasQuestItem; }
 	inline bool HasEnchantedItem() const { return m_hasEnchantedItem; }
@@ -41,6 +41,7 @@ private:
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;
 	bool m_requireQuestItemAsTarget;
+	bool m_checkSpecials;
 	bool m_hasQuestItem;
 	bool m_hasEnchantedItem;
 	bool m_hasValuableItem;

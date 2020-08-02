@@ -31,11 +31,11 @@ public:
 	void ProcessDefinitions(void);
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	void Refresh() const;
-	void UpdateGameTime(const float gameTime);
-	void CheckEnqueueAddedItem(const RE::FormID formID);
+	void CheckEnqueueAddedItem(const RE::TESForm* form);
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
+	void Clear(void);
 	void OnGameReload(void);
 	void PrintDefinitions(void) const;
 	void PrintMembership(void) const;
@@ -68,6 +68,9 @@ public:
 	bool IsPlacedObject(const RE::TESForm* form) const;
 	void RecordPlacedObjects(void);
 
+	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& j);
+
 private:
 	bool LoadData(void);
 	bool LoadCollectionGroup(
@@ -77,21 +80,16 @@ private:
 	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
 	bool IsCellLocatable(const RE::TESObjectCELL* cell);
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
-	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
-	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
-	bool IsCellLocatable(const RE::TESObjectCELL* cell);
-	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 	void ResolveMembership(void);
-	void AddToRelevantCollections(RE::FormID itemID);
-	std::vector<RE::FormID> ReconcileInventory();
-	void EnqueueAddedItem(const RE::FormID formID);
+	void AddToRelevantCollections(const RE::TESForm* item, const float gameTime);
+	std::vector<const RE::TESForm*> ReconcileInventory();
+	void EnqueueAddedItem(const RE::TESForm* form);
 
 	static std::unique_ptr<CollectionManager> m_instance;
 	// data loaded ok?
 	bool m_ready;
 	// enabled for MCM management? if false, administrative Collection Groups will still be used
 	bool m_mcmEnabled;
-	float m_gameTime;
 
 	mutable RecursiveLock m_collectionLock;
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;
@@ -107,9 +105,11 @@ private:
 	// for CELL connectivity checking during data load
 	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 
-	std::vector<RE::FormID> m_addedItemQueue;
-	std::unordered_set<RE::FormID> m_lastInventoryItems;
+	std::vector<const RE::TESForm*> m_addedItemQueue;
+	std::unordered_set<const RE::TESForm*> m_lastInventoryItems;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 };
+
+void to_json(nlohmann::json& j, const CollectionManager& collectionManager);
 
 }

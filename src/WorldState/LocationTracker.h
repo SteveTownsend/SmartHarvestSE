@@ -90,6 +90,7 @@ public:
 	void Reset();
 	bool Refresh();
 	bool IsPlayerAtHome() const;
+	void RecordCurrentPlace(const float gameTime);
 	bool IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, const bool lootableIfRestricted);
 	decltype(m_adjacentCells) AdjacentCells() const;
 	bool IsPlayerIndoors() const;

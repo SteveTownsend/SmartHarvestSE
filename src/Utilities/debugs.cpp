@@ -35,11 +35,11 @@ void DumpKeywordForm(RE::BGSKeywordForm* keywordForm)
 #if _DEBUG
 	if (keywordForm)
 	{
-		for (UInt32 idx = 0; idx < keywordForm->numKeywords; ++idx)
+		for (uint32_t idx = 0; idx < keywordForm->numKeywords; ++idx)
 		{
 			std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(idx));
 			if (keyword)
-				DBG_MESSAGE("Keyword %s/0x%08x", FormUtils::SafeGetFormEditorID(keyword.value()).c_str(), keyword.value()->formID);
+				DBG_MESSAGE("Keyword {}/0x{:08x}", FormUtils::SafeGetFormEditorID(keyword.value()).c_str(), keyword.value()->formID);
 		}
 	}
 #endif
@@ -72,26 +72,26 @@ void DumpExtraData(const RE::ExtraDataList* extraList)
 		RE::NiPointer<RE::TESObjectREFR> targetRef;
 		RE::RTTI::DumpTypeName(const_cast<RE::BSExtraData*>(&extraData));
 		if (extraData.GetType() == RE::ExtraDataType::kCount)
-			DBG_MESSAGE("kCount (%d)", ((RE::ExtraCount&)extraData).count);
+			DBG_MESSAGE("kCount ({})", ((RE::ExtraCount&)extraData).count);
 		else if (extraData.GetType() == RE::ExtraDataType::kCharge)
-			DBG_MESSAGE("kCharge %s (%0.2f)", ((RE::ExtraCharge&)extraData).charge);
+			DBG_MESSAGE("kCharge {} ({:0.2f})", ((RE::ExtraCharge&)extraData).charge);
 		else if (extraData.GetType() == RE::ExtraDataType::kLocationRefType)
 		{
-			DBG_MESSAGE("kLocationRefType %s %s/0x%08x", ((RE::ExtraLocationRefType*)const_cast<RE::BSExtraData*>(&extraData))->locRefType->GetName(),
-				((RE::ExtraLocationRefType*)const_cast<RE::BSExtraData*>(&extraData))->locRefType->formID);
+			DBG_MESSAGE("kLocationRefType {} {}/0x{:08x}", ((RE::ExtraLocationRefType*)const_cast<RE::BSExtraData*>(&extraData))->locRefType->GetName(),
+				((RE::ExtraLocationRefType*)const_cast<RE::BSExtraData*>(&extraData))->locRefType->GetFormID());
 			//DumpClass(extraData, sizeof(ExtraLocationRefType)/8);
 		}
 		else if (extraData.GetType() == RE::ExtraDataType::kOwnership)
-			DBG_MESSAGE("kOwnership %s %s/0x%08x", reinterpret_cast<const RE::ExtraOwnership&>(const_cast<RE::BSExtraData&>(extraData)).owner->GetName(),
-				reinterpret_cast<RE::ExtraOwnership*>(const_cast<RE::BSExtraData*>(&extraData))->owner->formID);
+			DBG_MESSAGE("kOwnership {} {}/0x{:08x}", reinterpret_cast<const RE::ExtraOwnership&>(const_cast<RE::BSExtraData&>(extraData)).owner->GetName(),
+				reinterpret_cast<RE::ExtraOwnership*>(const_cast<RE::BSExtraData*>(&extraData))->owner->GetFormID());
 		else if (extraData.GetType() == RE::ExtraDataType::kAshPileRef)
 		{
 			/* TODO fix this up
 			RE::ObjectRefHandle handle = extraData.GetAshPileRefHandle();
 			if (RE::LookupReferenceByHandle(handle, targetRef))
-				DBG_MESSAGE("%02x AshRef(Handle)=%08x(%d)", extraData.GetType(), targetRef->formID, handle);
+				DBG_MESSAGE("{:02x} AshRef(Handle)={:08x}({})", extraData.GetType(), targetRef->formID, handle);
 			else
-				DBG_MESSAGE("%02x AshRef(Handle)=?", extraData.GetType());
+				DBG_MESSAGE("{:02x} AshRef(Handle)=?", extraData.GetType());
 			*/
 		}
 		else if (extraData.GetType() == RE::ExtraDataType::kActivateRef)
@@ -107,7 +107,7 @@ void DumpExtraData(const RE::ExtraDataList* extraList)
 			RE::ExtraActivateRefChildren* exActivateRefChain = static_cast<RE::ExtraActivateRefChildren*>(const_cast<RE::BSExtraData*>(&extraData));
 			/* TODO fix this up
 			DumpClass(exActivateRefChain, sizeof(RE::ExtraActivateRefChildren) / 8);
-			DBG_MESSAGE("%02x (%08x)", extraData.GetType(), ((RE::ExtraActivateRefChildren&)extraData).data->unk3->formID);
+			DBG_MESSAGE("{:02x} ({:08x})", extraData.GetType(), ((RE::ExtraActivateRefChildren&)extraData).data->unk3->formID);
 			*/
 		}
 		else if (extraData.GetType() == RE::ExtraDataType::kLinkedRef)
@@ -117,21 +117,21 @@ void DumpExtraData(const RE::ExtraDataList* extraList)
 				DBG_MESSAGE("kLinkedRef ERR?????");
 			else
 			{
-				UInt32 length = exLinkRef->linkedRefs.size();
+				uint32_t length = exLinkRef->linkedRefs.size();
 				for (auto pair : exLinkRef->linkedRefs)
 				{
 					if (!pair.refr)
 						continue;
 
 					if (!pair.keyword)
-						DBG_MESSAGE("kLinkedRef NULL/0x%08x) #%d/%d", pair.refr->formID, (index + 1), length);
+						DBG_MESSAGE("kLinkedRef NULL/0x{:08x}) #{}/{}", pair.refr->GetFormID(), (index + 1), length);
 					else
-						DBG_MESSAGE("kLinkedRef %s/0x%08x #%d/%d", (pair.keyword)->GetName(), pair.refr->formID, (index + 1), length);
+						DBG_MESSAGE("kLinkedRef {}/0x{:08x} #{}/{}", (pair.keyword)->GetName(), pair.refr->GetFormID(), (index + 1), length);
 				}
 			}
 		}
 		else
-			DBG_MESSAGE("extraData type 0x%02x", extraData.GetType());
+			DBG_MESSAGE("extraData type 0x{:02x}", extraData.GetType());
 		++index;
 	}
 #endif
@@ -144,7 +144,7 @@ void DumpItemVW(const TESFormHelper& itemEx)
 	double weight(itemEx.GetWeight());
 
 	double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.;
-	DBG_MESSAGE("Worth(%0.2f)  Weight(%0.2f)  V/W(%0.2f)", worth, weight, vw);
+	DBG_MESSAGE("Worth({:0.2f})  Weight({:0.2f})  V/W({:0.2f})", worth, weight, vw);
 #endif
 }
 
@@ -154,15 +154,15 @@ void DumpContainer(const LootableREFR& refr)
 	RE::TESContainer *container = const_cast<RE::TESObjectREFR*>(refr.GetReference())->GetContainer();
 	if (container)
 	{
-		DBG_MESSAGE("CONT %08x %02x(%02d) [%s]", refr.GetReference()->GetBaseObject()->formID, refr.GetReference()->GetBaseObject()->formType,
-			refr.GetReference()->GetBaseObject()->formType, refr.GetReference()->GetName());
+		DBG_MESSAGE("CONT {:08x} {:02x}({:02}) [{}]", refr.GetReference()->GetBaseObject()->GetFormID(), refr.GetReference()->GetBaseObject()->GetFormType(),
+			refr.GetReference()->GetBaseObject()->GetFormType(), refr.GetReference()->GetName());
 
-		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
-			TESFormHelper itemEx(entry->obj, refr.Scope());
+		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> bool {
+			TESFormHelper itemEx(entry.obj, refr.Scope());
 
-			if (itemEx.Form()->formType == RE::FormType::LeveledItem)
+			if (itemEx.Form()->GetFormType() == RE::FormType::LeveledItem)
 			{
-				DBG_MESSAGE("%d:%08x LeveledItem", itemEx.Form()->formType, itemEx.Form()->formID);
+				DBG_MESSAGE("{}:{:08x} LeveledItem", itemEx.Form()->GetFormType(), itemEx.Form()->GetFormID());
 			}
 			else
 			{
@@ -170,7 +170,8 @@ void DumpContainer(const LootableREFR& refr)
 				const RE::TESFullName* name = itemEx.Form()->As<RE::TESFullName>();
 				std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form()));
 
-				DBG_MESSAGE("%d:%08x [%s] count=%d playable=%d - %s", itemEx.Form()->formType, itemEx.Form()->formID, name->GetFullName(), entry->count, bPlayable, typeName.c_str());
+				DBG_MESSAGE("{}:{:08x} [{}] count={} playable={} - {}", itemEx.Form()->GetFormType(), itemEx.Form()->GetFormID(), name->GetFullName(),
+					entry.count, bPlayable, typeName.c_str());
 
 				TESFormHelper refHelper(refr.GetReference()->GetBaseObject(), refr.Scope());
 				DumpItemVW(refHelper);
@@ -182,8 +183,7 @@ void DumpContainer(const LootableREFR& refr)
 	}
 	else
 	{
-		DBG_MESSAGE("Not CONT %08x %02x(%02d) [%s]", refr.GetReference()->GetBaseObject()->formID, refr.GetReference()->GetBaseObject()->formType,
-			refr.GetReference()->GetBaseObject()->formType, refr.GetReference()->GetName());
+		DBG_MESSAGE("Not CONT {:08x} [{}]", refr.GetReference()->GetBaseObject()->GetFormID(), refr.GetReference()->GetName());
 	}
 
 	const RE::ExtraContainerChanges* exChanges = refr.GetReference()->extraList.GetByType<RE::ExtraContainerChanges>();
@@ -196,7 +196,8 @@ void DumpContainer(const LootableREFR& refr)
 			bool bPlayable = itemEx.Form()->GetPlayable();
 			std::string typeName = GetObjectTypeName(GetBaseFormObjectType(itemEx.Form()));
 			const RE::TESFullName *name = itemEx.Form()->As<RE::TESFullName>();
-			DBG_MESSAGE("ExtraContainerChanges %08x [%s] %p count=%d playable=%d  - %s", itemEx.Form()->formID, name->GetFullName(), entryData, entryData->countDelta, bPlayable, typeName.c_str());
+			DBG_MESSAGE("ExtraContainerChanges {:08x} [{}] count={} playable={}  - {}", itemEx.Form()->GetFormID(), name->GetFullName(),
+				entryData->countDelta, bPlayable, typeName.c_str());
 
 			DumpItemVW(itemEx);
 			DumpKeyword(itemEx.Form(), refr.Scope());

@@ -19,7 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-enum class ObjectType : UInt8
+enum class ObjectType : uint8_t
 {
 	unknown = 0,
 	flora,
@@ -59,7 +59,7 @@ enum class ObjectType : UInt8
 	actor
 };
 
-enum class ResourceType : UInt8
+enum class ResourceType : uint8_t
 {
 	ore = 0,
 	geode,

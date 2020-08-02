@@ -29,20 +29,6 @@ namespace shse {
 
 class CollectionGroup;
 
-class CollectionEntry {
-public:
-	CollectionEntry(const RE::TESForm* form, const float gameTime, const RE::TESForm* place, const Position position) :
-		m_form(form), m_gameTime(gameTime), m_place(place), m_position(position)
-	{
-	}
-
-private:
-	const RE::TESForm* m_form;
-	const float m_gameTime;
-	const RE::TESForm* m_place;
-	const Position m_position;
-};
-
 class CollectionPolicy {
 public:
 	CollectionPolicy(const CollectibleHandling action, const bool notify, const bool repeat) :
@@ -83,7 +69,7 @@ protected:
 	bool m_overridesGroup;
 	std::unique_ptr<ConditionTree> m_rootFilter;
 	// derived
-	std::unordered_map<RE::FormID, CollectionEntry> m_observed;
+	std::unordered_map<const RE::TESForm*, float> m_observed;
 	mutable std::unordered_set<const RE::TESForm*> m_members;
 	std::vector<INIFile::SecondaryType> m_scopes;
 	const CollectionGroup* m_owningGroup;
@@ -92,6 +78,7 @@ public:
 	Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
 		const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
 	bool IsActive() const;
+	bool HasMembers() const;
 	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
 	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
@@ -99,13 +86,18 @@ public:
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
 	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
 	inline bool OverridesGroup() const { return m_overridesGroup; }
-	inline void SetOverridesGroup() { m_overridesGroup = true; }
+	inline void SetOverridesGroup(const bool overridesGroup) { m_overridesGroup = overridesGroup; }
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
-	void RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place);
+	void RecordItem(const RE::TESForm* form, const float gameTime);
 	void Reset();
+
 	nlohmann::json MakeJSON() const;
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& collectionState, const CollectionPolicy& defaultPolicy);
+	void SetScopesFrom(const nlohmann::json& scopes);
+	void SetMembersFrom(const nlohmann::json& members);
+
 	std::string Name(void) const;
 	std::string Description(void) const;
 	std::string PrintDefinition(void) const;
@@ -123,7 +115,10 @@ public:
 	std::shared_ptr<Collection> CollectionByName(const std::string& collectionName) const;
 	inline std::string Name() const { return m_name; }
 	inline bool UseMCM() const { return m_useMCM; }
+
 	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& group);
+
 	inline const CollectionPolicy& Policy() const { return m_policy; }
 	inline CollectionPolicy& Policy() { return m_policy; }
 	void SyncDefaultPolicy();

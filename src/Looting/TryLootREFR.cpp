@@ -59,7 +59,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			RE::TESForm* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
-				DBG_VMESSAGE("producer %s/0x%08x has lootable %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
+				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
 					lootable->GetName(), lootable->formID);
 				refrEx.SetLootable(lootable);
 			}
@@ -67,7 +67,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
 				// only trigger if not already pending
-				DBG_VMESSAGE("resolve critter %s/0x%08x to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("resolve critter {}/0x{:08x} to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				if (ProducerLootables::Instance().SetLootableForProducer(m_candidate->GetBaseObject(), nullptr))
 				{
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
@@ -86,7 +86,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (collectible.first)
 		{
 			CollectibleHandling collectibleAction(collectible.second);
-			DBG_VMESSAGE("Collectible Item 0x%08x", m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("Collectible Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (!CanLootCollectible(collectibleAction))
 			{
 				skipLooting = true;
@@ -101,7 +101,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				}
 				else if (collectibleAction == CollectibleHandling::Glow)
 				{
-					DBG_VMESSAGE("glow collectible object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+					DBG_VMESSAGE("glow collectible object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 					UpdateGlowReason(GlowReason::Collectible);
 					result = Lootability::CollectibleItemSetToGlow;
 				}
@@ -110,7 +110,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					if (!dryRun)
 					{
 						// this is a blacklist collection, blacklist the item forever
-						DBG_VMESSAGE("block blacklist collection member 0x%08x", m_candidate->GetBaseObject()->formID);
+						DBG_VMESSAGE("block blacklist collection member 0x{:08x}", m_candidate->GetBaseObject()->formID);
 						data->BlockFormPermanently(m_candidate->GetBaseObject(), Lootability::ObjectIsInBlacklistCollection);
 					}
 					return Lootability::ObjectIsInBlacklistCollection;
@@ -122,7 +122,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			if (!dryRun)
 			{
-				DBG_VMESSAGE("blacklist objType == ObjectType::unknown for 0x%08x", m_candidate->GetFormID());
+				DBG_VMESSAGE("blacklist objType == ObjectType::unknown for 0x{:08x}", m_candidate->GetFormID());
 				data->BlacklistReference(m_candidate);
 			}
 			return Lootability::ObjectTypeUnknown;
@@ -130,7 +130,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
-			DBG_VMESSAGE("Skip BlackListed REFR base form 0x%08x", m_candidate->GetBaseObject()->GetFormID());
+			DBG_VMESSAGE("Skip BlackListed REFR base form 0x{:08x}", m_candidate->GetBaseObject()->GetFormID());
 			return Lootability::BaseObjectOnBlacklist;
 		}
 
@@ -139,23 +139,23 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
 		if (refrEx.IsQuestItem(needsFullQuestFlags))
 		{
-			DBG_VMESSAGE("Quest Item 0x%08x", m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
-				DBG_VMESSAGE("glow quest object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("glow quest object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
 			if (!IsSpecialObjectLootable(questObjectLoot))
 			{
 				skipLooting = true;
-				result = Lootability::CannotLootQuestObject;
+				result = Lootability::CannotLootQuestTarget;
 			}
 		}
 		// glow unread notes as they are often quest-related
 		else if (questObjectLoot == SpecialObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
 		{
-			DBG_VMESSAGE("Glowable book 0x%08x", m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("Glowable book 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			UpdateGlowReason(GlowReason::SimpleTarget);
 		}
 
@@ -163,10 +163,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
 		if (refrEx.IsValuable())
 		{
-			DBG_VMESSAGE("Valuable Item 0x%08x", m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("Valuable Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (valuableLoot == SpecialObjectHandling::GlowTarget)
 			{
-				DBG_VMESSAGE("glow valuable object %s/0x%08x", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("glow valuable object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::Valuable);
 			}
 
@@ -218,20 +218,20 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (CanLootCollectible(collectibleAction))
 			{
 				skipLooting = forbidden != Lootability::Lootable;
-				DBG_VMESSAGE("Lootable REFR to collectible 0x%08x, skip = %s", m_candidate->GetBaseObject()->formID,
+				DBG_VMESSAGE("Lootable REFR to collectible 0x{:08x}, skip = {}", m_candidate->GetBaseObject()->formID,
 				    skipLooting ? "true" : "false");
 				lootingType = LootingType::LootAlwaysSilent;
 			}
 			else
 			{
-				DBG_VMESSAGE("Unlootable REFR to collectible 0x%08x", m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("Unlootable REFR to collectible 0x{:08x}", m_candidate->GetBaseObject()->formID);
 				skipLooting = true;
 			}
 		}
 		else if (ManagedList::WhiteList().Contains(m_candidate->GetBaseObject()))
 		{
 			// ** if configured as permitted ** whitelisted objects are always looted silently
-			DBG_VMESSAGE("check REFR 0x%08x to whitelisted %s/0x%08x",
+			DBG_VMESSAGE("check REFR 0x{:08x} to whitelisted {}/0x{:08x}",
 				m_candidate->GetFormID(), m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 			skipLooting = forbidden != Lootability::Lootable;
 			if (skipLooting)
@@ -243,7 +243,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
 		{
 			// blacklisted objects are never looted
-			DBG_VMESSAGE("disallow blacklisted Base %s/0x%08x for REFR 0x%08x",
+			DBG_VMESSAGE("disallow blacklisted Base {}/0x{:08x} for REFR 0x{:08x}",
 				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
 			skipLooting = true;
 			result = Lootability::ItemIsBlacklisted;
@@ -257,7 +257,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				if (!dryRun)
 				{
-					DBG_VMESSAGE("Block REFR : LeaveBehind for 0x%08x", m_candidate->GetBaseObject()->formID);
+					DBG_VMESSAGE("Block REFR : LeaveBehind for 0x{:08x}", m_candidate->GetBaseObject()->formID);
 					data->BlockReference(m_candidate, Lootability::ItemTypeIsSetToPreventLooting);
 				}
 				skipLooting = true;
@@ -270,13 +270,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				{
 					if (!dryRun)
 					{
-						DBG_VMESSAGE("block - v/w excludes harvest for 0x%08x", m_candidate->GetBaseObject()->formID);
+						DBG_VMESSAGE("block - v/w excludes harvest for 0x{:08x}", m_candidate->GetBaseObject()->formID);
 						data->BlockForm(m_candidate->GetBaseObject(), Lootability::ValueWeightPreventsLooting);
 					}
 					skipLooting = true;
 					result = Lootability::ValueWeightPreventsLooting;
 				}
-				DBG_VMESSAGE("%s/0x%08x value:%d", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, int(helper.GetWorth()));
+				DBG_VMESSAGE("{}/0x{:08x} value:{}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, int(helper.GetWorth()));
 			}
 		}
 
@@ -297,7 +297,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
-			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x%08x", m_candidate->formID);
+			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
 			bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
 			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
@@ -305,12 +305,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else
 		{
 			bool isSilent = !LootingRequiresNotification(lootingType);
-			DBG_VMESSAGE("SmartHarvest %s/0x%08x for REFR 0x%08x", m_candidate->GetBaseObject()->GetName(),
-				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID());
 			// don't let the backlog of messages get too large, it's about 1 per second
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
 				return Lootability::HarvestOperationPending;
+			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
@@ -318,7 +318,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
-		DBG_MESSAGE("scanning container/body %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+		DBG_MESSAGE("scanning container/body {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 #if _DEBUG
 		DumpContainer(LootableREFR(m_candidate, m_targetType));
 #endif
@@ -328,14 +328,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
-		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget);
+		static const bool checkSpecials(true);
+		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget, checkSpecials);
 		LootableItems lootableItems(lister.GetOrCheckContainerForms());
 		if (lootableItems.empty())
 		{
 			if (!dryRun)
 			{
 				// Nothing lootable here
-				DBG_MESSAGE("container %s/0x%08x is empty", m_candidate->GetName(), m_candidate->formID);
+				DBG_MESSAGE("container {}/0x{:08x} is empty", m_candidate->GetName(), m_candidate->formID);
 				// record looting so we don't rescan
 				ScanGovernor::Instance().MarkContainerLooted(m_candidate);
 			}
@@ -354,7 +355,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "lockedChestLoot"));
 				if (lockedChestLoot == SpecialObjectHandling::GlowTarget)
 				{
-					DBG_VMESSAGE("glow locked container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+					DBG_VMESSAGE("glow locked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::LockedContainer);
 				}
 
@@ -371,7 +372,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "bossChestLoot"));
 				if (bossChestLoot == SpecialObjectHandling::GlowTarget)
 				{
-					DBG_VMESSAGE("glow boss container %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+					DBG_VMESSAGE("glow boss container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::BossContainer);
 				}
 
@@ -389,7 +390,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
 			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
-				DBG_VMESSAGE("glow container with quest object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+				DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
@@ -402,10 +403,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (lister.HasEnchantedItem())
 		{
-			SInt32 enchantItemGlow = static_cast<int>(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "enchantItemGlow"));
+			int32_t enchantItemGlow = static_cast<int>(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "enchantItemGlow"));
 			if (enchantItemGlow == 1)
 			{
-				DBG_VMESSAGE("glow container with enchanted object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+				DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
 		}
@@ -416,7 +417,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
 			if (valuableLoot == SpecialObjectHandling::GlowTarget)
 			{
-				DBG_VMESSAGE("glow container with valuable object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+				DBG_VMESSAGE("glow container with valuable object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::Valuable);
 			}
 
@@ -433,7 +434,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				if (lister.CollectibleAction() == CollectibleHandling::Glow)
 				{
-					DBG_VMESSAGE("glow container with collectible object %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+					DBG_VMESSAGE("glow container with collectible object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::Collectible);
 					result = Lootability::CollectibleItemSetToGlow;
 				}
@@ -489,7 +490,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (!m_stolen && m_candidate->IsOffLimits() &&
 			PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
 		{
-			DBG_VMESSAGE("Container/deadbody contents %s/0x%08x to be stolen if undetected", m_candidate->GetName(), m_candidate->formID);
+			DBG_VMESSAGE("Container/deadbody contents {}/0x{:08x} to be stolen if undetected", m_candidate->GetName(), m_candidate->formID);
 			TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
 			return Lootability::ItemTheftTriggered;
 		}
@@ -505,7 +506,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (ManagedList::BlackList().Contains(target))
 			{
-				DBG_VMESSAGE("skip 0x%08x due to BlackList", target->formID);
+				DBG_VMESSAGE("skip 0x{:08x} due to BlackList", target->formID);
 				continue;
 			}
 
@@ -513,7 +514,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (excludeArmor && (objType == ObjectType::armor || objType == ObjectType::enchantedArmor))
 			{
 				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update
-				DBG_VMESSAGE("block looting of armor from dead body %s/0x%08x", target->GetName(), target->GetFormID());
+				DBG_VMESSAGE("block looting of armor from dead body {}/0x{:08x}", target->GetName(), target->GetFormID());
 				continue;
 			}
 
@@ -521,7 +522,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				bool hasEnchantment = GetEnchantmentFromExtraLists(targetItemInfo.GetExtraDataLists()) != nullptr;
 				if (hasEnchantment) {
-					DBG_VMESSAGE("%s/0x%08x has player-created enchantment",
+					DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment",
 						targetItemInfo.BoundObject()->GetName(), targetItemInfo.BoundObject()->GetFormID());
 					switch (objType)
 					{
@@ -547,26 +548,26 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				if (CanLootCollectible(collectible.second))
 				{
-					DBG_VMESSAGE("Collectible Item 0x%08x", targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("Collectible Item 0x{:08x}", targetItemInfo.BoundObject()->formID);
 					lootingType = LootingType::LootAlwaysSilent;
 				}
 				else
 				{
 					// blacklisted or 'glow'
-					DBG_VMESSAGE("Collectible Item 0x%08x skipped", targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("Collectible Item 0x{:08x} skipped", targetItemInfo.BoundObject()->formID);
 					continue;
 				}
 			}
 			else if (ManagedList::WhiteList().Contains(target))
 			{
 				// whitelisted objects are always looted silently
-				DBG_VMESSAGE("transfer whitelisted 0x%08x", target->formID);
+				DBG_VMESSAGE("transfer whitelisted 0x{:08x}", target->formID);
 				lootingType = LootingType::LootAlwaysSilent;
 			}
 			else if (ManagedList::BlackList().Contains(target))
 			{
 				// blacklisted objects are never looted
-				DBG_VMESSAGE("skip blacklisted target %s/0x%08x", target->GetName(), target->GetFormID());
+				DBG_VMESSAGE("skip blacklisted target {}/0x{:08x}", target->GetName(), target->GetFormID());
 				continue;
 			}
 			else
@@ -577,14 +578,14 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 				if (lootingType == LootingType::LeaveBehind)
 				{
-					DBG_VMESSAGE("block - typename %s excluded for 0x%08x", typeName.c_str(), target->formID);
+					DBG_VMESSAGE("block - typename {} excluded for 0x{:08x}", typeName.c_str(), target->formID);
 					data->BlockForm(target, Lootability::ItemTypeIsSetToPreventLooting);
 					continue;
 				}
 				else if (LootingDependsOnValueWeight(lootingType, objType) &&
 					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot())
 				{
-					DBG_VMESSAGE("block - v/w excludes for 0x%08x", target->formID);
+					DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
 					data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
 					continue;
 				}
@@ -598,7 +599,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			// item count unknown at this point
 			targets.push_back({ targetItemInfo, LootingRequiresNotification(lootingType), collectible.first, 0 });
-			DBG_MESSAGE("get %s (%d) from container %s/0x%08x", target->GetName(), targetItemInfo.Count(),
+			DBG_MESSAGE("get {} ({}) from container {}/0x{:08x}", target->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
 
@@ -633,14 +634,14 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		    lister.GetOrCheckContainerForms().size() >= lootableItems.size())
 		{
 			// nothing looted - make copies of targets and blacklist the reference (e.g. MrB's Lootable Things)
-			REL_WARNING("looting %d items from container %s/0x%08x resulted in no-op, make copies", targets.size(),
+			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),
 				m_candidate->GetName(), m_candidate->formID);
 			CopyLootFromContainer(targets);
 			DataCase::GetInstance()->BlacklistReference(m_candidate);
 		}
 		else
 		{
-			DBG_MESSAGE("block looted container/NPC %s/0x%08x", m_candidate->GetName(), m_candidate->formID);
+			DBG_MESSAGE("block looted container/NPC {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 			ScanGovernor::Instance().MarkContainerLooted(m_candidate);
 		}
 	}
@@ -730,7 +731,7 @@ Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible)
 	Lootability result(LootingLegality(INIFile::SecondaryType::itemObjects));
 	if (isCollectible && LootOwnedItemIfCollectible(result))
 	{
-		DBG_VMESSAGE("Collectible REFR 0x%08x overrides Legality %s for %s/0x%08x", m_candidate->GetFormID(), LootabilityName(result).c_str(),
+		DBG_VMESSAGE("Collectible REFR 0x{:08x} overrides Legality {} for {}/0x{:08x}", m_candidate->GetFormID(), LootabilityName(result).c_str(),
 			m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID());
 		result = Lootability::Lootable;
 	}
@@ -761,7 +762,7 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 			// can configure to not loot my own belongings even though it's always legal
 			if (!IsSpecialObjectLootable(PlayerState::Instance().BelongingsCheck()))
 			{
-				DBG_VMESSAGE("Player-owned %s, looting belongings disallowed: %s/0x%08x",
+				DBG_VMESSAGE("Player-owned {}, looting belongings disallowed: {}/0x{:08x}",
 					playerOwned ? "true" : "false", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				legality = Lootability::PlayerOwned;
 				// Glow if configured
@@ -798,7 +799,7 @@ bool TryLootREFR::IsBookGlowable() const
 	RE::BGSKeywordForm* keywordForm(m_candidate->GetBaseObject()->As<RE::BGSKeywordForm>());
 	if (!keywordForm)
 		return false;
-	for (UInt32 index = 0; index < keywordForm->GetNumKeywords(); ++index)
+	for (uint32_t index = 0; index < keywordForm->GetNumKeywords(); ++index)
 	{
 		std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
 		if (!keyword || !keyword.has_value())

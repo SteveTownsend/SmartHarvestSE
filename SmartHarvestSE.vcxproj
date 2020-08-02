@@ -73,7 +73,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_AMD64_;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -108,7 +108,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -144,7 +144,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_PROFILING;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -197,6 +197,7 @@
     <ClCompile Include="src\Collections\CollectionFactory.cpp" />
     <ClCompile Include="src\Collections\CollectionManager.cpp" />
     <ClCompile Include="src\Collections\Condition.cpp" />
+    <ClCompile Include="src\Data\CosaveData.cpp" />
     <ClCompile Include="src\Data\dataCase.cpp" />
     <ClCompile Include="src\Data\iniSettings.cpp" />
     <ClCompile Include="src\Data\LoadOrder.cpp" />
@@ -242,6 +243,8 @@
     <ClCompile Include="src\VM\papyrus.cpp" />
     <ClCompile Include="src\VM\UIState.cpp" />
     <ClCompile Include="src\WorldState\ActorTracker.cpp" />
+    <ClCompile Include="src\WorldState\PartyMembers.cpp" />
+    <ClCompile Include="src\WorldState\VisitedPlaces.cpp" />
     <ClCompile Include="src\WorldState\LocationTracker.cpp" />
     <ClCompile Include="src\WorldState\PlayerHouses.cpp" />
     <ClCompile Include="src\WorldState\PlayerState.cpp" />
@@ -256,6 +259,7 @@
     <ClInclude Include="src\Collections\CollectionFactory.h" />
     <ClInclude Include="src\Collections\CollectionManager.h" />
     <ClInclude Include="src\Collections\Condition.h" />
+    <ClInclude Include="src\Data\CosaveData.h" />
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
     <ClInclude Include="src\Data\LoadOrder.h" />
@@ -295,6 +299,8 @@
     <ClInclude Include="src\VM\papyrus.h" />
     <ClInclude Include="src\VM\UIState.h" />
     <ClInclude Include="src\WorldState\ActorTracker.h" />
+    <ClInclude Include="src\WorldState\PartyMembers.h" />
+    <ClInclude Include="src\WorldState\VisitedPlaces.h" />
     <ClInclude Include="src\WorldState\LocationTracker.h" />
     <ClInclude Include="src\WorldState\PlayerHouses.h" />
     <ClInclude Include="src\WorldState\PlayerState.h" />
@@ -306,6 +312,7 @@
     <None Include="Collections\Examples\SHSE.Collections.Errors.json" />
     <None Include="Collections\Examples\SHSE.Collections.Hunterborn.json" />
     <None Include="Collections\Examples\SHSE.Collections.LoTD.json" />
+    <None Include="Collections\Examples\SHSE.Collections.LoTD2.json" />
     <None Include="Collections\Examples\SHSE.Collections.ManualLoot.json" />
     <None Include="Collections\Examples\SHSE.Collections.Samples.json" />
     <None Include="Collections\Examples\SHSE.Collections.Uniques.json" />
@@ -318,6 +325,9 @@
     <None Include="Scripts\SHSE_PluginProxy.psc" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\brotli\c\Brotli.vcxproj">
+      <Project>{16519cde-3347-4ab1-8ad4-7f004f5894ef}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\CommonLibSSE\CommonLibSSE.vcxproj">
       <Project>{c1af9204-ee2d-421b-b11e-1d70d8acc11f}</Project>
     </ProjectReference>
@@ -329,6 +339,9 @@
     </ProjectReference>
     <ProjectReference Include="..\skse64_2_00_17\src\common\common_vc14.vcxproj">
       <Project>{472e19ab-def0-42df-819b-18722e8dc822}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\spdlog\spdlog.vcxproj">
+      <Project>{ad50131a-1d1f-43ba-b242-783363efc510}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

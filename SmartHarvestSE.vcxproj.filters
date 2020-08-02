@@ -25,9 +25,6 @@
     <ClCompile Include="src\WorldState\ActorTracker.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
-    <ClCompile Include="src\WorldState\LocationTracker.cpp">
-      <Filter>src\WorldState</Filter>
-    </ClCompile>
     <ClCompile Include="src\WorldState\PlayerHouses.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
@@ -144,6 +141,18 @@
     </ClCompile>
     <ClCompile Include="src\Utilities\Enums.cpp">
       <Filter>src\Utilities</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WorldState\LocationTracker.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WorldState\VisitedPlaces.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WorldState\PartyMembers.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Data\CosaveData.cpp">
+      <Filter>src\Data</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -300,6 +309,15 @@
     <ClInclude Include="src\Looting\ScanGovernor.h">
       <Filter>src\Looting</Filter>
     </ClInclude>
+    <ClInclude Include="src\WorldState\VisitedPlaces.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\PartyMembers.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Data\CosaveData.h">
+      <Filter>src\Data</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -399,6 +417,9 @@
     </None>
     <None Include="Config\SmartHarvestSE.Defaults.ini">
       <Filter>Config</Filter>
+    </None>
+    <None Include="Collections\Examples\SHSE.Collections.LoTD2.json">
+      <Filter>Collections\Examples</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

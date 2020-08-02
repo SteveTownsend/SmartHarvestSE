@@ -51,7 +51,7 @@ bool UIState::VMGoodToGo()
 	const auto startTime(std::chrono::high_resolution_clock::now());
 	++m_nonce;
 	int nonce(m_nonce);
-	DBG_MESSAGE("UI status request # %d", nonce);
+	DBG_MESSAGE("UI status request # {}", nonce);
 	EventPublisher::Instance().TriggerCheckOKToScan(nonce);
 
 	// wait for async result from script
@@ -61,13 +61,13 @@ bool UIState::VMGoodToGo()
 	const auto endTime(std::chrono::high_resolution_clock::now());
 	if (!waitResult)
 	{
-		REL_WARNING("Script did not report UI status for request %d, returned after %lld microseconds",
+		REL_WARNING("Script did not report UI status for request {}, returned after {} microseconds",
 			nonce, std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count());
 		return false;
 	}
 	else
 	{
-		DBG_MESSAGE("Script reported UI status %d for request %d after %lld microseconds", m_vmGoodToGo, 
+		DBG_MESSAGE("Script reported UI status {} for request {} after {} microseconds", m_vmGoodToGo, 
 			nonce, std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count());
 		return m_vmGoodToGo;
 	}
@@ -79,11 +79,11 @@ void UIState::ReportVMGoodToGo(const bool goodToGo, const int nonce)
 	if (nonce != m_nonce)
 	{
 		// likely suspended request from saved game after reload
-		REL_WARNING("VM Good to Go = %d for request %d, expected request %d", goodToGo, nonce, m_nonce);
+		REL_WARNING("VM Good to Go = {} for request {}, expected request {}", goodToGo, nonce, m_nonce);
 	}
 	else
 	{
-		DBG_MESSAGE("VM Good to Go = %d for request %d", goodToGo, nonce);
+		DBG_MESSAGE("VM Good to Go = {} for request {}", goodToGo, nonce);
 		// response matches pending request - update the status and release waiter
 		m_vmGoodToGo = goodToGo;
 	}
@@ -110,7 +110,7 @@ bool UIState::OKForSearch()
 	if (vmGoodToGo != goodToGo)
 	{
 		// prefer old-style UI check if they do not match
-		REL_WARNING("plugin UI good-to-go %d (UI %d, controls %d) does not match VM UI good-to-go %d - trust VM",
+		REL_WARNING("plugin UI good-to-go {} (UI {}, controls {}) does not match VM UI good-to-go {} - trust VM",
 			goodToGo, uiOK, controlsOK, vmGoodToGo);
 		goodToGo = vmGoodToGo;
 	}

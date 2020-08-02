@@ -58,7 +58,7 @@ public:
 	void Allow();
 	void Disallow();
 	bool IsAllowed() const;
-	void DoPeriodicSearch();
+	void DoPeriodicSearch(const ReferenceScanType scanType);
 	const RE::Actor* ActorByIndex(const int actorIndex) const;
 	inline bool Calibrating() const {
 		RecursiveLockGuard guard(m_searchLock);
@@ -79,6 +79,8 @@ public:
 private:
 	void ProgressGlowDemo();
 	void LootAllEligible();
+	void TrackActors();
+
 	Lootability ValidateTarget(RE::TESObjectREFR*& refr, const bool dryRun);
 	void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr) const;
 

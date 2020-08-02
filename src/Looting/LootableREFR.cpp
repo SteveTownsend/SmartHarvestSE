@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "Looting/LootableREFR.h"
+#include "Data/dataCase.h"
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "FormHelpers/FormHelper.h"
 #include "Looting/objects.h"
@@ -37,6 +38,9 @@ bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
 {
 	if (!m_ref)
 		return false;
+	// check REFR vs pre-populated Quest Targets
+	if (DataCase::GetInstance()->ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
+		return true;
 
 	RE::RefHandle handle;
 	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(m_ref));
@@ -76,7 +80,7 @@ void LootableREFR::SetLootable(RE::TESForm* lootable)
 	m_lootable = lootable;
 }
 
-SInt32 LootableREFR::CalculateWorth(void) const
+int32_t LootableREFR::CalculateWorth(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.GetWorth();
@@ -93,12 +97,12 @@ const char* LootableREFR::GetName() const
 	return m_ref->GetName();
 }
 
-UInt32 LootableREFR::GetFormID() const
+uint32_t LootableREFR::GetFormID() const
 {
 	return m_ref->GetBaseObject()->formID;
 }
 
-SInt16 LootableREFR::GetItemCount()
+int16_t LootableREFR::GetItemCount()
 {
 	if (!m_ref)
 		return 1;
@@ -108,7 +112,7 @@ SInt16 LootableREFR::GetItemCount()
 	const RE::ExtraCount* exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
 	if (exCount)
 	{
-		DBG_VMESSAGE("Pick up %d instances of %s/0x%08x", exCount->count,
+		DBG_VMESSAGE("Pick up {} instances of {}/0x{:08x}", exCount->count,
 			m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID());
 		return exCount->count;
 	}
@@ -117,7 +121,7 @@ SInt16 LootableREFR::GetItemCount()
 	if (m_objectType == ObjectType::oreVein)
 	{
 		// limit ore harvesting to constrain Player Home mining
-		return static_cast<SInt16>(INIFile::GetInstance()->GetInstance()->GetSetting(
+		return static_cast<int16_t>(INIFile::GetInstance()->GetInstance()->GetSetting(
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
 	}
 	return 1;

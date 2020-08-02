@@ -23,10 +23,13 @@ http://www.fsf.org/licensing/licenses
 #include <numbers>
 
 #include "WorldState/LocationTracker.h"
+#include "Collections/CollectionManager.h"
 #include "Looting/ManagedLists.h"
+#include "WorldState/PartyMembers.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
+#include "WorldState/VisitedPlaces.h"
 #include "Looting/ScanGovernor.h"
 #include "VM/papyrus.h"
 #include "Utilities/utils.h"
@@ -62,18 +65,18 @@ void LocationTracker::RecordMarkedPlaces()
 		RE::ObjectRefHandle markerRef(location->worldLocMarker);
 		if (!markerRef)
 		{
-			DBG_VMESSAGE("Location %s/0x%08x has no map marker", location->GetName(), location->GetFormID());
+			DBG_VMESSAGE("Location {}/0x{:08x} has no map marker", location->GetName(), location->GetFormID());
 			continue;
 		}
 		shse::Position markerPosition({ markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ() });
 		if (markedPlaces.insert(std::make_pair(location, markerPosition)).second)
 		{
-			DBG_VMESSAGE("Location %s/0x%08x has marker at (%0.2f,%0.2f,%0.2f)", location->GetName(), location->GetFormID(),
+			DBG_VMESSAGE("Location {}/0x{:08x} has marker at ({:0.2f},{:0.2f},{:0.2f})", location->GetName(), location->GetFormID(),
 				markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ());
 		}
 		else
 		{
-			DBG_VMESSAGE("Location %s/0x%08x already recorded", location->GetName(), location->GetFormID());
+			DBG_VMESSAGE("Location {}/0x{:08x} already recorded", location->GetName(), location->GetFormID());
 		}
 	}
 	if (markedPlaces.empty())
@@ -84,7 +87,7 @@ void LocationTracker::RecordMarkedPlaces()
 	// replace existing entries with new
 	m_markedPlaces.swap(markedPlaces);
 	size_t numPlaces(m_markedPlaces.size());
-	DBG_MESSAGE("Build tree from %d LCTNs", numPlaces);
+	DBG_MESSAGE("Build tree from {} LCTNs", numPlaces);
 
 	// Build KD-tree for the location markers
 	std::vector<double> pointData;
@@ -133,7 +136,7 @@ CompassDirection LocationTracker::DirectionToDestinationFromStart(const AlglibPo
 		++direction;
 	}
 	CompassDirection result(direction == directions.cend() ? CompassDirection::North : direction->second);
-	DBG_MESSAGE("Head %s at %.2f degrees from (%.2f,%.2f) to (%.2f,%.2f)", CompassDirectionName(result).c_str(),
+	DBG_MESSAGE("Head {} at {:0.2f} degrees from ({:0.2f},{:0.2f}) to ({:0.2f},{:0.2f})", CompassDirectionName(result).c_str(),
 		degrees, start[0], start[1], destination[0], destination[1]);
 	return result;
 }
@@ -185,13 +188,11 @@ std::string LocationTracker::PlayerExactLocation() const
 	std::ostringstream locationStr;
 	if (m_playerLocation)
 	{
-		locationStr << "at " << m_playerLocation->GetName() << "/0x"
-			<< std::hex << std::setw(8) << std::setfill('0') << m_playerLocation->GetFormID() << ' ';
+		locationStr << "at " << m_playerLocation->GetName() << "/0x" << StringUtils::FromFormID(m_playerLocation->GetFormID()) << ' ';
 	}
 	if (m_playerCell)
 	{
-		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x"
-			<< std::hex << std::setw(8) << std::setfill('0') << m_playerCell->GetFormID();
+		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x" << StringUtils::FromFormID(m_playerCell->GetFormID());
 	}
 	return locationStr.str();
 }
@@ -227,7 +228,7 @@ void LocationTracker::DisplayLocationRelativeToMapMarker() const
 	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
 	if (m_playerLocation)
 	{
-		DBG_MESSAGE("Player (%.2f, %.2f) is in location %s/0x%08x", playerPos[0], playerPos[1],
+		DBG_MESSAGE("Player ({:0.2f}, {:0.2f}) is in location {}/0x{:08x}", playerPos[0], playerPos[1],
 			m_playerLocation->GetName(), m_playerLocation->GetFormID());
 		PrintPlayerLocation(m_playerLocation);
 		return;
@@ -235,7 +236,7 @@ void LocationTracker::DisplayLocationRelativeToMapMarker() const
 	RelativeLocationDescriptor nearestMarker(NearestMapMarker(playerPos));
 	if (nearestMarker == RelativeLocationDescriptor::Invalid())
 	{
-		REL_WARNING("Could not determine nearest map marker to player (%.2f, %.2f)", playerPos[0], playerPos[1]);
+		REL_WARNING("Could not determine nearest map marker to player ({:0.2f}, {:0.2f})", playerPos[0], playerPos[1]);
 		return;
 	}
 	CompassDirection heading(DirectionToDestinationFromStart(nearestMarker.EndPoint(), nearestMarker.StartPoint()));
@@ -244,13 +245,13 @@ void LocationTracker::DisplayLocationRelativeToMapMarker() const
 	RE::BGSLocation* location(RE::TESForm::LookupByID<RE::BGSLocation>(nearestMarker.LocationID()));
 	if (location)
 	{
-		DBG_MESSAGE("Player is %s of nearest Location map marker %s/0x%08x at distance %.2f miles",
+		DBG_MESSAGE("Player is {} of nearest Location map marker {}/0x{:08x} at distance {:0.2f} miles",
 			CompassDirectionName(heading).c_str(), location->GetName(), nearestMarker.LocationID(), milesAway);
 		PrintNearbyLocation(location, milesAway, heading);
 	}
 	else
 	{
-		REL_WARNING("Could not determine Location for 0x%08x", nearestMarker.LocationID());
+		REL_WARNING("Could not determine Location for 0x{:08x}", nearestMarker.LocationID());
 	}
 }
 
@@ -262,7 +263,7 @@ RelativeLocationDescriptor LocationTracker::NearestMapMarker(const AlglibPositio
 	alglib::ae_int_t result(alglib::kdtreequeryknn(m_markers, coordinates, 1));
 	if (result != 1)
 	{
-		REL_WARNING("Expected 1 match for nearest map marker, got %d", result);
+		REL_WARNING("Expected 1 match for nearest map marker, got {}", result);
 		return RelativeLocationDescriptor::Invalid();
 	}
 	// get distance - overwrite the input to avoid another allocation
@@ -311,7 +312,7 @@ CellOwnership LocationTracker::GetCellOwnership(const RE::TESObjectCELL* cell) c
 		}
 		return CellOwnership::OtherFaction;
 	}
-	REL_WARNING("Owner 0x%08x exists but uncategorized in cell 0x%08x", owner->GetFormID(), cell->GetFormID());
+	REL_WARNING("Owner 0x{:08x} exists but uncategorized in cell 0x{:08x}", owner->GetFormID(), cell->GetFormID());
 	return CellOwnership::NoOwner;
 }
 
@@ -321,7 +322,7 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 	{
 		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
 		{
-			DBG_VMESSAGE("GetCellOwner Hit %08x", reinterpret_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
+			DBG_VMESSAGE("GetCellOwner Hit {:08x}", reinterpret_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
 			return reinterpret_cast<const RE::ExtraOwnership&>(extraData).owner;
 		}
 	}
@@ -351,19 +352,19 @@ const RE::TESWorldSpace* LocationTracker::ParentWorld(const RE::TESObjectCELL* c
 		if (world->locationMap.size() > 0)
 		{
 			// parent world has locations, OK to proceed
-			DBG_MESSAGE("Found location-bearing parent world %s/0x%08x for cell 0x%08x", world->GetName(), world->GetFormID(), cell->GetFormID());
+			DBG_MESSAGE("Found location-bearing parent world {}/0x{:08x} for cell 0x{:08x}", world->GetName(), world->GetFormID(), cell->GetFormID());
 			candidate = world;
 		}
 		if (!world->parentWorld)
 		{
-			DBG_MESSAGE("Reached root of worldspace hierarchy %s/0x%08x for cell 0x%08x", world->GetName(), world->GetFormID(), cell->GetFormID());
+			DBG_MESSAGE("Reached root of worldspace hierarchy {}/0x{:08x} for cell 0x{:08x}", world->GetName(), world->GetFormID(), cell->GetFormID());
 			break;
 		}
 		world = world->parentWorld;
 		if (std::find(worlds.cbegin(), worlds.cend(), world) != worlds.cend())
 		{
 			// cycle in worldspace graph, return best so far
-			REL_ERROR("Cycle in worldspace graph at %s/0x%08x for cell 0x%08x", world->GetName(), world->GetFormID(), cell->GetFormID());
+			REL_ERROR("Cycle in worldspace graph at {}/0x{:08x} for cell 0x{:08x}", world->GetName(), world->GetFormID(), cell->GetFormID());
 			break;
 		}
 		worlds.push_back(world);
@@ -395,13 +396,16 @@ bool LocationTracker::Refresh()
 	RecursiveLockGuard guard(m_locationLock);
 
 	// Reset blocked lists if player cell has changed
+	bool playerMoved(false);
 	RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
 	if (playerCell != m_playerCell)
 	{
+		// CELL change only triggers visited-place update if we went from outdoors to indoors or vice versa
+		playerMoved = !m_playerCell || !playerCell || m_playerCell->IsInteriorCell() != playerCell->IsInteriorCell();
 		m_playerCell = playerCell;
 		if (m_playerCell)
 		{
-			DBG_MESSAGE("Player cell updated to 0x%08x", m_playerCell->GetFormID());
+			DBG_MESSAGE("Player cell updated to 0x{:08x}", m_playerCell->GetFormID());
 			RecordAdjacentCells();
 
 			// player cell is valid - check for worldspace update
@@ -409,7 +413,7 @@ bool LocationTracker::Refresh()
 			if (parentWorld && parentWorld != m_playerParentWorld)
 			{
 				m_playerParentWorld = parentWorld;
-				DBG_MESSAGE("Player Parent WorldSpace updated to %s/0x%08x", m_playerParentWorld->GetName(), m_playerParentWorld->GetFormID());
+				DBG_MESSAGE("Player Parent WorldSpace updated to {}/0x{:08x}", m_playerParentWorld->GetName(), m_playerParentWorld->GetFormID());
 
 				RecordMarkedPlaces();
 			}
@@ -430,12 +434,15 @@ bool LocationTracker::Refresh()
 	const RE::BGSLocation* playerLocation(player->currentLocation);
 	if (playerLocation != m_playerLocation || m_tellPlayerIfCanLootAfterLoad)
 	{
+        // record all Location changes - Location may be blank now but we want to know we left a Location
+		playerMoved = true;
+
 		// Output messages for any looting-restriction place change
 		static const bool allowIfRestricted(false);
 
 		std::string oldName(m_playerLocation ? m_playerLocation->GetName() : "unnamed");
 		bool couldLootInPrior(LocationTracker::Instance().IsPlayerInLootablePlace(m_priorCell, allowIfRestricted));
-		DBG_MESSAGE("Player was at location %s, lootable = %s, now at %s", oldName.c_str(),
+		DBG_MESSAGE("Player was at location {}, lootable = {}, now at {}", oldName.c_str(),
 			couldLootInPrior ? "true" : "false", playerLocation ? playerLocation->GetName() : "unnamed");
 		m_playerLocation = playerLocation;
 		// Player changed location - may be a standalone Cell with m_playerLocation nullptr e.g. 000HatredWell
@@ -444,10 +451,10 @@ bool LocationTracker::Refresh()
 		// check if it is a new player house
 		if (!IsPlayerAtHome())
 		{
-			if (PlayerHouses::Instance().IsValidHouse(m_playerLocation))
+			if (m_playerLocation && PlayerHouses::Instance().IsValidHouse(m_playerLocation))
 			{
 				// record as a player house and notify as it is a new one in this game load
-				DBG_MESSAGE("Player House %s detected", m_playerLocation->GetName());
+				DBG_MESSAGE("Player House {} detected", m_playerLocation->GetName());
 				PlayerHouses::Instance().Add(m_playerLocation);
 			}
 		}
@@ -468,7 +475,7 @@ bool LocationTracker::Refresh()
 			// Check if location is excluded from looting and if so, notify we entered it
 			if ((couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) && !LocationTracker::Instance().IsPlayerInLootablePlace(PlayerCell(), allowIfRestricted))
 			{
-				DBG_MESSAGE("Player Location %s no-loot message", playerLocation ? playerLocation->GetName() : "unnamed");
+				DBG_MESSAGE("Player Location {} no-loot message", playerLocation ? playerLocation->GetName() : "unnamed");
 				static RE::BSFixedString restrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
 				if (!restrictedPlaceMsg.empty())
 				{
@@ -485,7 +492,7 @@ bool LocationTracker::Refresh()
 			// check if we moved from a non-lootable place to a lootable place
 			if ((!couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) && LocationTracker::Instance().IsPlayerInLootablePlace(PlayerCell(), allowIfRestricted))
 			{
-				DBG_MESSAGE("Player Location %s OK-loot message", oldName.c_str());
+				DBG_MESSAGE("Player Location {} OK-loot message", oldName.c_str());
 				static RE::BSFixedString unrestrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_UNPOPULATED_CHECK")));
 				if (!unrestrictedPlaceMsg.empty())
 				{
@@ -499,12 +506,23 @@ bool LocationTracker::Refresh()
 		// once any change is processed, reset sentinel for game reload
 		m_tellPlayerIfCanLootAfterLoad = false;
 	}
+
+	if (playerMoved)
+	{
+		RecordCurrentPlace(PlayerState::Instance().CurrentGameTime());
+	}
 	return true;
 }
 
 bool LocationTracker::IsPlayerAtHome() const
 {
 	return PlayerHouses::Instance().Contains(m_playerLocation);
+}
+
+void LocationTracker::RecordCurrentPlace(const float gameTime)
+{
+	VisitedPlaces::Instance().RecordNew(
+		m_playerParentWorld, m_playerLocation, m_playerCell, gameTime);
 }
 
 bool LocationTracker::IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, const bool lootableIfRestricted)
@@ -531,7 +549,7 @@ bool LocationTracker::IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, con
 		DBG_DMESSAGE("Player location is restricted as population center");
 		return false;
 	}
-	DBG_DMESSAGE("Player location %s OK to autoloot", m_playerLocation ? m_playerLocation->GetName() : "unnamed");
+	DBG_DMESSAGE("Player location {} OK to autoloot", m_playerLocation ? m_playerLocation->GetName() : "unnamed");
 	return true;
 }
 
@@ -558,11 +576,11 @@ void LocationTracker::RecordAdjacentCells()
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	if (!m_playerCell->IsInteriorCell())
 	{
-		DBG_VMESSAGE("Check for adjacent cells to 0x%08x", m_playerCell->GetFormID());
+		DBG_VMESSAGE("Check for adjacent cells to 0x{:08x}", m_playerCell->GetFormID());
 		RE::TESWorldSpace* worldSpace(m_playerCell->worldSpace);
 		if (worldSpace)
 		{
-			DBG_VMESSAGE("Worldspace is %s/0x%08x", worldSpace->GetName(), worldSpace->GetFormID());
+			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", worldSpace->GetName(), worldSpace->GetFormID());
 			for (const auto& worldCell : worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
@@ -575,17 +593,17 @@ void LocationTracker::RecordAdjacentCells()
 				// do not loot across interior/exterior boundary
 				if (candidateCell->IsInteriorCell())
 				{
-					DBG_VMESSAGE("Candidate cell 0x%08x flagged as interior", candidateCell->GetFormID());
+					DBG_VMESSAGE("Candidate cell 0x{:08x} flagged as interior", candidateCell->GetFormID());
 					continue;
 				}
 				// check for adjacency on the cell grid
 				if (!IsAdjacent(candidateCell))
 				{
-					DBG_DMESSAGE("Skip non-adjacent cell 0x%08x", candidateCell->GetFormID());
+					DBG_DMESSAGE("Skip non-adjacent cell 0x{:08x}", candidateCell->GetFormID());
 					continue;
 				}
 				m_adjacentCells.push_back(candidateCell);
-				DBG_VMESSAGE("Record adjacent cell 0x%08x", candidateCell->GetFormID());
+				DBG_VMESSAGE("Record adjacent cell 0x{:08x}", candidateCell->GetFormID());
 			}
 		}
 	}
@@ -635,7 +653,7 @@ bool LocationTracker::IsPlayerInFriendlyCell() const
 	// Player Cell should never be empty
 	CellOwnership ownership(GetCellOwnership(m_playerCell));
 	bool isFriendly(IsPlayerFriendly(ownership));
-	DBG_DMESSAGE("Cell ownership %s, allow Ownerless looting = %s", CellOwnershipName(ownership).c_str(), isFriendly ? "true" : "false");
+	DBG_DMESSAGE("Cell ownership {}, allow Ownerless looting = {}", CellOwnershipName(ownership).c_str(), isFriendly ? "true" : "false");
 	return isFriendly;
 }
 
