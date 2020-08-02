@@ -54,11 +54,12 @@ void TheftCoordinator::StealIfUndetected(void)
 	{
 		m_refrsStealInProgress.swap(m_refrsToSteal);
 		m_stealInProgress = true;
-		m_detectingActors = ActorTracker::Instance().ReadDetectives();
-		DBG_VMESSAGE("Steal %d items/containers under the nose of %d Actors", m_refrsStealInProgress.size(), m_detectingActors.size());
+		m_detectingActors = ActorTracker::Instance().GetDetectives();
+		DBG_VMESSAGE("Steal {} items/containers under the nose of {} Actors", m_refrsStealInProgress.size(), m_detectingActors.size());
+		// start timer before issuing event in case result comes back really quickly (however unlikely)
+		m_stealTimer = WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
 		static const bool dryRun(false);
 		EventPublisher::Instance().TriggerStealIfUndetected(m_detectingActors.size(), dryRun);
-		m_stealTimer = WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
 	}
 	else
 	{
@@ -88,7 +89,7 @@ void TheftCoordinator::StealOrForgetItems(const bool detected)
 		items.swap(m_refrsStealInProgress);
 		m_stealInProgress = false;
 	}
-	DBG_VMESSAGE("Detected = %s for stealing of %d items/containers", detected ? "true" : "false", items.size());
+	DBG_VMESSAGE("Detected = {} for stealing of {} items/containers", detected ? "true" : "false", items.size());
 	if (!detected)
 	{
 		static const bool stolen(true);

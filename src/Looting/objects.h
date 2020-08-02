@@ -29,17 +29,9 @@ inline bool IsBookObject(ObjectType objType)
 	return objType >= ObjectType::book && objType <= ObjectType::skillbookRead;
 }
 
-class ActorHelper
-{
-public:
-	ActorHelper(RE::Actor* actor) : m_actor(actor) {}
-	bool IsSneaking(void) const;
-	bool IsPlayerAlly(void) const;
-	bool IsEssential(void) const;
-	bool IsSummoned(void) const;
-private:
-	RE::Actor* m_actor;
-};
+PlayerAffinity GetPlayerAffinity(const RE::Actor* actor);
+bool IsSummoned(const RE::Actor* actor);
+bool IsQuestTargetNPC(const RE::Actor* actor);
 
 bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
@@ -60,7 +52,7 @@ ResourceType ResourceTypeByName(const std::string& name);
 
 inline bool IsHarvestable(RE::TESBoundObject* target, ObjectType objectType)
 {
-	DBG_VMESSAGE("check bound object %s/0x%08x with type %d", target->GetName(), target->GetFormID(), target->GetFormType());
+	DBG_VMESSAGE("check bound object {}/0x{:08x} with type {}", target->GetName(), target->GetFormID(), target->GetFormType());
 	return objectType == ObjectType::critter || objectType == ObjectType::flora ||
 		target->GetFormType() == RE::FormType::Tree || target->GetFormType() == RE::FormType::Flora;
 }

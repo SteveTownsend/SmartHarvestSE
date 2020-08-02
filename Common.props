@@ -7,7 +7,7 @@
   <PropertyGroup />
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SourceRoot);$(SourceRoot)gsl\include;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)skse64_2_00_17\src;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)xbyak;$(SourceRoot)json\include;$(SourceRoot)json\benchmarks\thirdparty\benchmark\include;$(SourceRoot)\json-schema-validator\src;src</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SourceRoot);$(SourceRoot)gsl\include;$(SourceRoot)spdlog\include;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)skse64_2_00_17\src;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)xbyak;$(SourceRoot)json\include;$(SourceRoot)json\benchmarks\thirdparty\benchmark\include;$(SourceRoot)\json-schema-validator\src;src</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions>/Wv:19.12 %(AdditionalOptions)</AdditionalOptions>
       <WarningLevel>Level4</WarningLevel>

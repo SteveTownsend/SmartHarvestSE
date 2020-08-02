@@ -30,7 +30,7 @@ class LootableREFR : public IHasValueWeight
 public:
 	explicit LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope);
 
-	SInt16 GetItemCount();
+	int16_t GetItemCount();
 	bool IsQuestItem(const bool requireFullQuestFlags);
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	bool IsValuable(void) const;
@@ -43,8 +43,8 @@ public:
 
 protected:
 	virtual const char* GetName() const override;
-	virtual UInt32 GetFormID() const override;
-	virtual SInt32 CalculateWorth(void) const override;
+	virtual uint32_t GetFormID() const override;
+	virtual int32_t CalculateWorth(void) const override;
 
 private:
 	const RE::TESObjectREFR* m_ref;

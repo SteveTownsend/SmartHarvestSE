@@ -27,7 +27,7 @@ public:
 	static PluginFacade& Instance();
 	PluginFacade();
 
-	bool Init(void);
+	bool Init(const bool onGameReload);
 	void PrepareForReload();
 	void AfterReload();
 	void SyncDone();
@@ -41,12 +41,14 @@ public:
 private:
 	bool Load();
 	void Start();
-	void TakeNap(void);
+	void TakeNap(const double delaySeconds);
 	bool IsSynced() const;
 	static void ScanThread(void);
 
 	// Worker thread loop smallest possible delay
 	static constexpr double MinThreadDelaySeconds = 0.1;
+	// Worker thread loop delays once UI ready
+	static constexpr double OnMCMClosedThreadDelaySeconds = 1.0;
 
 	static std::unique_ptr<PluginFacade> m_instance;
 	mutable RecursiveLock m_pluginLock;

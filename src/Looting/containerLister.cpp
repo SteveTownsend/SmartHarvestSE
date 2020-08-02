@@ -20,16 +20,18 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "FormHelpers/FormHelper.h"
+#include "Data/dataCase.h"
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Looting/containerLister.h"
 
 namespace shse
 {
 
-ContainerLister::ContainerLister(INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, bool requireQuestItemAsTarget) :
+ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr,
+	const bool requireQuestItemAsTarget, const bool checkSpecials) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
 	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false),
-	m_hasCollectibleItem(false), m_collectibleAction(CollectibleHandling::Leave)
+	m_hasCollectibleItem(false), m_collectibleAction(CollectibleHandling::Leave), m_checkSpecials(checkSpecials)
 {
 }
 
@@ -63,7 +65,7 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 		lootableItems.emplace_back(std::move(entry), count);
 	}
 
-	if (lootableItems.empty())
+	if (lootableItems.empty() || !m_checkSpecials)
 		return lootableItems;
 
 	const RE::ExtraContainerChanges* exChanges = m_refr->extraList.GetByType<RE::ExtraContainerChanges>();
@@ -86,6 +88,9 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 				continue;
 
 			// Check for enchantment or quest target
+			if (!m_hasQuestItem && DataCase::GetInstance()->QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
+				m_hasQuestItem = true;
+
 			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 			{
 				if (*extraList)

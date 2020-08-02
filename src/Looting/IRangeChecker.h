@@ -33,6 +33,14 @@ protected:
 	mutable double m_distance;
 };
 
+class AlwaysInRange : public IRangeChecker
+{
+public:
+	virtual bool IsValid(const RE::TESObjectREFR* refr) const override;
+	virtual double Radius() const override;
+	virtual double Distance() const override;
+};
+
 class AbsoluteRange : public IRangeChecker
 {
 public:

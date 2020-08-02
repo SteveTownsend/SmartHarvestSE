@@ -30,6 +30,8 @@ http://www.fsf.org/licensing/licenses
 #include <algorithm> //Trim
 #include <math.h>	// pow
 
+#include <brotli/decode.h>
+#include <brotli/encode.h>
 
 namespace FileUtils
 {
@@ -39,7 +41,7 @@ namespace FileUtils
 		if (s_runtimeDirectory.empty())
 		{
 			char	runtimePathBuf[MAX_PATH];
-			UInt32	runtimePathLength = GetModuleFileName(GetModuleHandle(NULL), runtimePathBuf, sizeof(runtimePathBuf));
+			uint32_t	runtimePathLength = GetModuleFileName(GetModuleHandle(NULL), runtimePathBuf, sizeof(runtimePathBuf));
 			if (runtimePathLength && (runtimePathLength < sizeof(runtimePathBuf)))
 			{
 				std::string	runtimePath(runtimePathBuf, runtimePathLength);
@@ -47,7 +49,7 @@ namespace FileUtils
 				if (lastSlash != std::string::npos)
 					s_runtimeDirectory = runtimePath.substr(0, lastSlash + 1);
 			}
-			DBG_MESSAGE("GetGamePath result: %s", s_runtimeDirectory.c_str());
+			DBG_MESSAGE("GetGamePath result: {}", s_runtimeDirectory.c_str());
 		}
 		return s_runtimeDirectory;
 	}
@@ -64,12 +66,12 @@ namespace FileUtils
 				(LPCSTR)&GetPluginPath, &hm) == 0)
 			{
 				int ret = GetLastError();
-				REL_ERROR("GetModuleHandle failed, error = %d\n", ret);
+				REL_ERROR("GetModuleHandle failed, error = {}\n", ret);
 			}
 			else if (GetModuleFileName(hm, path, sizeof(path)) == 0)
 			{
 				int ret = GetLastError();
-				REL_ERROR("GetModuleFileName failed, error = %d\n", ret);
+				REL_ERROR("GetModuleFileName failed, error = {}\n", ret);
 			}
 			else
 			{
@@ -98,7 +100,7 @@ namespace FileUtils
 					if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
 					{
 					    s_skseDirectory = path;
-						REL_MESSAGE("GetPluginPath result: %s", s_skseDirectory.c_str());
+						REL_MESSAGE("GetPluginPath result: {}", s_skseDirectory.c_str());
 					}
 				}
 			}
@@ -122,7 +124,7 @@ namespace utils
 			return 0.0;
 
 		double result(setting->GetFloat());
-		DBG_MESSAGE("Game Setting(%s)=%.3f", name.c_str(), result);
+		DBG_MESSAGE("Game Setting({})={:0.3f}", name.c_str(), result);
 		return result;
 	}
 }
@@ -149,7 +151,7 @@ namespace WindowsUtils
 		PROCESS_MEMORY_COUNTERS pmc;
 		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
 		{
-			REL_MESSAGE("Working Set is %.3f MB", double(pmc.WorkingSetSize) / (1024.0 * 1024.0));
+			REL_MESSAGE("Working Set is {:0.3f} MB", double(pmc.WorkingSetSize) / (1024.0 * 1024.0));
 		}
 	}
 
@@ -158,14 +160,14 @@ namespace WindowsUtils
 	{
 		std::ostringstream fullContext;
 		fullContext << context << ' ' << (refr ? std::string(refr->GetBaseObject()->GetName()) : std::string()) <<
-			"/0x" << std::hex << std::setw(8) << std::setfill('0') << (refr ? refr->GetBaseObject()->GetFormID() : InvalidForm);
+			"/0x" << StringUtils::FromFormID(refr ? refr->GetBaseObject()->GetFormID() : InvalidForm);
 		m_context = fullContext.str();
 	}
 
 	ScopedTimer::~ScopedTimer()
 	{
 		long long endTime(microsecondsNow());
-		REL_MESSAGE("TIME(%s)=%d micros", m_context.c_str(), endTime - m_startTime);
+		REL_MESSAGE("TIME({})={} micros", m_context.c_str(), endTime - m_startTime);
 	}
 
 	std::unique_ptr<ScopedTimerFactory> ScopedTimerFactory::m_instance;
@@ -251,3 +253,60 @@ namespace GameSettingUtils
 	}
 }
 
+namespace CompressionUtils
+{
+	// Encoded data consists of its length (type size_t) followed by the compressed version of the input
+	bool DecodeBrotli(const std::string& compressed, nlohmann::json& output)
+	{
+		if (compressed.length() < sizeof(size_t))
+		{
+			REL_ERROR("Inflating {} bytes failed, record too short", compressed.length());
+			return false;
+		}
+		size_t inputSize(compressed.length());
+		size_t* length(reinterpret_cast<size_t*>(const_cast<char*>(compressed.c_str())));
+		std::string inflated(*length, 0);
+		size_t outputSize;
+		BrotliDecoderResult result(BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str() + sizeof(size_t)),
+			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))));
+		if (result == BROTLI_DECODER_RESULT_SUCCESS)
+		{
+			REL_MESSAGE("Inflated {} bytes to {} vs size-hint of {}", inputSize, outputSize, *length);
+			inflated.resize(outputSize);
+			try {
+				output = nlohmann::json::parse(inflated);
+				return true;
+			}
+			catch (const std::exception& e) {
+				REL_ERROR("Inflated record not JSON-parsable '{}' etc. not loadable, error:\n{}", inflated.substr(0, 25), e.what());
+				return false;
+			}
+		}
+		else
+		{
+			REL_ERROR("Inflating {} bytes failed, error {}", inputSize, result);
+			return false;
+		}
+	}
+
+	bool EncodeBrotli(const nlohmann::json& j, std::string& encoded)
+	{
+		std::string jsonStr(j.dump());
+		size_t outputSize(BrotliEncoderMaxCompressedSize(jsonStr.length()));
+		encoded.resize(outputSize + sizeof(size_t), 0);
+		// write inflated string length at the head of the output
+		size_t* length(reinterpret_cast<size_t*>(const_cast<char*>(encoded.c_str())));
+		*length = jsonStr.length();
+		static constexpr int BrotliQuality(1);	// favour fast speed over small size
+		if (BrotliEncoderCompress(BrotliQuality, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
+			jsonStr.length(), reinterpret_cast<const uint8_t*>(jsonStr.c_str()), &outputSize,
+			reinterpret_cast<uint8_t*>(const_cast<char*>(encoded.c_str() + sizeof(size_t)))) != BROTLI_FALSE)
+		{
+			REL_MESSAGE("Compressed {} bytes to {}, ratio {:0.3f}", jsonStr.length(), outputSize, double(jsonStr.length()) / double(outputSize));
+			encoded.resize(outputSize + sizeof(size_t));
+			return true;
+		}
+		REL_ERROR("Compressing {} bytes failed", jsonStr.length());
+		return false;
+	}
+}

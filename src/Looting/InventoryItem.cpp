@@ -42,13 +42,13 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 		return 0;
 	}
 
-	DBG_VMESSAGE("get %s/0x%08x (%d)", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
+	DBG_VMESSAGE("get {}/0x{:08x} ({})", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
 	std::vector<std::pair<RE::ExtraDataList*, std::ptrdiff_t>> queued;
 	if (m_entry->extraLists) {
 		for (auto& xList : *m_entry->extraLists) {
 			if (xList) {
 				auto xCount = std::min<std::ptrdiff_t>(xList->GetCount(), toRemove);
-				DBG_VMESSAGE("Handle extra list %s (%d)", xList->GetDisplayName(BoundObject()), xCount);
+				DBG_VMESSAGE("Handle extra list {} ({})", xList->GetDisplayName(BoundObject()), xCount);
 
 				toRemove -= xCount;
 				queued.push_back(std::make_pair(xList, xCount));
@@ -94,11 +94,11 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 		[33]  0x17AC0056C3A      (SmartHarvestSE.dll + 6C3A)
 	*/
 	for (auto& elem : queued) {
-		DBG_VMESSAGE("Move extra list %s (%d)", elem.first->GetDisplayName(BoundObject()), elem.second);
+		DBG_VMESSAGE("Move extra list {} ({})", elem.first->GetDisplayName(BoundObject()), elem.second);
 		Remove(container, target, elem.first, elem.second, collectible);
 	}
 	if (toRemove > 0) {
-		DBG_VMESSAGE("Move item %s (%d)", BoundObject()->GetName(), toRemove);
+		DBG_VMESSAGE("Move item {} ({})", BoundObject()->GetName(), toRemove);
 		Remove(container, target, nullptr, toRemove, collectible);
 	}
 	return static_cast<size_t>(toRemove + queued.size());
@@ -109,8 +109,8 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	if (m_inlineTransfer)
 	{
 		// safe to handle here - record the item for Collection correlation before moving
-		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject()->GetFormID());
-		container->RemoveItem(BoundObject(), static_cast<SInt32>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
+		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject());
+		container->RemoveItem(BoundObject(), static_cast<int32_t>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else
 	{
@@ -121,7 +121,7 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 
 void InventoryItem::MakeCopies(RE::TESObjectREFR* target, ptrdiff_t count)
 {
-	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<SInt32>(count), nullptr);
+	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<int32_t>(count), nullptr);
 }
 
 }

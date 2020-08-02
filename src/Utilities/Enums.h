@@ -71,11 +71,13 @@ inline std::string GlowName(const GlowReason glow)
 
 enum class LootingType {
 	LeaveBehind = 0,
-	LootAlwaysSilent,
-	LootAlwaysNotify,
-	LootIfValuableEnoughSilent,
-	LootIfValuableEnoughNotify,
-	MAX
+	LootAlwaysSilent = 1,
+	LootAlwaysNotify = 2,
+	LootIfValuableEnoughSilent = 3,
+	LootIfValuableEnoughNotify = 4,
+	LootOreVeinIfNotBYOH = LootAlwaysSilent,
+	LootOreVeinAlways = LootAlwaysNotify,
+	MAX = 5
 };
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
@@ -85,8 +87,8 @@ inline bool LootingRequiresNotification(const LootingType lootingType)
 
 inline LootingType LootingTypeFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(LootingType::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(LootingType::MAX))
 	{
 		return LootingType::LeaveBehind;
 	}
@@ -175,8 +177,8 @@ inline CollectibleHandling ParseCollectibleHandling(const std::string& action)
 
 inline CollectibleHandling CollectibleHandlingFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(CollectibleHandling::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(CollectibleHandling::MAX))
 	{
 		return CollectibleHandling::Leave;
 	}
@@ -185,8 +187,8 @@ inline CollectibleHandling CollectibleHandlingFromIniSetting(const double iniSet
 
 inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(SpecialObjectHandling::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(SpecialObjectHandling::MAX))
 	{
 		return SpecialObjectHandling::DoNotLoot;
 	}
@@ -214,8 +216,8 @@ enum class DeadBodyLooting {
 
 inline DeadBodyLooting DeadBodyLootingFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(DeadBodyLooting::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(DeadBodyLooting::MAX))
 	{
 		return DeadBodyLooting::DoNotLoot;
 	}
@@ -269,8 +271,8 @@ enum class OwnershipRule {
 
 inline OwnershipRule OwnershipRuleFromIniSetting(const double iniSetting)
 {
-	UInt32 intSetting(static_cast<UInt32>(iniSetting));
-	if (intSetting >= static_cast<SInt32>(OwnershipRule::MAX))
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(OwnershipRule::MAX))
 	{
 		return OwnershipRule::Ownerless;
 	}
@@ -340,7 +342,7 @@ enum class Lootability {
 	ObjectTypeUnknown,
 	ManualLootTarget,
 	BaseObjectOnBlacklist,
-	CannotLootQuestObject,
+	CannotLootQuestTarget,
 	ObjectIsInBlacklistCollection,
 	CannotLootValuableObject,
 	CannotLootAmmo,
@@ -374,5 +376,58 @@ inline bool LootOwnedItemIfCollectible(const Lootability lootability)
 }
 
 std::string LootabilityName(const Lootability lootability);
+
+enum class PlayerAffinity
+{
+	Unaffiliated = 0,
+	TeamMate,
+	FollowerFaction,
+	Player,
+	MAX
+};
+
+enum class PartyUpdateType
+{
+	Joined = 0,
+	Departed,
+	Died,
+	MAX
+};
+
+enum class ReferenceScanType
+{
+	Loot = 0,
+	NoLoot,
+	Calibration,
+	MAX
+};
+
+enum class SerializationRecordType
+{
+	LoadOrder = 0,
+	Collections,
+	PlacesVisited,
+	PartyUpdates,
+	Victims,
+	MAX
+};
+
+inline std::string SerializationRecordName(const SerializationRecordType recordType)
+{
+	switch (recordType) {
+	case SerializationRecordType::LoadOrder:
+		return "LORD";
+	case SerializationRecordType::Collections:
+		return "COLL";
+	case SerializationRecordType::PlacesVisited:
+		return "PLAC";
+	case SerializationRecordType::PartyUpdates:
+		return "PRTY";
+	case SerializationRecordType::Victims:
+		return "VCTM";
+	default:
+		return "????";
+	}
+}
 
 }

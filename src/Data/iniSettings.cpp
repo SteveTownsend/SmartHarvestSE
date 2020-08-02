@@ -45,14 +45,14 @@ bool INIFile::LoadFile(const bool useDefaults)
 
 	if (result)
 	{
-		REL_MESSAGE("Loaded %s OK", fileName.c_str());
+		REL_MESSAGE("Loaded {} OK", fileName.c_str());
 #if _DEBUG
 		SimpleIni::SectionIterator itSection;
 		SimpleIni::KeyIterator itKey;
 		for (itSection = beginSection(); itSection != endSection(); ++itSection)
 		{
 			for (itKey = beginKey(*itSection); itKey != endKey(*itSection); ++itKey)
-				DBG_VMESSAGE("[%s] %s = %0.2f ", (*itSection).c_str(), (*itKey).c_str(), GetValue<double>(*itSection, *itKey, 0.0));
+				DBG_VMESSAGE("[{}] {} = {:0.2f} ", (*itSection).c_str(), (*itKey).c_str(), GetValue<double>(*itSection, *itKey, 0.0));
 		}
 #endif
 	}
@@ -81,7 +81,7 @@ const std::string INIFile::GetFileName(const bool useDefaults)
 
 	iniFilePath = RuntimeDir + "Data\\SKSE\\Plugins\\";
 	iniFilePath += (useDefaults ? INI_FILE_DEFAULTS : INI_FILE);
-	DBG_MESSAGE("INI file at %s", iniFilePath.c_str());
+	DBG_MESSAGE("INI file at {}", iniFilePath.c_str());
 	return iniFilePath.c_str();
 }
 
@@ -98,7 +98,7 @@ double INIFile::GetSetting(PrimaryType m_section_first, SecondaryType m_section_
 	::ToLower(key);
 
 	double setting(GetValue<double>(section, key, 0.0));
-	DBG_DMESSAGE("Get config setting %d/%d/%s = %f", m_section_first, m_section_second, key.c_str(), setting);
+	DBG_DMESSAGE("Get config setting {}/{}/{} = {}", m_section_first, m_section_second, key.c_str(), setting);
 	return setting;
 }
 
@@ -120,7 +120,7 @@ double INIFile::GetRadius(PrimaryType first)
 {
 	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
 	const double setting(GetSetting(first, SecondaryType::config, "RadiusFeet"));
-	DBG_VMESSAGE("Search radius %.2f feet -> %.2f units", setting, setting / DistanceUnitInFeet);
+	DBG_VMESSAGE("Search radius {:0.2f} feet -> {:0.2f} units", setting, setting / DistanceUnitInFeet);
 	return setting / DistanceUnitInFeet;
 }
 
@@ -128,7 +128,7 @@ double INIFile::GetIndoorsRadius(PrimaryType first)
 {
 	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
 	const double setting(GetSetting(first, SecondaryType::config, "IndoorsRadiusFeet"));
-	DBG_VMESSAGE("Indoors search radius %.2f feet -> %.2f units", setting, setting / DistanceUnitInFeet);
+	DBG_VMESSAGE("Indoors search radius {:0.2f} feet -> {:0.2f} units", setting, setting / DistanceUnitInFeet);
 	return setting / DistanceUnitInFeet;
 }
 

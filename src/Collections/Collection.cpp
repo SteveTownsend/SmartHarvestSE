@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/Collection.h"
 #include "Collections/CollectionFactory.h"
 #include "Collections/CollectionManager.h"
+#include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
 #include "VM/papyrus.h"
 #include "WorldState/PlayerState.h"
@@ -72,18 +73,25 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 	// check Scope - if Collection is scoped, scope for this autoloot check must be valid
 	if (!m_scopes.empty() && std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) == m_scopes.cend())
 	{
-		DBG_VMESSAGE("%s/0x%08x has invalid scope %d", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
+		DBG_VMESSAGE("{}/0x{:08x} has invalid scope {}", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
 		return false;
 	}
 
 	// if (always collectible OR not observed) AND a member of this collection
-	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()->GetFormID())) && IsMemberOf(matcher.Form());
+	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form())) && IsMemberOf(matcher.Form());
 }
 
 bool Collection::IsActive() const
 {
+	// Collections with no Members are not considered active.
 	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
-	return !m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled();
+	return HasMembers() && !m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled();
+}
+
+bool Collection::HasMembers() const
+{
+	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
+	return !m_members.empty();
 }
 
 bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
@@ -96,11 +104,10 @@ bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
 	return false;
 }
 
-void Collection::RecordItem(const RE::FormID itemID, const RE::TESForm* form, const float gameTime, const RE::TESForm* place)
+void Collection::RecordItem(const RE::TESForm* form, const float gameTime)
 {
-	DBG_VMESSAGE("Collect %s/0x%08x in %s", form->GetName(), form->GetFormID(), m_name.c_str());
-	if (m_observed.insert(
-		std::make_pair(itemID, CollectionEntry(form, gameTime, place, PlayerState::Instance().GetPosition()))).second)
+	DBG_VMESSAGE("Collect {}/0x{:08x} in {}", form->GetName(), form->GetFormID(), m_name.c_str());
+	if (m_observed.insert({ form, gameTime }).second)
 	{
 		if (m_effectivePolicy.Notify())
 		{
@@ -173,7 +180,7 @@ std::string Collection::PrintMembers(void) const
 	}
 	for (const auto member : m_members)
 	{
-		collectionStr << "  0x" << std::hex << std::setw(8) << std::setfill('0') << member->GetFormID();
+		collectionStr << "  0x" << StringUtils::FromFormID(member->GetFormID());
 		collectionStr << ":" << (CollectionManager::Instance().IsPlacedObject(member) ? 'Y' : 'N') << ":" << member->GetName();
 		collectionStr << '\n';
 	}
@@ -189,8 +196,94 @@ void Collection::AsJSON(nlohmann::json& j) const
 {
 	j["name"] = m_name;
 	j["description"] = m_description;
-	j["policy"] = nlohmann::json(m_effectivePolicy);
+	if (m_overridesGroup)
+	{
+		j["policy"] = nlohmann::json(m_effectivePolicy);
+	}
 	j["rootFilter"] = nlohmann::json(*m_rootFilter);
+	if (!m_scopes.empty())
+	{
+		nlohmann::json scopes(nlohmann::json::array());
+		for (const auto scope : m_scopes)
+		{
+			scopes.push_back(int(scope));
+		}
+		j["scopes"] = scopes;
+	}
+	nlohmann::json members(nlohmann::json::array());
+	for (const auto form : m_members)
+	{
+		nlohmann::json memberObj(nlohmann::json::object());
+		memberObj["form"] = StringUtils::FromFormID(form->GetFormID());
+		const auto observed(m_observed.find(form));
+		if (observed != m_observed.cend())
+		{
+			// optional, observed member only
+			memberObj["time"] = observed->second;
+		}
+		members.push_back(memberObj);
+	}
+	j["members"] = members;
+}
+
+// rehydrate collection state from cosave data
+void Collection::UpdateFrom(const nlohmann::json& collectionState, const CollectionPolicy& defaultPolicy)
+{
+	if (collectionState["members"].empty())
+	{
+		// ignore cosave, user can rehydrate from inventory etc
+		REL_WARNING("Collection State {} member list empty in cosave, skipped", m_name);
+		return;
+	}
+	const std::string name(collectionState["name"].get<std::string>());
+	const std::string description(collectionState["description"].get<std::string>());
+	const auto policy(collectionState.find("policy"));
+	bool overridesPolicy(policy != collectionState.cend());
+
+	m_name = name;
+	m_description = description;
+
+	DBG_VMESSAGE("Collection State {} overrides Policy = {}", name, overridesPolicy ? "true" : "false");
+	SetOverridesGroup(overridesPolicy);
+	m_effectivePolicy = overridesPolicy ? CollectionFactory::Instance().ParsePolicy(*policy) : defaultPolicy;
+	m_scopes.clear();
+	const auto scopes(collectionState.find("scopes"));
+	if (scopes != collectionState.cend())
+	{
+		SetScopesFrom(*scopes);
+	}
+	SetMembersFrom(collectionState["members"]);
+}
+
+void Collection::SetScopesFrom(const nlohmann::json& scopes)
+{
+	for (const auto scope : scopes)
+	{
+		m_scopes.push_back(INIFile::SecondaryType(scope.get<int>()));
+	}
+}
+
+void Collection::SetMembersFrom(const nlohmann::json & members)
+{
+	m_observed.clear();
+	m_members.clear();
+	for (const nlohmann::json& member : members)
+	{
+		RE::FormID formID(StringUtils::ToFormID(member["form"].get<std::string>()));
+		RE::TESForm* form(LoadOrder::Instance().RehydrateCosaveForm(formID));
+		if (!form)
+		{
+			// Load Order or the FormID in the mod changed
+			continue;
+		}
+		m_members.insert(form);
+		const auto observed(member.find("time"));
+		if (observed != member.cend())
+		{
+			// optional, observed member only
+			m_observed.insert({ form, observed->get<float>() });
+		}
+	}
 }
 
 void to_json(nlohmann::json& j, const Collection& collection)
@@ -210,7 +303,7 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 			m_collections.push_back(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
 		}
 		catch (const std::exception& exc) {
-			REL_ERROR("Error %s parsing Collection\n%s", exc.what(), collection.dump(2).c_str());
+			REL_ERROR("Error {} parsing Collection\n{}", exc.what(), collection.dump(2).c_str());
 		}
 	});
 }
@@ -237,12 +330,30 @@ void CollectionGroup::SyncDefaultPolicy()
 
 void CollectionGroup::AsJSON(nlohmann::json& j) const
 {
+	j["name"] = m_name;
 	j["groupPolicy"] = nlohmann::json(m_policy);
 	j["useMCM"] = m_useMCM;
-	j["collections"] = nlohmann::json::array();
+	j["collectionState"] = nlohmann::json::array();
 	for (const auto& collection : m_collections)
 	{
-		j["collections"].push_back(*collection);
+		j["collectionState"].push_back(*collection);
+	}
+}
+
+void CollectionGroup::UpdateFrom(const nlohmann::json& group)
+{
+	CollectionPolicy defaultPolicy(CollectionFactory::Instance().ParsePolicy(group["groupPolicy"]));
+	for (const nlohmann::json& collectionState : group["collectionState"])
+	{
+		std::string name(collectionState["name"].get<std::string>());
+		std::shared_ptr<Collection> collection(CollectionByName(name));
+		if (!collection)
+		{
+			// TODO try harder - maybe Load Order or the FormID in the mod changed
+			REL_WARNING("Collection {} not found in Group {}", name, m_name);
+			continue;
+		}
+		collection->UpdateFrom(collectionState, defaultPolicy);
 	}
 }
 

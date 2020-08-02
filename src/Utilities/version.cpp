@@ -39,7 +39,7 @@ std::string VersionInfo::GetPluginVersionString() const
 	return m_versionString;
 }
 
-UInt32 VersionInfo::GetVersionMajor() const
+uint32_t VersionInfo::GetVersionMajor() const
 {
 	return m_majorVersion;
 }

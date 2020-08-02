@@ -104,4 +104,26 @@ namespace StringUtils
 	void ToLower(std::string &str);
 	bool Replace(std::string &str, const std::string target, const std::string replacement);
 	std::string FromUnicode(const std::wstring& input);
+	inline RE::FormID ToFormID(const std::string& formStr)
+	{
+		RE::FormID formID;
+		std::stringstream ss;
+		ss << std::hex << formStr;
+		ss >> formID;
+		return ss.fail() ? InvalidForm : formID;
+	}
+	constexpr const char * InvalidFormString = "00000000";
+	inline std::string FromFormID(const RE::FormID formID)
+	{
+		std::ostringstream ss;
+		ss << std::hex << std::setw(8) << std::setfill('0') << formID;
+		return ss.fail() ? InvalidFormString : ss.str();
+
+	}
+}
+
+namespace CompressionUtils
+{
+	bool DecodeBrotli(const std::string& compressed, nlohmann::json& output);
+	bool EncodeBrotli(const nlohmann::json& plainText, std::string& encoded);
 }

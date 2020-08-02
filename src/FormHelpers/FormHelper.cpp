@@ -58,12 +58,12 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 	return false;
 }
 
-SInt32 TESFormHelper::GetGoldValue() const
+int32_t TESFormHelper::GetGoldValue() const
 {
 	if (!m_form)
 		return 0;
 
-	switch (m_form->formType)
+	switch (m_form->GetFormType())
 	{
 	case RE::FormType::Armor:
 	case RE::FormType::Weapon:
@@ -108,7 +108,7 @@ double TESFormHelper::GetWeight() const
 	return pWeight->weight;
 }
 
-SInt32 TESFormHelper::CalculateWorth() const
+int32_t TESFormHelper::CalculateWorth() const
 {
 	if (!m_form)
 		return 0;
@@ -118,7 +118,7 @@ SInt32 TESFormHelper::CalculateWorth() const
 		const RE::TESAmmo* ammo(m_form->As<RE::TESAmmo>());
 		if (ammo)
 		{
-			DBG_VMESSAGE("Ammo %s(%08x) damage = %0.2f", GetName(), GetFormID(), ammo->data.damage);
+			DBG_VMESSAGE("Ammo {}({:08x}) damage = {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
 			return static_cast<int>(ammo->data.damage);
 		}
 		return 0;
@@ -131,7 +131,7 @@ SInt32 TESFormHelper::CalculateWorth() const
 			const RE::TESAmmo* ammo(DataCase::GetInstance()->ProjToAmmo(proj));
 			if (ammo)
 			{
-				DBG_VMESSAGE("Projectile has ammo %s(%08x) damage %0.2f", GetName(), GetFormID(), ammo->data.damage);
+				DBG_VMESSAGE("Projectile has ammo {}({:08x}) damage {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
 				return static_cast<int>(ammo->data.damage);
 			}
 			return 0;
@@ -139,7 +139,7 @@ SInt32 TESFormHelper::CalculateWorth() const
 	}
 	else
 	{
-		SInt32 result(0);
+		int32_t result(0);
 		if (m_form->formType == RE::FormType::Weapon)
 		{
 			result = TESObjectWEAPHelper(m_form->As<RE::TESObjectWEAP>()).GetGoldValue();
@@ -166,7 +166,7 @@ const char* TESFormHelper::GetName() const
 	return m_form->GetName();
 }
 
-UInt32 TESFormHelper::GetFormID() const
+uint32_t TESFormHelper::GetFormID() const
 {
 	return m_form->formID;
 }

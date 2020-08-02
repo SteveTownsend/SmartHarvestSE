@@ -33,15 +33,35 @@ public:
 	bool ModPrecedesSHSE(const std::string& modName) const;
 	bool ModOwnsForm(const std::string& modName, const RE::FormID formID) const;
 	void AsJSON(nlohmann::json& j) const;
-	inline RE::FormID AsRaw(const RE::FormID rawID)
+	void UpdateFrom(const nlohmann::json& j);
+	RE::TESForm* RehydrateCosaveForm(const RE::FormID cosaveID) const;
+	template <typename T>
+	T* RehydrateCosaveFormAs(const RE::FormID cosaveID) const
+	{
+		RE::TESForm* form(RehydrateCosaveForm(cosaveID));
+		return form ? form->As<T>() : nullptr;
+	}
+
+	inline RE::FormID AsMask(const RE::FormID formID) const
 	{
 		constexpr RE::FormID ESPFERawMask = 0x00000FFF;
-		if ((rawID & ESPFETypeMask) == ESPFETypeMask)
-			return rawID & ESPFERawMask;
-		return rawID & FullRawMask;
+		if ((formID & ESPFETypeMask) == ESPFETypeMask)
+			return formID & ESPFEMask;
+		return formID & ESPMask;
+	}
+	inline RE::FormID AsRaw(const RE::FormID formID) const
+	{
+		constexpr RE::FormID ESPFERawMask = 0x00000FFF;
+		if ((formID & ESPFETypeMask) == ESPFETypeMask)
+			return formID & ESPFERawMask;
+		return formID & FullRawMask;
 	}
 
 	struct LoadInfo {
+		inline bool operator==(const LoadInfo& rhs) const
+		{
+			return m_mask == rhs.m_mask && m_priority == rhs.m_priority;
+		}
 		RE::FormID m_mask;
 		int m_priority;
 	};
@@ -52,8 +72,14 @@ private:
 	static constexpr RE::FormID RegularFormIDMask = 0xff000000;
 	// no lock as all public functions are const once loaded
 	static std::unique_ptr<LoadOrder> m_instance;
+	mutable RecursiveLock m_loadLock;
+
 	std::unordered_map<std::string, LoadInfo> m_loadInfoByName;
+	std::unordered_map<std::string, LoadInfo> m_cosaveLoadInfoByName;
+	std::unordered_map <RE::FormID, std::string> m_cosaveModNameByMask;
 	int m_shsePriority;
+	int m_cosaveShsePriority;
+	bool m_coSaveLoadOrderDiffers;
 };
 
 inline bool operator<(const LoadOrder::LoadInfo& lhs, const LoadOrder::LoadInfo& rhs) { return lhs.m_priority < rhs.m_priority; }

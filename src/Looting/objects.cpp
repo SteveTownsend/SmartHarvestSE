@@ -84,7 +84,7 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 	if (!extraList)
 		return nullptr;
 
-	RE::ObjectRefHandle ashHandle = const_cast<RE::ExtraDataList*>(extraList)->GetAshPileRefHandle();
+	RE::ObjectRefHandle ashHandle = const_cast<RE::ExtraDataList*>(extraList)->GetAshPileRef();
 	return ashHandle.get().get();
 }
 
@@ -124,7 +124,7 @@ void ProcessManualLootItem(const RE::TESObjectREFR* refr)
 			RE::DebugNotification(notificationText.c_str());
 		}
 	}
-	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x%08x", refr->GetFormID());
+	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x{:08x}", refr->GetFormID());
 	DataCase::GetInstance()->BlockReference(refr, Lootability::ManualLootTarget);
 }
 
@@ -134,39 +134,39 @@ RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
 	return (node && node->GetControllers()) ? node->GetControllers() : nullptr;
 }
 
-bool ActorHelper::IsSneaking() const
+PlayerAffinity GetPlayerAffinity(const RE::Actor* actor)
 {
-	return m_actor->IsSneaking();
-}
-
-bool ActorHelper::IsPlayerAlly() const
-{
-	if (m_actor->IsPlayerTeammate())
-	{
-		DBG_DMESSAGE("Actor is teammate");
-		return true;
-	}
+	if (actor == RE::PlayerCharacter::GetSingleton())
+		return PlayerAffinity::Player;
 	static const RE::TESFaction* followerFaction = RE::TESForm::LookupByID(CurrentFollowerFaction)->As<RE::TESFaction>();
-	if (followerFaction)
+	if (followerFaction && actor->IsInFaction(followerFaction))
 	{
-		bool result(m_actor->IsInFaction(followerFaction));
-		DBG_DMESSAGE("Actor is follower = %s", result ? "true" : "false");
-		return result;
+		DBG_DMESSAGE("Actor {}/0x{:08x} is follower", actor->GetName(), actor->GetFormID());
+		return PlayerAffinity::FollowerFaction;
 	}
-	return false;
-}
-
-bool ActorHelper::IsEssential() const 
-{
-	return m_actor->IsEssential();
+	if (actor->IsPlayerTeammate())
+	{
+		DBG_DMESSAGE("Actor {}/0x{:08x} is teammate", actor->GetName(), actor->GetFormID());
+		return PlayerAffinity::TeamMate;
+	}
+	return PlayerAffinity::Unaffiliated;
 }
 
 // applies only if NPC
-bool ActorHelper::IsSummoned(void) const
+bool IsSummoned(const RE::Actor* actor)
 {
-	const RE::TESNPC* npc(m_actor->GetActorBase());
+	const RE::TESNPC* npc(actor->GetActorBase());
 	bool result(npc && npc->IsSummonable());
-	DBG_DMESSAGE("Actor summoned = %s", result ? "true" : "false");
+	DBG_DMESSAGE("Actor summoned = {}", result ? "true" : "false");
+	return result;
+}
+
+// applies only if NPC
+bool IsQuestTargetNPC(const RE::Actor* actor)
+{
+	const RE::TESNPC* npc(actor->GetActorBase());
+	bool result(npc && DataCase::GetInstance()->QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
+	DBG_DMESSAGE("Actor is Quest Target NPC = {}", result ? "true" : "false");
 	return result;
 }
 
@@ -287,18 +287,19 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 	{
 		if (nextPair.second == lcName)
 		{
-			DBG_VMESSAGE("Mapped name %s to ObjectType %d", name.c_str(), nextPair.first);
+			DBG_VMESSAGE("Mapped name {} to ObjectType {}", name.c_str(), nextPair.first);
 			return nextPair.first;
 		}
 	}
-	DBG_WARNING("Unmapped ObjectType name %s", name.c_str());
+	DBG_WARNING("Unmapped ObjectType name {}", name.c_str());
 	return ObjectType::unknown;
 }
 
 const std::unordered_map<std::string, ResourceType> resourceTypeByName({
 	{"Ore", ResourceType::ore},
 	{"Geode", ResourceType::geode},
-	{"Volcanic", ResourceType::volcanic}
+	{"Volcanic", ResourceType::volcanic},
+	{"VolcanicDigSite", ResourceType::volcanicDigSite}
 	});
 
 ResourceType ResourceTypeByName(const std::string& name)

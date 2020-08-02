@@ -20,6 +20,19 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "IRangeChecker.h"
 
+bool AlwaysInRange::IsValid(const RE::TESObjectREFR* refr) const 
+{ 
+	return true;
+}
+double AlwaysInRange::Radius() const
+{ 
+	return 0.0;
+}
+double AlwaysInRange::Distance() const 
+{ 
+	return 0.0;
+}
+
 AbsoluteRange::AbsoluteRange(const RE::TESObjectREFR* source, const double radius, const double zFactor) :
 	m_sourceX(source->GetPositionX()), m_sourceY(source->GetPositionY()), m_sourceZ(source->GetPositionZ()),
 	m_radius(radius), m_zLimit(radius * zFactor)
@@ -37,14 +50,14 @@ bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr) const
 	if (dx > m_radius || dy > m_radius || dz > m_zLimit)
 	{
 		// very verbose
-		DBG_DMESSAGE("REFR 0x%08x {%.2f,%.2f,%.2f} trivially too far from player {%.2f,%.2f,%.2f}",
+		DBG_DMESSAGE("REFR 0x{:08x} {{:0.2f},{:0.2f},{:0.2f}} trivially too far from player {{:0.2f},{:0.2f},{:0.2f}}",
 			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
 			m_sourceX, m_sourceY, m_sourceZ);
 		m_distance = std::max({ dx, dy, dz });
 		return false;
 	}
 	m_distance = sqrt((dx * dx) + (dy * dy) + (dz * dz));
-	DBG_VMESSAGE("REFR 0x%08x is %.2f units away, loot range %.2f XY-units, %.2f Z-units", formID, m_distance, m_radius, m_zLimit);
+	DBG_VMESSAGE("REFR 0x{:08x} is {:0.2f} units away, loot range {:0.2f} XY-units, {:0.2f} Z-units", formID, m_distance, m_radius, m_zLimit);
 	return m_distance <= m_radius;
 }
 

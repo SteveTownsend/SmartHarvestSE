@@ -34,12 +34,12 @@
 
     {
       "name": "X Marks the Spot",
-      "description": "New Treasure Hunt SSE Maps",
+      "description": "Treasure Hunter SSE and New Treasure Hunt SSE Maps",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "treasure_hunt.esl" ],
-          "signature": [ "BOOK" ]
+          "plugin": [ "TreasureHunter.esp", "treasure_hunt.esl" ],
+          "signature": [ "BOOK", "KEYM" ]
         }
       }
     },
@@ -69,6 +69,18 @@
     },
 
     {
+      "name": "Novocaine Optional",
+      "description": "Dragon teeth from Zim's Dragon Improvements",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Zim's Dragon Improvements.esp" ],
+          "signature": [ "MISC" ]
+        }
+      }
+    },
+
+    {
       "name": "Fetcher",
       "description": "Items added by Morrowloot Ultimate and Patches",
       "rootFilter": {
@@ -76,6 +88,102 @@
         "condition": {
           "plugin": [ "MLU.esp", "MLU - Immersive Armors.esp", "MLU - Summermyst.esp" ],
           "signature": [ "ARMO", "BOOK", "KEYM", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Artifactial Intelligence",
+      "description": "Items added by Artifacts of Skyrim",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Artifacts.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Philosophy 101",
+      "description": "Items added by Aurlyn Dawnstone",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Aurlyn.esp" ],
+          "signature": [ "ARMO", "BOOK", "INGR", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Rigmor of Bruma",
+      "description": "Items added by Rigmor of Bruma",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Rigmor.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Rigmor of Cyrodiil",
+      "description": "Items added by Rigmor of Cyrodiil",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "RigmorCyrodiil.esm" ],
+          "signature": [ "ARMO", "BOOK", "INGR", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Bordering on Obsession",
+      "description": "Items added by Joop van Die Borders trilogy",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Folkstead.esp", "Jehanna.esp", "Nyhus.esp" ],
+          "signature": [ "ARMO", "BOOK", "INGR", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Back From The Brink",
+      "description": "Items added by Carved Brink",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Haem Projects Goblands.esp" ],
+          "signature": [ "ALCH", "ARMO", "BOOK", "INGR", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Hammet Got them All Yet",
+      "description": "Items added by Hammet's Dungeons",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "HammetDungeons.esm" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Vominheim",
+      "description": "Items added by Land of Vominheim",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "Vominheim.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
         }
       }
     },

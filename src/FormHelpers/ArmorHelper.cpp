@@ -25,7 +25,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-UInt32 TESObjectARMOHelper::GetGoldValue() const
+uint32_t TESObjectARMOHelper::GetGoldValue() const
 {
 	if (!m_armor)
 		return 0;
@@ -45,8 +45,8 @@ UInt32 TESObjectARMOHelper::GetGoldValue() const
 		costPP += effect->cost;
 	}
 
-	UInt32 result = (costPP > 0) ? static_cast<UInt32>(costPP) : 0;
-	DBG_VMESSAGE("TESObjectARMOHelper::GetGoldValue()  %d  %d", m_armor->value, result);
+	uint32_t result = (costPP > 0) ? static_cast<uint32_t>(costPP) : 0;
+	DBG_VMESSAGE("TESObjectARMOHelper::GetGoldValue()  {}  {}", m_armor->value, result);
 
 	return m_armor->value + result;
 }

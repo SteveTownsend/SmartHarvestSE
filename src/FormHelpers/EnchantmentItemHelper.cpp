@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "EnchantmentItemHelper.h"
 
-UInt32 EnchantmentItemHelper::GetGoldValue()
+uint32_t EnchantmentItemHelper::GetGoldValue()
 {
 	if (!this)
 		return 0;
@@ -30,6 +30,6 @@ UInt32 EnchantmentItemHelper::GetGoldValue()
 	if (!pValue)
 		return 0;
 
-	DBG_VMESSAGE("EnchantmentItemHelper::GetGoldValue()  %d", pValue->value);
+	DBG_VMESSAGE("EnchantmentItemHelper::GetGoldValue()  {}", pValue->value);
 	return pValue->value;
 }

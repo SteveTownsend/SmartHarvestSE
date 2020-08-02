@@ -24,6 +24,27 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
+PartyVictim::PartyVictim(const RE::Actor* victim, const float gameTime)
+	: m_victim(victim->GetName()), m_gameTime(gameTime)
+{
+}
+
+PartyVictim::PartyVictim(const std::string& name, const float gameTime)
+	: m_victim(name), m_gameTime(gameTime)
+{
+}
+
+void PartyVictim::AsJSON(nlohmann::json& j) const
+{
+	j["name"] = m_victim;
+	j["time"] = m_gameTime;
+}
+
+void to_json(nlohmann::json& j, const PartyVictim& partyVictim)
+{
+	partyVictim.AsJSON(j);
+}
+
 std::unique_ptr<ActorTracker> ActorTracker::m_instance;
 
 ActorTracker& ActorTracker::Instance()
@@ -45,6 +66,8 @@ void ActorTracker::Reset()
 	m_seenAlive.clear();
 	m_apparentTimeOfDeath.clear();
 	m_detectives.clear();
+	m_followers.clear();
+	m_checkedBodies.clear();
 }
 
 void ActorTracker::RecordLiveSighting(const RE::TESObjectREFR* actorRef)
@@ -65,9 +88,29 @@ void ActorTracker::RecordTimeOfDeath(RE::TESObjectREFR* refr)
 {
 	RecursiveLockGuard guard(m_actorLock);
 	m_apparentTimeOfDeath.emplace_back(std::make_pair(refr, std::chrono::high_resolution_clock::now()));
-	DBG_MESSAGE("Enqueued dead body to loot later 0x%08x", refr->GetFormID());
+	DBG_MESSAGE("Enqueued dead body to loot later 0x{:08x}", refr->GetFormID());
 }
 
+void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
+{
+	RecursiveLockGuard guard(m_actorLock);
+	// only record the perpetrator of this heinous crime once
+	if (!victim || !m_checkedBodies.insert(victim).second)
+		return;
+	RE::Actor* killer(victim->myKiller.get().get());
+	// it's always the player even if a FOllower did the deed
+	if (killer == RE::PlayerCharacter::GetSingleton())
+	{
+		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->GetName(), victim->GetFormID());
+		const float gameTime(PlayerState::Instance().CurrentGameTime());
+		m_victims.emplace_back(victim, gameTime);
+		// Ensure Location is recorded
+		LocationTracker::Instance().RecordCurrentPlace(gameTime);
+	}
+}
+
+// looting during combat is unstable, so if that option is enabled, we store the combat victims and loot them once combat ends, no sooner 
+// than N seconds after their death
 void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 {
 	RecursiveLockGuard guard(m_actorLock);
@@ -76,14 +119,20 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 	while (!m_apparentTimeOfDeath.empty() && m_apparentTimeOfDeath.front().second <= cutoffPoint)
 	{
 		// this actor died long enough ago that we trust actor->GetContainer not to crash, provided the ID is still usable
-		RE::TESObjectREFR* refr(m_apparentTimeOfDeath.front().first);
+		const auto nextActor(m_apparentTimeOfDeath.front());
+		RE::TESObjectREFR* refr(nextActor.first);
 		if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID()))
 		{
-			DBG_MESSAGE("Process enqueued dead body 0x%08x", refr->GetFormID());
+			DBG_MESSAGE("Process enqueued dead body 0x{:08x}", refr->GetFormID());
 		}
 		else
 		{
-			DBG_MESSAGE("Suspect enqueued dead body ID 0x%08x", refr->GetFormID());
+			DBG_MESSAGE("Suspect enqueued dead body ID 0x{:08x}", refr->GetFormID());
+		}
+		RE::Actor* actor(refr->As<RE::Actor>());
+		if (actor)
+		{
+			RecordIfKilledByParty(actor);
 		}
 		m_apparentTimeOfDeath.pop_front();
 		// use distance 0. to prioritize looting
@@ -97,8 +146,7 @@ void ActorTracker::AddDetective(const RE::Actor* detective, const double distanc
 	m_detectives.insert({ distance, detective });
 }
 
-// read and clear
-std::vector<const RE::Actor*> ActorTracker::ReadDetectives()
+std::vector<const RE::Actor*> ActorTracker::GetDetectives()
 { 
 	RecursiveLockGuard guard(m_actorLock);
 	std::vector<const RE::Actor*> result;
@@ -108,11 +156,56 @@ std::vector<const RE::Actor*> ActorTracker::ReadDetectives()
 	return result;
 }
 
-// read and clear
 void ActorTracker::ClearDetectives()
 {
 	RecursiveLockGuard guard(m_actorLock);
 	m_detectives.clear();
+}
+
+void ActorTracker::AddFollower(const RE::Actor* detective)
+{
+	RecursiveLockGuard guard(m_actorLock);
+	m_followers.insert(detective);
+}
+
+void ActorTracker::ClearFollowers()
+{
+	RecursiveLockGuard guard(m_actorLock);
+	m_followers.clear();
+}
+
+void ActorTracker::ClearVictims()
+{
+	RecursiveLockGuard guard(m_actorLock);
+	m_victims.clear();
+}
+
+void ActorTracker::AsJSON(nlohmann::json& j) const
+{
+	nlohmann::json victims(nlohmann::json::array());
+	for (const auto& victim : m_victims)
+	{
+		victims.push_back(victim);
+	}
+	j["victims"] = victims;
+}
+
+// rehydrate from cosave data
+void ActorTracker::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Party Victims\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_actorLock);
+	m_victims.clear();
+	m_victims.reserve(j["victims"].size());
+	for (const nlohmann::json& victim : j["victims"])
+	{
+		m_victims.emplace_back(victim["name"].get<std::string>(), victim["time"].get<float>());
+	}
+}
+
+void to_json(nlohmann::json& j, const ActorTracker& actorTracker)
+{
+	actorTracker.AsJSON(j);
 }
 
 }

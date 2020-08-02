@@ -30,6 +30,8 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/CollectionManager.h"
 #include "Collections/CollectionFactory.h"
 #include "Data/DataCase.h"
+#include "Data/iniSettings.h"
+#include "Data/LoadOrder.h"
 #include "Looting/ManagedLists.h"
 
 namespace shse
@@ -46,7 +48,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false), m_gameTime(0.0)
+CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false)
 {
 }
 
@@ -72,31 +74,24 @@ void CollectionManager::ProcessDefinitions(void)
 void CollectionManager::Refresh() const
 {
 	// request added items and game time to be pushed to us while we are sleeping
-	if (IsAvailable())
-		EventPublisher::Instance().TriggerFlushAddedItems();
+	EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
-void CollectionManager::UpdateGameTime(const float gameTime)
-{
-	RecursiveLockGuard guard(m_collectionLock);
-	m_gameTime = gameTime;
-}
-
-void CollectionManager::CheckEnqueueAddedItem(const RE::FormID formID)
+void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form)
 {
 	if (!IsAvailable())
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
 	// only pass this along if it is in >= 1 collection
-	if (m_collectionsByFormID.contains(formID))
+	if (m_collectionsByFormID.contains(form->GetFormID()))
 	{
-		EnqueueAddedItem(formID);
+		EnqueueAddedItem(form);
 	}
 }
 
-void CollectionManager::EnqueueAddedItem(const RE::FormID formID)
+void CollectionManager::EnqueueAddedItem(const RE::TESForm* form)
 {
-	m_addedItemQueue.emplace_back(formID);
+	m_addedItemQueue.push_back(form);
 }
 
 void CollectionManager::ProcessAddedItems()
@@ -123,30 +118,31 @@ void CollectionManager::ProcessAddedItems()
 
 	decltype(m_addedItemQueue) queuedItems;
 	queuedItems.swap(m_addedItemQueue);
-	for (const auto formID : queuedItems)
+	const float gameTime(PlayerState::Instance().CurrentGameTime());
+	for (const auto form : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
-		if (m_collectionsByFormID.contains(formID))
+		if (m_collectionsByFormID.contains(form->GetFormID()))
 		{
-			DBG_VMESSAGE("Check collectability of added item 0x%08x", formID);
-			AddToRelevantCollections(formID);
+			DBG_VMESSAGE("Check collectability of added item 0x{:08x}", form->GetFormID());
+			AddToRelevantCollections(form, gameTime);
 		}
-		else if (m_nonCollectionForms.insert(formID).second)
+		else if (m_nonCollectionForms.insert(form->GetFormID()).second)
 		{
-			DBG_VMESSAGE("Recorded 0x%08x as non-collectible", formID);
+			DBG_VMESSAGE("Recorded 0x{:08x} as non-collectible", form->GetFormID());
 		}
 	}
 }
 
 // bucket newly-received items in any matching collections
-void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
+void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const float gameTime)
 {
 	// resolve ID to Form
-	RE::TESForm* form(RE::TESForm::LookupByID(itemID));
-	if (!form)
+	if (!item)
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
-	const auto targets(m_collectionsByFormID.equal_range(form->GetFormID()));
+	const auto targets(m_collectionsByFormID.equal_range(item->GetFormID()));
+	bool atLeastOne(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
 		// skip disabled collections
@@ -154,11 +150,17 @@ void CollectionManager::AddToRelevantCollections(const RE::FormID itemID)
 			continue;
 		// Do not record if the policy indicates per-item history not required
 		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
-			collection->second->IsMemberOf(form))
+			collection->second->IsMemberOf(item))
 		{
 			// record membership
-			collection->second->RecordItem(itemID, form, m_gameTime, LocationTracker::Instance().CurrentPlayerPlace());
+			collection->second->RecordItem(item, gameTime);
+			atLeastOne = true;
 		}
+	}
+	if (atLeastOne)
+	{
+		// Ensure Location of Item Collection is recorded
+		LocationTracker::Instance().RecordCurrentPlace(gameTime);
 	}
 }
 
@@ -174,7 +176,7 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 	const auto targets(m_collectionsByFormID.equal_range(matcher.Form()->GetFormID()));
 	if (targets.first == m_collectionsByFormID.cend())
 	{
-		DBG_VMESSAGE("Record %s/0x%08x as non-collectible", matcher.Form()->GetName(), matcher.Form()->GetFormID());
+		DBG_VMESSAGE("Record {}/0x{:08x} as non-collectible", matcher.Form()->GetName(), matcher.Form()->GetFormID());
 		m_nonCollectionForms.insert(matcher.Form()->GetFormID());
 		return NotCollectible;
 	}
@@ -198,25 +200,34 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
 // We don't do this on every pass as it's a decent amount of work
-std::vector<RE::FormID> CollectionManager::ReconcileInventory()
+std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
 {
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 	if (!player)
-		return std::vector<RE::FormID>();
+		return std::vector<const RE::TESForm*>();
 
 	// use delta vs last pass to speed this up (resets on game reload)
+	static const bool requireQuestItemAsTarget(false);
+	static const bool checkSpecials(false);
+	LootableItems playerInventory(ContainerLister(
+		INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials).GetOrCheckContainerForms());
 	decltype(m_lastInventoryItems) newInventoryItems;
-	std::vector<RE::FormID> candidates;
-	const auto inv = player->GetInventory([&](RE::TESBoundObject* candidate) -> bool {
-		RE::FormID formID(candidate->GetFormID());
-		newInventoryItems.insert(formID);
-		if (!m_lastInventoryItems.contains(formID) && m_collectionsByFormID.contains(formID))
+	std::vector<const RE::TESForm*> candidates;
+	for (const auto& candidate : playerInventory)
+	{
+		const auto item(candidate.BoundObject());
+		RE::FormID formID(item->GetFormID());
+		newInventoryItems.insert(item);
+		if (!m_lastInventoryItems.contains(item) && m_collectionsByFormID.contains(formID))
 		{
-			DBG_VMESSAGE("Collectible %s/0x%08x new in inventory", candidate->GetName(), formID);
-			candidates.push_back(formID);
+			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), formID);
+			candidates.push_back(item);
 		}
-		return false;
-	});
+		else
+		{
+			DBG_VMESSAGE("Skip {}/0x{:08x} in inventory", item->GetName(), formID);
+		}
+	}
 	m_lastInventoryItems.swap(newInventoryItems);
 	return candidates;
 }
@@ -241,7 +252,7 @@ bool CollectionManager::LoadCollectionGroup(
 		return true;
 	}
 	catch (const std::exception& e) {
-		REL_ERROR("JSON Collection Definitions %s not loadable, error:\n%s", defFile.generic_string().c_str(), e.what());
+		REL_ERROR("JSON Collection Definitions {} not loadable, error:\n{}", defFile.generic_string().c_str(), e.what());
 		return false;
 	}
 }
@@ -261,11 +272,11 @@ bool CollectionManager::LoadData(void)
 		validator.set_root_schema(schema); // insert root-schema
 	}
 	catch (const std::exception& e) {
-		REL_ERROR("JSON Schema %s not loadable, error:\n%s", filePath.c_str(), e.what());
+		REL_ERROR("JSON Schema {} not loadable, error:\n{}", filePath.c_str(), e.what());
 		return false;
 	}
 
-	REL_MESSAGE("JSON Schema %s parsed and validated", filePath.c_str());
+	REL_MESSAGE("JSON Schema {} parsed and validated", filePath.c_str());
 
 	// Find and Load Collection Definitions using the validated schema
 	const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json$");
@@ -273,21 +284,21 @@ bool CollectionManager::LoadData(void)
 	{
 		if (!std::filesystem::is_regular_file(nextFile))
 		{
-			DBG_MESSAGE("Skip %s, not a regular file", nextFile.path().generic_string().c_str());
+			DBG_MESSAGE("Skip {}, not a regular file", nextFile.path().generic_string().c_str());
 			continue;
 		}
 		std::string fileName(nextFile.path().filename().generic_string());
 		std::smatch matches;
 		if (!std::regex_search(fileName, matches, collectionsFilePattern))
 		{
-			DBG_MESSAGE("Skip %s, does not match Collections filename pattern", fileName.c_str());
+			DBG_MESSAGE("Skip {}, does not match Collections filename pattern", fileName.c_str());
 				continue;
 		}
 		// capture string at index 1 is the Collection Name, always present after a regex match
-		REL_MESSAGE("Load JSON Collection Definitions %s for Group %s", fileName.c_str(), matches[1].str().c_str());
+		REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", fileName.c_str(), matches[1].str().c_str());
 		if (LoadCollectionGroup(nextFile, matches[1].str(), validator))
 		{
-			REL_MESSAGE("JSON Collection Definitions %s/%s parsed and validated", fileName.c_str(), matches[1].str().c_str());
+			REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", fileName.c_str(), matches[1].str().c_str());
 		}
 	}
 	PrintDefinitions();
@@ -300,7 +311,7 @@ void CollectionManager::PrintDefinitions(void) const
 {
 	for (const auto& collection : m_allCollectionsByLabel)
 	{
-		REL_MESSAGE("Collection %s:\n%s", collection.first.c_str(), collection.second->PrintDefinition().c_str());
+		REL_MESSAGE("Collection {}:\n{}", collection.first.c_str(), collection.second->PrintDefinition().c_str());
 	}
 }
 
@@ -308,10 +319,17 @@ void CollectionManager::PrintMembership(void) const
 {
 	for (const auto& collectionGroup : m_allGroupsByName)
 	{
-		REL_MESSAGE("Collection Group %s:", collectionGroup.second->Name().c_str());
+		REL_MESSAGE("Collection Group {}:", collectionGroup.second->Name().c_str());
 		for (const auto& collection : collectionGroup.second->Collections())
 		{
-			REL_MESSAGE("Collection %s:\n%s", collection->Name().c_str(), collection->PrintMembers().c_str());
+			if (collection->HasMembers())
+			{
+				REL_MESSAGE("Collection {}:\n{}", collection->Name().c_str(), collection->PrintMembers().c_str());
+			}
+			else
+			{
+				REL_ERROR("Collection {} is empty", collection->Name().c_str());
+			}
 		}
 	}
 }
@@ -437,7 +455,7 @@ void CollectionManager::PolicySetRepeat(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetRepeat(allowRepeats);
-		matched->second->SetOverridesGroup();
+		matched->second->SetOverridesGroup(true);
 	}
 }
 
@@ -449,7 +467,7 @@ void CollectionManager::PolicySetNotify(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetNotify(notify);
-		matched->second->SetOverridesGroup();
+		matched->second->SetOverridesGroup(true);
 	}
 }
 
@@ -461,7 +479,7 @@ void CollectionManager::PolicySetAction(const std::string& groupName, const std:
 	if (matched != m_allCollectionsByLabel.cend())
 	{
 		matched->second->Policy().SetAction(action);
-		matched->second->SetOverridesGroup();
+		matched->second->SetOverridesGroup(true);
 	}
 }
 
@@ -562,12 +580,12 @@ void CollectionManager::BuildDecisionTrees(const std::shared_ptr<CollectionGroup
 		const std::string label(MakeLabel(collectionGroup->Name(), collection->Name()));
 		if (m_allCollectionsByLabel.insert(std::make_pair(label, collection)).second)
 		{
-			REL_MESSAGE("Parse OK for Collection %s", label.c_str());
+			REL_MESSAGE("Parse OK for Collection {}", label.c_str());
 			m_collectionsByGroupName.insert(std::make_pair(collectionGroup->Name(), label));
 		}
 		else
 		{
-			REL_WARNING("Discarded duplicate Collection %s", label.c_str());
+			REL_WARNING("Discarded duplicate Collection {}", label.c_str());
 		}
 	}
 }
@@ -590,15 +608,29 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	// skip if no BaseObject
 	if (!refr->GetBaseObject())
 	{
-		DBG_VMESSAGE("REFR 0x%08x no base", refr->GetFormID());
+		DBG_VMESSAGE("REFR 0x{:08x} no base", refr->GetFormID());
 		return;
 	}
+
+	if (!refr->GetBaseObject()->GetPlayable())
+	{
+		DBG_VMESSAGE("REFR 0x{:08x} has non-playable base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
+		return;
+	}
+
+	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
+	if (!fullName || fullName->GetFullNameLength() == 0)
+	{
+		DBG_VMESSAGE("REFR 0x{:08x}has unnamed base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
+		return;
+	}
+
 	// skip if not a valid BaseObject for Collections, or a placed Container or Corpse that we need to introspect
 	if (!SignatureCondition::IsValidFormType(refr->GetBaseObject()->GetFormType()) &&
 		refr->GetBaseObject()->GetFormType() != RE::FormType::Container &&
 		refr->GetFormType() != RE::FormType::ActorCharacter)
 	{
-		DBG_VMESSAGE("REFR 0x%08x Base %s/0x%08x invalid FormType %d", refr->GetFormID(), refr->GetBaseObject()->GetName(),
+		DBG_VMESSAGE("REFR 0x{:08x} Base {}/0x{:08x} invalid FormType {}", refr->GetFormID(), refr->GetBaseObject()->GetName(),
 			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetFormType());
 		return;
 	}
@@ -606,32 +638,37 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	if (refr->GetFormType() == RE::FormType::ActorCharacter &&
 		(refr->As<RE::Actor>()->formFlags & RE::Actor::RecordFlags::kStartsDead) != RE::Actor::RecordFlags::kStartsDead)
 	{
-		DBG_VMESSAGE("Actor 0x%08x Base %s/0x%08x does not Start Dead", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		DBG_VMESSAGE("Actor 0x{:08x} Base {}/0x{:08x} does not Start Dead", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		return;
 	}
 	if ((refr->formFlags & RE::TESObjectREFR::RecordFlags::kInitiallyDisabled) == RE::TESObjectREFR::RecordFlags::kInitiallyDisabled)
 	{
-		DBG_VMESSAGE("REFR 0x%08x Base %s/0x%08x initially disabled", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		DBG_VMESSAGE("REFR 0x{:08x} Base {}/0x{:08x} initially disabled", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		return;
 	}
 	if (refr->GetBaseObject()->GetFormType() == RE::FormType::Container || refr->GetFormType() == RE::FormType::ActorCharacter)
 	{
 		if (DataCase::GetInstance()->IsOffLimitsContainer(refr))
 		{
-			DBG_VMESSAGE("Container REFR %s/0x%08x is off-limits", refr->GetName(), refr->GetFormID());
+			DBG_VMESSAGE("Container REFR {}/0x{:08x} is off-limits", refr->GetName(), refr->GetFormID());
+			return;
+		}
+		if (DataCase::GetInstance()->ReferencesBlacklistedContainer(refr))
+		{
+			DBG_VMESSAGE("Container REFR {}/0x{:08x} is blacklisted", refr->GetName(), refr->GetFormID());
 			return;
 		}
 		const RE::TESContainer* container(const_cast<RE::TESObjectREFR*>(refr)->GetContainer());
-		container->ForEachContainerObject([&](RE::ContainerObject* entry) -> bool {
-			auto entryContents(entry->obj);
+		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> bool {
+			auto entryContents(entry.obj);
 			if (!SignatureCondition::IsValidFormType(entryContents->GetFormType()))
 			{
-				DBG_VMESSAGE("Container/NPC %s/0x%08x item %s/0x%08x FormType %d invalid", refr->GetName(), refr->GetFormID(), entryContents->GetName(),
+				DBG_VMESSAGE("Container/NPC {}/0x{:08x} item {}/0x{:08x} FormType {} invalid", refr->GetName(), refr->GetFormID(), entryContents->GetName(),
 					entryContents->GetFormID(), entryContents->GetFormType());
 			}
 			else
 			{
-				DBG_VMESSAGE("Container/NPC %s/0x%08x item %s/0x%08x is a Placed Object", refr->GetName(), refr->GetFormID(), entryContents->GetName(),
+				DBG_VMESSAGE("Container/NPC {}/0x{:08x} item {}/0x{:08x} is a Placed Object", refr->GetName(), refr->GetFormID(), entryContents->GetName(),
 					entryContents->GetFormID());
 				RecordPlacedItem(entryContents, refr);
 			}
@@ -641,7 +678,7 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 	else
 	{
-		DBG_VMESSAGE("Loose 0x%08x item %s/0x%08x is a Placed Object", refr->GetFormID(), refr->GetBaseObject()->GetName(),
+		DBG_VMESSAGE("Loose 0x{:08x} item {}/0x{:08x} is a Placed Object", refr->GetFormID(), refr->GetBaseObject()->GetName(),
 			refr->GetBaseObject()->GetFormID());
 		RecordPlacedItem(refr->GetBaseObject(), refr);
 	}
@@ -673,12 +710,12 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 				{
 					if (linkage->second->parentCell && IsCellLocatable(linkage->second->parentCell))
 					{
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x can teleport via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+						DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} can teleport via {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
 							cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second->parentCell).c_str(), linkage->second->parentCell->GetFormID());
 						connected = true;
 						break;
 					}
-					DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x cannot teleport via REFR %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+					DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} cannot teleport via REFR {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
 						cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second).c_str(), linkage->second->GetFormID());
 				}
 			}
@@ -689,7 +726,7 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 
 	size_t actors(std::count_if(cell->references.cbegin(), cell->references.cend(),
 		[&](const auto refr) -> bool { return refr->GetFormType() == RE::FormType::ActorCharacter; }));
-	DBG_MESSAGE("Process %d REFRs including %d actors in CELL %s/0x%08x", cell->references.size(), actors, FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->references.size(), actors, FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
 		const RE::TESObjectREFR* refr(refptr.get());
@@ -707,16 +744,16 @@ bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 	const RE::ExtraLocation* extraLocation(cell->extraList.GetByType<RE::ExtraLocation>());
 	if (extraLocation && extraLocation->location)
 	{
-		DBG_VMESSAGE("CELL %s/0x%08x is in Location %s/0x%08x", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(),
+		DBG_VMESSAGE("CELL {}/0x{:08x} is in Location {}/0x{:08x}", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(),
 			extraLocation->location->GetName(), extraLocation->location->GetFormID());
 		return true;
 	}
 	else if (cell->worldSpace)
 	{
-		DBG_VMESSAGE("CELL %s/0x%08x is in WorldSpace %s", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), cell->worldSpace->GetName());
+		DBG_VMESSAGE("CELL {}/0x{:08x} is in WorldSpace {}", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), cell->worldSpace->GetName());
 		return true;
 	}
-	DBG_VMESSAGE("CELL %s/0x%08x unlocatable", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	DBG_VMESSAGE("CELL {}/0x{:08x} unlocatable", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
 	return false;
 #endif
 }
@@ -733,7 +770,7 @@ void CollectionManager::RecordPlacedObjects(void)
 		if (!worldSpace->persistentCell)
 			continue;
 		// find all DOORs in the persistent CELL, these link other CELLs
-		DBG_MESSAGE("Search for DOORs %d REFRs in persistent cell for WorldSpace %s/0x%08x", worldSpace->persistentCell->references.size(), worldSpace->GetName(), worldSpace->GetFormID());
+		DBG_MESSAGE("Search for DOORs {} REFRs in persistent cell for WorldSpace {}/0x{:08x}", worldSpace->persistentCell->references.size(), worldSpace->GetName(), worldSpace->GetFormID());
 		for (const auto& refPtr : worldSpace->persistentCell->references)
 		{
 			const RE::TESObjectREFR* refr(refPtr.get());
@@ -746,7 +783,7 @@ void CollectionManager::RecordPlacedObjects(void)
 					const RE::TESObjectREFR* targetDoorRefr(teleport->teleportData->linkedDoor.get().get());
 					m_linkingDoors.insert({ refr, targetDoorRefr });
 					m_linkingDoors.insert({ targetDoorRefr, refr });
-					DBG_VMESSAGE("Linking Doors 0x%08x and 0x%08x", refr->GetFormID(), targetDoorRefr->GetFormID());
+					DBG_VMESSAGE("Linking Doors 0x{:08x} and 0x{:08x}", refr->GetFormID(), targetDoorRefr->GetFormID());
 				}
 			}
 		}
@@ -765,24 +802,24 @@ void CollectionManager::RecordPlacedObjects(void)
 						const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
 						if (!target)
 						{
-							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via RefHandle 0x%08x", refr->GetFormID(),
-								FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), teleport->teleportData->linkedDoor);
+							DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport unusable via RefHandle 0x{:08x}", refr->GetFormID(),
+								FormUtils::SafeGetFormEditorID(cell), cell->GetFormID(), teleport->teleportData->linkedDoor.native_handle());
 							continue;
 						}
 						if (!target->parentCell)
 						{
-							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via REFR 0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
+							DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport unusable via REFR 0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
 								cell->GetFormID(), target->GetFormID());
 							continue;
 						}
 						if (!IsCellLocatable(target->parentCell))
 						{
-							DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport unusable via %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-								cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
+							DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport unusable via {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell),
+								cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell), target->parentCell->GetFormID());
 							continue;
 						}
-						DBG_VMESSAGE("REFR 0x%08x in CELL %s/0x%08x teleport connects to CELL %s/0x%08x", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell).c_str(), target->parentCell->GetFormID());
+						DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport connects to CELL {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell),
+							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell), target->parentCell->GetFormID());
 						m_linkingDoors.insert({ refr, target });
 						m_linkingDoors.insert({ target, refr });
 					}
@@ -794,18 +831,18 @@ void CollectionManager::RecordPlacedObjects(void)
 	// Process CELLs now linking DOORs are identified
 	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
-		DBG_MESSAGE("Process %d CELLs in WorldSpace Map for %s/0x%08x", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
+		DBG_MESSAGE("Process {} CELLs in WorldSpace Map for {}/0x{:08x}", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
 		for (const auto cellEntry : worldSpace->cellMap)
 		{
 			RecordPlacedObjectsForCell(cellEntry.second);
 		}
 	}
-	DBG_MESSAGE("Process %d Interior CELLs", RE::TESDataHandler::GetSingleton()->interiorCells.size());
+	DBG_MESSAGE("Process {} Interior CELLs", RE::TESDataHandler::GetSingleton()->interiorCells.size());
 	for (const auto cell : RE::TESDataHandler::GetSingleton()->interiorCells)
 	{
 		RecordPlacedObjectsForCell(cell);
 	}
-	REL_MESSAGE("%d Placed Objects recorded for %d Items", m_placedItems.size(), m_placedObjects.size());
+	REL_MESSAGE("{} Placed Objects recorded for {} Items", m_placedItems.size(), m_placedObjects.size());
 }
 
 bool CollectionManager::IsPlacedObject(const RE::TESForm* form) const
@@ -843,7 +880,7 @@ void CollectionManager::ResolveMembership(void)
 					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
 					collection.second->SetScopes(matcher.ScopesSeen());
 
-					DBG_VMESSAGE("Record %s/0x%08x as collectible", form->GetName(), form->GetFormID());
+					DBG_VMESSAGE("Record {}/0x{:08x} as collectible", form->GetName(), form->GetFormID());
 					m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection.second));
 					if (CollectionManager::Instance().IsPlacedObject(form))
 					{
@@ -854,33 +891,68 @@ void CollectionManager::ResolveMembership(void)
 			}
 		}
 	}
-	REL_MESSAGE("Collections contain %d unique objects, %d of which are placed in the world via %d REFRs",
+	REL_MESSAGE("Collections contain {} unique objects, {} of which are placed in the world via {} REFRs",
 		uniqueMembers.size(), uniquePlaced.size(), m_placedObjects.size());
 
 	PrintMembership();
 }
 
-// for game reload, we reset the checked items
-// TODO process SKSE co-save data
-void CollectionManager::OnGameReload()
+// clear state before game reload
+void CollectionManager::Clear()
 {
-	RecursiveLockGuard guard(m_collectionLock);
-	/// reset player inventory last-known-good
-	m_lastInventoryItems.clear();
-	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
-	m_addedItemQueue.clear();
-
-	m_gameTime = 0.0;
-
-	// logic depends on prior and new state
-	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
-	REL_MESSAGE("User Collections are %s", m_mcmEnabled ? "enabled" : "disabled");
-	// TODO load Collections data from saved game
 	// Flush membership state to allow testing
 	for (auto collection : m_allCollectionsByLabel)
 	{
 		collection.second->Reset();
 	}
+}
+
+// for game reload, we reset the checked items
+void CollectionManager::OnGameReload()
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	// reset player inventory last-known-good
+	m_lastInventoryItems.clear();
+	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
+	m_addedItemQueue.clear();
+
+	// logic depends on prior and new state
+	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
+	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
+}
+
+void CollectionManager::AsJSON(nlohmann::json& j) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	j["groups"] = nlohmann::json::array();
+	for (const auto& collectionGroup : m_allGroupsByName)
+	{
+		j["groups"].push_back(*collectionGroup.second);
+	}
+}
+
+// reset Collection state from cosave data
+void CollectionManager::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Collections\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_collectionLock);
+	for (const nlohmann::json& group : j["groups"])
+	{
+		std::string groupName(group["name"].get<std::string>());
+		auto existing(m_allGroupsByName.find(groupName));
+		if (existing == m_allGroupsByName.cend())
+		{
+			REL_WARNING("Cosave contains unknown Collection Group {}", groupName);
+			// TODO keep the data around? But what use will it be?
+			continue;
+		}
+		existing->second->UpdateFrom(group);
+	}
+}
+
+void to_json(nlohmann::json& j, const CollectionManager& collectionManager)
+{
+	collectionManager.AsJSON(j);
 }
 
 }
