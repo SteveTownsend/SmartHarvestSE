@@ -102,7 +102,10 @@ void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 	if (killer == RE::PlayerCharacter::GetSingleton())
 	{
 		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->GetName(), victim->GetFormID());
-		m_victims.emplace_back(victim, PlayerState::Instance().CurrentGameTime());
+		const float gameTime(PlayerState::Instance().CurrentGameTime());
+		m_victims.emplace_back(victim, gameTime);
+		// Ensure Location is recorded
+		LocationTracker::Instance().RecordCurrentPlace(gameTime);
 	}
 }
 

@@ -393,15 +393,16 @@ bool LocationTracker::Refresh()
 		return false;
 	}
 
-	bool playerMoved(false);
 	RecursiveLockGuard guard(m_locationLock);
 
 	// Reset blocked lists if player cell has changed
+	bool playerMoved(false);
 	RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
 	if (playerCell != m_playerCell)
 	{
+		// CELL change only triggers visited-place update if we went from outdoors to indoors or vice versa
+		playerMoved = !m_playerCell || !playerCell || m_playerCell->IsInteriorCell() != playerCell->IsInteriorCell();
 		m_playerCell = playerCell;
-		playerMoved = true;
 		if (m_playerCell)
 		{
 			DBG_MESSAGE("Player cell updated to 0x{:08x}", m_playerCell->GetFormID());
@@ -433,6 +434,7 @@ bool LocationTracker::Refresh()
 	const RE::BGSLocation* playerLocation(player->currentLocation);
 	if (playerLocation != m_playerLocation || m_tellPlayerIfCanLootAfterLoad)
 	{
+        // record all Location changes - Location may be blank now but we want to know we left a Location
 		playerMoved = true;
 
 		// Output messages for any looting-restriction place change
@@ -504,10 +506,10 @@ bool LocationTracker::Refresh()
 		// once any change is processed, reset sentinel for game reload
 		m_tellPlayerIfCanLootAfterLoad = false;
 	}
+
 	if (playerMoved)
 	{
-		VisitedPlaces::Instance().RecordNew(
-			m_playerParentWorld, m_playerLocation, m_playerCell, PlayerState::Instance().CurrentGameTime());
+		RecordCurrentPlace(PlayerState::Instance().CurrentGameTime());
 	}
 	return true;
 }
@@ -515,6 +517,12 @@ bool LocationTracker::Refresh()
 bool LocationTracker::IsPlayerAtHome() const
 {
 	return PlayerHouses::Instance().Contains(m_playerLocation);
+}
+
+void LocationTracker::RecordCurrentPlace(const float gameTime)
+{
+	VisitedPlaces::Instance().RecordNew(
+		m_playerParentWorld, m_playerLocation, m_playerCell, gameTime);
 }
 
 bool LocationTracker::IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, const bool lootableIfRestricted)

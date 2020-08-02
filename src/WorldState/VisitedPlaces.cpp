@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
+#include "WorldState/PlayerState.h"
 #include "WorldState/VisitedPlaces.h"
 #include "Data/LoadOrder.h"
 
@@ -26,7 +27,12 @@ namespace shse
 {
 
 VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime) :
-	m_worldspace(worldspace), m_location(location), m_cell(cell), m_gameTime(gameTime)
+	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(PlayerState::Instance().GetPosition()), m_gameTime(gameTime)
+{
+}
+
+VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime) :
+	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(position), m_gameTime(gameTime)
 {
 }
 
@@ -37,6 +43,8 @@ VisitedPlace& VisitedPlace::operator=(const VisitedPlace& rhs)
 		m_worldspace = rhs.m_worldspace;
 		m_location = rhs.m_location;
 		m_cell = rhs.m_cell;
+		m_position = rhs.m_position;
+		m_gameTime = rhs.m_gameTime;
 	}
 	return *this;
 }
@@ -56,6 +64,7 @@ void VisitedPlace::AsJSON(nlohmann::json& j) const
 	{
 		j["cell"] = StringUtils::FromFormID(m_cell->GetFormID());
 	}
+	j["position"] = nlohmann::json(m_position);
 }
 
 void to_json(nlohmann::json& j, const VisitedPlace& visitedPlace)
@@ -133,7 +142,8 @@ void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
 		RE::TESObjectCELL* cellForm(cell != place.cend() ?
 			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESObjectCELL>(StringUtils::ToFormID(cell->get<std::string>())) : nullptr);
 		// the list was already normalized before saving, no need to call RecordNew
-		m_visited.emplace_back(worldspaceForm, locationForm, cellForm, gameTime);
+		// player position recorded
+		m_visited.emplace_back(worldspaceForm, locationForm, cellForm, Position(place["position"]), gameTime);
 	}
 }
 

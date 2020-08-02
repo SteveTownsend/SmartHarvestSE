@@ -142,6 +142,7 @@ void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const 
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto targets(m_collectionsByFormID.equal_range(item->GetFormID()));
+	bool atLeastOne(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
 		// skip disabled collections
@@ -153,7 +154,13 @@ void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const 
 		{
 			// record membership
 			collection->second->RecordItem(item, gameTime);
+			atLeastOne = true;
 		}
+	}
+	if (atLeastOne)
+	{
+		// Ensure Location of Item Collection is recorded
+		LocationTracker::Instance().RecordCurrentPlace(gameTime);
 	}
 }
 
@@ -315,7 +322,14 @@ void CollectionManager::PrintMembership(void) const
 		REL_MESSAGE("Collection Group {}:", collectionGroup.second->Name().c_str());
 		for (const auto& collection : collectionGroup.second->Collections())
 		{
-			REL_MESSAGE("Collection {}:\n{}", collection->Name().c_str(), collection->PrintMembers().c_str());
+			if (collection->HasMembers())
+			{
+				REL_MESSAGE("Collection {}:\n{}", collection->Name().c_str(), collection->PrintMembers().c_str());
+			}
+			else
+			{
+				REL_ERROR("Collection {} is empty", collection->Name().c_str());
+			}
 		}
 	}
 }

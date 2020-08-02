@@ -83,8 +83,15 @@ bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 
 bool Collection::IsActive() const
 {
+	// Collections with no Members are not considered active.
 	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
-	return !m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled();
+	return HasMembers() && !m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled();
+}
+
+bool Collection::HasMembers() const
+{
+	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
+	return !m_members.empty();
 }
 
 bool Collection::MatchesFilter(const ConditionMatcher& matcher) const

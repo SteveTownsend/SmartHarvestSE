@@ -78,6 +78,7 @@ public:
 	Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
 		const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
 	bool IsActive() const;
+	bool HasMembers() const;
 	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
 	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;

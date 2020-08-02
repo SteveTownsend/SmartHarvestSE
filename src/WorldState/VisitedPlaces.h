@@ -19,12 +19,15 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include "WorldState/LocationTracker.h"
+
 namespace shse
 {
 
 class VisitedPlace {
 public:
 	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime);
+	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime);
 	VisitedPlace& operator=(const VisitedPlace& rhs);
 
 	void AsJSON(nlohmann::json& j) const;
@@ -32,12 +35,14 @@ public:
 	inline const RE::TESWorldSpace* Worldspace() const { return m_worldspace; }
 	inline const RE::BGSLocation* Location() const { return m_location; }
 	inline const RE::TESObjectCELL* Cell() const { return m_cell; }
+	inline const Position GetPosition() const { return m_position; }
 
 private:
 	const RE::TESWorldSpace* m_worldspace;
 	const RE::BGSLocation* m_location;
 	const RE::TESObjectCELL* m_cell;
-	const float m_gameTime;
+	Position m_position;
+	float m_gameTime;
 };
 
 void to_json(nlohmann::json& j, const VisitedPlace& visitedPlace);

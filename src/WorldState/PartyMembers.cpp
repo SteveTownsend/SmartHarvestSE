@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "WorldState/PartyMembers.h"
+#include "WorldState/LocationTracker.h"
 #include "Data/LoadOrder.h"
 
 namespace shse
@@ -80,6 +81,8 @@ void PartyMembers::AdjustParty(const Followers& followers, const float gameTime)
 			updated = true;
 			PartyUpdateType updateType(existingFollower->IsDead(true) ? PartyUpdateType::Died : PartyUpdateType::Departed);
 			m_partyUpdates.push_back(PartyUpdate(existingFollower, updateType, gameTime));
+			// Ensure Location is recorded
+			LocationTracker::Instance().RecordCurrentPlace(gameTime);
 			DBG_MESSAGE("Follower {}/0x{:08x} left party at {:0.3f}", existingFollower->GetName(), existingFollower->GetFormID(), gameTime);
 		}
 	}
