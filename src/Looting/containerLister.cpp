@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "FormHelpers/FormHelper.h"
+#include "Data/dataCase.h"
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Looting/containerLister.h"
 
@@ -87,6 +88,9 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 				continue;
 
 			// Check for enchantment or quest target
+			if (!m_hasQuestItem && DataCase::GetInstance()->QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
+				m_hasQuestItem = true;
+
 			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 			{
 				if (*extraList)

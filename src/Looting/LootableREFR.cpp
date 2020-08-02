@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "Looting/LootableREFR.h"
+#include "Data/dataCase.h"
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "FormHelpers/FormHelper.h"
 #include "Looting/objects.h"
@@ -37,6 +38,9 @@ bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
 {
 	if (!m_ref)
 		return false;
+	// check REFR vs pre-populated Quest Targets
+	if (DataCase::GetInstance()->ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
+		return true;
 
 	RE::RefHandle handle;
 	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(m_ref));

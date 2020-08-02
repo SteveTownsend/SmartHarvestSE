@@ -250,8 +250,11 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		if (refr->GetFormType() == RE::FormType::ActorCharacter)
 		{
-			if (!refr->IsDead(true) ||
-				DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
+			if (!refr->IsDead(true))
+			{
+				return Lootability::ReferenceIsLiveActor;
+			}
+			if (DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 					INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
 			{
 				return Lootability::LootDeadBodyDisabled;
@@ -273,6 +276,10 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 				else if (IsSummoned(actor))
 				{
 					exclusionType = Lootability::DeadBodyIsSummoned;
+				}
+				else if (IsQuestTargetNPC(actor))
+				{
+					exclusionType = Lootability::CannotLootQuestTarget;
 				}
 				if (exclusionType != Lootability::Lootable)
 				{

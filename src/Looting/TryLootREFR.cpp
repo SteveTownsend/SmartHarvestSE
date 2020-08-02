@@ -149,7 +149,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (!IsSpecialObjectLootable(questObjectLoot))
 			{
 				skipLooting = true;
-				result = Lootability::CannotLootQuestObject;
+				result = Lootability::CannotLootQuestTarget;
 			}
 		}
 		// glow unread notes as they are often quest-related

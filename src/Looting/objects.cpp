@@ -161,6 +161,15 @@ bool IsSummoned(const RE::Actor* actor)
 	return result;
 }
 
+// applies only if NPC
+bool IsQuestTargetNPC(const RE::Actor* actor)
+{
+	const RE::TESNPC* npc(actor->GetActorBase());
+	bool result(npc && DataCase::GetInstance()->QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
+	DBG_DMESSAGE("Actor is Quest Target NPC = {}", result ? "true" : "false");
+	return result;
+}
+
 // this is the pivotal function that maps a REFR to its loot category
 ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr)
 {

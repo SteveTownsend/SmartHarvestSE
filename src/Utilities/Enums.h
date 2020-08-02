@@ -342,7 +342,7 @@ enum class Lootability {
 	ObjectTypeUnknown,
 	ManualLootTarget,
 	BaseObjectOnBlacklist,
-	CannotLootQuestObject,
+	CannotLootQuestTarget,
 	ObjectIsInBlacklistCollection,
 	CannotLootValuableObject,
 	CannotLootAmmo,
