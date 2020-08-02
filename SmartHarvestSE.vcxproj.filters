@@ -418,6 +418,9 @@
     <None Include="Config\SmartHarvestSE.Defaults.ini">
       <Filter>Config</Filter>
     </None>
+    <None Include="Collections\Examples\SHSE.Collections.LoTD2.json">
+      <Filter>Collections\Examples</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Interface\translations\SmartHarvestSE_czech.txt">

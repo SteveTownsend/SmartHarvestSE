@@ -1,0 +1,252 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets per file for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "take",
+    "notify": true,
+    "repeat": false
+  },
+  "useMCM": true,
+  "collections": [
+    {
+      "name": "Daedric Gallery Immersive Weapons",
+      "description": "Display: DBM_SectionDaedricGalleryImmersiveWeaponsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008B4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Wolf",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsWolfItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008B3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Dawnguard",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDawnguardItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008B1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Falmer",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsFalmerItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008AF"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Elven",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsElvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008AD"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Glass",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsGlassItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008AB"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Orcish",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsOrcishItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008A9"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Blades",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsBladesItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008A7"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Ebony",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsEbonyItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008A5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Dragon",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDragonItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008A3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Daedric",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDaedricItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D70008A1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Ancient Nordic",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsAncientNordicItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D700089F"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Dwarven",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsDwarvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D700089D"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Steel",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsSteelItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D700089B"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Immersive Weapons Iron",
+      "description": "Display: DBM_SectionArmoryImmersiveWeaponsIronItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D7000899"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Immersive Weapons",
+      "description": "Display: DBM_SectionHOHImmersiveWeaponsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D7000801"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
