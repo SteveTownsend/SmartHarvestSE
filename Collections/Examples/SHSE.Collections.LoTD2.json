@@ -17,7 +17,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008B4"
+              "formID": "D80008B4"
             }
           ]
         }
@@ -32,7 +32,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008B3"
+              "formID": "D80008B3"
             }
           ]
         }
@@ -47,7 +47,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008B1"
+              "formID": "D80008B1"
             }
           ]
         }
@@ -62,7 +62,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008AF"
+              "formID": "D80008AF"
             }
           ]
         }
@@ -77,7 +77,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008AD"
+              "formID": "D80008AD"
             }
           ]
         }
@@ -92,7 +92,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008AB"
+              "formID": "D80008AB"
             }
           ]
         }
@@ -107,7 +107,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008A9"
+              "formID": "D80008A9"
             }
           ]
         }
@@ -122,7 +122,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008A7"
+              "formID": "D80008A7"
             }
           ]
         }
@@ -137,7 +137,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008A5"
+              "formID": "D80008A5"
             }
           ]
         }
@@ -152,7 +152,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008A3"
+              "formID": "D80008A3"
             }
           ]
         }
@@ -167,7 +167,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D70008A1"
+              "formID": "D80008A1"
             }
           ]
         }
@@ -182,7 +182,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D700089F"
+              "formID": "D800089F"
             }
           ]
         }
@@ -197,7 +197,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D700089D"
+              "formID": "D800089D"
             }
           ]
         }
@@ -212,7 +212,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D700089B"
+              "formID": "D800089B"
             }
           ]
         }
@@ -227,7 +227,7 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D7000899"
+              "formID": "D8000899"
             }
           ]
         }
@@ -242,7 +242,367 @@
           "formList": [
             {
               "listPlugin": "LoTD Patches Merged.esp",
-              "formID": "D7000801"
+              "formID": "D8000801"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Thane Weapons",
+      "description": "Display: DBM_SectionArmoryThaneWeaponsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Steel",
+      "description": "Display: DBM_SectionArmorySteelItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF7"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Stalhrim",
+      "description": "Display: DBM_SectionArmoryStalhrimItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Snow Elf",
+      "description": "Display: DBM_SectionArmorySnowElfItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Orcish",
+      "description": "Display: DBM_SectionArmoryOrcishItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Nordic",
+      "description": "Display: DBM_SectionArmoryNordicItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Iron",
+      "description": "Display: DBM_SectionArmoryIronItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Guard Armor Display",
+      "description": "Display: DBM_SectionArmoryGuardArmorDisplayItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0808F99E"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Glass",
+      "description": "Display: DBM_SectionArmoryGlassItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Forsworn",
+      "description": "Display: DBM_SectionArmoryForswornItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Falmer",
+      "description": "Display: DBM_SectionArmoryFalmerItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEF"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Extra Displays",
+      "description": "Display: DBM_SectionArmoryExtraDisplaysItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEE"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Elven",
+      "description": "Display: DBM_SectionArmoryElvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CED"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Ebony",
+      "description": "Display: DBM_SectionArmoryEbonyItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Dwarven",
+      "description": "Display: DBM_SectionArmoryDwarvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEB"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Dragon",
+      "description": "Display: DBM_SectionArmoryDragonItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEA"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Dawnguard",
+      "description": "Display: DBM_SectionArmoryDawnguardItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE9"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Daedric",
+      "description": "Display: DBM_SectionArmoryDaedricItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE8"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Blades",
+      "description": "Display: DBM_SectionArmoryBladesItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE7"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Ancient Nord",
+      "description": "Display: DBM_SectionArmoryAncientNordItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DBMDG Dragonborn Hall Midwood Isle",
+      "description": "Display: DBM_SectionDBMDGDragonbornHallMidwoodIsleItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D8000B53"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall BS Heartland",
+      "description": "Display: DBM_SectionDBHallBSHeartlandItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D8000A7D"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall Skyrim Sewers Alt",
+      "description": "Display: DBM_SectionDBHallSkyrimSewersAltItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D8000A55"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall Skyrim Sewers",
+      "description": "Display: DBM_SectionDBHallSkyrimSewersItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LoTD Patches Merged.esp",
+              "formID": "D8000813"
             }
           ]
         }
