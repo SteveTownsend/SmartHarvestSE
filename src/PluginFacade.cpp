@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "VM/UIState.h"
 #include "WorldState/ActorTracker.h"
+#include "WorldState/AdventureTargets.h"
 #include "WorldState/LocationTracker.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
@@ -129,6 +130,7 @@ bool PluginFacade::Load()
 	}
 	DataCase::GetInstance()->CategorizeLootables();
 	PopulationCenters::Instance().Categorize();
+	AdventureTargets::Instance().Categorize();
 
 	// Collections are layered on top of categorized objects
 	REL_MESSAGE("*** LOAD *** Build Collections");

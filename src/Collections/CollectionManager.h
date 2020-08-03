@@ -82,7 +82,7 @@ private:
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 	void ResolveMembership(void);
 	void AddToRelevantCollections(const RE::TESForm* item, const float gameTime);
-	std::vector<const RE::TESForm*> ReconcileInventory();
+	void ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions);
 	void EnqueueAddedItem(const RE::TESForm* form);
 
 	static std::unique_ptr<CollectionManager> m_instance;

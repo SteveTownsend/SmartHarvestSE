@@ -59,9 +59,12 @@ public:
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& j);
 
+	std::unordered_set<const RE::BGSLocation*> RemoveVisited(const std::unordered_set<const RE::BGSLocation*>& candidates) const;
+
 private:
 	static std::unique_ptr<VisitedPlaces> m_instance;
 	std::vector<VisitedPlace> m_visited;
+	std::unordered_set<const RE::BGSLocation*> m_knownLocations;
 	mutable RecursiveLock m_visitedLock;
 };
 

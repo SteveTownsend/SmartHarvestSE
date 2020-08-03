@@ -109,6 +109,10 @@ void VisitedPlaces::RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGS
 	if (isNew)
 	{ 
 		m_visited.emplace_back(worldspace, location, cell, gameTime);
+		if (location)
+		{
+			m_knownLocations.insert(location);
+		}
 	}
 }
 
@@ -133,18 +137,32 @@ void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
 	{
 		const float gameTime(place["time"].get<float>());
 		const auto worldspace(place.find("worldspace"));
-		RE::TESWorldSpace* worldspaceForm(worldspace != place.cend() ?
+		const RE::TESWorldSpace* worldspaceForm(worldspace != place.cend() ?
 			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(worldspace->get<std::string>())) : nullptr);
 		const auto location(place.find("location"));
-		RE::BGSLocation* locationForm(location != place.cend() ?
+		const RE::BGSLocation* locationForm(location != place.cend() ?
 			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr);
 		const auto cell(place.find("cell"));
-		RE::TESObjectCELL* cellForm(cell != place.cend() ?
+		const RE::TESObjectCELL* cellForm(cell != place.cend() ?
 			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESObjectCELL>(StringUtils::ToFormID(cell->get<std::string>())) : nullptr);
 		// the list was already normalized before saving, no need to call RecordNew
 		// player position recorded
 		m_visited.emplace_back(worldspaceForm, locationForm, cellForm, Position(place["position"]), gameTime);
+		if (locationForm)
+		{
+			m_knownLocations.insert(locationForm);
+		}
 	}
+}
+
+std::unordered_set<const RE::BGSLocation*> VisitedPlaces::RemoveVisited(const std::unordered_set<const RE::BGSLocation*>& candidates) const
+{
+	std::unordered_set<const RE::BGSLocation*> result;
+	std::copy_if(candidates.cbegin(), candidates.cend(), std::inserter(result, result.end()),
+		[=](const RE::BGSLocation* candidate) -> bool {
+		return !m_knownLocations.contains(candidate);
+	});
+	return result;
 }
 
 void to_json(nlohmann::json& j, const VisitedPlaces& visitedPlaces)

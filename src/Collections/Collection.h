@@ -81,7 +81,7 @@ public:
 	bool HasMembers() const;
 	bool MatchesFilter(const ConditionMatcher& matcher) const;
 	virtual bool IsMemberOf(const RE::TESForm* form) const;
-	bool InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
+	std::pair<bool, bool> InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
 	inline const CollectionPolicy& Policy() const { return m_effectivePolicy; }
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
 	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
@@ -89,6 +89,7 @@ public:
 	inline void SetOverridesGroup(const bool overridesGroup) { m_overridesGroup = overridesGroup; }
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
+	bool HaveObserved(const RE::TESForm* form) const;
 	void RecordItem(const RE::TESForm* form, const float gameTime);
 	void Reset();
 
