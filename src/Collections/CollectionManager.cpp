@@ -105,19 +105,15 @@ void CollectionManager::ProcessAddedItems()
 	RecursiveLockGuard guard(m_collectionLock);
 	constexpr std::chrono::milliseconds InventoryReconciliationIntervalMillis(3000LL);
 	const auto nowTime(std::chrono::high_resolution_clock::now());
+	std::unordered_set<const RE::TESForm*> queuedItems(m_addedItemQueue.cbegin(), m_addedItemQueue.cend());
+	m_addedItemQueue.clear();
 	if (nowTime - m_lastInventoryCheck >= InventoryReconciliationIntervalMillis)
 	{
 		DBG_MESSAGE("Inventory reconciliation required");
 		m_lastInventoryCheck = nowTime;
-		const auto inventoryAdds(ReconcileInventory());
-		if (!inventoryAdds.empty())
-		{
-			m_addedItemQueue.insert(m_addedItemQueue.end(), inventoryAdds.cbegin(), inventoryAdds.cend());
-		}
+		ReconcileInventory(queuedItems);
 	}
 
-	decltype(m_addedItemQueue) queuedItems;
-	queuedItems.swap(m_addedItemQueue);
 	const float gameTime(PlayerState::Instance().CurrentGameTime());
 	for (const auto form : queuedItems)
 	{
@@ -148,9 +144,10 @@ void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const 
 		// skip disabled collections
 		if (!collection->second->IsActive())
 			continue;
-		// Do not record if the policy indicates per-item history not required
+		// Do not record if the policy indicates per-item history not required, or not a member, or if observed and not repeatable
 		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
-			collection->second->IsMemberOf(item))
+			collection->second->IsMemberOf(item) &&
+			(collection->second->Policy().Repeat() || !collection->second->HaveObserved(item)))
 		{
 			// record membership
 			collection->second->RecordItem(item, gameTime);
@@ -184,27 +181,39 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 	// It is in at least one collection. Find the most aggressive action for any where we are in scope and a usable member.
 	CollectibleHandling action(CollectibleHandling::Leave);
 	bool actionable(false);
+	bool defer(false);
 	for (auto collection = targets.first; collection != targets.second; ++collection)
 	{
 		// skip disabled collections
 		if (!collection->second->IsActive())
 			continue;
-		if (collection->second->InScopeAndCollectibleFor(matcher))
+		const auto results(collection->second->InScopeAndCollectibleFor(matcher));
+		if (results.first)
 		{
+			// The Collection definitively treats this observation of the item as a member
 			actionable = true;
 			action = UpdateCollectibleHandling(collection->second->Policy().Action(), action);
 		}
+		else if (results.second)
+		{
+			// The Collection decision is qualified: it's a member, but not collected because repeats are not allowed
+			defer = true;
+		}
+	}
+	if (defer && !actionable)
+	{
+		return NotCollectible;
 	}
 	return std::make_pair(actionable, action);
 }
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
 // We don't do this on every pass as it's a decent amount of work
-std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
+void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions)
 {
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 	if (!player)
-		return std::vector<const RE::TESForm*>();
+		return;
 
 	// use delta vs last pass to speed this up (resets on game reload)
 	static const bool requireQuestItemAsTarget(false);
@@ -212,7 +221,6 @@ std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
 	LootableItems playerInventory(ContainerLister(
 		INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials).GetOrCheckContainerForms());
 	decltype(m_lastInventoryItems) newInventoryItems;
-	std::vector<const RE::TESForm*> candidates;
 	for (const auto& candidate : playerInventory)
 	{
 		const auto item(candidate.BoundObject());
@@ -221,7 +229,7 @@ std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
 		if (!m_lastInventoryItems.contains(item) && m_collectionsByFormID.contains(formID))
 		{
 			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), formID);
-			candidates.push_back(item);
+			additions.insert(item);
 		}
 		else
 		{
@@ -229,7 +237,6 @@ std::vector<const RE::TESForm*> CollectionManager::ReconcileInventory()
 		}
 	}
 	m_lastInventoryItems.swap(newInventoryItems);
-	return candidates;
 }
 
 bool CollectionManager::LoadCollectionGroup(

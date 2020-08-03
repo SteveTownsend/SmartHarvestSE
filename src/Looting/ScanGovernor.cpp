@@ -221,7 +221,7 @@ void ScanGovernor::ProgressGlowDemo()
 }
 
 // input may get updated for ashpile
-Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dryRun)
+Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun)
 {
 	if (!refr)
 		return Lootability::NullReference;
@@ -307,7 +307,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 				return Lootability::DeadBodyDelayedLooting;
 			}
 			// avoid double dipping for immediate-loot case
-			if (std::find(m_possibleDupes.cbegin(), m_possibleDupes.cend(), refr) != m_possibleDupes.cend())
+			if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
 			{
 				DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
 					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
@@ -315,7 +315,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			}
 			// record Killer of dynamic REFR that we will loot immediately
 			ActorTracker::Instance().RecordIfKilledByParty(actor);
-			m_possibleDupes.push_back(refr);
+			possibleDupes.push_back(refr);
 		}
 		else if (refr->GetBaseObject()->As<RE::TESContainer>())
 		{
@@ -354,13 +354,13 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, const bool dr
 			DBG_MESSAGE("Got ash-pile REFR 0x{:08x} from REFR 0x{:08x}", refr->GetFormID(), original->GetFormID());
 
 			// avoid double dipping for immediate-loot case
-			if (std::find(m_possibleDupes.cbegin(), m_possibleDupes.cend(), refr) != m_possibleDupes.cend())
+			if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
 			{
 				DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
 					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 				return Lootability::DeadBodyPossibleDuplicate;
 			}
-			m_possibleDupes.push_back(refr);
+			possibleDupes.push_back(refr);
 		}
 		else if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
 		{
@@ -391,7 +391,7 @@ void ScanGovernor::LootAllEligible()
 	WindowsUtils::ScopedTimer elapsed("Loot Eligible Targets");
 #endif
 	std::unordered_map<RE::TESForm*, Lootability> checkedTargets;
-	m_possibleDupes.clear();
+	std::vector<RE::TESObjectREFR*> possibleDupes;
 	for (auto target : targets)
 	{
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
@@ -418,8 +418,12 @@ void ScanGovernor::LootAllEligible()
 		}
 		else
 		{
-			lootability = ValidateTarget(refr, dryRun);
-			checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
+			lootability = ValidateTarget(refr, possibleDupes, dryRun);
+			if (refr->GetFormType() != RE::FormType::ActorCharacter)
+			{
+				// different Actors have different loot
+				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
+			}
 		}
 		if (lootability	!= Lootability::Lootable)
 		{
@@ -481,7 +485,8 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	std::string typeName;
 	if (result == Lootability::Lootable)
 	{
-		result = ValidateTarget(refr, dryRun);
+		std::vector<RE::TESObjectREFR*> possibleDupes;
+		result = ValidateTarget(refr, possibleDupes, dryRun);
 	}
 	if (result == Lootability::Lootable)
 	{
