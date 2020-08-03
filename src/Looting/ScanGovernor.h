@@ -81,7 +81,7 @@ private:
 	void LootAllEligible();
 	void TrackActors();
 
-	Lootability ValidateTarget(RE::TESObjectREFR*& refr, const bool dryRun);
+	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun);
 	void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr) const;
 
 	bool HasDynamicData(RE::TESObjectREFR* refr) const;
@@ -94,7 +94,6 @@ private:
 
 	bool m_searchAllowed;
 	INIFile::SecondaryType m_targetType;
-	std::vector<RE::TESObjectREFR*> m_possibleDupes;
 
 	// for dry run - ordered by proximity to player at time of recording
 	std::vector<const RE::Actor*> m_detectiveWannabes;

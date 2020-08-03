@@ -65,20 +65,29 @@ bool Collection::IsMemberOf(const RE::TESForm* form) const
 	return form && m_members.contains(form);
 }
 
-bool Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
+// first element - does Collection determine disposition?
+// second element - true for one-time Collectible, already processed: defer decision to other rules
+std::pair<bool, bool> Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 {
 	if (!matcher.Form())
-		return false;
+		return { false, false };
 
 	// check Scope - if Collection is scoped, scope for this autoloot check must be valid
 	if (!m_scopes.empty() && std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) == m_scopes.cend())
 	{
 		DBG_VMESSAGE("{}/0x{:08x} has invalid scope {}", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
-		return false;
+		return { false, false };
 	}
 
-	// if (always collectible OR not observed) AND a member of this collection
-	return (m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form())) && IsMemberOf(matcher.Form());
+	if (IsMemberOf(matcher.Form()))
+	{
+		// 1. Collection member always handled if repeats allowed, or as-yet unobserved
+		// 2. Defer to other rules if repeats are not allowed and the Collection is not dispositive for the item
+		// If repeats are disallowed, the item is no longer a Collection member after first observation
+		return { m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()), !m_effectivePolicy.Repeat() };
+	}
+	// absolutely not a member of the collection
+	return { false, false };
 }
 
 bool Collection::IsActive() const
@@ -102,6 +111,11 @@ bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
 		return true;
 	}
 	return false;
+}
+
+bool Collection::HaveObserved(const RE::TESForm* form) const
+{ 
+	return m_observed.contains(form);
 }
 
 void Collection::RecordItem(const RE::TESForm* form, const float gameTime)

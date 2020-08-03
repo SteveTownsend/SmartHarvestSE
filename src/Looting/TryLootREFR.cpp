@@ -423,7 +423,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (!IsSpecialObjectLootable(valuableLoot))
 			{
-				skipLooting = true;
 				result = Lootability::ContainerHasValuableObject;
 			}
 		}
@@ -446,9 +445,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				{
 					result = Lootability::ItemInBlacklistCollection;
 				}
-				skipLooting = true;
 			}
 		}
+
 		// Order is important to ensure we glow correctly even if blocked - IsLootingForbidden must come first.
 		// Check here is on the container, skip all contents if looting not permitted
 		Lootability forbidden(LootingLegality(m_targetType));

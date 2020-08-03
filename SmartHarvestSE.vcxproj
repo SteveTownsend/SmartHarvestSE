@@ -243,6 +243,7 @@
     <ClCompile Include="src\VM\papyrus.cpp" />
     <ClCompile Include="src\VM\UIState.cpp" />
     <ClCompile Include="src\WorldState\ActorTracker.cpp" />
+    <ClCompile Include="src\WorldState\AdventureTargets.cpp" />
     <ClCompile Include="src\WorldState\PartyMembers.cpp" />
     <ClCompile Include="src\WorldState\VisitedPlaces.cpp" />
     <ClCompile Include="src\WorldState\LocationTracker.cpp" />
@@ -299,6 +300,7 @@
     <ClInclude Include="src\VM\papyrus.h" />
     <ClInclude Include="src\VM\UIState.h" />
     <ClInclude Include="src\WorldState\ActorTracker.h" />
+    <ClInclude Include="src\WorldState\AdventureTargets.h" />
     <ClInclude Include="src\WorldState\PartyMembers.h" />
     <ClInclude Include="src\WorldState\VisitedPlaces.h" />
     <ClInclude Include="src\WorldState\LocationTracker.h" />
