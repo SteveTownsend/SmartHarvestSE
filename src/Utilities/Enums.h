@@ -409,6 +409,7 @@ enum class SerializationRecordType
 	PlacesVisited,
 	PartyUpdates,
 	Victims,
+	Adventures,
 	MAX
 };
 
@@ -425,6 +426,8 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 		return "PRTY";
 	case SerializationRecordType::Victims:
 		return "VCTM";
+	case SerializationRecordType::Adventures:
+		return "ADVN";
 	default:
 		return "????";
 	}

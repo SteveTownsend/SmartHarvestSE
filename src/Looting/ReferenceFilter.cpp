@@ -424,7 +424,7 @@ void ReferenceFilter::FilterNearbyReferences()
 			return target.first > effectiveRadius;
 		}));
 
-		DBG_MESSAGE("Erase {} out-of-range REFRs", std::distance(tooFarAway, m_refs.end()));
+		DBG_MESSAGE("Erase {} REFRs outside effective loot range {:.2f}", std::distance(tooFarAway, m_refs.end()), effectiveRadius);
 		m_refs.erase(tooFarAway, m_refs.end());
 	}
 }

@@ -155,14 +155,10 @@ void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
 	}
 }
 
-std::unordered_set<const RE::BGSLocation*> VisitedPlaces::RemoveVisited(const std::unordered_set<const RE::BGSLocation*>& candidates) const
+bool VisitedPlaces::IsKnown(const RE::BGSLocation* location) const
 {
-	std::unordered_set<const RE::BGSLocation*> result;
-	std::copy_if(candidates.cbegin(), candidates.cend(), std::inserter(result, result.end()),
-		[=](const RE::BGSLocation* candidate) -> bool {
-		return !m_knownLocations.contains(candidate);
-	});
-	return result;
+	RecursiveLockGuard guard(m_visitedLock);
+	return m_knownLocations.contains(location);
 }
 
 void to_json(nlohmann::json& j, const VisitedPlaces& visitedPlaces)

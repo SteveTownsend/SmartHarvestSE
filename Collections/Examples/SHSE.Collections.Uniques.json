@@ -201,6 +201,30 @@
     },
 
     {
+      "name": "Easier Peasier",
+      "description": "Items added in Easier Riders Dungeon Pack SSE",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "EasierRidersDungeonPackSSE.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
+      "name": "Wonders Never Cease",
+      "description": "Items added in Lost Wonders of Mzark",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "MzarkWonders.esp" ],
+          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
       "name": "Palaeontologist",
       "description": "All the fossils added by Fossil Mining",
       "policy": {
