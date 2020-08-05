@@ -82,13 +82,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// TODO this may update state on a dry run but we should already have processed the item on >= 1 pass, so no harm?
 		// Check Collections first in case there are Manual Loot items that do not have an objectType, esp. scripted ACTI
-		const auto collectible(refrEx.TreatAsCollectible());
+		auto collectible(refrEx.TreatAsCollectible());
 		if (collectible.first)
 		{
 			CollectibleHandling collectibleAction(collectible.second);
 			DBG_VMESSAGE("Collectible Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (!CanLootCollectible(collectibleAction))
 			{
+				// ignore collectibility from here on, since we've determined it is unlootable
+				collectible.first = false;
 				skipLooting = true;
 				if (collectibleAction == CollectibleHandling::Print)
 				{
@@ -149,6 +151,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (!IsSpecialObjectLootable(questObjectLoot))
 			{
 				skipLooting = true;
+				// ignore collectibility from here on, since we've determined it is unlootable as a Quest Target
+				collectible.first = false;
 				result = Lootability::CannotLootQuestTarget;
 			}
 		}
@@ -173,6 +177,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (!IsSpecialObjectLootable(valuableLoot))
 			{
 				skipLooting = true;
+				// in this case, Collectibility can override the decision
 				result = Lootability::CannotLootValuableObject;
 			}
 		}
