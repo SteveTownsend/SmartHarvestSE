@@ -19,7 +19,16 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "WorldState/AdventureTargets.h"
+#include "WorldState/PlayerState.h"
+#include "WorldState/VisitedPlaces.h"
+#include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
+#include "VM/papyrus.h"
+
+#include <random>
+
+namespace shse
+{
 
 std::string AdventureTargetName(const AdventureTargetType adventureTarget)
 {
@@ -59,6 +68,50 @@ std::string AdventureTargetName(const AdventureTargetType adventureTarget)
 	};
 }
 
+AdventureEvent AdventureEvent::StartAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location)
+{
+	return AdventureEvent(AdventureEventType::Started, world, location);
+}
+
+AdventureEvent AdventureEvent::CompleteAdventure()
+{
+	return AdventureEvent(AdventureEventType::Complete);
+}
+
+AdventureEvent AdventureEvent::AbandonAdventure()
+{
+	return AdventureEvent(AdventureEventType::Abandoned);
+}
+
+AdventureEvent::AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location) :
+	m_eventType(eventType), m_world(world), m_location(location), m_gameTime(PlayerState::Instance().CurrentGameTime())
+{
+}
+
+AdventureEvent::AdventureEvent(const AdventureEventType eventType) :
+	m_eventType(eventType), m_world(nullptr), m_location(nullptr), m_gameTime(PlayerState::Instance().CurrentGameTime())
+{
+}
+
+void AdventureEvent::AsJSON(nlohmann::json& j) const
+{
+	j["time"] = m_gameTime;
+	j["event"] = int(m_eventType);
+	if (m_world)
+	{
+		j["world"] = StringUtils::FromFormID(m_world->GetFormID());
+	}
+	if (m_location)
+	{
+		j["location"] = StringUtils::FromFormID(m_location->GetFormID());
+	}
+}
+
+void to_json(nlohmann::json& j, const AdventureEvent& adventureEvent)
+{
+	adventureEvent.AsJSON(j);
+}
+
 std::unique_ptr<AdventureTargets> AdventureTargets::m_instance;
 
 AdventureTargets& AdventureTargets::Instance()
@@ -68,6 +121,21 @@ AdventureTargets& AdventureTargets::Instance()
 		m_instance = std::make_unique<AdventureTargets>();
 	}
 	return *m_instance;
+}
+
+AdventureTargets::AdventureTargets() : m_targetLocation(nullptr), m_targetWorld(nullptr)
+{
+}
+
+void AdventureTargets::Reset()
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	m_adventureEvents.clear();
+	m_targetLocation = nullptr;
+	m_targetWorld = nullptr;
+
+	m_unvisitedLocationsByWorld.clear();
+	m_sortedWorlds.clear();
 }
 
 // Classify Locations by their keywords
@@ -87,6 +155,7 @@ void AdventureTargets::Categorize()
 		{"LocSetNordicRuin", AdventureTargetType::NordicRuin},
 		{"LocTypeAnimalDen", AdventureTargetType::AnimalDen},
 		{"LocTypeBanditCamp", AdventureTargetType::BanditCamp},
+		{"LocTypeCity", AdventureTargetType::Settlement},
 		{"LocTypeClearable", AdventureTargetType::Clearable},
 		{"LocTypeDragonLair", AdventureTargetType::DragonLair},
 		{"LocTypeDragonPriestLair", AdventureTargetType::DragonPriestLair},
@@ -102,6 +171,7 @@ void AdventureTargets::Categorize()
 		{"LocTypeSettlement", AdventureTargetType::Settlement},
 		{"LocTypeShipwreck", AdventureTargetType::Shipwreck},
 		{"LocTypeSprigganGrove", AdventureTargetType::Grove},
+		{"LocTypeTown", AdventureTargetType::Settlement},
 		{"LocTypeVampireLair", AdventureTargetType::VampireLair},
 		{"LocTypeWarlockLair", AdventureTargetType::WarlockLair},
 		{"LocTypeWerewolfLair", AdventureTargetType::WerebeastLair},
@@ -136,11 +206,51 @@ void AdventureTargets::Categorize()
 	{
 		if (!location->GetFullNameLength())
 		{
-			DBG_MESSAGE("SKip unnamed Location0x{:08x}", location->GetFormID());
+			DBG_MESSAGE("Skip unnamed Location 0x{:08x}", location->GetFormID());
 			continue;
 		}
-		// Scan location keywords to check if it's a settlement
+		const RE::BGSLocation* current(location);
+		RE::ObjectRefHandle markerRefr;
+		if (!current->worldLocMarker)
+		{
+			DBG_MESSAGE("Location has no Map Marker {}/0x{:08x}", location->GetName(), location->GetFormID());
+			// check for ACSR/LCSR 
+			RE::FormID markerID(InvalidForm);
+			for (const auto& csr : location->specialRefs)
+			{
+				static const RE::FormID MapMarkerLCRT = 0x10f63c;
+				static const RE::FormID LocationCenterLCRT = 0x1bdf1;
+				// ref-type is a keyword, we want Map Marker (preferred) or Location Center
+				if (csr.type->GetFormID() == MapMarkerLCRT)
+				{
+					markerID = csr.refData.refID;
+					break;
+				}
+				if (csr.type->GetFormID() == LocationCenterLCRT)
+				{
+					markerID = csr.refData.refID;
+				}
+			}
+			if (markerID == InvalidForm)
+			{
+				DBG_MESSAGE("Location has no Marker {}/0x{:08x}", location->GetName(), location->GetFormID());
+				continue;
+			}
+			RE::TESObjectREFR* refr(RE::TESForm::LookupByID<RE::TESObjectREFR>(markerID));
+			if (!refr)
+			{
+				DBG_MESSAGE("Location has unresolvable Marker 0x{:08x}", markerID);
+				continue;
+			}
+			markerRefr = refr->GetHandle();
+		}
+		else
+		{
+			markerRefr = current->worldLocMarker;
+		}
+		// Scan location keywords to check if it's a target type
 		uint32_t numKeywords(location->GetNumKeywords());
+		bool saved(false);
 		for (uint32_t next = 0; next < numKeywords; ++next)
 		{
 			std::optional<RE::BGSKeyword*> keyword(location->GetKeywordAt(next));
@@ -152,27 +262,13 @@ void AdventureTargets::Categorize()
 			if (matched == targetByKeyword.cend())
 				continue;
 			m_locationsByType[int(matched->second)].insert(location);
+			saved = true;
+		}
+		if (saved)
+		{
+			m_mapMarkerByLocation.insert({ location, markerRefr });
 		}
 	}
-#if _DEBUG
-	AdventureTargetType adventureType(static_cast<AdventureTargetType>(0));
-	for (const auto locationsForType : m_locationsByType)
-	{
-		if (locationsForType.empty())
-		{
-			DBG_WARNING("No Adventure Targets for type {}", AdventureTargetName(adventureType));
-		}
-		else
-		{
-			DBG_MESSAGE("Adventure Targets for type {}", AdventureTargetName(adventureType));
-			for (RE::BGSLocation* location : locationsForType)
-			{
-				DBG_MESSAGE("{}/0x{:08x}", location->GetName(), location->GetFormID());
-			}
-		}
-		adventureType = static_cast<AdventureTargetType>(uint32_t(adventureType) + 1);
-	}
-#endif
 	// skip this one
 	const RE::FormID AvoidanceExterior = 0x1b44a;
 	// hard code this linkage, it's a mess otherwise
@@ -233,4 +329,227 @@ void AdventureTargets::Categorize()
 			location = location->parentLoc;
 		}
 	}
+#if _DEBUG
+	AdventureTargetType adventureType(static_cast<AdventureTargetType>(0));
+	for (const auto locationsForType : m_locationsByType)
+	{
+		if (locationsForType.empty())
+		{
+			DBG_WARNING("No Adventure Targets for type {}", AdventureTargetName(adventureType));
+		}
+		else
+		{
+			DBG_MESSAGE("{} Adventure Targets for type {}", locationsForType.size(), AdventureTargetName(adventureType));
+			for (RE::BGSLocation* location : locationsForType)
+			{
+				DBG_MESSAGE("{}/0x{:08x}", location->GetName(), location->GetFormID());
+			}
+		}
+		adventureType = static_cast<AdventureTargetType>(uint32_t(adventureType) + 1);
+	}
+#endif
+}
+
+// This can only be called from MCM so thread-safe. Build view containing the viable Worlds/Locations for this type.
+size_t AdventureTargets::ViableWorldCount(const size_t adventureType) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	m_unvisitedLocationsByWorld.clear();
+	m_sortedWorlds.clear();
+	for (const auto location : m_locationsByType[adventureType])
+	{
+		if (VisitedPlaces::Instance().IsKnown(location))
+			continue;
+		const auto worldIter(m_worldByLocation.find(location));
+		if (worldIter == m_worldByLocation.cend())
+			continue;
+		const RE::TESWorldSpace* worldSpace(worldIter->second);
+		auto worldLocations(m_unvisitedLocationsByWorld.find(worldSpace));
+		if (worldLocations == m_unvisitedLocationsByWorld.cend())
+		{
+			worldLocations = m_unvisitedLocationsByWorld.insert({ worldSpace, {} }).first;
+			m_sortedWorlds.push_back(worldSpace);
+		}
+		DBG_MESSAGE("Viable Location {}/0x{:08x} in WorldSpace {}/0x{:08x}",
+			location->GetName(), location->GetFormID(), worldSpace->GetName(), worldSpace->GetFormID());
+		worldLocations->second.insert(location);
+	}
+	std::sort(m_sortedWorlds.begin(), m_sortedWorlds.end(), [=](const RE::TESWorldSpace* lhs, const RE::TESWorldSpace* rhs) -> bool {
+		std::string leftName(lhs->GetName());
+		std::string rightName(rhs->GetName());
+		return std::lexicographical_compare(leftName.cbegin(), leftName.cend(), rightName.cbegin(), rightName.cend());
+	});
+	return m_unvisitedLocationsByWorld.size();
+}
+
+std::string AdventureTargets::ViableWorldNameByIndexInView(const size_t worldIndex) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	if (worldIndex >= m_sortedWorlds.size())
+	{
+		return "";
+	}
+	DBG_VMESSAGE("WorldSpace {} at index {}", m_sortedWorlds[worldIndex]->GetName(), worldIndex);
+	std::string name(m_sortedWorlds[worldIndex]->GetName());
+	if (m_sortedWorlds[worldIndex] == LocationTracker::Instance().CurrentPlayerWorld())
+	{
+		// highlight player's current world for targeting
+		name.append("**");
+	}
+	return name;
+}
+
+void AdventureTargets::SelectCurrentDestination(const size_t worldIndex)
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	if (worldIndex >= m_sortedWorlds.size())
+		return;
+
+	const RE::TESWorldSpace* world(m_sortedWorlds[worldIndex]);
+	const auto worldLocations(m_unvisitedLocationsByWorld.find(world));
+	if (worldLocations == m_unvisitedLocationsByWorld.cend())
+		return;
+	std::vector<const RE::BGSLocation*> candidates(worldLocations->second.cbegin(), worldLocations->second.cend());
+	std::random_device rd;  //Will be used to obtain a seed for the random number engine
+	std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+	std::uniform_int_distribution<size_t> chooser(0, candidates.size() - 1);
+	m_targetLocation = candidates[chooser(gen)];
+	m_targetWorld = world;
+
+	DBG_MESSAGE("Adventure started to random location {}/0x{:08x} of {} candidates in WorldSpace {}/0x{:08x}",
+		m_targetLocation->GetName(), m_targetLocation->GetFormID(), candidates.size(), m_targetWorld->GetName(), m_targetWorld->GetFormID());
+	m_adventureEvents.push_back(AdventureEvent::StartAdventure(m_targetWorld, m_targetLocation));
+}
+
+void AdventureTargets::CheckReachedCurrentDestination(const RE::BGSLocation* newLocation)
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	if (m_targetLocation)
+	{
+		if (newLocation == m_targetLocation)
+		{
+			DBG_MESSAGE("Completed Adventure to location {}/0x{:08x} in WorldSpace {}/0x{:08x}",
+				m_targetLocation->GetName(), m_targetLocation->GetFormID(), m_targetWorld->GetName(), m_targetWorld->GetFormID());
+			m_adventureEvents.push_back(AdventureEvent::CompleteAdventure());
+			static RE::BSFixedString arrivalMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADVENTURE_ARRIVED")));
+			if (!arrivalMsg.empty())
+			{
+				std::string notificationText(arrivalMsg);
+				StringUtils::Replace(notificationText, "{TARGET}", m_targetLocation->GetName());
+				RE::DebugNotification(notificationText.c_str());
+			}
+			m_targetLocation = nullptr;
+			m_targetWorld = nullptr;
+		}
+	}
+}
+
+void AdventureTargets::AbandonCurrentDestination()
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	if (m_targetLocation)
+	{
+		DBG_MESSAGE("Abandoned Adventure to location {}/0x{:08x} in WorldSpace {}/0x{:08x}",
+			m_targetLocation->GetName(), m_targetLocation->GetFormID(), m_targetWorld->GetName(), m_targetWorld->GetFormID());
+		m_targetLocation = nullptr;
+		m_targetWorld = nullptr;
+		m_adventureEvents.push_back(AdventureEvent::AbandonAdventure());
+	}
+}
+
+const RE::TESWorldSpace* AdventureTargets::TargetWorld(void) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	return m_targetWorld;
+
+}
+const RE::BGSLocation* AdventureTargets::TargetLocation(void) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	return m_targetLocation;
+}
+RE::ObjectRefHandle AdventureTargets::TargetMapMarker(void) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	const auto matched(m_mapMarkerByLocation.find(m_targetLocation));
+	if (matched != m_mapMarkerByLocation.cend())
+	{
+		return matched->second;
+	}
+	return RE::ObjectRefHandle();
+}
+bool AdventureTargets::HasActiveTarget(void) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	return m_targetLocation != nullptr;
+}
+
+void AdventureTargets::AsJSON(nlohmann::json& j) const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	if (m_targetLocation)
+	{
+		j["currentLocation"] = StringUtils::FromFormID(m_targetLocation->GetFormID());
+		j["currentWorld"] = StringUtils::FromFormID(m_targetWorld->GetFormID());
+	}
+	j["events"] = nlohmann::json::array();
+	for (const auto& adventureEvent : m_adventureEvents)
+	{
+		j["events"].push_back(adventureEvent);
+	}
+}
+
+// rehydrate from cosave data
+void AdventureTargets::UpdateFrom(const nlohmann::json& j)
+{
+	DBG_MESSAGE("Cosave Adventure Targets\n{}", j.dump(2));
+	RecursiveLockGuard guard(m_adventureLock);
+	const auto worldspace(j.find("currentWorld"));
+	m_targetWorld = worldspace != j.cend() ?
+		LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(worldspace->get<std::string>())) : nullptr;
+	const auto location(j.find("currentLocation"));
+	m_targetLocation = location != j.cend() ?
+		LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr;
+	// ensure minimal consistence
+	if (bool(m_targetWorld) != bool(m_targetLocation))
+	{
+		m_targetWorld = nullptr;
+		m_targetLocation = nullptr;
+	}
+
+	m_adventureEvents.reserve(j["events"].size());
+	for (const nlohmann::json& adventureEvent : j["events"])
+	{
+		const float gameTime(adventureEvent["time"].get<float>());
+		const AdventureEventType eventType(static_cast<AdventureEventType>(adventureEvent["event"].get<int>()));
+		const auto worldspace(adventureEvent.find("world"));
+		const RE::TESWorldSpace* worldspaceForm(worldspace != adventureEvent.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(worldspace->get<std::string>())) : nullptr);
+		const auto location(adventureEvent.find("location"));
+		const RE::BGSLocation* locationForm(location != adventureEvent.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr);
+		// the list was already normalized before saving, no need to call RecordNew
+		// player position recorded
+		switch(eventType)
+		{
+		case AdventureEventType::Started:
+			m_adventureEvents.push_back(AdventureEvent::StartAdventure(worldspaceForm, locationForm));
+			break;
+		case AdventureEventType::Complete:
+			m_adventureEvents.push_back(AdventureEvent::CompleteAdventure());
+			break;
+		case AdventureEventType::Abandoned:
+			m_adventureEvents.push_back(AdventureEvent::AbandonAdventure());
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+void to_json(nlohmann::json& j, const AdventureTargets& adventureTargets)
+{
+	adventureTargets.AsJSON(j);
+}
+
 }

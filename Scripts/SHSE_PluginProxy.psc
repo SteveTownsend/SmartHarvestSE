@@ -63,6 +63,14 @@ Function PutCollectionGroupAction(String groupName, int action) global native
 int Function CollectionTotal(String groupName, String collectionName) global native
 int Function CollectionObtained(String groupName, String collectionName) global native
 
+int Function AdventureTypeCount() global native
+string Function AdventureTypeName(int adventureType) global native
+int Function ViableWorldsByType(int adventureType) global native
+string Function WorldNameByIndex(int worldIndex) global native
+Function SetAdventureTarget(int worldIndex) global native
+Function ClearAdventureTarget() global native
+bool Function HasAdventureTarget() global native
+
 Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native

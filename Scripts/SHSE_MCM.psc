@@ -119,6 +119,15 @@ int groupCollectibleAction
 bool groupCollectionAddNotify
 bool groupCollectDuplicates
 
+int adventureTypeCount
+; cursor within Adventure Target universe
+int adventureType
+string[] adventureTypeNames
+int worldCount
+int worldIndex
+string[] worldNames
+bool adventureActive
+
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -437,6 +446,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallCollections()
     InstallCollectionGroupPolicy()
     InstallCollectionDescriptionsActions()
+    InstallAdventures()
 EndFunction
 
 Function InstallCollections()
@@ -468,6 +478,18 @@ Function InstallCollectionDescriptionsActions()
     s_collectibleActions[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
 EndFunction
 
+Function InstallAdventures()
+    adventureType = 0
+    adventureTypeNames = new String[128]
+    adventureTypeCount = 0
+
+    worldIndex = 0
+    worldNames = new String[128]
+    worldCount = 0
+
+    adventureActive = false
+EndFunction
+
 Function InstallVerticalRadiusAndDoorRule()
     defaultVerticalRadiusFactor = 1.0
     verticalRadiusFactor = defaultVerticalRadiusFactor
@@ -489,9 +511,9 @@ Function InitPages()
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
     Pages[1] = "$SHSE_SPECIALS_REALISM_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
-    Pages[3] = "$SHSE_WHITELIST_PAGENAME"
-    Pages[4] = "$SHSE_BLACKLIST_PAGENAME"
-    Pages[5] = "$SHSE_COLLECTIONS_PAGENAME"
+    Pages[3] = "$SHSE_COLLECTIONS_PAGENAME"
+    Pages[4] = "$SHSE_WHITELIST_PAGENAME"
+    Pages[5] = "$SHSE_BLACKLIST_PAGENAME"
 EndFunction
 
 Function InitSettingsFileOptions()
@@ -563,7 +585,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 35
+    return 36
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -623,6 +645,9 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 35 && CurrentVersion < 35)
         ;fixes missing entry in plugin
         eventScript.SyncVeinResourceTypes()
+    endIf
+    if (a_version >= 36 && CurrentVersion < 36)
+        InstallAdventures()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -776,6 +801,42 @@ Function PopulateCollectionsForGroup(String groupName)
     GetCollectionPolicy(collectionNames[collectionIndex])
 EndFunction
 
+Function PopulateAdventureTypes()
+    adventureTypeCount = AdventureTypeCount()
+    int index = 0
+    while index < adventureTypeCount 
+        adventureTypeNames[index] = AdventureTypeName(index)
+        index = index + 1
+    endWhile
+    while index < 128
+        adventureTypeNames[index] = ""
+        index = index + 1
+    endWhile
+
+    ; Make sure we point to a valid type
+    if adventureType > adventureTypeCount
+        adventureType = 0
+    endIf
+EndFunction
+
+Function PopulateAdventureWorlds()
+    worldCount = ViableWorldsByType(adventureType)
+    int index = 0
+    while index < worldCount
+        worldNames[index] = WorldNameByIndex(index)
+        index = index + 1
+    endWhile
+    while index < 128
+        worldNames[index] = ""
+        index = index + 1
+    endWhile
+
+    ; Make sure we point to a valid group
+    if worldIndex > worldCount
+        worldIndex = 0
+    endIf
+EndFunction
+
 Event OnConfigClose()
     ;DebugTrace("OnConfigClose")
 
@@ -891,47 +952,7 @@ event OnPageReset(string currentPage)
             index += 1
         endWhile
         
-    elseif (currentPage == Pages[3]) ; whiteList
-        AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
-
-        int size = eventScript.whitelist_form.GetSize()
-        if (size == 0)
-            return
-        endif
-
-        int index = 0
-        while (index < size)
-            if (!whitelist_form_array[index])
-                id_whiteList_array[index] = AddToggleOption("$SHSE_UNKNOWN", whiteList_flag_array[index], OPTION_FLAG_DISABLED)
-            elseif (!whiteList_name_array[index])
-                id_whiteList_array[index] = AddToggleOption("$SHSE_UNKNOWN", whiteList_flag_array[index])
-            else
-                id_whiteList_array[index] = AddToggleOption(whiteList_name_array[index], whiteList_flag_array[index])
-            endif
-            index += 1
-        endWhile
-
-    elseif (currentPage == Pages[4]) ; blacklist
-        AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
-
-        int size = eventScript.blacklist_form.GetSize()
-        if (size == 0)
-            return
-        endif
-
-        int index = 0
-        while (index < size)
-            if (!blacklist_form_array[index])
-                id_blackList_array[index] = AddToggleOption("$SHSE_UNKNOWN", blackList_flag_array[index], OPTION_FLAG_DISABLED)
-            elseif (!blackList_name_array[index])
-                id_blackList_array[index] = AddToggleOption("$SHSE_UNKNOWN", blackList_flag_array[index])
-            else
-                id_blackList_array[index] = AddToggleOption(blackList_name_array[index], blackList_flag_array[index])
-            endif
-            index += 1
-        endWhile
-        
-    elseif currentPage == Pages[5] ; collections
+    elseif currentPage == Pages[3] ; collections
 ;   ======================== LEFT ========================
         SetCursorFillMode(TOP_TO_BOTTOM)
 
@@ -952,14 +973,72 @@ event OnPageReset(string currentPage)
         AddToggleOptionST("groupCollectionAddNotify", "$SHSE_COLLECTION_ADD_NOTIFY", groupCollectionAddNotify, flags)
         AddToggleOptionST("groupCollectDuplicates", "$SHSE_COLLECT_DUPLICATES", groupCollectDuplicates, flags)
 
-;   ======================== RIGHT ========================
-        SetCursorPosition(1)
         AddHeaderOption("$SHSE_COLLECTION_GROUP_HEADER")
         AddMenuOptionST("chooseCollectionIndex", "$SHSE_CHOOSE_COLLECTION", "", flags)
         AddTextOptionST("collectibleAction", "$SHSE_COLLECTIBLE_ACTION", s_collectibleActions[collectibleAction], flags)
         AddToggleOptionST("collectionAddNotify", "$SHSE_COLLECTION_ADD_NOTIFY", collectionAddNotify, flags)
         AddToggleOptionST("collectDuplicates", "$SHSE_COLLECT_DUPLICATES", collectDuplicates, flags)
         AddTextOptionST("itemsCollected", "", "", flags)
+
+;   ======================== RIGHT ========================
+        SetCursorPosition(1)
+        ; adventure fields only accessible if enabled
+        PopulateAdventureTypes()
+        int adventureFlags = OPTION_FLAG_DISABLED
+        string initialAdventureType = ""
+        string initialAdventureWorld = ""
+        ; sync script state from plugin, in case adventure completed
+        adventureActive = HasAdventureTarget()
+        if adventureActive
+            adventureFlags = OPTION_FLAG_NONE
+            PopulateAdventureWorlds()
+            initialAdventureType = AdventureTypeName(adventureType)
+            initialAdventureWorld = worldNames[worldIndex]
+        endIf
+        AddHeaderOption("$SHSE_CHOOSE_ADVENTURE_HEADER")
+        AddMenuOptionST("chooseAdventureType", "$SHSE_CHOOSE_ADVENTURE_TYPE", initialAdventureType)
+        AddMenuOptionST("chooseAdventureWorld", "$SHSE_CHOOSE_ADVENTURE_WORLD", initialAdventureWorld, adventureFlags)
+        AddToggleOptionST("chooseAdventureActive", "$SHSE_CHOOSE_ADVENTURE_ACTIVE", adventureActive, adventureFlags)
+        
+    elseif (currentPage == Pages[4]) ; whiteList
+        AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
+
+        int size = eventScript.whitelist_form.GetSize()
+        if (size == 0)
+            return
+        endif
+
+        int index = 0
+        while (index < size)
+            if (!whitelist_form_array[index])
+                id_whiteList_array[index] = AddToggleOption("$SHSE_UNKNOWN", whiteList_flag_array[index], OPTION_FLAG_DISABLED)
+            elseif (!whiteList_name_array[index])
+                id_whiteList_array[index] = AddToggleOption("$SHSE_UNKNOWN", whiteList_flag_array[index])
+            else
+                id_whiteList_array[index] = AddToggleOption(whiteList_name_array[index], whiteList_flag_array[index])
+            endif
+            index += 1
+        endWhile
+
+    elseif (currentPage == Pages[5]) ; blacklist
+        AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
+
+        int size = eventScript.blacklist_form.GetSize()
+        if (size == 0)
+            return
+        endif
+
+        int index = 0
+        while (index < size)
+            if (!blacklist_form_array[index])
+                id_blackList_array[index] = AddToggleOption("$SHSE_UNKNOWN", blackList_flag_array[index], OPTION_FLAG_DISABLED)
+            elseif (!blackList_name_array[index])
+                id_blackList_array[index] = AddToggleOption("$SHSE_UNKNOWN", blackList_flag_array[index])
+            else
+                id_blackList_array[index] = AddToggleOption(blackList_name_array[index], blackList_flag_array[index])
+            endif
+            index += 1
+        endWhile
     endif
 endEvent
 
@@ -1795,10 +1874,6 @@ state notifyLocationChange
     endEvent
 endState
 
-Function SyncCollectionPolicy()
-
-EndFunction
-
 Function SetCollectionsUIFlags()
     if collectionsEnabled
         SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseCollectionGroup")
@@ -2011,5 +2086,98 @@ state itemsCollected
     endEvent
 
     event OnHighlightST()
+    endEvent
+endState
+
+state chooseAdventureType
+    event OnMenuOpenST()
+        SetMenuDialogStartIndex(adventureType)
+        SetMenuDialogDefaultIndex(adventureType)
+        SetMenuDialogOptions(adventureTypeNames)
+        SetMenuOptionValueST(adventureTypeNames[adventureType])
+    endEvent
+
+    event OnMenuAcceptST(int index)
+        adventureType = index
+        SetMenuOptionValueST(adventureTypeNames[adventureType])
+        PopulateAdventureWorlds()
+        ResetAdventureActive(OPTION_FLAG_DISABLED)
+        ResetAdventureWorld()
+    endEvent
+
+    event OnDefaultST()
+        adventureType = 0
+        SetMenuOptionValueST(adventureTypeNames[adventureType])
+        PopulateAdventureWorlds()
+        ResetAdventureActive(OPTION_FLAG_DISABLED)
+        ResetAdventureWorld()
+    endEvent
+
+    event OnHighlightST()
+    endEvent
+endState
+
+Function ResetAdventureActive(int flags)
+    if adventureActive
+        adventureActive = false
+        ClearAdventureTarget()
+    endIf
+    SetOptionFlagsST(flags, false, "chooseAdventureActive")
+    SetToggleOptionValueST(adventureActive, false, "chooseAdventureActive")
+EndFunction
+
+Function ResetAdventureWorld()
+    if worldCount > 0
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseAdventureWorld")
+        SetMenuOptionValueST(worldNames[worldIndex], false, "chooseAdventureWorld")
+    else
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureWorld")
+        SetMenuOptionValueST("", false, "chooseAdventureWorld")
+    endIf
+EndFunction
+
+state chooseAdventureWorld
+    event OnMenuOpenST()
+        SetMenuDialogStartIndex(worldIndex)
+        SetMenuDialogDefaultIndex(worldIndex)
+        SetMenuDialogOptions(worldNames)
+        SetMenuOptionValueST(worldNames[worldIndex])
+    endEvent
+
+    event OnMenuAcceptST(int index)
+        worldIndex = index
+        ResetAdventureActive(OPTION_FLAG_NONE)
+        SetMenuOptionValueST(worldNames[worldIndex])
+    endEvent
+
+    event OnDefaultST()
+        worldIndex = 0
+        ResetAdventureActive(OPTION_FLAG_NONE)
+        SetMenuOptionValueST(worldNames[worldIndex])
+    endEvent
+
+    event OnHighlightST()
+    endEvent
+endState
+
+state chooseAdventureActive
+    event OnSelectST()
+        adventureActive = !adventureActive
+        SetToggleOptionValueST(adventureActive)
+        if adventureActive
+            SetAdventureTarget(worldIndex)
+        else
+            ClearAdventureTarget()
+        endIf
+    endEvent
+
+    event OnDefaultST()
+        adventureActive = false
+        SetToggleOptionValueST(adventureActive)
+        ClearAdventureTarget()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_CHOOSE_ADVENTURE_ACTIVE"))
     endEvent
 endState

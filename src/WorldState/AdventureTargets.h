@@ -19,6 +19,9 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+namespace shse
+{
+
 enum class AdventureTargetType : uint32_t {
 	AnimalDen = 0,
 	AshSpawnLair,
@@ -54,18 +57,76 @@ enum class AdventureTargetType : uint32_t {
 };
 
 std::string AdventureTargetName(const AdventureTargetType adventureTarget);
+inline std::string AdventureTargetNameByIndex(const size_t index) {
+	return AdventureTargetName(AdventureTargetType(std::min(index, size_t(AdventureTargetType::MAX))));
+}
+
+enum class AdventureEventType : uint32_t {
+	Started = 0,
+	Complete,
+	Abandoned
+};
+
+class AdventureEvent {
+public:
+	static AdventureEvent StartAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location);
+	static AdventureEvent CompleteAdventure();
+	static AdventureEvent AbandonAdventure();
+
+	void AsJSON(nlohmann::json& j) const;
+
+private:
+	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location);
+	AdventureEvent(const AdventureEventType eventType);
+
+	const AdventureEventType m_eventType;
+	const RE::TESWorldSpace* m_world;
+	const RE::BGSLocation* m_location;
+	const float m_gameTime;
+};
+
+void to_json(nlohmann::json& j, const AdventureEvent& adventureEvent);
 
 class AdventureTargets
 {
 public:
 	static AdventureTargets& Instance();
-	AdventureTargets() {}
+	AdventureTargets();
 
+	void Reset();
 	void Categorize();
+
+	inline size_t NumberOfTypes() const { return size_t(AdventureTargetType::MAX); }
+	inline std::string AdventureTypeName(const size_t adventureType) const { return AdventureTargetNameByIndex(adventureType); }
+	size_t ViableWorldCount(const size_t adventureType) const;
+	std::string ViableWorldNameByIndexInView(const size_t worldIndex) const;
+	void SelectCurrentDestination(const size_t worldIndex);
+	void CheckReachedCurrentDestination(const RE::BGSLocation* newLocation);
+	void AbandonCurrentDestination();
+	const RE::TESWorldSpace* TargetWorld(void) const;
+	const RE::BGSLocation* TargetLocation(void) const;
+	RE::ObjectRefHandle TargetMapMarker(void) const;
+	bool HasActiveTarget(void) const;
+
+	void AsJSON(nlohmann::json& j) const;
+	void UpdateFrom(const nlohmann::json& j);
 
 private:
 	static std::unique_ptr<AdventureTargets> m_instance;
 	std::array<std::unordered_set<RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
 	std::unordered_map<const RE::BGSLocation*, RE::TESWorldSpace*> m_worldByLocation;
+	std::unordered_map<const RE::BGSLocation*, RE::ObjectRefHandle> m_mapMarkerByLocation;
+
+	mutable std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_unvisitedLocationsByWorld;
+	mutable std::vector<const RE::TESWorldSpace*> m_sortedWorlds;
+
+	std::vector<AdventureEvent> m_adventureEvents;
+
+	const RE::BGSLocation* m_targetLocation;
+	const RE::TESWorldSpace* m_targetWorld;
 	mutable RecursiveLock m_adventureLock;
 };
+
+void to_json(nlohmann::json& j, const AdventureTargets& visitedPlaces);
+
+}

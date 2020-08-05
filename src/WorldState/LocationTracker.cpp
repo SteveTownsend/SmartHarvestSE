@@ -25,6 +25,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/LocationTracker.h"
 #include "Collections/CollectionManager.h"
 #include "Looting/ManagedLists.h"
+#include "WorldState/AdventureTargets.h"
 #include "WorldState/PartyMembers.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
@@ -169,13 +170,15 @@ std::string LocationTracker::Proximity(const double milesAway, CompassDirection 
 
 std::string LocationTracker::ConversationalDistance(const double milesAway) const
 {
-	if (milesAway < 0.25)
+	if (milesAway < OnlyYards)
+		return "only yards";
+	if (milesAway < LittleWay)
 		return "a little way";
-	if (milesAway < 0.75)
+	if (milesAway < HalfMile)
 		return "about half a mile";
-	if (milesAway < 1.5)
+	if (milesAway < MileOrSo)
 		return "a mile or so";
-	if (milesAway < 2.5)
+	if (milesAway < CoupleOfMiles)
 		return "a couple of miles";
 	return "several miles";
 }
@@ -219,13 +222,65 @@ void LocationTracker::PrintNearbyLocation(const RE::BGSLocation* location, const
 	}
 }
 
-void LocationTracker::DisplayLocationRelativeToMapMarker() const
+void LocationTracker::PrintAdventureTargetInfo(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const
+{
+	std::string locationMessage;
+	static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_WHERE_IS_ADVENTURE_TARGET")));
+	if (!locationText.empty())
+	{
+		locationMessage = locationText;
+		StringUtils::Replace(locationMessage, "{PROXIMITY}", Proximity(milesAway, heading));
+		// stop obfuscating the destination once player gets close - map marker may be for a parent, not exactly colocated with target
+		if (milesAway < OnlyYards)
+		{
+			StringUtils::Replace(locationMessage, "{TARGET}", location->GetName());
+		}
+		else
+		{
+			StringUtils::Replace(locationMessage, "{TARGET}", "the place my Adventurous Spirit seeks");
+		}
+		if (!locationMessage.empty())
+		{
+			RE::DebugNotification(locationMessage.c_str());
+		}
+	}
+}
+
+void LocationTracker::PrintDifferentWorld(const RE::TESWorldSpace* world) const
+{
+	std::string locationMessage;
+	static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADVENTURE_DIFFERENT_WORLD")));
+	if (!locationText.empty())
+	{
+		locationMessage = locationText;
+		StringUtils::Replace(locationMessage, "{WORLD}", world->GetName());
+		if (!locationMessage.empty())
+		{
+			RE::DebugNotification(locationMessage.c_str());
+		}
+	}
+}
+
+void LocationTracker::DisplayPlayerLocation() const
+{
+	// display location relative to Adventure Target, or nearest marker if no Adventure in progress
+	if (AdventureTargets::Instance().TargetLocation())
+	{
+		PlayerLocationRelativeToAdventureTarget();
+	}
+	else
+	{
+		PlayerLocationRelativeToNearestMapMarker();
+	}
+}
+
+void LocationTracker::PlayerLocationRelativeToNearestMapMarker() const
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Locate relative to map marker");
 #endif
-	RecursiveLockGuard guard(m_locationLock);
 	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
+	RecursiveLockGuard guard(m_locationLock);
 	if (m_playerLocation)
 	{
 		DBG_MESSAGE("Player ({:0.2f}, {:0.2f}) is in location {}/0x{:08x}", playerPos[0], playerPos[1],
@@ -284,6 +339,58 @@ RelativeLocationDescriptor LocationTracker::NearestMapMarker(const AlglibPositio
 
 	AlglibPosition markerPos = { marker(0, 0), marker(0, 1), marker(0, 2) };
 	return RelativeLocationDescriptor(refPos, markerPos, location, unitsAway);
+}
+
+double DistanceBetween(const AlglibPosition& pos1, const AlglibPosition& pos2)
+{
+	double dx(pos1[0] - pos2[0]);
+	double dy(pos1[1] - pos2[1]);
+	double dz(pos1[2] - pos2[2]);
+	return sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+RelativeLocationDescriptor LocationTracker::LocationMapMarker(
+	const RE::ObjectRefHandle targetMarker, const RE::BGSLocation* location, const AlglibPosition& refPos) const
+{
+	const RE::TESObjectREFR* refr(targetMarker.get().get());
+	AlglibPosition markerPos({ refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ() });
+	double unitsAway(DistanceBetween(markerPos, refPos));
+	return RelativeLocationDescriptor(refPos, markerPos, location->GetFormID(), unitsAway);
+}
+
+void LocationTracker::PlayerLocationRelativeToAdventureTarget() const
+{
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Locate relative to adventure target");
+#endif
+	const RE::TESWorldSpace* world(AdventureTargets::Instance().TargetWorld());
+	const RE::BGSLocation* location(AdventureTargets::Instance().TargetLocation());
+	RE::ObjectRefHandle targetMarker(AdventureTargets::Instance().TargetMapMarker());
+	if (!location || !targetMarker)
+	{
+		// no adventure in progress, or target unmappable
+		return;
+	}
+
+	RecursiveLockGuard guard(m_locationLock);
+	if (world != m_playerParentWorld)
+	{
+		PrintDifferentWorld(world);
+		return;
+	}
+	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
+	RelativeLocationDescriptor targetLocation(LocationMapMarker(targetMarker, location, playerPos));
+	if (targetLocation == RelativeLocationDescriptor::Invalid())
+	{
+		REL_WARNING("Could not determine adventure target marker");
+		return;
+	}
+	CompassDirection heading(DirectionToDestinationFromStart(targetLocation.EndPoint(), targetLocation.StartPoint()));
+
+	double milesAway(UnitsToMiles(targetLocation.UnitsAway()));
+	DBG_MESSAGE("Player is {} of adventure target marker {}/0x{:08x} at distance {:0.2f} miles",
+		CompassDirectionName(heading).c_str(), location->GetName(), targetLocation.LocationID(), milesAway);
+	PrintAdventureTargetInfo(location, milesAway, heading);
 }
 
 CellOwnership LocationTracker::GetCellOwnership(const RE::TESObjectCELL* cell) const
@@ -445,6 +552,10 @@ bool LocationTracker::Refresh()
 		DBG_MESSAGE("Player was at location {}, lootable = {}, now at {}", oldName.c_str(),
 			couldLootInPrior ? "true" : "false", playerLocation ? playerLocation->GetName() : "unnamed");
 		m_playerLocation = playerLocation;
+
+		// location change may mark the end of an in-progress 'Venture into the Unknown'
+		AdventureTargets::Instance().CheckReachedCurrentDestination(m_playerLocation);
+
 		// Player changed location - may be a standalone Cell with m_playerLocation nullptr e.g. 000HatredWell
 		bool tellPlayer(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0);
 
@@ -660,9 +771,16 @@ bool LocationTracker::IsPlayerInFriendlyCell() const
 const RE::TESForm* LocationTracker::CurrentPlayerPlace() const
 {
 	// Prefer location, cell only if in wilderness
+	RecursiveLockGuard guard(m_locationLock);
 	if (m_playerLocation)
 		return m_playerLocation;
 	return m_playerCell;
+}
+
+const RE::TESWorldSpace* LocationTracker::CurrentPlayerWorld() const
+{
+	RecursiveLockGuard guard(m_locationLock);
+	return m_playerParentWorld;
 }
 
 }

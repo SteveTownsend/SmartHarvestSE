@@ -28,6 +28,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/ScanGovernor.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/AdventureTargets.h"
 #include "Looting/ProducerLootables.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
@@ -498,6 +499,41 @@ namespace papyrus
 		return static_cast<int>(shse::CollectionManager::Instance().ItemsObtained(groupName, collectionName));
 	}
 
+	int AdventureTypeCount(RE::StaticFunctionTag* base)
+	{
+		return static_cast<int>(shse::AdventureTargets::Instance().NumberOfTypes());
+	}
+
+	std::string AdventureTypeName(RE::StaticFunctionTag* base, const int adventureType)
+	{
+		return shse::AdventureTargets::Instance().AdventureTypeName(size_t(adventureType));
+	}
+
+	int ViableWorldsByType(RE::StaticFunctionTag* base, const int adventureType)
+	{
+		return static_cast<int>(shse::AdventureTargets::Instance().ViableWorldCount(size_t(adventureType)));
+	}
+
+	std::string WorldNameByIndex(RE::StaticFunctionTag* base, const int worldIndex)
+	{
+		return shse::AdventureTargets::Instance().ViableWorldNameByIndexInView(size_t(worldIndex));
+	}
+
+	void SetAdventureTarget(RE::StaticFunctionTag* base, const int worldIndex)
+	{
+		return shse::AdventureTargets::Instance().SelectCurrentDestination(size_t(worldIndex));
+	}
+
+	void ClearAdventureTarget(RE::StaticFunctionTag* base)
+	{
+		return shse::AdventureTargets::Instance().AbandonCurrentDestination();
+	}
+
+	bool HasAdventureTarget(RE::StaticFunctionTag* base)
+	{
+		return shse::AdventureTargets::Instance().HasActiveTarget();
+	}
+
 	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
 	{
 		shse::ScanGovernor::Instance().ToggleCalibration(shaderTest);
@@ -505,7 +541,7 @@ namespace papyrus
 
 	void ShowLocation(RE::StaticFunctionTag* base)
 	{
-		shse::LocationTracker::Instance().DisplayLocationRelativeToMapMarker();
+		shse::LocationTracker::Instance().DisplayPlayerLocation();
 	}
 
 	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex, const bool dryRun)
@@ -605,6 +641,14 @@ namespace papyrus
 		a_vm->RegisterFunction("PutCollectionGroupAllowsRepeats", SHSE_PROXY, papyrus::PutCollectionGroupAllowsRepeats);
 		a_vm->RegisterFunction("PutCollectionGroupNotifies", SHSE_PROXY, papyrus::PutCollectionGroupNotifies);
 		a_vm->RegisterFunction("PutCollectionGroupAction", SHSE_PROXY, papyrus::PutCollectionGroupAction);
+
+		a_vm->RegisterFunction("AdventureTypeCount", SHSE_PROXY, papyrus::AdventureTypeCount);
+		a_vm->RegisterFunction("AdventureTypeName", SHSE_PROXY, papyrus::AdventureTypeName);
+		a_vm->RegisterFunction("ViableWorldsByType", SHSE_PROXY, papyrus::ViableWorldsByType);
+		a_vm->RegisterFunction("WorldNameByIndex", SHSE_PROXY, papyrus::WorldNameByIndex);
+		a_vm->RegisterFunction("SetAdventureTarget", SHSE_PROXY, papyrus::SetAdventureTarget);
+		a_vm->RegisterFunction("ClearAdventureTarget", SHSE_PROXY, papyrus::ClearAdventureTarget);
+		a_vm->RegisterFunction("HasAdventureTarget", SHSE_PROXY, papyrus::HasAdventureTarget);
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
