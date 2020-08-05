@@ -53,6 +53,12 @@ private:
 	const double m_unitsAway;
 };
 
+enum class MapMarkerType {
+	Nearest = 0,
+	AdventureTarget,
+	MAX
+};
+
 class LocationTracker
 {
 private:
@@ -61,9 +67,13 @@ private:
 
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
 	bool IsPlayerInBlacklistedPlace(const RE::TESObjectCELL* cell) const;
+	void PlayerLocationRelativeToNearestMapMarker(void) const;
+	void PlayerLocationRelativeToAdventureTarget(void) const;
 	CompassDirection DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const;
 	const RE::TESWorldSpace* ParentWorld(const RE::TESObjectCELL* cell);
 	RelativeLocationDescriptor NearestMapMarker(const AlglibPosition& refPos) const;
+	RelativeLocationDescriptor LocationMapMarker(
+		const RE::ObjectRefHandle targetMarker, const RE::BGSLocation* location, const AlglibPosition& refPos) const;
 	inline double UnitsToMiles(const double units) const
 	{
 		return units * DistanceUnitInMiles;
@@ -83,6 +93,13 @@ private:
 	alglib::kdtree m_markers;
 	mutable RecursiveLock m_locationLock;
 
+	static constexpr double OnlyYards = 0.1;
+	static constexpr double LittleWay = 0.3;
+	static constexpr double HalfMile = 0.75;
+	static constexpr double MileOrSo = 1.5;
+	static constexpr double CoupleOfMiles = 3.0;
+	static constexpr double SeveralMiles = 100.0;
+
 public:
 	static LocationTracker& Instance();
 	LocationTracker();
@@ -97,10 +114,15 @@ public:
 	bool IsPlayerInRestrictedLootSettlement(const RE::TESObjectCELL* cell) const;
 	bool IsPlayerInFriendlyCell() const;
 	const RE::TESForm* CurrentPlayerPlace() const;
+	const RE::TESWorldSpace* CurrentPlayerWorld() const;
 	bool IsPlayerInWhitelistedPlace(const RE::TESObjectCELL* cell) const;
-	void DisplayLocationRelativeToMapMarker() const;
+
+	void DisplayPlayerLocation(void) const;
 	void PrintPlayerLocation(const RE::BGSLocation* location) const;
 	void PrintNearbyLocation(const RE::BGSLocation* location, const double milesAway, const CompassDirection heading) const;
+	void PrintAdventureTargetInfo(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const;
+	void PrintDifferentWorld(const RE::TESWorldSpace* world) const;
+
 	std::string ParentLocationName(const RE::BGSLocation* location) const;
 	std::string Proximity(const double milesAway, CompassDirection heading) const;
 	std::string ConversationalDistance(const double milesAway) const;

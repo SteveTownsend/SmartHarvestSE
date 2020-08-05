@@ -628,7 +628,7 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
 	if (!fullName || fullName->GetFullNameLength() == 0)
 	{
-		DBG_VMESSAGE("REFR 0x{:08x}has unnamed base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
+		DBG_VMESSAGE("REFR 0x{:08x} has unnamed base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
 		return;
 	}
 

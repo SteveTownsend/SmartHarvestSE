@@ -23,6 +23,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
 #include "WorldState/ActorTracker.h"
+#include "WorldState/AdventureTargets.h"
 #include "WorldState/PartyMembers.h"
 #include "WorldState/VisitedPlaces.h"
 
@@ -59,6 +60,7 @@ void CosaveData::Clear()
 	VisitedPlaces::Instance().Reset();
 	PartyMembers::Instance().Reset();
 	ActorTracker::Instance().ClearVictims();
+	AdventureTargets::Instance().Reset();
 
 	RecursiveLockGuard guard(m_cosaveLock);
 	m_records.clear();
@@ -87,6 +89,9 @@ void CosaveData::SeedState()
 				break;
 			case SerializationRecordType::Victims:
 				ActorTracker::Instance().UpdateFrom(record.second);
+				break;
+			case SerializationRecordType::Adventures:
+				AdventureTargets::Instance().UpdateFrom(record.second);
 				break;
 			default:
 				break;
@@ -219,6 +224,19 @@ bool CosaveData::Serialize(SKSE::SerializationInterface* intf)
 	{
 		REL_MESSAGE("Wrote VCTM record {} bytes", record.length());
 	}
+	if (!CompressionUtils::EncodeBrotli(shse::AdventureTargets::Instance(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('ADVN', 1, record.c_str(), static_cast<uint32_t>(record.length())))
+	{
+		REL_ERROR("Failed to serialize ADVN");
+		return false;
+	}
+	else
+	{
+		REL_MESSAGE("Wrote ADVN record {} bytes", record.length());
+	}
 	return true;
 #endif
 }
@@ -329,6 +347,11 @@ bool CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 			// Party Victims
 			REL_MESSAGE("Read VCTM record {} bytes", length);
 			recordType = shse::SerializationRecordType::Victims;
+			break;
+		case 'ADVN':
+			// Adventure Events
+			REL_MESSAGE("Read ADVN record {} bytes", length);
+			recordType = shse::SerializationRecordType::Adventures;
 			break;
 		default:
 			REL_ERROR("Unrecognized signature type {}", readType);
