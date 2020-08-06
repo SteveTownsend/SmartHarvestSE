@@ -218,10 +218,10 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 	// use delta vs last pass to speed this up (resets on game reload)
 	static const bool requireQuestItemAsTarget(false);
 	static const bool checkSpecials(false);
-	LootableItems playerInventory(ContainerLister(
-		INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials).GetOrCheckContainerForms());
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials);
+	lister.AnalyzeLootableItems();
 	decltype(m_lastInventoryItems) newInventoryItems;
-	for (const auto& candidate : playerInventory)
+	for (const auto& candidate : lister.GetLootableItems())
 	{
 		const auto item(candidate.BoundObject());
 		RE::FormID formID(item->GetFormID());

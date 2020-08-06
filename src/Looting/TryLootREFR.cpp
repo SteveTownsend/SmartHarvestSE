@@ -335,8 +335,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
 		static const bool checkSpecials(true);
 		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget, checkSpecials);
-		LootableItems lootableItems(lister.GetOrCheckContainerForms());
-		if (lootableItems.empty())
+		size_t lootableItems(lister.AnalyzeLootableItems());
+		if (lootableItems == 0)
 		{
 			if (!dryRun)
 			{
@@ -501,8 +501,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// Build list of lootable targets with notification, collectibility flag & count for each
 		std::vector<std::tuple<InventoryItem, bool, bool, size_t>> targets;
-		targets.reserve(lootableItems.size());
-		for (auto& targetItemInfo : lootableItems)
+		targets.reserve(lootableItems);
+		for (auto& targetItemInfo : lister.GetLootableItems())
 		{
 			RE::TESBoundObject* target(targetItemInfo.BoundObject());
 			if (!target)
@@ -635,7 +635,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// items and blacklist the REFR to avoid revisiting. Confirm looting by checking lootable target count now vs start
 		// value. This logic only applies to containers: NPC auto-looting is scripted and not known to fail.
 		if (m_targetType == INIFile::SecondaryType::containers && !targets.empty() &&
-		    lister.GetOrCheckContainerForms().size() >= lootableItems.size())
+		    lister.AnalyzeLootableItems() >= lootableItems)
 		{
 			// nothing looted - make copies of targets and blacklist the reference (e.g. MrB's Lootable Things)
 			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),
