@@ -225,6 +225,18 @@
     },
 
     {
+      "name": "Payback With Interest",
+      "description": "Items added in Interesting NPCs",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "3DNPC.esp" ],
+          "signature": [ "ALCH", "ARMO", "BOOK", "KEYM", "MISC", "WEAP" ]
+        }
+      }
+    },
+
+    {
       "name": "Palaeontologist",
       "description": "All the fossils added by Fossil Mining",
       "policy": {
@@ -280,6 +292,28 @@
                 "signature": [ "KEYM" ],
                 "keyword": [ "VendorItemKey" ]
               }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "LoTD Non-Display Items",
+      "description": "Fate Cards, Paintings",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "OR",
+        "condition": {
+          "keyword": [ "VendorItemFateCards" ],
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0034675F"
             }
           ]
         }
