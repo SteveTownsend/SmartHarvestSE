@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/FormHelper.h"
 #include "Data/dataCase.h"
 #include "FormHelpers/ExtraDataListHelper.h"
+#include "Utilities/utils.h"
 #include "Looting/containerLister.h"
 
 namespace shse
@@ -52,14 +53,10 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 		if (count <= 0)
 			continue;
 		RE::TESBoundObject* item = entry->GetObject();
+		if (!FormUtils::IsConcrete(item))
+			continue;
+
 		if (item->formType == RE::FormType::LeveledItem)
-			continue;
-
-		if (!item->GetPlayable())
-			continue;
-
-		RE::TESFullName* fullName = item->As<RE::TESFullName>();
-		if (!fullName || fullName->GetFullNameLength() == 0)
 			continue;
 
 		lootableItems.emplace_back(std::move(entry), count);
@@ -75,13 +72,8 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 			entryData != exChanges->changes->entryList->end(); ++entryData)
 		{
 			RE::TESBoundObject* item = (*entryData)->object;
-			if (!item || !item->GetPlayable())
+			if (!FormUtils::IsConcrete(item))
 				continue;
-
-			RE::TESFullName* fullName = item->As<RE::TESFullName>();
-			if (!fullName || fullName->GetFullNameLength() == 0)
-				continue;
-
 			if ((*entryData)->countDelta <= 0)
 				continue;
 			if (!(*entryData)->extraLists)

@@ -46,8 +46,9 @@ Collection::Collection(const CollectionGroup* owningGroup, const std::string& na
 	m_owningGroup(owningGroup), m_name(name), m_description(description), m_effectivePolicy(policy),
 	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
-	// if this collection has static members, add them now to seed the list
-	m_members = m_rootFilter->StaticMembers();
+	// if this collection has concrete static members, add them now to seed the list
+	const auto statics(m_rootFilter->StaticMembers());
+	std::copy_if(statics.cbegin(), statics.cend(), std::inserter(m_members, m_members.end()), FormUtils::IsConcrete);
 }
 
 bool Collection::AddMemberID(const RE::TESForm* form)const 
@@ -285,9 +286,9 @@ void Collection::SetMembersFrom(const nlohmann::json & members)
 	{
 		RE::FormID formID(StringUtils::ToFormID(member["form"].get<std::string>()));
 		RE::TESForm* form(LoadOrder::Instance().RehydrateCosaveForm(formID));
-		if (!form)
+		if (!FormUtils::IsConcrete(form))
 		{
-			// Load Order or the FormID in the mod changed
+			// sanitize malformed members - must exist, have name and be playable
 			continue;
 		}
 		m_members.insert(form);

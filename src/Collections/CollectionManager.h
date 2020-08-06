@@ -80,6 +80,9 @@ private:
 	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
 	bool IsCellLocatable(const RE::TESObjectCELL* cell);
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
+	void RecordCollectibleForm(
+		const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
+		std::unordered_set<const RE::TESForm*>& uniquePlaced, std::unordered_set<const RE::TESForm*>& uniqueMembers);
 	void ResolveMembership(void);
 	void AddToRelevantCollections(const RE::TESForm* item, const float gameTime);
 	void ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions);
