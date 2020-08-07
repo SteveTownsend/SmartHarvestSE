@@ -119,4 +119,16 @@ size_t ContainerLister::AnalyzeLootableItems()
 	return m_lootableItems.size();
 }
 
+void ContainerLister::RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter)
+{
+	decltype(m_lootableItems) filteredList;
+	filteredList.reserve(m_lootableItems.size());
+	std::copy_if(m_lootableItems.cbegin(), m_lootableItems.cend(), std::back_inserter(filteredList), [&](const InventoryItem& item) -> bool
+	{
+		return !filter.contains(item.BoundObject());
+	});
+	DBG_DMESSAGE("Lootable Item count {} filtered from {}", filteredList.size(), m_lootableItems.size());
+	m_lootableItems.swap(filteredList);
+}
+
 }

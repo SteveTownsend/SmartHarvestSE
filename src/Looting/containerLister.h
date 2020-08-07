@@ -37,8 +37,14 @@ public:
 	inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
 	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
 	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
+	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
+	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
+	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }
+	void ExcludeCollectibleItems() { RemoveUnlootable(m_collectibleItems); }
 
 private:
+	void RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter);
+
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;
 	bool m_requireQuestItemAsTarget;
