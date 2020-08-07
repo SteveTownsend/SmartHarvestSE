@@ -501,7 +501,7 @@ namespace papyrus
 
 	int AdventureTypeCount(RE::StaticFunctionTag* base)
 	{
-		return static_cast<int>(shse::AdventureTargets::Instance().NumberOfTypes());
+		return static_cast<int>(shse::AdventureTargets::Instance().AvailableAdventureTypes());
 	}
 
 	std::string AdventureTypeName(RE::StaticFunctionTag* base, const int adventureType)
