@@ -119,28 +119,33 @@ bool Collection::HaveObserved(const RE::TESForm* form) const
 	return m_observed.contains(form);
 }
 
-void Collection::RecordItem(const RE::TESForm* form, const float gameTime)
+bool Collection::RecordItem(const RE::TESForm* form, const float gameTime, const bool suppressSpam)
 {
 	DBG_VMESSAGE("Collect {}/0x{:08x} in {}", form->GetName(), form->GetFormID(), m_name.c_str());
 	if (m_observed.insert({ form, gameTime }).second)
 	{
 		if (m_effectivePolicy.Notify())
 		{
-			// notify about these, just once
-			std::string notificationText;
-			static RE::BSFixedString newMemberText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADDED_TO_COLLECTION")));
-			if (!newMemberText.empty())
+			// don't flood the screen for ages on one pass (especially first-time inventory reconciliation)
+			if (!suppressSpam)
 			{
-				notificationText = newMemberText;
-				StringUtils::Replace(notificationText, "{ITEMNAME}", form->GetName());
-				StringUtils::Replace(notificationText, "{COLLECTION}", m_name);
-				if (!notificationText.empty())
+				// notify about these, just once
+				static RE::BSFixedString newMemberText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADDED_TO_COLLECTION")));
+				if (!newMemberText.empty())
 				{
-					RE::DebugNotification(notificationText.c_str());
+					std::string notificationText(newMemberText);
+					StringUtils::Replace(notificationText, "{ITEMNAME}", form->GetName());
+					StringUtils::Replace(notificationText, "{COLLECTION}", m_name);
+					if (!notificationText.empty())
+					{
+						RE::DebugNotification(notificationText.c_str());
+					}
 				}
 			}
+			return true;
 		}
 	}
+	return false;
 }
 
 void Collection::Reset()

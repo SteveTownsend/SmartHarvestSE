@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/utils.h"
 #include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
+#include "VM/papyrus.h"
 #include "Collections/CollectionManager.h"
 #include "Collections/CollectionFactory.h"
 #include "Data/DataCase.h"
@@ -115,6 +116,7 @@ void CollectionManager::ProcessAddedItems()
 	}
 
 	const float gameTime(PlayerState::Instance().CurrentGameTime());
+	m_notifications = 0;
 	for (const auto form : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
@@ -126,6 +128,22 @@ void CollectionManager::ProcessAddedItems()
 		else if (m_nonCollectionForms.insert(form->GetFormID()).second)
 		{
 			DBG_VMESSAGE("Recorded 0x{:08x} as non-collectible", form->GetFormID());
+		}
+	}
+
+	// send generic 'there were more items' message if spam filter triggered
+	if (m_notifications > CollectedSpamLimit)
+	{
+		size_t extraItems(m_notifications - CollectedSpamLimit);
+		static RE::BSFixedString extraItemsText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADDED_TO_COLLECTION_EXTRAS")));
+		if (!extraItemsText.empty())
+		{
+			std::string notificationText(extraItemsText);
+			StringUtils::Replace(notificationText, "{COUNT}", std::to_string(extraItems));
+			if (!notificationText.empty())
+			{
+				RE::DebugNotification(notificationText.c_str());
+			}
 		}
 	}
 }
@@ -149,8 +167,12 @@ void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const 
 			collection->second->IsMemberOf(item) &&
 			(collection->second->Policy().Repeat() || !collection->second->HaveObserved(item)))
 		{
-			// record membership
-			collection->second->RecordItem(item, gameTime);
+			// record membership - suppress notifications if there are too many
+			if (collection->second->RecordItem(item, gameTime, m_notifications >= CollectedSpamLimit))
+			{
+				// another notification required
+				++m_notifications;
+			}
 			atLeastOne = true;
 		}
 	}

@@ -88,6 +88,9 @@ private:
 	void ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions);
 	void EnqueueAddedItem(const RE::TESForm* form);
 
+	static constexpr size_t CollectedSpamLimit = 10;
+	size_t m_notifications;
+
 	static std::unique_ptr<CollectionManager> m_instance;
 	// data loaded ok?
 	bool m_ready;
