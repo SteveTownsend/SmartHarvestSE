@@ -1343,6 +1343,7 @@ void DataCase::CategorizeStatics()
 	// Map well-known forms to ObjectType
 	m_objectTypeByForm[LockPick] = ObjectType::lockpick;
 	m_objectTypeByForm[Gold] = ObjectType::septims;
+	m_objectTypeByForm[WispCore] = ObjectType::critter;
 }
 
 template <>

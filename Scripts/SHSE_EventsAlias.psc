@@ -747,6 +747,11 @@ Event OnGetProducerLootable(ObjectReference akTarget)
         endif
         return
     endIf
+    WispCoreScript wispCore = akTarget as WispCoreScript
+    if wispCore
+        SetLootableForProducer(baseForm, wispCore.glowDust)
+        return
+    endIf
 endEvent
 
 Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
