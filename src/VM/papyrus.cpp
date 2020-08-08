@@ -257,6 +257,16 @@ namespace papyrus
 		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
 	}
 
+	void PrepareSPERGMining(RE::StaticFunctionTag* base)
+	{
+		DBG_VMESSAGE("PrepareSPERGMining");
+	}
+
+	void PostprocessSPERGMining(RE::StaticFunctionTag* base)
+	{
+		DBG_VMESSAGE("PostprocessSPERGMining");
+	}
+
 	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search enabled");
@@ -602,6 +612,9 @@ namespace papyrus
 		a_vm->RegisterFunction("SaveIniFile", SHSE_PROXY, papyrus::SaveIniFile);
 
 		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
+		a_vm->RegisterFunction("PrepareSPERGMining", SHSE_PROXY, papyrus::PrepareSPERGMining);
+		a_vm->RegisterFunction("PostprocessSPERGMining", SHSE_PROXY, papyrus::PostprocessSPERGMining);
+
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);

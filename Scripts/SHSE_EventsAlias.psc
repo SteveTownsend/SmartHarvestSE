@@ -75,9 +75,23 @@ int glowReasonPlayerProperty
 int glowReasonSimpleTarget
 
 ObjectReference targetedRefr
+Perk spergProspector
 
 Function SetPlayer(Actor playerref)
     player = playerref
+    ;check for SPERG being active and set up the Prospector Perk to check
+    int spergModIndex = Game.GetModByName("SPERG-SSE.esp")
+    if spergModIndex != 255
+        int perkID = 0x5cc21
+        spergProspector = Game.GetFormFromFile(perkID, "SPERG-SSE.esp") as Perk
+        if !spergProspector || spergProspector.GetName() != "Prospector"
+            AlwaysTrace("SPERG Prospector Perk resolve failed for " + PrintFormID(perkID))
+            spergProspector = None
+        endIf
+    else
+        spergProspector = None
+    endIf
+
     RegisterForCrosshairRef()
 EndFunction
 
@@ -500,6 +514,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         oreName = oreScript.ore.GetName()
         ; do not harvest firehose unless set in config
         if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
+            if spergProspector
+                PrepareSPERGMining()
+            endif
             if (available == -1)
                 ;DebugTrace("Vein not yet initialized, start mining")
             else
@@ -520,6 +537,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
             endIf
             ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            if spergProspector
+                PostprocessSPERGMining()
+            endif
             FOSStrikesBeforeFossil = 6
         else
             ;DebugTrace("Ignoring firehose source")
