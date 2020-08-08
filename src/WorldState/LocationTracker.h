@@ -67,8 +67,8 @@ private:
 
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
 	bool IsPlayerInBlacklistedPlace(const RE::TESObjectCELL* cell) const;
-	void PlayerLocationRelativeToNearestMapMarker(void) const;
-	void PlayerLocationRelativeToAdventureTarget(void) const;
+	void PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const;
+	const RE::BGSLocation* PlayerLocationRelativeToAdventureTarget(void) const;
 	CompassDirection DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const;
 	const RE::TESWorldSpace* ParentWorld(const RE::TESObjectCELL* cell);
 	RelativeLocationDescriptor NearestMapMarker(const AlglibPosition& refPos) const;
