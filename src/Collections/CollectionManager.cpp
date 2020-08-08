@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/utils.h"
 #include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
+#include "VM/papyrus.h"
 #include "Collections/CollectionManager.h"
 #include "Collections/CollectionFactory.h"
 #include "Data/DataCase.h"
@@ -115,6 +116,7 @@ void CollectionManager::ProcessAddedItems()
 	}
 
 	const float gameTime(PlayerState::Instance().CurrentGameTime());
+	m_notifications = 0;
 	for (const auto form : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
@@ -126,6 +128,22 @@ void CollectionManager::ProcessAddedItems()
 		else if (m_nonCollectionForms.insert(form->GetFormID()).second)
 		{
 			DBG_VMESSAGE("Recorded 0x{:08x} as non-collectible", form->GetFormID());
+		}
+	}
+
+	// send generic 'there were more items' message if spam filter triggered
+	if (m_notifications > CollectedSpamLimit)
+	{
+		size_t extraItems(m_notifications - CollectedSpamLimit);
+		static RE::BSFixedString extraItemsText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADDED_TO_COLLECTION_EXTRAS")));
+		if (!extraItemsText.empty())
+		{
+			std::string notificationText(extraItemsText);
+			StringUtils::Replace(notificationText, "{COUNT}", std::to_string(extraItems));
+			if (!notificationText.empty())
+			{
+				RE::DebugNotification(notificationText.c_str());
+			}
 		}
 	}
 }
@@ -149,8 +167,12 @@ void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const 
 			collection->second->IsMemberOf(item) &&
 			(collection->second->Policy().Repeat() || !collection->second->HaveObserved(item)))
 		{
-			// record membership
-			collection->second->RecordItem(item, gameTime);
+			// record membership - suppress notifications if there are too many
+			if (collection->second->RecordItem(item, gameTime, m_notifications >= CollectedSpamLimit))
+			{
+				// another notification required
+				++m_notifications;
+			}
 			atLeastOne = true;
 		}
 	}
@@ -218,10 +240,10 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 	// use delta vs last pass to speed this up (resets on game reload)
 	static const bool requireQuestItemAsTarget(false);
 	static const bool checkSpecials(false);
-	LootableItems playerInventory(ContainerLister(
-		INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials).GetOrCheckContainerForms());
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials);
+	lister.AnalyzeLootableItems();
 	decltype(m_lastInventoryItems) newInventoryItems;
-	for (const auto& candidate : playerInventory)
+	for (const auto& candidate : lister.GetLootableItems())
 	{
 		const auto item(candidate.BoundObject());
 		RE::FormID formID(item->GetFormID());
@@ -612,23 +634,11 @@ void CollectionManager::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 		DBG_VMESSAGE("REFR invalid");
 		return;
 	}
-	// skip if no BaseObject
-	if (!refr->GetBaseObject())
+	// skip if BaseObject not concrete
+	if (!FormUtils::IsConcrete(refr->GetBaseObject()))
 	{
-		DBG_VMESSAGE("REFR 0x{:08x} no base", refr->GetFormID());
-		return;
-	}
-
-	if (!refr->GetBaseObject()->GetPlayable())
-	{
-		DBG_VMESSAGE("REFR 0x{:08x} has non-playable base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
-		return;
-	}
-
-	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
-	if (!fullName || fullName->GetFullNameLength() == 0)
-	{
-		DBG_VMESSAGE("REFR 0x{:08x} has unnamed base 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetFormID());
+		DBG_VMESSAGE("REFR 0x{:08x} Base 0x{:08x} is missing, non-playable or unnamed",
+			refr->GetFormID(), refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID(): InvalidForm);
 		return;
 	}
 
@@ -858,26 +868,42 @@ bool CollectionManager::IsPlacedObject(const RE::TESForm* form) const
 	return m_placedObjects.contains(form);
 }
 
+void CollectionManager::RecordCollectibleForm(
+	const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
+	std::unordered_set<const RE::TESForm*>& uniquePlaced, std::unordered_set<const RE::TESForm*>& uniqueMembers)
+{
+	DBG_VMESSAGE("Record {}/0x{:08x} as collectible", form->GetName(), form->GetFormID());
+	m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection));
+	if (IsPlacedObject(form))
+	{
+		uniquePlaced.insert(form);
+	}
+	uniqueMembers.insert(form);
+}
+
 void CollectionManager::ResolveMembership(void)
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Resolve Collection Membership");
 #endif
+	std::unordered_set<const RE::TESForm*> uniquePlaced;
+	std::unordered_set<const RE::TESForm*> uniqueMembers;
 	// record static members before resolving
 	for (const auto& collection : m_allCollectionsByLabel)
 	{
 		for (const auto member : collection.second->Members())
 		{
-			m_collectionsByFormID.insert({ member->GetFormID(), collection.second });
+			RecordCollectibleForm(collection.second, member, uniquePlaced, uniqueMembers);
 		}
 	}
 
-	std::unordered_set<RE::TESForm*> uniquePlaced;
-	std::unordered_set<RE::TESForm*> uniqueMembers;
 	for (const auto& signature : SignatureCondition::ValidSignatures())
 	{
 		for (const auto form : RE::TESDataHandler::GetSingleton()->GetFormArray(signature.second))
 		{
+			if (!FormUtils::IsConcrete(form))
+				continue;
+
 			for (const auto& collection : m_allCollectionsByLabel)
 			{
 				// record collection membership for any that match this object - ignore whitelist
@@ -886,14 +912,7 @@ void CollectionManager::ResolveMembership(void)
 				{
 					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
 					collection.second->SetScopes(matcher.ScopesSeen());
-
-					DBG_VMESSAGE("Record {}/0x{:08x} as collectible", form->GetName(), form->GetFormID());
-					m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection.second));
-					if (CollectionManager::Instance().IsPlacedObject(form))
-					{
-						uniquePlaced.insert(form);
-					}
-					uniqueMembers.insert(form);
+					RecordCollectibleForm(collection.second, form, uniquePlaced, uniqueMembers);
 				}
 			}
 		}

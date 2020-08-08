@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/FormHelper.h"
 #include "Data/dataCase.h"
 #include "FormHelpers/ExtraDataListHelper.h"
+#include "Utilities/utils.h"
 #include "Looting/containerLister.h"
 
 namespace shse
@@ -30,20 +31,18 @@ namespace shse
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr,
 	const bool requireQuestItemAsTarget, const bool checkSpecials) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
-	m_hasQuestItem(false), m_hasEnchantedItem(false), m_hasValuableItem(false),
-	m_hasCollectibleItem(false), m_collectibleAction(CollectibleHandling::Leave), m_checkSpecials(checkSpecials)
+	m_collectibleAction(CollectibleHandling::Leave), m_checkSpecials(checkSpecials)
 {
 }
 
-LootableItems ContainerLister::GetOrCheckContainerForms()
+size_t ContainerLister::AnalyzeLootableItems()
 {
-	LootableItems lootableItems;
 	if (!m_refr)
-		return lootableItems;
+		return 0;
 
 	const RE::TESContainer* container = const_cast<RE::TESObjectREFR*>(m_refr)->GetContainer();
 	if (!container)
-		return lootableItems;
+		return 0;
 
 	// refactored following QuickLookRE
 	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
@@ -52,21 +51,17 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 		if (count <= 0)
 			continue;
 		RE::TESBoundObject* item = entry->GetObject();
+		if (!FormUtils::IsConcrete(item))
+			continue;
+
 		if (item->formType == RE::FormType::LeveledItem)
 			continue;
 
-		if (!item->GetPlayable())
-			continue;
-
-		RE::TESFullName* fullName = item->As<RE::TESFullName>();
-		if (!fullName || fullName->GetFullNameLength() == 0)
-			continue;
-
-		lootableItems.emplace_back(std::move(entry), count);
+		m_lootableItems.emplace_back(std::move(entry), count);
 	}
 
-	if (lootableItems.empty() || !m_checkSpecials)
-		return lootableItems;
+	if (m_lootableItems.empty() || !m_checkSpecials)
+		return m_lootableItems.size();
 
 	const RE::ExtraContainerChanges* exChanges = m_refr->extraList.GetByType<RE::ExtraContainerChanges>();
 	if (exChanges && exChanges->changes && exChanges->changes->entryList)
@@ -75,54 +70,65 @@ LootableItems ContainerLister::GetOrCheckContainerForms()
 			entryData != exChanges->changes->entryList->end(); ++entryData)
 		{
 			RE::TESBoundObject* item = (*entryData)->object;
-			if (!item || !item->GetPlayable())
+			if (!FormUtils::IsConcrete(item))
 				continue;
-
-			RE::TESFullName* fullName = item->As<RE::TESFullName>();
-			if (!fullName || fullName->GetFullNameLength() == 0)
-				continue;
-
 			if ((*entryData)->countDelta <= 0)
 				continue;
 			if (!(*entryData)->extraLists)
 				continue;
 
 			// Check for enchantment or quest target
-			if (!m_hasQuestItem && DataCase::GetInstance()->QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
-				m_hasQuestItem = true;
+			if (DataCase::GetInstance()->QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
+			{
+				m_questItems.insert(item);
+			}
 
 			for (auto extraList = (*entryData)->extraLists->begin(); extraList != (*entryData)->extraLists->end(); ++extraList)
 			{
 				if (*extraList)
 				{
 					ExtraDataListHelper exListHelper(*extraList);
-					if (!m_hasQuestItem)
-						m_hasQuestItem = exListHelper.IsQuestObject(m_requireQuestItemAsTarget);
-
-					if (!m_hasEnchantedItem)
-						m_hasEnchantedItem = exListHelper.GetEnchantment() != nullptr;
-
-					TESFormHelper itemEx(item, m_targetType);
-					if (!m_hasEnchantedItem)
+					if (exListHelper.IsQuestObject(m_requireQuestItemAsTarget))
 					{
-						m_hasEnchantedItem = itemEx.GetEnchantment() != nullptr;
+						m_questItems.insert(item);
 					}
-					if (!m_hasValuableItem)
+					TESFormHelper itemEx(item, m_targetType);
+					if (exListHelper.GetEnchantment() != nullptr)
 					{
-						m_hasValuableItem = itemEx.IsValuable();
+						m_enchantedItems.insert(item);
+					}
+					else if (itemEx.GetEnchantment() != nullptr)
+					{
+						m_enchantedItems.insert(item);
+					}
+					if (itemEx.IsValuable())
+					{
+						m_valuableItems.insert(item);
 					}
 					const auto collectible(itemEx.TreatAsCollectible());
 					if (collectible.first)
 					{
 						// use the most permissive action
-						m_hasCollectibleItem = true;
+						m_collectibleItems.insert(item);
 						m_collectibleAction = UpdateCollectibleHandling(m_collectibleAction, collectible.second);
 					}
 				}
 			}
 		}
 	}
-	return lootableItems;
+	return m_lootableItems.size();
+}
+
+void ContainerLister::RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter)
+{
+	decltype(m_lootableItems) filteredList;
+	filteredList.reserve(m_lootableItems.size());
+	std::copy_if(m_lootableItems.cbegin(), m_lootableItems.cend(), std::back_inserter(filteredList), [&](const InventoryItem& item) -> bool
+	{
+		return !filter.contains(item.BoundObject());
+	});
+	DBG_DMESSAGE("Lootable Item count {} filtered from {}", filteredList.size(), m_lootableItems.size());
+	m_lootableItems.swap(filteredList);
 }
 
 }

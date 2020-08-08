@@ -264,17 +264,16 @@ void LocationTracker::PrintDifferentWorld(const RE::TESWorldSpace* world) const
 void LocationTracker::DisplayPlayerLocation() const
 {
 	// display location relative to Adventure Target, or nearest marker if no Adventure in progress
+	const RE::BGSLocation* locationDone(nullptr);
 	if (AdventureTargets::Instance().TargetLocation())
 	{
-		PlayerLocationRelativeToAdventureTarget();
+		locationDone = PlayerLocationRelativeToAdventureTarget();
 	}
-	else
-	{
-		PlayerLocationRelativeToNearestMapMarker();
-	}
+	// print current location if it's not the same as the target
+	PlayerLocationRelativeToNearestMapMarker(locationDone);
 }
 
-void LocationTracker::PlayerLocationRelativeToNearestMapMarker() const
+void LocationTracker::PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Locate relative to map marker");
@@ -285,7 +284,10 @@ void LocationTracker::PlayerLocationRelativeToNearestMapMarker() const
 	{
 		DBG_MESSAGE("Player ({:0.2f}, {:0.2f}) is in location {}/0x{:08x}", playerPos[0], playerPos[1],
 			m_playerLocation->GetName(), m_playerLocation->GetFormID());
-		PrintPlayerLocation(m_playerLocation);
+		if (m_playerLocation != locationDone)
+		{
+			PrintPlayerLocation(m_playerLocation);
+		}
 		return;
 	}
 	RelativeLocationDescriptor nearestMarker(NearestMapMarker(playerPos));
@@ -302,7 +304,10 @@ void LocationTracker::PlayerLocationRelativeToNearestMapMarker() const
 	{
 		DBG_MESSAGE("Player is {} of nearest Location map marker {}/0x{:08x} at distance {:0.2f} miles",
 			CompassDirectionName(heading).c_str(), location->GetName(), nearestMarker.LocationID(), milesAway);
-		PrintNearbyLocation(location, milesAway, heading);
+		if (m_playerLocation != locationDone)
+		{
+			PrintNearbyLocation(location, milesAway, heading);
+		}
 	}
 	else
 	{
@@ -358,7 +363,7 @@ RelativeLocationDescriptor LocationTracker::LocationMapMarker(
 	return RelativeLocationDescriptor(refPos, markerPos, location->GetFormID(), unitsAway);
 }
 
-void LocationTracker::PlayerLocationRelativeToAdventureTarget() const
+const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget() const
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Locate relative to adventure target");
@@ -369,21 +374,21 @@ void LocationTracker::PlayerLocationRelativeToAdventureTarget() const
 	if (!location || !targetMarker)
 	{
 		// no adventure in progress, or target unmappable
-		return;
+		return nullptr;
 	}
 
 	RecursiveLockGuard guard(m_locationLock);
 	if (world != m_playerParentWorld)
 	{
 		PrintDifferentWorld(world);
-		return;
+		return nullptr;
 	}
 	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
 	RelativeLocationDescriptor targetLocation(LocationMapMarker(targetMarker, location, playerPos));
 	if (targetLocation == RelativeLocationDescriptor::Invalid())
 	{
 		REL_WARNING("Could not determine adventure target marker");
-		return;
+		return nullptr;
 	}
 	CompassDirection heading(DirectionToDestinationFromStart(targetLocation.EndPoint(), targetLocation.StartPoint()));
 
@@ -391,6 +396,7 @@ void LocationTracker::PlayerLocationRelativeToAdventureTarget() const
 	DBG_MESSAGE("Player is {} of adventure target marker {}/0x{:08x} at distance {:0.2f} miles",
 		CompassDirectionName(heading).c_str(), location->GetName(), targetLocation.LocationID(), milesAway);
 	PrintAdventureTargetInfo(location, milesAway, heading);
+	return location;
 }
 
 CellOwnership LocationTracker::GetCellOwnership(const RE::TESObjectCELL* cell) const

@@ -5,6 +5,8 @@ Import SHSE_PluginProxy
 SHSE_EventsAlias Property eventScript Auto
 GlobalVariable Property g_LootingEnabled Auto
 
+Spell Property SelfLocation Auto  
+
 ; check for first init for this playthrough
 GlobalVariable Property g_InitComplete Auto
 
@@ -119,6 +121,7 @@ int groupCollectibleAction
 bool groupCollectionAddNotify
 bool groupCollectDuplicates
 
+bool adventuresEnabled
 int adventureTypeCount
 ; cursor within Adventure Target universe
 int adventureType
@@ -226,6 +229,7 @@ function ApplySettingsFromFile()
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
 
     collectionsEnabled = GetSetting(type_Common, type_Config, "CollectionsEnabled") as bool
+    adventuresEnabled = GetSetting(type_Common, type_Config, "AdventuresEnabled") as bool
 
 endFunction
 
@@ -300,11 +304,12 @@ Function ApplySetting(bool reload)
     PutSettingObjectArray(type_Harvest, type_ValueWeight, 32, valueWeightSettingArray)
 
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
+    PutSetting(type_Common, type_Config, "AdventuresEnabled", adventuresEnabled as float)
 
     ; seed looting scan enabled according to configured settings
-    bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn || collectionsEnabled
+    bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn || collectionsEnabled || adventuresEnabled
     ;DebugTrace("isEnabled? " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
-    ;DebugTrace("Collections enabled? " + " collectionsEnabled)
+    ;DebugTrace("Collections enabled? " + " collectionsEnabled + ", Adventures enabled? " + " adventuresEnabled)
     if (isEnabled)
         g_LootingEnabled.SetValue(1)
         eventScript.SetScanActive()
@@ -447,6 +452,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallCollectionGroupPolicy()
     InstallCollectionDescriptionsActions()
     InstallAdventures()
+    InstallAdventuresPower()
 EndFunction
 
 Function InstallCollections()
@@ -488,6 +494,11 @@ Function InstallAdventures()
     worldCount = 0
 
     adventureActive = false
+EndFunction
+
+Function InstallAdventuresPower()
+    ;clear out existing adventure - the fields could be out of date for new logic
+    SetAdventuresStatus()
 EndFunction
 
 Function InstallVerticalRadiusAndDoorRule()
@@ -585,7 +596,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 36
+    return 37
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -648,6 +659,9 @@ Event OnVersionUpdate(int a_version)
     endIf
     if (a_version >= 36 && CurrentVersion < 36)
         InstallAdventures()
+    endIf
+    if (a_version >= 37 && CurrentVersion < 37)
+        InstallAdventuresPower()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -984,8 +998,12 @@ event OnPageReset(string currentPage)
         SetCursorPosition(1)
         ; adventure fields only accessible if enabled
         PopulateAdventureTypes()
-        int adventureFlags = OPTION_FLAG_DISABLED
+        int adventureTypeFlags = OPTION_FLAG_DISABLED
         string initialAdventureType = ""
+        if adventuresEnabled
+            adventureTypeFlags = OPTION_FLAG_NONE
+        endIf
+        int adventureFlags = OPTION_FLAG_DISABLED
         string initialAdventureWorld = ""
         ; sync script state from plugin, in case adventure completed
         adventureActive = HasAdventureTarget()
@@ -996,7 +1014,8 @@ event OnPageReset(string currentPage)
             initialAdventureWorld = worldNames[worldIndex]
         endIf
         AddHeaderOption("$SHSE_CHOOSE_ADVENTURE_HEADER")
-        AddMenuOptionST("chooseAdventureType", "$SHSE_CHOOSE_ADVENTURE_TYPE", initialAdventureType)
+        AddToggleOptionST("adventuresEnabled", "$SHSE_ADVENTURE_ENABLED", adventuresEnabled)
+        AddMenuOptionST("chooseAdventureType", "$SHSE_CHOOSE_ADVENTURE_TYPE", initialAdventureType, adventureTypeFlags)
         AddMenuOptionST("chooseAdventureWorld", "$SHSE_CHOOSE_ADVENTURE_WORLD", initialAdventureWorld, adventureFlags)
         AddToggleOptionST("chooseAdventureActive", "$SHSE_CHOOSE_ADVENTURE_ACTIVE", adventureActive, adventureFlags)
         
@@ -2089,6 +2108,33 @@ state itemsCollected
     endEvent
 endState
 
+Function SetAdventuresStatus()
+    if adventuresEnabled
+        player.AddSpell(SelfLocation)
+    else
+        player.RemoveSpell(SelfLocation)
+    endIf
+    ResetAdventureType()
+EndFunction
+
+state adventuresEnabled
+    event OnSelectST()
+        adventuresEnabled = !adventuresEnabled
+        SetToggleOptionValueST(adventuresEnabled)
+        SetAdventuresStatus()
+    endEvent
+
+    event OnDefaultST()
+        adventuresEnabled = false
+        SetToggleOptionValueST(adventuresEnabled)
+        SetAdventuresStatus()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_ADVENTURE_ENABLED"))
+    endEvent
+endState
+
 state chooseAdventureType
     event OnMenuOpenST()
         SetMenuDialogStartIndex(adventureType)
@@ -2101,7 +2147,6 @@ state chooseAdventureType
         adventureType = index
         SetMenuOptionValueST(adventureTypeNames[adventureType])
         PopulateAdventureWorlds()
-        ResetAdventureActive(OPTION_FLAG_DISABLED)
         ResetAdventureWorld()
     endEvent
 
@@ -2109,21 +2154,24 @@ state chooseAdventureType
         adventureType = 0
         SetMenuOptionValueST(adventureTypeNames[adventureType])
         PopulateAdventureWorlds()
-        ResetAdventureActive(OPTION_FLAG_DISABLED)
         ResetAdventureWorld()
     endEvent
 
     event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_CHOOSE_ADVENTURE_TYPE"))
     endEvent
 endState
 
-Function ResetAdventureActive(int flags)
-    if adventureActive
-        adventureActive = false
-        ClearAdventureTarget()
+Function ResetAdventureType()
+    if adventuresEnabled
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseAdventureType")
+    else
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureType")
     endIf
-    SetOptionFlagsST(flags, false, "chooseAdventureActive")
-    SetToggleOptionValueST(adventureActive, false, "chooseAdventureActive")
+    adventureType = 0
+    SetMenuOptionValueST("", false, "chooseAdventureType")
+    worldCount = 0
+    ResetAdventureWorld()
 EndFunction
 
 Function ResetAdventureWorld()
@@ -2134,6 +2182,14 @@ Function ResetAdventureWorld()
         SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureWorld")
         SetMenuOptionValueST("", false, "chooseAdventureWorld")
     endIf
+    ResetAdventureActive(OPTION_FLAG_DISABLED)
+EndFunction
+
+Function ResetAdventureActive(int flags)
+    adventureActive = false
+    ClearAdventureTarget()
+    SetOptionFlagsST(flags, false, "chooseAdventureActive")
+    SetToggleOptionValueST(adventureActive, false, "chooseAdventureActive")
 EndFunction
 
 state chooseAdventureWorld
@@ -2157,6 +2213,7 @@ state chooseAdventureWorld
     endEvent
 
     event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_CHOOSE_ADVENTURE_WORLD"))
     endEvent
 endState
 

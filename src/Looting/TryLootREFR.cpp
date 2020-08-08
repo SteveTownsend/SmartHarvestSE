@@ -335,8 +335,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
 		static const bool checkSpecials(true);
 		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget, checkSpecials);
-		LootableItems lootableItems(lister.GetOrCheckContainerForms());
-		if (lootableItems.empty())
+		size_t lootableItems(lister.AnalyzeLootableItems());
+		if (lootableItems == 0)
 		{
 			if (!dryRun)
 			{
@@ -401,7 +401,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (!IsSpecialObjectLootable(questObjectLoot))
 			{
-				skipLooting = true;
+				// this is not a blocker for looting of non-special items
+				lister.ExcludeQuestItems();
 				result = Lootability::ContainerHasQuestObject;
 			}
 		}
@@ -413,6 +414,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::EnchantedItem);
+				// this is not a blocker for looting of non-special items
+				lister.ExcludeEnchantedItems();
 			}
 		}
 
@@ -424,6 +427,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				DBG_VMESSAGE("glow container with valuable object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::Valuable);
+				// this is not a blocker for looting of non-special items
+				lister.ExcludeValuableItems();
 			}
 
 			if (!IsSpecialObjectLootable(valuableLoot))
@@ -436,6 +441,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			if (!CanLootCollectible(lister.CollectibleAction()))
 			{
+				// this is not a blocker for looting of non-special items
+				lister.ExcludeCollectibleItems();
+
 				if (lister.CollectibleAction() == CollectibleHandling::Glow)
 				{
 					DBG_VMESSAGE("glow container with collectible object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -483,7 +491,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
 		}
 
-		// TODO if it contains whitelisted items we will nonetheless skip, due to checks at the container level
+		// If it contains white-listed items we must nonetheless skip, due to legality checks at the container level
 		if (dryRun || skipLooting)
 			return result;
 
@@ -501,8 +509,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// Build list of lootable targets with notification, collectibility flag & count for each
 		std::vector<std::tuple<InventoryItem, bool, bool, size_t>> targets;
-		targets.reserve(lootableItems.size());
-		for (auto& targetItemInfo : lootableItems)
+		targets.reserve(lootableItems);
+		for (auto& targetItemInfo : lister.GetLootableItems())
 		{
 			RE::TESBoundObject* target(targetItemInfo.BoundObject());
 			if (!target)
@@ -635,7 +643,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// items and blacklist the REFR to avoid revisiting. Confirm looting by checking lootable target count now vs start
 		// value. This logic only applies to containers: NPC auto-looting is scripted and not known to fail.
 		if (m_targetType == INIFile::SecondaryType::containers && !targets.empty() &&
-		    lister.GetOrCheckContainerForms().size() >= lootableItems.size())
+		    lister.AnalyzeLootableItems() >= lootableItems)
 		{
 			// nothing looted - make copies of targets and blacklist the reference (e.g. MrB's Lootable Things)
 			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),
