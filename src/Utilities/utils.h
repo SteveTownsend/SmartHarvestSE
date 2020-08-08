@@ -97,6 +97,11 @@ namespace FormUtils
 		const char* edid(form->GetFormEditorID());
 		return edid ? std::string(edid) : std::string();
 	}
+
+	inline bool IsConcrete(const RE::TESForm* form)
+	{
+		return form && form->GetPlayable() && !std::string(form->GetName()).empty();
+	}
 }
 
 namespace StringUtils

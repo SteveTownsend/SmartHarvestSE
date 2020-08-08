@@ -34,6 +34,9 @@ enum class AdventureTargetType : uint32_t {
 	DraugrCrypt,
 	DwarvenRuin,
 	Dungeon,
+#if _DEBUG
+	FakeForTesting,
+#endif
 	FalmerHive,
 	ForswornCamp,
 	Fort,
@@ -96,8 +99,9 @@ public:
 	void Reset();
 	void Categorize();
 
-	inline size_t NumberOfTypes() const { return size_t(AdventureTargetType::MAX); }
-	inline std::string AdventureTypeName(const size_t adventureType) const { return AdventureTargetNameByIndex(adventureType); }
+	size_t AvailableAdventureTypes() const;
+	// use mapping list to convert MCM index to true index
+	inline std::string AdventureTypeName(const size_t adventureType) const { return AdventureTargetNameByIndex(size_t(m_validAdventureTypes[adventureType])); }
 	size_t ViableWorldCount(const size_t adventureType) const;
 	std::string ViableWorldNameByIndexInView(const size_t worldIndex) const;
 	void SelectCurrentDestination(const size_t worldIndex);
@@ -114,6 +118,8 @@ public:
 private:
 	static std::unique_ptr<AdventureTargets> m_instance;
 	std::array<std::unordered_set<RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
+	mutable std::vector<AdventureTargetType> m_validAdventureTypes;
+
 	std::unordered_map<const RE::BGSLocation*, RE::TESWorldSpace*> m_worldByLocation;
 	std::unordered_map<const RE::BGSLocation*, RE::ObjectRefHandle> m_mapMarkerByLocation;
 

@@ -30,22 +30,30 @@ struct ContainerLister
 {
 public:
 	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget, const bool checkSpecials);
-	LootableItems GetOrCheckContainerForms();
-	inline bool HasQuestItem() const { return m_hasQuestItem; }
-	inline bool HasEnchantedItem() const { return m_hasEnchantedItem; }
-	inline bool HasValuableItem() const { return m_hasValuableItem; }
-	inline bool HasCollectibleItem() const { return m_hasCollectibleItem; }
+	size_t AnalyzeLootableItems();
+	inline bool HasQuestItem() const { return !m_questItems.empty(); }
+	inline bool HasEnchantedItem() const { return !m_enchantedItems.empty(); }
+	inline bool HasValuableItem() const { return !m_valuableItems.empty(); }
+	inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
 	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
+	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
+	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
+	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
+	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }
+	void ExcludeCollectibleItems() { RemoveUnlootable(m_collectibleItems); }
 
 private:
+	void RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter);
+
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;
 	bool m_requireQuestItemAsTarget;
 	bool m_checkSpecials;
-	bool m_hasQuestItem;
-	bool m_hasEnchantedItem;
-	bool m_hasValuableItem;
-	bool m_hasCollectibleItem;
+	std::unordered_set<RE::TESBoundObject*> m_questItems;
+	std::unordered_set<RE::TESBoundObject*> m_enchantedItems;
+	std::unordered_set<RE::TESBoundObject*> m_valuableItems;
+	std::unordered_set<RE::TESBoundObject*> m_collectibleItems;
+	LootableItems m_lootableItems;
 	CollectibleHandling m_collectibleAction;
 };
 

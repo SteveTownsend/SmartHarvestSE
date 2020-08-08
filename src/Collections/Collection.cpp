@@ -46,8 +46,9 @@ Collection::Collection(const CollectionGroup* owningGroup, const std::string& na
 	m_owningGroup(owningGroup), m_name(name), m_description(description), m_effectivePolicy(policy),
 	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
 {
-	// if this collection has static members, add them now to seed the list
-	m_members = m_rootFilter->StaticMembers();
+	// if this collection has concrete static members, add them now to seed the list
+	const auto statics(m_rootFilter->StaticMembers());
+	std::copy_if(statics.cbegin(), statics.cend(), std::inserter(m_members, m_members.end()), FormUtils::IsConcrete);
 }
 
 bool Collection::AddMemberID(const RE::TESForm* form)const 
@@ -118,28 +119,33 @@ bool Collection::HaveObserved(const RE::TESForm* form) const
 	return m_observed.contains(form);
 }
 
-void Collection::RecordItem(const RE::TESForm* form, const float gameTime)
+bool Collection::RecordItem(const RE::TESForm* form, const float gameTime, const bool suppressSpam)
 {
 	DBG_VMESSAGE("Collect {}/0x{:08x} in {}", form->GetName(), form->GetFormID(), m_name.c_str());
 	if (m_observed.insert({ form, gameTime }).second)
 	{
 		if (m_effectivePolicy.Notify())
 		{
-			// notify about these, just once
-			std::string notificationText;
-			static RE::BSFixedString newMemberText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADDED_TO_COLLECTION")));
-			if (!newMemberText.empty())
+			// don't flood the screen for ages on one pass (especially first-time inventory reconciliation)
+			if (!suppressSpam)
 			{
-				notificationText = newMemberText;
-				StringUtils::Replace(notificationText, "{ITEMNAME}", form->GetName());
-				StringUtils::Replace(notificationText, "{COLLECTION}", m_name);
-				if (!notificationText.empty())
+				// notify about these, just once
+				static RE::BSFixedString newMemberText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADDED_TO_COLLECTION")));
+				if (!newMemberText.empty())
 				{
-					RE::DebugNotification(notificationText.c_str());
+					std::string notificationText(newMemberText);
+					StringUtils::Replace(notificationText, "{ITEMNAME}", form->GetName());
+					StringUtils::Replace(notificationText, "{COLLECTION}", m_name);
+					if (!notificationText.empty())
+					{
+						RE::DebugNotification(notificationText.c_str());
+					}
 				}
 			}
+			return true;
 		}
 	}
+	return false;
 }
 
 void Collection::Reset()
@@ -285,9 +291,9 @@ void Collection::SetMembersFrom(const nlohmann::json & members)
 	{
 		RE::FormID formID(StringUtils::ToFormID(member["form"].get<std::string>()));
 		RE::TESForm* form(LoadOrder::Instance().RehydrateCosaveForm(formID));
-		if (!form)
+		if (!FormUtils::IsConcrete(form))
 		{
-			// Load Order or the FormID in the mod changed
+			// sanitize malformed members - must exist, have name and be playable
 			continue;
 		}
 		m_members.insert(form);

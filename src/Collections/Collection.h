@@ -90,7 +90,7 @@ public:
 	inline size_t Count() { return m_members.size(); }
 	inline size_t Observed() { return m_observed.size(); }
 	bool HaveObserved(const RE::TESForm* form) const;
-	void RecordItem(const RE::TESForm* form, const float gameTime);
+	bool RecordItem(const RE::TESForm* form, const float gameTime, const bool suppressSpam);
 	void Reset();
 
 	nlohmann::json MakeJSON() const;

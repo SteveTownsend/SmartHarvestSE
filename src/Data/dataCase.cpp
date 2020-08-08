@@ -671,25 +671,17 @@ void DataCase::GetAmmoData()
 	DBG_MESSAGE("Loading AmmoData");
 	for (RE::TESAmmo* ammo : dhnd->GetFormArray<RE::TESAmmo>())
 	{
-		DBG_VMESSAGE("Checking {}", ammo->GetFullName());
-		if (!ammo->GetPlayable())
+		if (!FormUtils::IsConcrete(ammo))
 		{
-			DBG_VMESSAGE("Not playable");
+			DBG_VMESSAGE("Ammo 0x{:08x} not usable", ammo ? ammo->GetFormID() : InvalidForm);
 			continue;
 		}
-
-		std::string name(ammo->GetName());
-		if (name.empty())
-		{
-			DBG_VMESSAGE("base name empty");
-			continue;
-     	}
-		DBG_VMESSAGE("base name {}", name);
-
 		RE::BGSProjectile* proj = ammo->data.projectile;
 		if (!proj)
+		{
+			DBG_VMESSAGE("Ammo 0x{:08x} has no projectile", ammo->GetFormID());
 			continue;
-
+		}
 		DBG_VMESSAGE("Adding Projectile {} with ammo {}", proj->GetFullName(), ammo->GetFullName());
 		m_ammoList[proj] = ammo;
 	}
@@ -851,15 +843,10 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 // used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
 bool DataCase::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 {
-	if (!item)
+	if (!FormUtils::IsConcrete(item))
 		return false;
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (item->IsDynamicForm())
-		return false;
-	if (!item->GetPlayable())
-		return false;
-	std::string name(item->GetName());
-	if (name.empty())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return (m_questTargets.insert(item)).second;

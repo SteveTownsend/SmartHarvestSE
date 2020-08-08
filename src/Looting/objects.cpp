@@ -216,7 +216,7 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm)
 	{
 		// done here instead of during init because state of object can change during gameplay
 		const RE::TESObjectWEAP* weapon = baseForm->As<RE::TESObjectWEAP>();
-		if (!weapon || !weapon->GetPlayable())
+		if (!FormUtils::IsConcrete(weapon))
 			return ObjectType::unknown;
 
 		return (weapon->formEnchanting) ? ObjectType::enchantedWeapon : ObjectType::weapon;
@@ -225,7 +225,7 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm)
 	{
 		// done here instead of during init because state of object can change during gameplay
 		const RE::TESObjectARMO* armor = baseForm->As<RE::TESObjectARMO>();
-		if (!armor || !armor->GetPlayable())
+		if (!FormUtils::IsConcrete(armor))
 			return ObjectType::unknown;
 
 		return (armor->formEnchanting) ? ObjectType::enchantedArmor : ObjectType::armor;

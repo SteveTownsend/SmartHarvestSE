@@ -45,6 +45,9 @@ std::string AdventureTargetName(const AdventureTargetType adventureTarget)
 		case AdventureTargetType::DraugrCrypt:	   return "Draugr Crypt";
 		case AdventureTargetType::DwarvenRuin:	   return "Dwarven Ruin";
 		case AdventureTargetType::Dungeon:		   return "Dungeon";
+#if _DEBUG
+		case AdventureTargetType::FakeForTesting:  return "Fake for Testing";
+#endif
 		case AdventureTargetType::FalmerHive:	   return "Falmer Hive";
 		case AdventureTargetType::ForswornCamp:	   return "Forsworn Camp";
 		case AdventureTargetType::Fort:			   return "Fort";
@@ -179,6 +182,10 @@ void AdventureTargets::Categorize()
 		{"DLC2LocTypeAshSpawn", AdventureTargetType::AshSpawnLair},
 		{"DLC2LocTypeRieklingCamp", AdventureTargetType::RieklingCamp},
 		{"LocTypeWerebearLair", AdventureTargetType::WerebeastLair},
+#if _DEBUG
+		// Fake test value
+		{"FakeForTesting", AdventureTargetType::FakeForTesting},
+#endif
 		// arnima.esm
 		{"LocTypeArnimaOrcs", AdventureTargetType::OrcStronghold},
 		{"LocTypeDirenniRuin", AdventureTargetType::AyleidRuin},
@@ -350,13 +357,34 @@ void AdventureTargets::Categorize()
 #endif
 }
 
+// filter adventure types to only show those with unknown locations
+size_t AdventureTargets::AvailableAdventureTypes() const
+{
+	RecursiveLockGuard guard(m_adventureLock);
+	m_validAdventureTypes.clear();
+	size_t adventureType(0);
+	for (const auto locations : m_locationsByType)
+	{
+		if (std::find_if(locations.cbegin(), locations.cend(), [=](const RE::BGSLocation* location) -> bool	{
+				return !VisitedPlaces::Instance().IsKnown(location);
+			}) != locations.cend())
+		{
+			// establish mapping between MCM index and original adventure type if there are unknown locations for this type
+			m_validAdventureTypes.push_back(AdventureTargetType(adventureType));
+		}
+        ++adventureType;
+	}
+	return m_validAdventureTypes.size();
+}
+
 // This can only be called from MCM so thread-safe. Build view containing the viable Worlds/Locations for this type.
 size_t AdventureTargets::ViableWorldCount(const size_t adventureType) const
 {
 	RecursiveLockGuard guard(m_adventureLock);
 	m_unvisitedLocationsByWorld.clear();
 	m_sortedWorlds.clear();
-	for (const auto location : m_locationsByType[adventureType])
+	// map frmo MCM index for list of adventure types with valid worlds back to enumeration
+	for (const RE::BGSLocation* location : m_locationsByType[int(m_validAdventureTypes[adventureType])])
 	{
 		if (VisitedPlaces::Instance().IsKnown(location))
 			continue;
