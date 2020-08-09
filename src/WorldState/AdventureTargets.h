@@ -32,8 +32,8 @@ enum class AdventureTargetType : uint32_t {
 	DragonLair,
 	DragonPriestLair,
 	DraugrCrypt,
-	DwarvenRuin,
 	Dungeon,
+	DwarvenRuin,
 #if _DEBUG
 	FakeForTesting,
 #endif
