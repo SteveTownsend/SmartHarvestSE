@@ -112,7 +112,7 @@ private:
 	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 
 	std::vector<const RE::TESForm*> m_addedItemQueue;
-	std::unordered_set<const RE::TESForm*> m_lastInventoryItems;
+	std::unordered_set<const RE::TESForm*> m_lastInventoryCollectibles;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 };
 

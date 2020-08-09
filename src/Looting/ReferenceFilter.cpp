@@ -226,9 +226,9 @@ bool ReferenceFilter::IsFollowerOrDead(const RE::TESObjectREFR* refr) const
 		if (!actor->IsDead(true)) 
 		{
 			PlayerAffinity affinity(GetPlayerAffinity(actor));
-			if (affinity == PlayerAffinity::TeamMate || affinity == PlayerAffinity::FollowerFaction)
+			if (affinity == PlayerAffinity::FollowerFaction)
 			{
-				DBG_VMESSAGE("NPC {}/0x{:08x} is Teammate/Follower", actor->GetName(), actor->GetFormID());
+				DBG_VMESSAGE("NPC {}/0x{:08x} is Follower", actor->GetName(), actor->GetFormID());
 				ActorTracker::Instance().AddFollower(actor);
 				return true;
 			}

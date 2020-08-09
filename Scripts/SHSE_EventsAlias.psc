@@ -75,9 +75,23 @@ int glowReasonPlayerProperty
 int glowReasonSimpleTarget
 
 ObjectReference targetedRefr
+Perk spergProspector
 
 Function SetPlayer(Actor playerref)
     player = playerref
+    ;check for SPERG being active and set up the Prospector Perk to check
+    int spergModIndex = Game.GetModByName("SPERG-SSE.esp")
+    if spergModIndex != 255
+        int perkID = 0x5cc21
+        spergProspector = Game.GetFormFromFile(perkID, "SPERG-SSE.esp") as Perk
+        if !spergProspector || spergProspector.GetName() != "Prospector"
+            AlwaysTrace("SPERG Prospector Perk resolve failed for " + PrintFormID(perkID))
+            spergProspector = None
+        endIf
+    else
+        spergProspector = None
+    endIf
+
     RegisterForCrosshairRef()
 EndFunction
 
@@ -175,7 +189,7 @@ Function SetShaders()
     questShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader         ; purple
     collectibleShader = Game.GetFormFromFile(0x814, "SmartHarvestSE.esp") as EffectShader   ; copper
     enchantedShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader     ; blue
-    richShader = Game.GetFormFromFile(0xd74, "SmartHarvestSE.esp") as EffectShader          ; gold
+    richShader = Game.GetFormFromFile(0x815, "SmartHarvestSE.esp") as EffectShader          ; gold
     ownedShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader         ; green
     lootedShader = Game.GetFormFromFile(0x813, "SmartHarvestSE.esp") as EffectShader        ; silver
 EndFunction
@@ -500,6 +514,10 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         oreName = oreScript.ore.GetName()
         ; do not harvest firehose unless set in config
         if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
+            bool useSperg = spergProspector && player.HasPerk(spergProspector)
+            if useSperg
+                PrepareSPERGMining()
+            endif
             if (available == -1)
                 ;DebugTrace("Vein not yet initialized, start mining")
             else
@@ -520,6 +538,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
             endIf
             ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            if useSperg
+                PostprocessSPERGMining()
+            endif
             FOSStrikesBeforeFossil = 6
         else
             ;DebugTrace("Ignoring firehose source")
@@ -745,6 +766,11 @@ Event OnGetProducerLootable(ObjectReference akTarget)
             AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " has neither myFood nor myIngredient")
             SetLootableForProducer(baseForm, None)
         endif
+        return
+    endIf
+    WispCoreScript wispCore = akTarget as WispCoreScript
+    if wispCore
+        SetLootableForProducer(baseForm, wispCore.glowDust)
         return
     endIf
 endEvent
