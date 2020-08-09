@@ -4,8 +4,7 @@ Import SHSE_PluginProxy
 
 SHSE_EventsAlias Property eventScript Auto
 GlobalVariable Property g_LootingEnabled Auto
-
-Spell Property SelfLocation Auto  
+Spell AdventurersInstinctPower
 
 ; check for first init for this playthrough
 GlobalVariable Property g_InitComplete Auto
@@ -229,8 +228,9 @@ function ApplySettingsFromFile()
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
 
     collectionsEnabled = GetSetting(type_Common, type_Config, "CollectionsEnabled") as bool
+    ; Adventures are linked to a Lesser Power that needs to be enabled if settings so indicate
     adventuresEnabled = GetSetting(type_Common, type_Config, "AdventuresEnabled") as bool
-
+    CheckAdventuresPower()
 endFunction
 
 ;Seed defaults from the INI file, first time only - not repeated when user starts new game
@@ -596,7 +596,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 37
+    return 38
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -662,6 +662,12 @@ Event OnVersionUpdate(int a_version)
     endIf
     if (a_version >= 37 && CurrentVersion < 37)
         InstallAdventuresPower()
+    endIf
+    if (a_version >= 38 && CurrentVersion < 38)
+        ;formID mess sorted out
+        AdventurersInstinctPower = Game.GetFormFromFile(0x817, "SmartHarvestSE.esp") as Spell
+        ;formID compacted
+        eventScript.SetShaders()
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent
@@ -2108,12 +2114,16 @@ state itemsCollected
     endEvent
 endState
 
-Function SetAdventuresStatus()
+Function CheckAdventuresPower()
     if adventuresEnabled
-        player.AddSpell(SelfLocation)
+        player.AddSpell(AdventurersInstinctPower)
     else
-        player.RemoveSpell(SelfLocation)
+        player.RemoveSpell(AdventurersInstinctPower)
     endIf
+EndFunction
+
+Function SetAdventuresStatus()
+    CheckAdventuresPower()
     ResetAdventureType()
 EndFunction
 

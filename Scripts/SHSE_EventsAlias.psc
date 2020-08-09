@@ -189,7 +189,7 @@ Function SetShaders()
     questShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader         ; purple
     collectibleShader = Game.GetFormFromFile(0x814, "SmartHarvestSE.esp") as EffectShader   ; copper
     enchantedShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader     ; blue
-    richShader = Game.GetFormFromFile(0xd74, "SmartHarvestSE.esp") as EffectShader          ; gold
+    richShader = Game.GetFormFromFile(0x815, "SmartHarvestSE.esp") as EffectShader          ; gold
     ownedShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader         ; green
     lootedShader = Game.GetFormFromFile(0x813, "SmartHarvestSE.esp") as EffectShader        ; silver
 EndFunction
