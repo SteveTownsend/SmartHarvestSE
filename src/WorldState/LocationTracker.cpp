@@ -207,11 +207,10 @@ void LocationTracker::PrintPlayerLocation(const RE::BGSLocation* location) const
 
 void LocationTracker::PrintNearbyLocation(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const
 {
-	std::string locationMessage;
 	static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_WHERE_AM_I")));
 	if (!locationText.empty())
 	{
-		locationMessage = locationText;
+		std::string locationMessage(locationText);
 		StringUtils::Replace(locationMessage, "{PROXIMITY}", Proximity(milesAway, heading));
 		StringUtils::Replace(locationMessage, "{LOCATION}", location->GetName());
 		StringUtils::Replace(locationMessage, "{VICINITY}", ParentLocationName(location));
@@ -224,11 +223,10 @@ void LocationTracker::PrintNearbyLocation(const RE::BGSLocation* location, const
 
 void LocationTracker::PrintAdventureTargetInfo(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const
 {
-	std::string locationMessage;
 	static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_WHERE_IS_ADVENTURE_TARGET")));
 	if (!locationText.empty())
 	{
-		locationMessage = locationText;
+		std::string locationMessage(locationText);
 		StringUtils::Replace(locationMessage, "{PROXIMITY}", Proximity(milesAway, heading));
 		// stop obfuscating the destination once player gets close - map marker may be for a parent, not exactly colocated with target
 		if (milesAway < OnlyYards)
@@ -237,7 +235,7 @@ void LocationTracker::PrintAdventureTargetInfo(const RE::BGSLocation* location, 
 		}
 		else
 		{
-			StringUtils::Replace(locationMessage, "{TARGET}", "the place my Adventurous Spirit seeks");
+			StringUtils::Replace(locationMessage, "{TARGET}", "the place my Adventurer's Instinct seeks");
 		}
 		if (!locationMessage.empty())
 		{
@@ -375,6 +373,21 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 	{
 		// no adventure in progress, or target unmappable
 		return nullptr;
+	}
+
+	// Adventure Target sensing only works outdoors
+	if (m_playerCell->IsInteriorCell())
+	{
+		static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_GO_OUTSIDE_ADVENTURE_TARGET")));
+		if (!locationText.empty())
+		{
+			std::string locationMessage(locationText);
+			if (!locationMessage.empty())
+			{
+				RE::DebugNotification(locationMessage.c_str());
+			}
+		}
+		return location;
 	}
 
 	RecursiveLockGuard guard(m_locationLock);
