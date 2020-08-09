@@ -76,6 +76,10 @@ public:
 	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void ClearGlowExpiration();
 
+	void SetSPERGKeyword(const RE::BGSKeyword* keyword);
+	void SPERGStoreInitial();
+	void SPERGCheckNew();
+
 private:
 	void ProgressGlowDemo();
 	void LootAllEligible();
@@ -107,6 +111,11 @@ private:
 
 	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
 	mutable std::unordered_set<const RE::TESObjectREFR*> m_lockedContainers;
+
+	std::vector<const RE::BGSKeyword*> m_spergKeywords;
+	std::unique_ptr<ContainerLister> m_spergInventory;
+	// handle concurrent ore vein mining by reconciling versus initial inventory snapshot after the last completes
+	size_t m_spergQueued;
 
 	// Loot Range calibration setting
 	bool m_calibrating;

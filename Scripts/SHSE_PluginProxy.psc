@@ -24,6 +24,9 @@ Function SaveIniFile() global native
 
 Function SetLootableForProducer(Form producer, Form lootable) global native
 
+Function PrepareSPERGMining() global native
+Function PostprocessSPERGMining() global native
+
 Function AllowSearch(bool onMCMClose) global native
 Function DisallowSearch(bool onMCMClose) global native
 bool Function IsSearchAllowed() global native

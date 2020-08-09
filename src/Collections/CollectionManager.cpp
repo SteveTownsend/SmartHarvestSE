@@ -230,7 +230,7 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 }
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
-// We don't do this on every pass as it's a decent amount of work
+// We don't do this on every pass as it's a decent amount of work. Filter on Collectible item trait to reduce work.
 void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions)
 {
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
@@ -239,26 +239,26 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 
 	// use delta vs last pass to speed this up (resets on game reload)
 	static const bool requireQuestItemAsTarget(false);
-	static const bool checkSpecials(false);
-	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget, checkSpecials);
-	lister.AnalyzeLootableItems();
-	decltype(m_lastInventoryItems) newInventoryItems;
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget);
+	// filter to include only collectibles
+	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return m_collectionsByFormID.contains(item->GetFormID()); });
+	decltype(m_lastInventoryCollectibles) newInventoryCollectibles;
 	for (const auto& candidate : lister.GetLootableItems())
 	{
 		const auto item(candidate.BoundObject());
 		RE::FormID formID(item->GetFormID());
-		newInventoryItems.insert(item);
-		if (!m_lastInventoryItems.contains(item) && m_collectionsByFormID.contains(formID))
+		newInventoryCollectibles.insert(item);
+		if (!m_lastInventoryCollectibles.contains(item))
 		{
 			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), formID);
 			additions.insert(item);
 		}
 		else
 		{
-			DBG_VMESSAGE("Skip {}/0x{:08x} in inventory", item->GetName(), formID);
+			DBG_VMESSAGE("Skip {}/0x{:08x} unchanged in inventory", item->GetName(), formID);
 		}
 	}
-	m_lastInventoryItems.swap(newInventoryItems);
+	m_lastInventoryCollectibles.swap(newInventoryCollectibles);
 }
 
 bool CollectionManager::LoadCollectionGroup(
@@ -938,7 +938,7 @@ void CollectionManager::OnGameReload()
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	// reset player inventory last-known-good
-	m_lastInventoryItems.clear();
+	m_lastInventoryCollectibles.clear();
 	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
 	m_addedItemQueue.clear();
 

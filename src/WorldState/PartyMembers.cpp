@@ -33,7 +33,7 @@ PartyUpdate::PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventT
 
 void PartyUpdate::AsJSON(nlohmann::json& j) const
 {
-	j["follower"] = m_follower->GetFormID();
+	j["follower"] = StringUtils::FromFormID(m_follower->GetFormID());
 	j["event"] = int(m_eventType);
 	j["time"] = m_gameTime;
 }
@@ -128,8 +128,9 @@ void PartyMembers::UpdateFrom(const nlohmann::json& j)
 		m_partyUpdates.emplace_back(actor, updateType, gameTime);
 	}
 	m_followers.clear();
-	for (const nlohmann::json& followerID : j["followers"])
+	for (const nlohmann::json& follower : j["followers"])
 	{
+		RE::FormID followerID(StringUtils::ToFormID(follower.get<std::string>()));
 		RE::Actor* actor(LoadOrder::Instance().RehydrateCosaveFormAs<RE::Actor>(followerID));
 		if (!actor)
 		{

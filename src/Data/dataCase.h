@@ -412,6 +412,7 @@ private:
 	// special case statics
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
+	static constexpr RE::FormID WispCore = 0x10EB2A;
 
 	void CategorizeStatics();
 	void SetPermanentBlockedItems();

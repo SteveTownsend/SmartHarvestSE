@@ -60,7 +60,8 @@ ScanGovernor& ScanGovernor::Instance()
 }
 
 ScanGovernor::ScanGovernor() : m_searchAllowed(false), m_pendingNotifies(0), m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
-	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget), m_targetType(INIFile::SecondaryType::NONE2)
+	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget),
+	m_targetType(INIFile::SecondaryType::NONE2), m_spergQueued(0)
 {
 }
 
@@ -612,6 +613,90 @@ void ScanGovernor::ClearGlowExpiration()
 {
 	RecursiveLockGuard guard(m_searchLock);
 	return m_HarvestLock.clear();
+}
+
+// SPERG doubles mined item amounts based on KYWD values. Store those items beforehand and recheck afterwards, adjusting counts for Player.
+void ScanGovernor::SetSPERGKeyword(const RE::BGSKeyword* keyword)
+{
+	m_spergKeywords.push_back(keyword);
+}
+
+void ScanGovernor::SPERGStoreInitial(void)
+{
+	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
+	if (!player)
+		return;
+
+	RecursiveLockGuard guard(m_searchLock);
+	static const bool requireQuestItemAsTarget(false);
+	if (m_spergInventory)
+	{
+		DBG_WARNING("Pre-SPERG inventory already captured");
+		++m_spergQueued;
+		return;
+	}
+	m_spergInventory = std::make_unique<ContainerLister>(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget);
+	m_spergInventory->FilterLootableItems([&](RE::TESBoundObject* item) -> bool
+	{
+		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
+		for (const auto keyword : m_spergKeywords)
+		{
+			if (keywordHolder->HasKeyword(keyword))
+				return true;
+		}
+		return false;
+	});
+	DBG_MESSAGE("SPERG KYWD matches {}", m_spergInventory->GetLootableItems().size());
+}
+
+void ScanGovernor::SPERGCheckNew(void)
+{
+	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
+	if (!player)
+		return;
+
+	RecursiveLockGuard guard(m_searchLock);
+	if (m_spergQueued > 0)
+	{
+		--m_spergQueued;
+		DBG_WARNING("SPERG reconciliation queue size now {}", m_spergQueued);
+		return;
+	}
+	static const bool requireQuestItemAsTarget(false);
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget);
+	lister.FilterLootableItems([&](RE::TESBoundObject* item) -> bool
+	{
+		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
+		for (const auto keyword : m_spergKeywords)
+		{
+			if (keywordHolder->HasKeyword(keyword))
+				return true;
+		}
+		return false;
+	});
+	const LootableItems& newInventory(lister.GetLootableItems());
+	for (const auto& newItem : newInventory)
+	{
+		int32_t delta(0);
+		if (std::find_if(m_spergInventory->GetLootableItems().cbegin(), m_spergInventory->GetLootableItems().cend(),
+			[&](const InventoryItem& item) -> bool {
+			if (item.BoundObject() == newItem.BoundObject())
+			{
+				delta = static_cast<int32_t>(std::max(int(newItem.Count()) - int(item.Count()), 0));
+				return true;
+			}
+			return false;
+		}) == m_spergInventory->GetLootableItems().cend())
+		{
+			delta = static_cast<int32_t>(newItem.Count());
+		}
+		if (delta > 0)
+		{
+			DBG_MESSAGE("SPERG mined {} extra of {}/0x{:08x}", delta, newItem.BoundObject()->GetName(), newItem.BoundObject()->GetFormID());
+			player->AddObjectToContainer(newItem.BoundObject(), nullptr, delta, nullptr);
+		}
+	}
+	m_spergInventory.reset();
 }
 
 // this triggers/stops loot range calibration cycle
