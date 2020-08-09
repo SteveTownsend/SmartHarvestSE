@@ -375,6 +375,12 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 		return nullptr;
 	}
 
+	RecursiveLockGuard guard(m_locationLock);
+	if (!m_playerCell)
+	{
+		// setup in progress
+		return nullptr;
+	}
 	// Adventure Target sensing only works outdoors
 	if (m_playerCell->IsInteriorCell())
 	{
@@ -390,7 +396,6 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 		return location;
 	}
 
-	RecursiveLockGuard guard(m_locationLock);
 	if (world != m_playerParentWorld)
 	{
 		PrintDifferentWorld(world);
