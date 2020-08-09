@@ -29,9 +29,11 @@ typedef std::vector<InventoryItem> LootableItems;
 struct ContainerLister
 {
 public:
+	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr);
 	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget);
 	size_t AnalyzeLootableItems();
 	void FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
+	size_t CountLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
 	inline bool HasQuestItem() const { return !m_questItems.empty(); }
 	inline bool HasEnchantedItem() const { return !m_enchantedItems.empty(); }
 	inline bool HasValuableItem() const { return !m_valuableItems.empty(); }

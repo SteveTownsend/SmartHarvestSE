@@ -110,7 +110,7 @@ private:
 	std::unordered_set<const RE::TESObjectREFR*> m_lootedContainers;
 
 	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
-	mutable std::unordered_set<const RE::TESObjectREFR*> m_lockedContainers;
+	mutable std::unordered_map<const RE::TESObjectREFR*, size_t> m_lockedContainers;
 
 	std::vector<const RE::BGSKeyword*> m_spergKeywords;
 	std::unique_ptr<ContainerLister> m_spergInventory;

@@ -114,6 +114,8 @@ void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
 	RecursiveLockGuard guard(m_searchLock);
 	// record looting so we don't rescan
 	m_lootedContainers.insert(refr);
+	// this may be a locked container that we manually emptied, if so we should stop it glowing
+	m_lockedContainers.erase(refr);
 }
 
 bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR* refr) const
@@ -140,19 +142,41 @@ bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) con
 	// check instantaneous locked/unlocked state of the container
 	if (!IsLocked(refr))
 	{
-		// If container is not locked, but previously was stored as locked, continue to treat as unlocked until game reload.
+		// If container is not locked, but previously was stored as locked, continue to treat as unlocked until item count changes.
 		// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If they don't
-		// want this, they should configure 'Loot locked container'. Such a container will glow locked even after player
-		// unlocks.
-		DBG_VMESSAGE("Check REFR 0x{:08x} to not-locked container {}/0x{:08x}", refr->GetFormID(),
+		// want this, they should configure 'Loot locked container'.
+		// Such a container will no longer glow locked after player unlocks and loots it.
+		auto locked(m_lockedContainers.find(refr));
+		if (locked != m_lockedContainers.end())
+		{
+			// if item count has changed, remove from locked container list: manually looted, we assume
+			size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
+				[=](RE::TESBoundObject* item) -> bool { return true; }));
+			if (items != locked->second)
+			{
+				DBG_VMESSAGE("Forget REFR 0x{:08x} to locked container {}/0x{:08x} with {} items, was {}", refr->GetFormID(),
+					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items, locked->second);
+				m_lockedContainers.erase(locked);
+				return false;
+			}
+			// item count unchanged - continue to glow
+			DBG_VMESSAGE("REFR 0x{:08x} to previously locked container {}/0x{:08x} still has {} items", refr->GetFormID(),
+				refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items);
+			return true;
+		}
+		// vanilla unlocked container
+		DBG_VMESSAGE("REFR 0x{:08x} was never a locked container {}/0x{:08x}", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return m_lockedContainers.find(refr) != m_lockedContainers.cend();
+		return false;
 	}
 	// container is locked - save if not already known
-	else if (m_lockedContainers.insert(refr).second)
+	else if (!m_lockedContainers.contains(refr))
 	{
-		DBG_VMESSAGE("Remember REFR 0x{:08x} to locked container {}/0x{:08x}", refr->GetFormID(),
-			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
+			[=](RE::TESBoundObject* item) -> bool { return true; }));
+		DBG_VMESSAGE("Remember REFR 0x{:08x} to locked container {}/0x{:08x} with {} items", refr->GetFormID(),
+			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items);
+		m_lockedContainers.insert({ refr, items });
 	}
 	return true;
 }
@@ -420,9 +444,9 @@ void ScanGovernor::LootAllEligible()
 		else
 		{
 			lootability = ValidateTarget(refr, possibleDupes, dryRun);
-			if (refr->GetFormType() != RE::FormType::ActorCharacter)
+			if (refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
 			{
-				// different Actors have different loot
+				// different Actors and Chests have different loot
 				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
 			}
 		}
@@ -628,14 +652,13 @@ void ScanGovernor::SPERGStoreInitial(void)
 		return;
 
 	RecursiveLockGuard guard(m_searchLock);
-	static const bool requireQuestItemAsTarget(false);
 	if (m_spergInventory)
 	{
 		DBG_WARNING("Pre-SPERG inventory already captured");
 		++m_spergQueued;
 		return;
 	}
-	m_spergInventory = std::make_unique<ContainerLister>(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget);
+	m_spergInventory = std::make_unique<ContainerLister>(INIFile::SecondaryType::deadbodies, player);
 	m_spergInventory->FilterLootableItems([&](RE::TESBoundObject* item) -> bool
 	{
 		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
@@ -662,8 +685,7 @@ void ScanGovernor::SPERGCheckNew(void)
 		DBG_WARNING("SPERG reconciliation queue size now {}", m_spergQueued);
 		return;
 	}
-	static const bool requireQuestItemAsTarget(false);
-	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget);
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, player);
 	lister.FilterLootableItems([&](RE::TESBoundObject* item) -> bool
 	{
 		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
