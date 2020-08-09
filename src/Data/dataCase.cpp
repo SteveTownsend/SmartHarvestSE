@@ -1192,6 +1192,13 @@ void DataCase::SetObjectTypeByKeywords()
 			PlayerHouses::Instance().SetKeyword(keywordDef);
 			continue;
 		}
+		// SPERG mining resource types
+		if (keywordName == "VendorItemOreIngot" || keywordName == "VendorItemGem")
+		{
+			DBG_VMESSAGE("Found SPERG Prospector Perk resource type {}/0x{:08x}", keywordName, keywordDef->GetFormID());
+			ScanGovernor::Instance().SetSPERGKeyword(keywordDef);
+			continue;
+		}
 		if (glowableBooks.find(keywordName) != glowableBooks.cend())
 		{
 			DBG_VMESSAGE("Found Glowable Book KYWD formID 0x{:08x}", keywordDef->GetFormID());

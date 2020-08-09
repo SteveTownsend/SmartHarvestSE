@@ -514,7 +514,8 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         oreName = oreScript.ore.GetName()
         ; do not harvest firehose unless set in config
         if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
-            if spergProspector
+            bool useSperg = spergProspector && player.HasPerk(spergProspector)
+            if useSperg
                 PrepareSPERGMining()
             endif
             if (available == -1)
@@ -537,7 +538,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
             endIf
             ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
-            if spergProspector
+            if useSperg
                 PostprocessSPERGMining()
             endif
             FOSStrikesBeforeFossil = 6

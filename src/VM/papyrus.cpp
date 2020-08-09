@@ -259,12 +259,12 @@ namespace papyrus
 
 	void PrepareSPERGMining(RE::StaticFunctionTag* base)
 	{
-		DBG_VMESSAGE("PrepareSPERGMining");
+		shse::ScanGovernor::Instance().SPERGStoreInitial();
 	}
 
 	void PostprocessSPERGMining(RE::StaticFunctionTag* base)
 	{
-		DBG_VMESSAGE("PostprocessSPERGMining");
+		shse::ScanGovernor::Instance().SPERGCheckNew();
 	}
 
 	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
