@@ -70,7 +70,7 @@ ScanGovernor::ScanGovernor() : m_searchAllowed(false), m_pendingNotifies(0), m_c
 bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr) const
 {
 	// do not reregister known REFR
-	if (LootedDynamicContainerFormID(refr) != InvalidForm)
+	if (LootedDynamicREFRFormID(refr) != InvalidForm)
 		return true;
 
 	// risk exists if REFR or its concrete object is dynamic
@@ -79,34 +79,34 @@ bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr) const
 		DBG_VMESSAGE("dynamic REFR 0x{:08x} or base 0x{:08x} for {}", refr->GetFormID(),
 			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
 		// record looting so we don't rescan
-		MarkDynamicContainerLooted(refr);
+		MarkDynamicREFRLooted(refr);
 		return true;
 	}
 	return false;
 }
 
-void ScanGovernor::MarkDynamicContainerLooted(const RE::TESObjectREFR* refr) const
+void ScanGovernor::MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_searchLock);
 	// record looting so we don't rescan
-	m_lootedDynamicContainers.insert(std::make_pair(refr, refr->GetFormID()));
+	m_lootedDynamicREFRs.insert({ refr->GetFormID(), refr->GetBaseObject()->GetFormID()});
 }
 
-RE::FormID ScanGovernor::LootedDynamicContainerFormID(const RE::TESObjectREFR* refr) const
+RE::FormID ScanGovernor::LootedDynamicREFRFormID(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
 	RecursiveLockGuard guard(m_searchLock);
-	const auto looted(m_lootedDynamicContainers.find(refr));
-	return looted != m_lootedDynamicContainers.cend() ? looted->second : InvalidForm;
+	const auto looted(m_lootedDynamicREFRs.find({ refr->GetFormID(), refr->GetBaseObject()->GetFormID() }));
+	return looted != m_lootedDynamicREFRs.cend() ? looted->first : InvalidForm;
 }
 
 // forget about dynamic containers we looted when cell changes. This is more aggressive than static container looting
 // as this list contains recycled FormIDs, and hypothetically may grow unbounded.
-void ScanGovernor::ResetLootedDynamicContainers()
+void ScanGovernor::ResetLootedDynamicREFRs()
 {
 	RecursiveLockGuard guard(m_searchLock);
-	m_lootedDynamicContainers.clear();
+	m_lootedDynamicREFRs.clear();
 }
 
 void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
@@ -603,7 +603,7 @@ void ScanGovernor::Clear(const bool gameReload)
 	// unblock all blocked auto-harvest objects
 	ClearPendingHarvestNotifications();
 	// Dynamic containers that we looted reset on cell change
-	ResetLootedDynamicContainers();
+	ResetLootedDynamicREFRs();
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
 	ClearGlowExpiration();
 

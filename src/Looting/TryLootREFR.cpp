@@ -642,13 +642,17 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// items and blacklist the REFR to avoid revisiting. Confirm looting by checking lootable target count now vs start
 		// value. This logic only applies to containers: NPC auto-looting is scripted and not known to fail.
 		if (m_targetType == INIFile::SecondaryType::containers && !targets.empty() &&
-		    lister.AnalyzeLootableItems() >= lootableItems)
+			lister.CountLootableItems([=](RE::TESBoundObject* item) -> bool { return true; }) >= lootableItems)
 		{
 			// nothing looted - make copies of targets and blacklist the reference (e.g. MrB's Lootable Things)
 			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),
 				m_candidate->GetName(), m_candidate->formID);
 			CopyLootFromContainer(targets);
-			DataCase::GetInstance()->BlacklistReference(m_candidate);
+			// Main Blacklist does not work for dynamic forms - handle those separately. e.g. Hawk shot down outside Solitude
+			if (!ScanGovernor::Instance().HasDynamicData(m_candidate))
+			{
+				DataCase::GetInstance()->BlacklistReference(m_candidate);
+			}
 		}
 		else
 		{

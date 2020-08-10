@@ -31,6 +31,14 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
+struct pair_hash
+{
+	template <class T1, class T2>
+	std::size_t operator() (const std::pair<T1, T2>& pair) const
+	{
+		return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+	}
+};
 
 class ScanGovernor
 {
@@ -65,11 +73,12 @@ public:
 		return m_calibrating;
 	}
 
-	RE::FormID LootedDynamicContainerFormID(const RE::TESObjectREFR* refr) const;
+	RE::FormID LootedDynamicREFRFormID(const RE::TESObjectREFR* refr) const;
 	void MarkContainerLooted(const RE::TESObjectREFR* refr);
 	bool IsLootedContainer(const RE::TESObjectREFR* refr) const;
 	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const;
-	void ResetLootedDynamicContainers();
+	bool HasDynamicData(RE::TESObjectREFR* refr) const;
+	void ResetLootedDynamicREFRs();
 	void ResetLootedContainers();
 	void ForgetLockedContainers();
 	void ClearPendingHarvestNotifications();
@@ -86,9 +95,8 @@ private:
 	void TrackActors();
 
 	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun);
-	void MarkDynamicContainerLooted(const RE::TESObjectREFR* refr) const;
+	void MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const;
 
-	bool HasDynamicData(RE::TESObjectREFR* refr) const;
 	void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
 
 	static std::unique_ptr<ScanGovernor> m_instance;
@@ -105,8 +113,10 @@ private:
 	mutable RecursiveLock m_searchLock;
 	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
 
-	// Record looted containers to avoid re-scan of empty or looted chest and dead body. Resets on game reload or MCM settings update.
-	mutable std::unordered_map<const RE::TESObjectREFR*, RE::FormID> m_lootedDynamicContainers;
+	// Record looted REFRs to avoid re-scan of empty or looted chest and dead body.
+	// Dynamic REFRs - reset on cell change - includes REFR and BaseObject FormIDs to make this less likely to silently malfunction
+	mutable std::unordered_set<std::pair<RE::FormID, RE::FormID>, pair_hash> m_lootedDynamicREFRs;
+	// Non-dynamic - reset on game reload or MCM settings update.
 	std::unordered_set<const RE::TESObjectREFR*> m_lootedContainers;
 
 	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
