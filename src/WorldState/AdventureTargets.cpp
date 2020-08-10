@@ -43,8 +43,8 @@ std::string AdventureTargetName(const AdventureTargetType adventureTarget)
 		case AdventureTargetType::DragonLair:	   return "Dragon Lair";
 		case AdventureTargetType::DragonPriestLair: return "Dragon Priest Lair";
 		case AdventureTargetType::DraugrCrypt:	   return "Draugr Crypt";
-		case AdventureTargetType::DwarvenRuin:	   return "Dwarven Ruin";
 		case AdventureTargetType::Dungeon:		   return "Dungeon";
+		case AdventureTargetType::DwarvenRuin:	   return "Dwarven Ruin";
 #if _DEBUG
 		case AdventureTargetType::FakeForTesting:  return "Fake for Testing";
 #endif

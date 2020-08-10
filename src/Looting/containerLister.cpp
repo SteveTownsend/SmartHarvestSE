@@ -28,6 +28,12 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
+ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
+	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(false),
+	m_collectibleAction(CollectibleHandling::Leave)
+{
+}
+
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget) :
 	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
 	m_collectibleAction(CollectibleHandling::Leave)
@@ -55,6 +61,31 @@ void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*
 			m_lootableItems.emplace_back(std::move(entry), count);
 		}
 	}
+}
+
+size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject*)> predicate)
+{
+	// refactored following QuickLookRE
+	size_t items(0);
+	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
+	for (auto& item : inv) {
+		auto& [count, entry] = item.second;
+		if (count <= 0)
+			continue;
+		RE::TESBoundObject* item = entry->GetObject();
+		if (!FormUtils::IsConcrete(item))
+			continue;
+
+		if (item->formType == RE::FormType::LeveledItem)
+			continue;
+
+		if (predicate(item))
+		{
+			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", item->GetName(), item->GetFormID(), count);
+			++items;
+		}
+	}
+	return items;
 }
 
 size_t ContainerLister::AnalyzeLootableItems()

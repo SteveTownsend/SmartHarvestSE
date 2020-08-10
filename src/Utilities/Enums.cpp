@@ -39,7 +39,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::FloraHarvested : return "FloraHarvested";
 	case Lootability::PendingHarvest : return "PendingHarvest";
 	case Lootability::ContainerLootedAlready : return "ContainerLootedAlready";
-	case Lootability::DynamicContainerLootedAlready : return "DynamicContainerLootedAlready";
+	case Lootability::DynamicReferenceLootedAlready : return "DynamicReferenceLootedAlready";
 	case Lootability::NullReference : return "NullReference";
 	case Lootability::InvalidFormID : return "InvalidFormID";
 	case Lootability::NoBaseObject : return "NoBaseObject";
