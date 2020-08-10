@@ -596,7 +596,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 38
+    return 39
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -668,6 +668,14 @@ Event OnVersionUpdate(int a_version)
         AdventurersInstinctPower = Game.GetFormFromFile(0x817, "SmartHarvestSE.esp") as Spell
         ;formID compacted
         eventScript.SetShaders()
+    endIf
+    if a_version >= 39 && CurrentVersion < 39
+        ;adventure types swapped for alphabetical ordering
+        if adventureType == 9
+            adventureType = 10
+        elseif adventureType == 10
+            adventureType = 9
+        endIf
     endIf
     ;DebugTrace("OnVersionUpdate finished" + a_version)
 endEvent

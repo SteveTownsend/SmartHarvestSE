@@ -326,7 +326,7 @@ enum class Lootability {
 	FloraHarvested,
 	PendingHarvest,
 	ContainerLootedAlready,
-	DynamicContainerLootedAlready,
+	DynamicReferenceLootedAlready,
 	NullReference,
 	InvalidFormID,
 	NoBaseObject,

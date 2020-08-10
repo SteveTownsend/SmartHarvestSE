@@ -845,7 +845,7 @@ bool DataCase::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
+	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
 	if (item->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
@@ -857,7 +857,7 @@ bool DataCase::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
 {
 	if (!npc)
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
+	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
 	if (npc->IsDynamicForm())
 		return false;
 	std::string name(npc->GetName());
@@ -878,7 +878,7 @@ Lootability DataCase::QuestTargetLootability(const RE::TESForm* form) const
 {
 	if (!form)
 		return Lootability::NoBaseObject;
-	// dynamic forms must never be recorded as their FormID may be reused
+	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
 	if (form->IsDynamicForm())
 		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_blockListLock);

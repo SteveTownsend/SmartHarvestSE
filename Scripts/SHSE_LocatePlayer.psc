@@ -3,6 +3,6 @@ Scriptname SHSE_LocatePlayer extends ActiveMagicEffect
 import SHSE_PluginProxy
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
-	DebugTrace("Fired Detect-Self Power")
+	;DebugTrace("Fired Detect-Self Power")
 	ShowLocation()
 EndEvent

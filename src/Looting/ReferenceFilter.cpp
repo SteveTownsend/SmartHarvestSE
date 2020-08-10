@@ -161,11 +161,11 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 		}
 
 		// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-		RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
+		RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicREFRFormID(refr));
 		if (dynamicForm != InvalidForm)
 		{
-			DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x{:08x}", (void*)(refr), dynamicForm);
-			return Lootability::DynamicContainerLootedAlready;
+			DBG_VMESSAGE("skip looted dynamic container with Form ID 0x{:08x}", dynamicForm);
+			return Lootability::DynamicReferenceLootedAlready;
 		}
 	}
 
@@ -194,10 +194,10 @@ bool ReferenceFilter::IsLootCandidate(const RE::TESObjectREFR* refr) const
 	}
 
 	// FormID can be retrieved using pointer, but we should not dereference the pointer as the REFR may have been recycled
-	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicContainerFormID(refr));
+	RE::FormID dynamicForm(ScanGovernor::Instance().LootedDynamicREFRFormID(refr));
 	if (dynamicForm != InvalidForm)
 	{
-		DBG_VMESSAGE("skip looted dynamic container at %p with Form ID 0x{:08x}", (void*)(refr), dynamicForm);
+		DBG_VMESSAGE("skip looted dynamic container with Form ID 0x{:08x}", dynamicForm);
 		return false;
 	}
 	const RE::TESFullName* fullName = refr->GetBaseObject()->As<RE::TESFullName>();
