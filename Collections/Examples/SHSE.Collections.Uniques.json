@@ -213,18 +213,6 @@
     },
 
     {
-      "name": "Wonders Never Cease",
-      "description": "Items added in Lost Wonders of Mzark",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "MzarkWonders.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
-        }
-      }
-    },
-
-    {
       "name": "Payback With Interest",
       "description": "Items added in Interesting NPCs",
       "rootFilter": {

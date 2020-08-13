@@ -76,9 +76,10 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerIsBossChest : return "ContainerIsBossChest";
 	case Lootability::ContainerHasQuestObject : return "ContainerHasQuestObject";
 	case Lootability::ContainerHasValuableObject : return "ContainerHasValuableObject";
-	case Lootability::ContainerIsBlacklisted : return "ContainerIsBlacklisted";
+	case Lootability::ReferencesBlacklistedContainer : return "ReferencesBlacklistedContainer";
 	case Lootability::CannotGetAshPile: return "CannotGetAshPile";
 	case Lootability::ProducerHasNoLootable: return "ProducerHasNoLootable";
+	case Lootability::ContainerBlacklistedByUser: return "ContainerBlacklistedByUser";
 	default: return "";
 	}
 }

@@ -9,6 +9,7 @@ string Function GetTextObjectType(Form thisForm) global native
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
 Function BlockFirehose(ObjectReference refr) global native
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
+Function ProcessContainerCollectibles(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypeByName(string name) global native
@@ -110,10 +111,15 @@ int Function GetConfig_BlackListKey() global
     return GetSetting(type1_Common, type2_Config, "blackListHotkeycode") as int
 endFunction
 
-string Function GetNameForListForm(Form locationOrCell) global
-    string name = locationOrCell.GetName()
+string Function GetNameForListForm(Form listMember) global
+    string name = listMember.GetName()
     if (StringUtil.GetLength(name) == 0)
-        name = "Cell " + PrintFormID(locationOrCell.GetFormID())
+        ObjectReference refr = listMember as ObjectReference
+        if refr
+            name  = refr.GetBaseObject().GetName()
+        else
+            name = "Cell " + PrintFormID(listMember.GetFormID())
+        endIf
     endif
     return name
 EndFunction

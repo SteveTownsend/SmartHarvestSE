@@ -4,18 +4,13 @@
   "groupPolicy": {
     "action": "take",
     "notify": true,
-    "repeat": false
+    "repeat": true
   },
   "useMCM": true,
   "collections": [
     {
       "name": "AHSE Animal Parts",
       "description": "Animal Parts Collection per AutoHarvest SE",
-      "policy": {
-        "action": "take",
-        "notify": true,
-        "repeat": true
-      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -61,6 +56,11 @@
 
     {
       "name": "Base Game Weapons",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": false
+      },
       "description": "Demonstrates Skyrim.esm usable",
       "rootFilter": {
         "operator": "AND",

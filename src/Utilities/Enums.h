@@ -363,9 +363,10 @@ enum class Lootability {
 	ContainerIsBossChest,
 	ContainerHasQuestObject,
 	ContainerHasValuableObject,
-	ContainerIsBlacklisted,
+	ReferencesBlacklistedContainer,
 	CannotGetAshPile,
 	ProducerHasNoLootable,
+	ContainerBlacklistedByUser,
 	MAX
 };
 

@@ -22,7 +22,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-// blacklist and whitelist, can contain places and items
+// blacklist and whitelist, can contain container (REFR), location, cell or item (base object, not REFR)
 class ManagedList
 {
 public:
@@ -36,7 +36,7 @@ public:
 	bool Contains(const RE::TESForm* entry) const;
 
 private:
-	bool HasEntryWithSameName(const std::string& name) const;
+	bool HasEntryWithSameName(const RE::TESForm* form) const;
 
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;

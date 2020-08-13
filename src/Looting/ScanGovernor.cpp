@@ -348,6 +348,11 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			{
 				return Lootability::LootContainersDisabled;
 			}
+			// REFR to container may be blacklisted by user
+			if (ManagedList::BlackList().Contains(refr))
+			{
+				return Lootability::ContainerBlacklistedByUser;
+			}
 			m_targetType = INIFile::SecondaryType::containers;
 		}
 		else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))

@@ -78,6 +78,32 @@ void CollectionManager::Refresh() const
 	EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
+void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
+{
+	// Container trait was checked in the script that invokes this via SHSE_PluginProxy but we must make sure here
+	if (!IsAvailable() || !refr->GetContainer())
+		return;
+	RecursiveLockGuard guard(m_collectionLock);
+	DBG_VMESSAGE("Check REFR 0x{:08x} to Container {}/0x{:08x} for Collectibles",
+		refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+	static const bool requireQuestItemAsTarget(false);
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, refr, requireQuestItemAsTarget);
+	// filter to include only collectibles
+	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return m_collectionsByFormID.contains(item->GetFormID()); });
+	decltype(m_lastInventoryCollectibles) newInventoryCollectibles;
+	for (const auto& candidate : lister.GetLootableItems())
+	{
+		EnqueueAddedItem(candidate.BoundObject());
+		DBG_VMESSAGE("Enqueue Collectible {}/0x{:08x} from Container", candidate.BoundObject()->GetName(), candidate.BoundObject()->GetFormID());
+	}
+	static RE::BSFixedString extraItemsText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOTKEY_ADD_CONTENTS_TO_COLLECTIONS")));
+	if (!extraItemsText.empty())
+	{
+		std::string notificationText(extraItemsText);
+		RE::DebugNotification(notificationText.c_str());
+	}
+}
+
 void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form)
 {
 	if (!IsAvailable())

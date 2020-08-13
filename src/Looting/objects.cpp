@@ -64,14 +64,7 @@ bool IsLocked(const RE::TESObjectREFR* refr)
 // This appears safe to call during combat - does not introspect an in-flux ExtraDataList, just a bitfield
 bool HasAshPile(const RE::TESObjectREFR* refr)
 {
-	if (!refr)
-		return false;
-
-	const RE::ExtraDataList* extraList = &refr->extraList;
-	if (!extraList)
-		return false;
-
-	return extraList->HasType(RE::ExtraDataType::kAshPileRef);
+	return refr && refr->extraList.HasType(RE::ExtraDataType::kAshPileRef);
 }
 
 // This is unsafe to call during combat - used only during deferred looting of Dead Bodies
@@ -79,12 +72,9 @@ RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return nullptr;
-
-	const RE::ExtraDataList* extraList = &refr->extraList;
-	if (!extraList)
+	RE::ObjectRefHandle ashHandle = const_cast<RE::TESObjectREFR*>(refr)->extraList.GetAshPileRef();
+	if (!ashHandle)
 		return nullptr;
-
-	RE::ObjectRefHandle ashHandle = const_cast<RE::ExtraDataList*>(extraList)->GetAshPileRef();
 	return ashHandle.get().get();
 }
 
