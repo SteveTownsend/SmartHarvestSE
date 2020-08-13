@@ -74,7 +74,6 @@ int glowReasonHighValue
 int glowReasonPlayerProperty
 int glowReasonSimpleTarget
 
-ObjectReference targetedRefr
 Perk spergProspector
 
 Function SetPlayer(Actor playerref)
@@ -99,7 +98,7 @@ EndFunction
 Function SyncList(bool reload, int listNum, FormList forms)
     ; plugin resets to fixed baseline
     ResetList(reload, listNum)
-    ; ensure user locations/items in the BlackList/WhiteList are present in the plugin's list
+    ; ensure BlackList/WhiteList members are present in the plugin's list
     int index = forms.GetSize()
     int current = 0
     while (current < index)
@@ -159,8 +158,18 @@ function MoveFromBlackToWhiteList(Form target, bool confirm)
     ManageWhiteList(target)
 endFunction
 
+function RemoveFromBlackList(Form chest)
+    if (blacklist_form.find(chest) != -1)
+        blacklist_form.removeAddedForm(chest)
+    endif
+endFunction
+
 function ManageWhiteList(Form target)
     ManageList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
+endFunction
+
+function AddToBlackList(Form chest)
+    ManageBlackList(chest)
 endFunction
 
 function MoveFromWhiteToBlackList(Form target, bool confirm)
@@ -340,6 +349,35 @@ function Pause()
     Debug.Notification(str)
 endFunction
 
+Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey, Float holdTime)
+    ; check for long press
+    if holdTime > 3.0
+        if isWhiteKey
+            if targetedRefr.GetBaseObject() as Container
+                ProcessContainerCollectibles(targetedRefr)
+            else
+                Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER")
+            endif
+        else ; BlackList Key
+            ; object lootability introspection
+            CheckLootable(targetedRefr)
+        endIf
+    else
+        ; regular press. Does nothing for non-Containers
+        if targetedRefr.GetBaseObject() as Container
+            ; blacklist or un-blacklist the REFR, not the Container, to avoid blocking other REFRs with same base
+            if isWhiteKey
+                RemoveFromBlackList(targetedRefr)
+            else ; BlackList Key
+                AddToBlackList(targetedRefr)
+            EndIf
+            SyncLists(false)    ; not a reload
+        else
+            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER")
+        endIf
+    endIf
+EndFunction
+
 Event OnKeyUp(Int keyCode, Float holdTime)
     if (UI.IsTextInputEnabled())
         return
@@ -358,18 +396,10 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 Pause()
             endif
         elseif keyCode == whiteKey || keyCode == blackKey
-            ; check for object introspection
-            ; check for long press
-            if holdTime > 3.0
-                if keyCode == whiteKey
-                    ; detect nearest map marker on long press
-                    ShowLocation()
-                else
-                    ; object lootability introspection
-                    if targetedRefr
-                        CheckLootable(targetedRefr)
-                    endIf
-                endIf
+            ; handle hotkey actions for crosshair in reference
+            ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
+            if targetedRefr
+                HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteKey, holdTime)
                 return
             endIf
 
@@ -482,13 +512,6 @@ bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, 
     endif
     return result
 endFunction
-
-; item introspection support
-Event OnCrosshairRefChange(ObjectReference ref)
-    ;DebugTrace("Crosshair targeting " + ref)
-    targetedRefr = ref
-EndEvent
-; end item introspection support
 
 bool Function isOverlyGenerousResource(string oreName)
     return oreName == "Quarried Stone" || oreName == "Clay"

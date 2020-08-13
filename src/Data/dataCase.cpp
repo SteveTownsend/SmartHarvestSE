@@ -606,6 +606,21 @@ void DataCase::IncludeFossilMiningExcavation()
 	}
 }
 
+void DataCase::IncludePileOfGold()
+{
+	static std::string espName("Dragonborn.esm");
+	static std::vector<RE::FormID> pilesOfGold({ 0x18486, 0x18488 });
+	for (const auto goldPileFormID : pilesOfGold)
+	{
+		RE::TESForm* goldPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(goldPileFormID, espName));
+		if (goldPileForm)
+		{
+			DBG_MESSAGE("Record Pile of Gold {}(0x{:08x}) as septims", goldPileForm->GetName(), goldPileForm->GetFormID());
+			SetObjectTypeForForm(goldPileForm->GetFormID(), ObjectType::septims);
+		}
+	}
+}
+
 void DataCase::IncludeCorpseCoinage()
 {
 	static std::string espName("CorpseToCoinage.esp");
@@ -1084,6 +1099,8 @@ void DataCase::HandleExceptions()
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
 
+	// whitelist Dragonborn Pile of Gold
+	IncludePileOfGold();
 	// whitelist Fossil sites
 	IncludeFossilMiningExcavation();
 	// whitelist CorpseToCoinage producer
@@ -1197,7 +1214,6 @@ void DataCase::SetObjectTypeByKeywords()
 		{
 			DBG_VMESSAGE("Found SPERG Prospector Perk resource type {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			ScanGovernor::Instance().SetSPERGKeyword(keywordDef);
-			continue;
 		}
 		if (glowableBooks.find(keywordName) != glowableBooks.cend())
 		{
