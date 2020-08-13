@@ -65,7 +65,7 @@ void ManagedList::Reset(const bool reloadGame)
 
 void ManagedList::Add(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
+	DBG_MESSAGE("Location/cell/item/container {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert(entry);
@@ -73,23 +73,28 @@ void ManagedList::Add(const RE::TESForm* entry)
 
 void ManagedList::Drop(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
+	DBG_MESSAGE("Location/cell/item/container {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.erase(entry);
 }
 
-// sometimes multiple items use the same name - we treat them all the same
 bool ManagedList::Contains(const RE::TESForm* entry) const
 {
 	if (!entry)
 		return false;
 	RecursiveLockGuard guard(m_listLock);
-	return m_members.contains(entry) || HasEntryWithSameName(entry->GetName());
+	return m_members.contains(entry) || HasEntryWithSameName(entry);
 }
 
-bool ManagedList::HasEntryWithSameName(const std::string& name) const
+// sometimes multiple items use the same name - we treat them all the same
+bool ManagedList::HasEntryWithSameName(const RE::TESForm* form) const
 {
+	// skipped if entry is a container or place. Only REFRs right now are to Containers.
+	RE::FormType formType(form->GetFormType());
+	if (formType == RE::FormType::Location || formType == RE::FormType::Cell || form->As<RE::TESObjectREFR>())
+		return false;
+	const std::string name(form->GetName());
 	return !name.empty() && std::find_if(m_members.cbegin(), m_members.cend(), [&](const RE::TESForm* form) -> bool
 	{
 		return form->GetName() == name;

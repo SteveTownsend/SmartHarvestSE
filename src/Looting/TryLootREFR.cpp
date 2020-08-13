@@ -471,7 +471,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
 		{
 			skipLooting = true;
-			result = Lootability::ContainerIsBlacklisted;
+			result = Lootability::ReferencesBlacklistedContainer;
 		}
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we

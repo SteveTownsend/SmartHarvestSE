@@ -31,6 +31,7 @@ public:
 	void ProcessDefinitions(void);
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	void Refresh() const;
+	void CollectFromContainer(const RE::TESObjectREFR* refr);
 	void CheckEnqueueAddedItem(const RE::TESForm* form);
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }

@@ -501,6 +501,7 @@ private:
 
 	void IncludeFossilMiningExcavation();
 	void IncludeCorpseCoinage();
+	void IncludePileOfGold();
 	void IncludeBSBruma();
 
 	DataCase(void);

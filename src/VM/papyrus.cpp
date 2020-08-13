@@ -344,6 +344,11 @@ namespace papyrus
 		shse::DataCase::GetInstance()->BlockFirehoseSource(refr);
 	}
 
+	void ProcessContainerCollectibles(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	{
+		shse::CollectionManager::Instance().CollectFromContainer(refr);
+	}
+
 	void NotifyManualLootItem(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
 		shse::ProcessManualLootItem(refr);
@@ -597,6 +602,7 @@ namespace papyrus
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
 		a_vm->RegisterFunction("BlockFirehose", SHSE_PROXY, papyrus::BlockFirehose);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
+		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
 		a_vm->RegisterFunction("GetSettingObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingObjectArrayEntry);
@@ -614,7 +620,6 @@ namespace papyrus
 		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
 		a_vm->RegisterFunction("PrepareSPERGMining", SHSE_PROXY, papyrus::PrepareSPERGMining);
 		a_vm->RegisterFunction("PostprocessSPERGMining", SHSE_PROXY, papyrus::PostprocessSPERGMining);
-
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);
