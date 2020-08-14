@@ -324,9 +324,11 @@ namespace papyrus
 			shse::ManagedList::WhiteList().Add(entry);
 		}
 	}
-	void SyncDone(RE::StaticFunctionTag* base)
+	// This is the last function called by the scripts when re-syncing state
+	// This is called for game reload, or whitelist/blacklist updates (reload=false)
+	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		shse::PluginFacade::Instance().SyncDone();
+		shse::PluginFacade::Instance().ResetState(reload);
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)

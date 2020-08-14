@@ -284,6 +284,11 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			{
 				return Lootability::LootDeadBodyDisabled;
 			}
+			// REFR to Dead NPC may be blacklisted by user
+			if (ManagedList::BlackList().Contains(refr))
+			{
+				return Lootability::DeadBodyBlacklistedByUser;
+			}
 
 			RE::Actor* actor(refr->As<RE::Actor>());
 			if (actor)
@@ -603,7 +608,7 @@ bool ScanGovernor::UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSil
 	return false;
 }
 
-void ScanGovernor::Clear(const bool gameReload)
+void ScanGovernor::Clear()
 {
 	RecursiveLockGuard guard(m_searchLock);
 	// unblock all blocked auto-harvest objects
@@ -613,12 +618,9 @@ void ScanGovernor::Clear(const bool gameReload)
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
 	ClearGlowExpiration();
 
-	if (gameReload)
-	{
-		// clear lists of looted and locked containers
-		ResetLootedContainers();
-		ForgetLockedContainers();
-	}
+	// clear lists of looted and locked containers
+	ResetLootedContainers();
+	ForgetLockedContainers();
 }
 
 bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR* refr) const

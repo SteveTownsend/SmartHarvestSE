@@ -35,7 +35,7 @@ Function ReportOKToScan(bool goodToGo, int nonce) global native
 
 Function ResetList(bool reload, int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
-Function SyncDone() global native
+Function SyncDone(bool reload) global native
 String Function PrintFormID(int formID) global native
 
 String Function GetTranslation(String key) global native

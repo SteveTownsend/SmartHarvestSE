@@ -65,7 +65,7 @@ void ManagedList::Reset(const bool reloadGame)
 
 void ManagedList::Add(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item/container {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
+	DBG_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert(entry);
@@ -73,7 +73,7 @@ void ManagedList::Add(const RE::TESForm* entry)
 
 void ManagedList::Drop(const RE::TESForm* entry)
 {
-	DBG_MESSAGE("Location/cell/item/container {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
+	DBG_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.erase(entry);
@@ -90,7 +90,7 @@ bool ManagedList::Contains(const RE::TESForm* entry) const
 // sometimes multiple items use the same name - we treat them all the same
 bool ManagedList::HasEntryWithSameName(const RE::TESForm* form) const
 {
-	// skipped if entry is a container or place. Only REFRs right now are to Containers.
+	// skipped if entry is a container/NPC (REFR) or place (CELL/LCTN). Only REFRs right now are to Containers and Dead Actors.
 	RE::FormType formType(form->GetFormType());
 	if (formType == RE::FormType::Location || formType == RE::FormType::Cell || form->As<RE::TESObjectREFR>())
 		return false;

@@ -44,7 +44,7 @@ LeveledItem FOS_LItemFossilTierTwoVolcanic
 EffectShader lockedShader       ; red
 EffectShader bossShader         ; flames
 EffectShader questShader        ; purple
-EffectShader collectibleShader  ; silver
+EffectShader collectibleShader  ; copper/bronze
 EffectShader enchantedShader    ; blue
 EffectShader richShader         ; gold
 EffectShader ownedShader        ; green
@@ -114,6 +114,7 @@ endFunction
 Function SyncLists(bool reload)
     SyncList(reload, location_type_whitelist, whitelist_form)
     SyncList(reload, location_type_blacklist, blacklist_form)
+    SyncDone(reload)
 endFunction
 
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
@@ -158,9 +159,9 @@ function MoveFromBlackToWhiteList(Form target, bool confirm)
     ManageWhiteList(target)
 endFunction
 
-function RemoveFromBlackList(Form chest)
-    if (blacklist_form.find(chest) != -1)
-        blacklist_form.removeAddedForm(chest)
+function RemoveFromBlackList(Form target)
+    if (blacklist_form.find(target) != -1)
+        blacklist_form.removeAddedForm(target)
     endif
 endFunction
 
@@ -168,8 +169,8 @@ function ManageWhiteList(Form target)
     ManageList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
 endFunction
 
-function AddToBlackList(Form chest)
-    ManageBlackList(chest)
+function AddToBlackList(Form target)
+    ManageBlackList(target)
 endFunction
 
 function MoveFromWhiteToBlackList(Form target, bool confirm)
@@ -303,9 +304,6 @@ Function ApplySetting(bool reload, int oreMining)
         PushGameTime(Utility.GetCurrentGameTime())
     endIf
     SyncLists(reload)
-    if (reload)
-        SyncDone()
-    endIf
 
     utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
@@ -363,9 +361,11 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             CheckLootable(targetedRefr)
         endIf
     else
-        ; regular press. Does nothing for non-Containers
-        if targetedRefr.GetBaseObject() as Container
-            ; blacklist or un-blacklist the REFR, not the Container, to avoid blocking other REFRs with same base
+        ; regular press. Does nothing unless this is a Dead Body or Container
+        Actor refrActor = targetedRefr as Actor
+        Container refrContainer = targetedRefr.GetBaseObject() as Container
+        if (refrActor && refrActor.IsDead()) || refrContainer
+            ; blacklist or un-blacklist the REFR, not the Base, to avoid blocking other REFRs with same Base
             if isWhiteKey
                 RemoveFromBlackList(targetedRefr)
             else ; BlackList Key
@@ -373,7 +373,7 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             EndIf
             SyncLists(false)    ; not a reload
         else
-            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER")
+            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER_OR_NPC")
         endIf
     endIf
 EndFunction

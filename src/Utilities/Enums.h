@@ -367,6 +367,7 @@ enum class Lootability {
 	CannotGetAshPile,
 	ProducerHasNoLootable,
 	ContainerBlacklistedByUser,
+	DeadBodyBlacklistedByUser,
 	MAX
 };
 

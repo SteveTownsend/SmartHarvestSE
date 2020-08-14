@@ -22,7 +22,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-// blacklist and whitelist, can contain container (REFR), location, cell or item (base object, not REFR)
+// blacklist and whitelist - can contain Container/Dead Actor (REFR), location, cell or item (base object, not REFR)
 class ManagedList
 {
 public:

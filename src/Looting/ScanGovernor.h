@@ -52,7 +52,7 @@ public:
 	static constexpr size_t MaxREFRSPerPass = 75;
 #endif
 
-	void Clear(const bool gameReload);
+	void Clear();
 
 	static constexpr int HarvestSpamLimit = 10;
 	size_t PendingHarvestNotifications() const;

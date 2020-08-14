@@ -648,10 +648,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),
 				m_candidate->GetName(), m_candidate->formID);
 			CopyLootFromContainer(targets);
-			// Main Blacklist does not work for dynamic forms - handle those separately. e.g. Hawk shot down outside Solitude
+			// Main Blacklist does not work for dynamic forms - block those separately. e.g. Hawk shot down outside Solitude
 			if (!ScanGovernor::Instance().HasDynamicData(m_candidate))
 			{
-				DataCase::GetInstance()->BlacklistReference(m_candidate);
+				ScanGovernor::Instance().MarkContainerLooted(m_candidate);
 			}
 		}
 		else
