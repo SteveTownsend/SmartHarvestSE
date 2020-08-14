@@ -441,6 +441,7 @@ void ScanGovernor::LootAllEligible()
 		const auto checkedTarget(checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
 		if (checkedTarget != checkedTargets.cend())
 		{
+			m_targetType = INIFile::SecondaryType::itemObjects;
 			lootability = checkedTarget->second;
 			DBG_VMESSAGE("0x{:08x}, base {}/0x{:08x} already checked: {}", refr ? refr->GetFormID() : InvalidForm,
 				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName() : ""),
