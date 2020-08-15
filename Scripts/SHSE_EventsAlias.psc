@@ -41,14 +41,18 @@ LeveledItem FOS_LItemFossilTierOneyum
 LeveledItem FOS_LItemFossilTierOneVolcanicDigSite
 LeveledItem FOS_LItemFossilTierTwoVolcanic
 
-EffectShader lockedShader       ; red
-EffectShader bossShader         ; flames
-EffectShader questShader        ; purple
-EffectShader collectibleShader  ; silver
-EffectShader enchantedShader    ; blue
-EffectShader richShader         ; gold
-EffectShader ownedShader        ; green
-EffectShader lootedShader       ; silver
+; supported Effect Shaders
+EffectShader redShader          ; red
+EffectShader flamesShader       ; flames
+EffectShader purpleShader       ; purple
+EffectShader copperShader       ; copper/bronze
+EffectShader blueShader         ; blue
+EffectShader goldShader         ; gold
+EffectShader greenShader        ; green
+EffectShader silverShader       ; silver
+; Effect Shaders by category
+EffectShader[] defaultCategoryShaders
+EffectShader[] categoryShaders
 
 ; FormType from CommonLibSSE - this is core Game data, so invariant
 int getType_kTree = 38
@@ -114,6 +118,7 @@ endFunction
 Function SyncLists(bool reload)
     SyncList(reload, location_type_whitelist, whitelist_form)
     SyncList(reload, location_type_blacklist, blacklist_form)
+    SyncDone(reload)
 endFunction
 
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
@@ -158,9 +163,9 @@ function MoveFromBlackToWhiteList(Form target, bool confirm)
     ManageWhiteList(target)
 endFunction
 
-function RemoveFromBlackList(Form chest)
-    if (blacklist_form.find(chest) != -1)
-        blacklist_form.removeAddedForm(chest)
+function RemoveFromBlackList(Form target)
+    if (blacklist_form.find(target) != -1)
+        blacklist_form.removeAddedForm(target)
     endif
 endFunction
 
@@ -168,8 +173,8 @@ function ManageWhiteList(Form target)
     ManageList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
 endFunction
 
-function AddToBlackList(Form chest)
-    ManageBlackList(chest)
+function AddToBlackList(Form target)
+    ManageBlackList(target)
 endFunction
 
 function MoveFromWhiteToBlackList(Form target, bool confirm)
@@ -191,16 +196,52 @@ function ManageBlackList(Form target)
     ManageList(blacklist_form, target, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
 endFunction
 
-Function SetShaders()
+Function SetDefaultShaders()
+    ; must line up with native GlowReason enum
+    glowReasonLockedContainer = 0
+    glowReasonBossContainer = 1
+    glowReasonQuestObject = 2
+    glowReasonCollectible = 3
+    glowReasonHighValue = 4
+    glowReasonEnchantedItem = 5
+    glowReasonPlayerProperty = 6
+    glowReasonSimpleTarget = 7
+
     ; must line up with shaders defined in ESP/ESM file
-    lockedShader = Game.GetFormFromFile(0x80e, "SmartHarvestSE.esp") as EffectShader        ; red
-    bossShader = Game.GetFormFromFile(0x810, "SmartHarvestSE.esp") as EffectShader          ; flames
-    questShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader         ; purple
-    collectibleShader = Game.GetFormFromFile(0x814, "SmartHarvestSE.esp") as EffectShader   ; copper
-    enchantedShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader     ; blue
-    richShader = Game.GetFormFromFile(0x815, "SmartHarvestSE.esp") as EffectShader          ; gold
-    ownedShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader         ; green
-    lootedShader = Game.GetFormFromFile(0x813, "SmartHarvestSE.esp") as EffectShader        ; silver
+    redShader = Game.GetFormFromFile(0x80e, "SmartHarvestSE.esp") as EffectShader        ; red
+    flamesShader = Game.GetFormFromFile(0x810, "SmartHarvestSE.esp") as EffectShader          ; flames
+    purpleShader = Game.GetFormFromFile(0x80d, "SmartHarvestSE.esp") as EffectShader         ; purple
+    copperShader = Game.GetFormFromFile(0x814, "SmartHarvestSE.esp") as EffectShader   ; copper
+    goldShader = Game.GetFormFromFile(0x815, "SmartHarvestSE.esp") as EffectShader          ; gold
+    blueShader = Game.GetFormFromFile(0x80b, "SmartHarvestSE.esp") as EffectShader     ; blue
+    greenShader = Game.GetFormFromFile(0x80c, "SmartHarvestSE.esp") as EffectShader         ; green
+    silverShader = Game.GetFormFromFile(0x813, "SmartHarvestSE.esp") as EffectShader        ; silver
+
+    ; category default and current glow colour
+    defaultCategoryShaders = new EffectShader[8]
+    defaultCategoryShaders[glowReasonLockedContainer] = redShader
+    defaultCategoryShaders[glowReasonBossContainer] = flamesShader
+    defaultCategoryShaders[glowReasonQuestObject] = purpleShader
+    defaultCategoryShaders[glowReasonCollectible] = copperShader
+    defaultCategoryShaders[glowReasonHighValue] = goldShader
+    defaultCategoryShaders[glowReasonEnchantedItem] = blueShader
+    defaultCategoryShaders[glowReasonPlayerProperty] = greenShader
+    defaultCategoryShaders[glowReasonSimpleTarget] = silverShader
+
+    categoryShaders = new EffectShader[8]
+    int index = 0
+    while index < categoryShaders.length
+        categoryShaders[index] = defaultCategoryShaders[index]
+        index = index + 1
+    endWhile
+EndFunction
+
+Function SyncShaders(Int[] colours)
+    int index = 0
+    while index < colours.length
+        categoryShaders[index] = defaultCategoryShaders[colours[index]]
+        index = index + 1
+    endWhile
 EndFunction
 
 Function SyncVeinResourceTypes()
@@ -211,7 +252,7 @@ Function SyncVeinResourceTypes()
 EndFunction
 
 ; must line up with enumerations from C++
-Function SyncNativeDataTypes()
+Function SyncUpdatedNativeDataTypes()
     objType_Flora = GetObjectTypeByName("flora")
     objType_Critter = GetObjectTypeByName("critter")
     objType_Septim = GetObjectTypeByName("septims")
@@ -222,23 +263,12 @@ Function SyncNativeDataTypes()
 
     SyncVeinResourceTypes()
 
-    glowReasonLockedContainer = 1
-    glowReasonBossContainer = 2
-    glowReasonQuestObject = 3
-    glowReasonCollectible = 4
-    glowReasonHighValue = 5
-    glowReasonEnchantedItem = 6
-    glowReasonPlayerProperty = 7
-    glowReasonSimpleTarget = 8
-
     location_type_whitelist = 1
     location_type_blacklist = 2
 
     oreMiningTakeAll = 2
 
     infiniteWeight = 100000
-
-    SetShaders()
 endFunction
 
 Function ResetCollections()
@@ -303,9 +333,6 @@ Function ApplySetting(bool reload, int oreMining)
         PushGameTime(Utility.GetCurrentGameTime())
     endIf
     SyncLists(reload)
-    if (reload)
-        SyncDone()
-    endIf
 
     utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
@@ -363,9 +390,11 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             CheckLootable(targetedRefr)
         endIf
     else
-        ; regular press. Does nothing for non-Containers
-        if targetedRefr.GetBaseObject() as Container
-            ; blacklist or un-blacklist the REFR, not the Container, to avoid blocking other REFRs with same base
+        ; regular press. Does nothing unless this is a Dead Body or Container
+        Actor refrActor = targetedRefr as Actor
+        Container refrContainer = targetedRefr.GetBaseObject() as Container
+        if (refrActor && refrActor.IsDead()) || refrContainer
+            ; blacklist or un-blacklist the REFR, not the Base, to avoid blocking other REFRs with same Base
             if isWhiteKey
                 RemoveFromBlackList(targetedRefr)
             else ; BlackList Key
@@ -373,7 +402,7 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             EndIf
             SyncLists(false)    ; not a reload
         else
-            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER")
+            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER_OR_NPC")
         endIf
     endIf
 EndFunction
@@ -800,22 +829,10 @@ endEvent
 
 Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     EffectShader effShader
-    if (reason == glowReasonLockedContainer)
-        effShader = lockedShader
-    elseif (reason == glowReasonBossContainer)
-        effShader = bossShader
-    elseif (reason == glowReasonQuestObject)
-        effShader = questShader
-    elseif (reason == glowReasonCollectible)
-        effShader = collectibleShader
-    elseif (reason == glowReasonHighValue)
-        effShader = richShader
-    elseif (reason == glowReasonEnchantedItem)
-        effShader = enchantedShader
-    elseif (reason == glowReasonPlayerProperty)
-        effShader = ownedShader
+    if reason >= 0 && reason <= glowReasonSimpleTarget
+        effShader = categoryShaders[reason]
     else
-        effShader = lootedShader
+        effShader = categoryShaders[glowReasonSimpleTarget]
     endif
     if effShader && OKToScan()
         ; play for requested duration - C++ code will tidy up when out of range

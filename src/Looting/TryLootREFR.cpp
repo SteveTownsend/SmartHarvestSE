@@ -36,8 +36,8 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen)
-	: m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None), m_stolen(stolen)
+TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly)
+	: m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None), m_stolen(stolen), m_glowOnly(glowOnly)
 {
 }
 
@@ -86,6 +86,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (collectible.first)
 		{
 			CollectibleHandling collectibleAction(collectible.second);
+			if (m_glowOnly && CanLootCollectible(collectibleAction))
+			{
+				collectibleAction = CollectibleHandling::Glow;
+			}
 			DBG_VMESSAGE("Collectible Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (!CanLootCollectible(collectibleAction))
 			{
@@ -141,6 +145,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
 		if (refrEx.IsQuestItem(needsFullQuestFlags))
 		{
+			if (m_glowOnly)
+			{
+				questObjectLoot = SpecialObjectHandling::GlowTarget;
+			}
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
@@ -168,6 +176,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (refrEx.IsValuable())
 		{
 			DBG_VMESSAGE("Valuable Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
+			if (m_glowOnly)
+			{
+				valuableLoot = SpecialObjectHandling::GlowTarget;
+			}
 			if (valuableLoot == SpecialObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow valuable object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
@@ -202,6 +214,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (!dryRun && m_glowReason != GlowReason::None)
 		{
 			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			// further checks redundant if we have a glowable target
+			if (m_glowOnly)
+			{
+				return result;
+			}
 		}
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
@@ -288,6 +305,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (skipLooting || dryRun)
 			return result;
 
+		// we would loot this - glow and exit if we are using Loot Sense
+		if (m_glowOnly)
+		{
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+			return result;
+		}
+
 		// Check if we should attempt to steal the item. If we skip it due to looting rules, it's immune from stealing.
 		// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
 		// is the delayed autoloot operation after we find we are undetected, don't trigger that check again here.
@@ -357,6 +381,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				SpecialObjectHandling lockedChestLoot =
 					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "lockedChestLoot"));
+				if (m_glowOnly)
+				{
+					lockedChestLoot = SpecialObjectHandling::GlowTarget;
+				}
 				if (lockedChestLoot == SpecialObjectHandling::GlowTarget)
 				{
 					DBG_VMESSAGE("glow locked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -374,6 +402,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				SpecialObjectHandling bossChestLoot =
 					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "bossChestLoot"));
+				if (m_glowOnly)
+				{
+					bossChestLoot = SpecialObjectHandling::GlowTarget;
+				}
 				if (bossChestLoot == SpecialObjectHandling::GlowTarget)
 				{
 					DBG_VMESSAGE("glow boss container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -392,6 +424,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			SpecialObjectHandling questObjectLoot =
 				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
+			if (m_glowOnly)
+			{
+				questObjectLoot = SpecialObjectHandling::GlowTarget;
+			}
 			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -409,6 +445,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (lister.HasEnchantedItem())
 		{
 			int32_t enchantItemGlow = static_cast<int>(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "enchantItemGlow"));
+			if (m_glowOnly)
+			{
+				enchantItemGlow = 1;
+			}
 			if (enchantItemGlow == 1)
 			{
 				DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -422,6 +462,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			SpecialObjectHandling valuableLoot =
 				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+			if (m_glowOnly)
+			{
+				valuableLoot = SpecialObjectHandling::GlowTarget;
+			}
 			if (valuableLoot == SpecialObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow container with valuable object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -438,7 +482,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (lister.HasCollectibleItem())
 		{
-			if (!CanLootCollectible(lister.CollectibleAction()))
+			CollectibleHandling collectibleAction(lister.CollectibleAction());
+			if (m_glowOnly)
+			{
+				collectibleAction = CollectibleHandling::Glow;
+			}
+			if (!CanLootCollectible(collectibleAction))
 			{
 				// this is not a blocker for looting of non-special items
 				lister.ExcludeCollectibleItems();
@@ -488,6 +537,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (!dryRun && m_glowReason != GlowReason::None)
 		{
 			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			if (m_glowOnly)
+			{
+				return result;
+			}
 		}
 
 		// If it contains white-listed items we must nonetheless skip, due to legality checks at the container level
@@ -614,6 +667,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				m_candidate->GetName(), m_candidate->formID);
 		}
 
+		if (m_glowOnly && !targets.empty())
+		{
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+			return result;
+		}
+
 		if (!targets.empty())
 		{
 			// check highlighting for dead NPC or container
@@ -648,10 +707,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),
 				m_candidate->GetName(), m_candidate->formID);
 			CopyLootFromContainer(targets);
-			// Main Blacklist does not work for dynamic forms - handle those separately. e.g. Hawk shot down outside Solitude
+			// Main Blacklist does not work for dynamic forms - block those separately. e.g. Hawk shot down outside Solitude
 			if (!ScanGovernor::Instance().HasDynamicData(m_candidate))
 			{
-				DataCase::GetInstance()->BlacklistReference(m_candidate);
+				ScanGovernor::Instance().MarkContainerLooted(m_candidate);
 			}
 		}
 		else
@@ -782,7 +841,9 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 				legality = Lootability::PlayerOwned;
 				// Glow if configured
 				if (PlayerState::Instance().BelongingsCheck() == SpecialObjectHandling::GlowTarget)
+				{
 					UpdateGlowReason(GlowReason::PlayerProperty);
+				}
 			}
 		}
 		// if restricted to law-abiding citizenship, check if OK to loot

@@ -16,8 +16,10 @@ int Function GetObjectTypeByName(string name) global native
 int Function GetResourceTypeByName(string name) global native
 float Function GetSetting(int m_section_first, int m_section_second, string m_key) global native
 float Function GetSettingObjectArrayEntry(int m_section_first, int m_section_second, int index) global native
+int Function GetSettingGlowArrayEntry(int m_section_first, int m_section_second, int index) global native
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native
 Function PutSettingObjectArrayEntry(int section_first, int section_second, int index, float value) global native
+Function PutSettingGlowArrayEntry(int section_first, int section_second, int index, int value) global native
 
 bool Function Reconfigure() global native
 Function LoadIniFile(bool useDefaults) global native
@@ -35,7 +37,7 @@ Function ReportOKToScan(bool goodToGo, int nonce) global native
 
 Function ResetList(bool reload, int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
-Function SyncDone() global native
+Function SyncDone(bool reload) global native
 String Function PrintFormID(int formID) global native
 
 String Function GetTranslation(String key) global native
@@ -78,6 +80,7 @@ bool Function HasAdventureTarget() global native
 Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
+Function GlowNearbyLoot() global native
 
 Actor Function GetDetectingActor(int actorIndex, bool dryRun) global native    
 Function ReportPlayerDetectionState(bool detected) global native

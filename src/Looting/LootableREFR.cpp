@@ -121,7 +121,7 @@ int16_t LootableREFR::GetItemCount()
 	if (m_objectType == ObjectType::oreVein)
 	{
 		// limit ore harvesting to constrain Player Home mining
-		return static_cast<int16_t>(INIFile::GetInstance()->GetInstance()->GetSetting(
+		return static_cast<int16_t>(INIFile::GetInstance()->GetSetting(
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
 	}
 	return 1;
