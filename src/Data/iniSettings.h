@@ -42,6 +42,7 @@ public:
 		containers,
 		deadbodies,
 		valueWeight,
+		glow,
 		LAST2
 	};
 
@@ -75,6 +76,8 @@ public:
 			return "deadbodies";
 		case SecondaryType::valueWeight:
 			return "valueWeight";
+		case SecondaryType::glow:
+			return "glow";
 		default:
 			break;
 		}

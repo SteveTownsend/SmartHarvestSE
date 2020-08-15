@@ -255,24 +255,13 @@ void PluginFacade::AfterReload()
 	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 }
 
-// this is the last function called by the scripts when re-syncing state
-void PluginFacade::SyncDone()
-{
-	RecursiveLockGuard guard(m_pluginLock);
-	// reset blocked lists to allow recheck vs current state
-	static const bool reload(true);
-	ResetState(reload);
-	REL_MESSAGE("Restrictions reset, new/loaded game");
-	// need to wait for the scripts to sync up before performing player house checks
-	m_pluginSynced = true;
-}
-
 void PluginFacade::ResetState(const bool gameReload)
 {
+	REL_MESSAGE("Restrictions reset, new/loaded game={}", gameReload ? "true" : "false");
 	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
-	ScanGovernor::Instance().Clear(gameReload);
+	ScanGovernor::Instance().Clear();
 
 	if (gameReload)
 	{
@@ -282,6 +271,8 @@ void PluginFacade::ResetState(const bool gameReload)
 		shse::ActorTracker::Instance().Reset();
 		// Reset Collections State and reapply the saved-game data
 		shse::CollectionManager::Instance().OnGameReload();
+		// need to wait for the scripts to sync up before performing player house checks
+		m_pluginSynced = true;
 	}
 }
 

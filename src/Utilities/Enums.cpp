@@ -80,6 +80,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::CannotGetAshPile: return "CannotGetAshPile";
 	case Lootability::ProducerHasNoLootable: return "ProducerHasNoLootable";
 	case Lootability::ContainerBlacklistedByUser: return "ContainerBlacklistedByUser";
+	case Lootability::DeadBodyBlacklistedByUser: return "DeadBodyBlacklistedByUser";
 	default: return "";
 	}
 }

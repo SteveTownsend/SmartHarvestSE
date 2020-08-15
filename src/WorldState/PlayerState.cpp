@@ -205,6 +205,13 @@ bool PlayerState::CanLoot() const
 		DBG_MESSAGE("Player is magically concealed, skip");
 		return false;
 	}
+
+	const int fortuneHuntingEnabled = static_cast<int>(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "FortuneHuntingEnabled"));
+	if (fortuneHuntingEnabled != 0)
+	{
+		DBG_MESSAGE("Player is a Fortune Hunter, skip");
+		return false;
+	}
 	return true;
 }
 

@@ -52,7 +52,7 @@ public:
 	static constexpr size_t MaxREFRSPerPass = 75;
 #endif
 
-	void Clear(const bool gameReload);
+	void Clear();
 
 	static constexpr int HarvestSpamLimit = 10;
 	size_t PendingHarvestNotifications() const;
@@ -61,6 +61,7 @@ public:
 	bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
 	void ToggleCalibration(const bool glowDemo);
+	void InvokeLootSense(void);
 	void DisplayLootability(RE::TESObjectREFR* refr);
 
 	void Allow();
@@ -94,7 +95,7 @@ private:
 	void LootAllEligible();
 	void TrackActors();
 
-	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun);
+	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly);
 	void MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const;
 
 	void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);

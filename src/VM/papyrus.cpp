@@ -135,7 +135,7 @@ namespace papyrus
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
 
-		INIFile* ini = INIFile::GetInstance()->GetInstance();
+		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return 0.0;
 
@@ -152,11 +152,11 @@ namespace papyrus
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
 
-		INIFile* ini = INIFile::GetInstance()->GetInstance();
+		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return 0.0;
 
-		std::string key = shse::GetObjectTypeName(ObjectType(index));
+		std::string key(shse::GetObjectTypeName(ObjectType(index)));
 		::ToLower(key);
 		// constrain INI values to sensible values
 		float value(0.0f);
@@ -197,12 +197,38 @@ namespace papyrus
 		return value;
 	}
 
+	int GetSettingGlowArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int32_t index)
+	{
+		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
+		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
+
+		INIFile* ini = INIFile::GetInstance();
+		if (!ini || !ini->IsType(first) || !ini->IsType(second))
+			return static_cast<int>(shse::GlowReason::SimpleTarget);
+
+		std::string key(shse::GlowName(shse::GlowReason(index)));
+		::ToLower(key);
+		// constrain INI values to sensible values
+		int value(0);
+		int tmp_value = static_cast<int>(ini->GetSetting(first, second, key.c_str()));
+		if (tmp_value < 0)
+		{
+			value = 0;
+		}
+		else
+		{
+			value = tmp_value;
+		}
+		DBG_VMESSAGE("Config setting (glow array) {}/{}/{} = {}", first, second, key.c_str(), value);
+		return value;
+	}
+
 	void PutSetting(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, RE::BSFixedString key, float value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
 
-		INIFile* ini = INIFile::GetInstance()->GetInstance();
+		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return;
 
@@ -217,13 +243,28 @@ namespace papyrus
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
 
-		INIFile* ini = INIFile::GetInstance()->GetInstance();
+		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->IsType(first) || !ini->IsType(second))
 			return;
 
-		std::string key = shse::GetObjectTypeName(ObjectType(index));
+		std::string key(shse::GetObjectTypeName(ObjectType(index)));
 		::ToLower(key);
 		DBG_VMESSAGE("Put config setting (array) {}/{}/{} = {}", first, second, key.c_str(), value);
+		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
+	}
+
+	void PutSettingGlowArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int index, int value)
+	{
+		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
+		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
+
+		INIFile* ini = INIFile::GetInstance();
+		if (!ini || !ini->IsType(first) || !ini->IsType(second))
+			return;
+
+		std::string key(shse::GlowName(shse::GlowReason(index)));
+		::ToLower(key);
+		DBG_VMESSAGE("Put config setting (glow array) {}/{}/{} = {}", first, second, key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 
@@ -324,9 +365,11 @@ namespace papyrus
 			shse::ManagedList::WhiteList().Add(entry);
 		}
 	}
-	void SyncDone(RE::StaticFunctionTag* base)
+	// This is the last function called by the scripts when re-syncing state
+	// This is called for game reload, or whitelist/blacklist updates (reload=false)
+	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		shse::PluginFacade::Instance().SyncDone();
+		shse::PluginFacade::Instance().ResetState(reload);
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
@@ -441,7 +484,7 @@ namespace papyrus
 
 	int CollectionsInGroup(RE::StaticFunctionTag* base, const std::string fileName)
 	{
-		return shse::CollectionManager::Instance().NumberOfCollections(fileName);
+		return shse::CollectionManager::Instance().NumberOfActiveCollections(fileName);
 	}
 
 	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
@@ -559,6 +602,11 @@ namespace papyrus
 		shse::LocationTracker::Instance().DisplayPlayerLocation();
 	}
 
+	void GlowNearbyLoot(RE::StaticFunctionTag* base)
+	{
+		shse::ScanGovernor::Instance().InvokeLootSense();
+	}
+
 	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex, const bool dryRun)
 	{
 		if (dryRun)
@@ -606,8 +654,10 @@ namespace papyrus
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
 		a_vm->RegisterFunction("GetSettingObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingObjectArrayEntry);
+		a_vm->RegisterFunction("GetSettingGlowArrayEntry", SHSE_PROXY, papyrus::GetSettingGlowArrayEntry);
 		a_vm->RegisterFunction("PutSetting", SHSE_PROXY, papyrus::PutSetting);
 		a_vm->RegisterFunction("PutSettingObjectArrayEntry", SHSE_PROXY, papyrus::PutSettingObjectArrayEntry);
+		a_vm->RegisterFunction("PutSettingGlowArrayEntry", SHSE_PROXY, papyrus::PutSettingGlowArrayEntry);
 
 		a_vm->RegisterFunction("GetObjectTypeNameByType", SHSE_PROXY, papyrus::GetObjectTypeNameByType);
 		a_vm->RegisterFunction("GetObjectTypeByName", SHSE_PROXY, papyrus::GetObjectTypeByName);
@@ -670,6 +720,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
+		a_vm->RegisterFunction("GlowNearbyLoot", SHSE_PROXY, papyrus::GlowNearbyLoot);
 
 		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
 		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);

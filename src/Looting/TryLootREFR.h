@@ -27,12 +27,13 @@ namespace shse
 class TryLootREFR
 {
 public:
-	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen);
+	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly);
 	Lootability Process(const bool dryRun);
 	inline std::string ObjectTypeName() const { return m_typeName; }
 
 private:
 	bool m_stolen;
+	bool m_glowOnly;
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
 	std::string m_typeName;
@@ -43,7 +44,7 @@ private:
 		const int animationType, const bool directTransfer);
 	void CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets);
 
-	// special object glow - not too long, in case we loot or move away
+	// special object glow - not too long, in case we loot or move away. Used for Loot Sense too.
 	static constexpr int ObjectGlowDurationSpecialSeconds = 10;
 	// brief glow for looted objects and other purposes
 	static constexpr int ObjectGlowDurationLootedSeconds = 2;

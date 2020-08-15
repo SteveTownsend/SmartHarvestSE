@@ -30,7 +30,6 @@ public:
 	bool Init(const bool onGameReload);
 	void PrepareForReload();
 	void AfterReload();
-	void SyncDone();
 	void ResetState(const bool gameReload);
 	void OnGoodToGo(void);
 	void OnSettingsPushed(void);
