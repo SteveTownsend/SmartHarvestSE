@@ -26,7 +26,7 @@ namespace shse
 
 // object glow reasons, in descending order of precedence
 enum class GlowReason {
-	LockedContainer = 1,
+	LockedContainer = 0,
 	BossContainer,
 	QuestObject,
 	Collectible,
@@ -56,14 +56,14 @@ inline std::string GlowName(const GlowReason glow)
 		return "Quest";
 	case GlowReason::Collectible:
 		return "Collectible";
-	case GlowReason::EnchantedItem:
-		return "Enchanted";
 	case GlowReason::Valuable:
 		return "Valuable";
+	case GlowReason::EnchantedItem:
+		return "Enchanted";
 	case GlowReason::PlayerProperty:
 		return "PlayerOwned";
 	case GlowReason::SimpleTarget:
-		return "Looted";
+		return "SimpleTarget";
 	default:
 		return "Unknown";
 	}

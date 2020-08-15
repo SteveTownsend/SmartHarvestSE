@@ -5,6 +5,7 @@ Import SHSE_PluginProxy
 SHSE_EventsAlias Property eventScript Auto
 GlobalVariable Property g_LootingEnabled Auto
 Spell AdventurersInstinctPower
+Spell FortuneHuntersInstinctPower
 
 ; check for first init for this playthrough
 GlobalVariable Property g_InitComplete Auto
@@ -16,6 +17,7 @@ int type_ItemObject = 2
 int type_Container = 3
 int type_Deadbody = 4
 int type_ValueWeight = 5
+int type_Glow = 6
 
 ; object types must be in sync with the native DLL
 int objType_Flora
@@ -130,6 +132,9 @@ int worldIndex
 string[] worldNames
 bool adventureActive
 
+bool fortuneHuntingEnabled
+bool unlockGlowColours
+
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -146,6 +151,12 @@ int[] id_blackList_array
 Form[] blacklist_form_array
 String[] blackList_name_array
 bool[] blackList_flag_array
+
+
+int[] id_glowReasonArray
+int[] glowReasonSettingArray
+String[] s_glowReasonArray
+String[] s_shaderColourArray
 
 Actor player
 
@@ -177,6 +188,25 @@ Function PutSettingObjectArray(int section_first, int section_second, int listLe
     int index = 1
     while index < listLength
         PutSettingObjectArrayEntry(section_first, section_second, index, values[index])
+        index += 1
+    endWhile
+EndFunction
+
+int[] function GetSettingToGlowArray(int section1, int section2)
+    int index = 0
+    int[] result = New Int[8]
+    while (index < 8)
+        result[index] = GetSettingGlowArrayEntry(section1, section2, index)
+        ;DebugTrace("Glow Config setting " + section1 + "/" + section2 + "/" + index + " = " + result[index])
+        index += 1
+    endWhile
+    return result
+endFunction
+
+Function PutSettingGlowArray(int section_first, int section_second, int listLength, int[] values)
+    int index = 0
+    while index < listLength
+        PutSettingGlowArrayEntry(section_first, section_second, index, values[index])
         index += 1
     endWhile
 EndFunction
@@ -231,6 +261,10 @@ function ApplySettingsFromFile()
     ; Adventures are linked to a Lesser Power that needs to be enabled if settings so indicate
     adventuresEnabled = GetSetting(type_Common, type_Config, "AdventuresEnabled") as bool
     CheckAdventuresPower()
+    fortuneHuntingEnabled = GetSetting(type_Common, type_Config, "FortuneHuntingEnabled") as bool
+    CheckFortunePower()
+    unlockGlowColours = GetSetting(type_Common, type_Config, "UnlockGlowColours") as bool
+    glowReasonSettingArray = GetSettingToGlowArray(type_Common, type_Glow)
 endFunction
 
 ;Seed defaults from the INI file, first time only - not repeated when user starts new game
@@ -305,6 +339,9 @@ Function ApplySetting(bool reload)
 
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
     PutSetting(type_Common, type_Config, "AdventuresEnabled", adventuresEnabled as float)
+    PutSetting(type_Common, type_Config, "FortuneHuntingEnabled", fortuneHuntingEnabled as float)
+    PutSetting(type_Common, type_Config, "UnlockGlowColours", unlockGlowColours as float)
+    PutSettingGlowArray(type_Common, type_Glow, 8, glowReasonSettingArray)
 
     ; seed looting scan enabled according to configured settings
     bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn || collectionsEnabled || adventuresEnabled
@@ -329,6 +366,7 @@ Function ApplySetting(bool reload)
     ; hard code for oreVein pickup type, yuck
     ;DebugTrace("oreVein setting " + objectSettingArray[31] as int)
     eventScript.ApplySetting(reload, objectSettingArray[31] as int)
+    eventScript.SyncShaders(glowReasonSettingArray)
 
     ; do this last so plugin state is in sync   
     if (isEnabled)
@@ -453,6 +491,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallCollectionDescriptionsActions()
     InstallAdventures()
     InstallAdventuresPower()
+    InstallFlexibleShaders()
 EndFunction
 
 Function InstallCollections()
@@ -501,6 +540,48 @@ Function InstallAdventuresPower()
     SetAdventuresStatus()
 EndFunction
 
+Function InstallFortunePower()
+    FortuneHuntersInstinctPower = Game.GetFormFromFile(0x818, "SmartHarvestSE.esp") as Spell
+    CheckFortunePower()
+EndFunction
+
+Function ResetShaders()
+    int index = 0
+    while index < glowReasonSettingArray.length
+        glowReasonSettingArray[index] = index
+        index = index + 1
+    endWhile
+EndFunction
+
+Function InstallFlexibleShaders()
+    ;set shader defaults - MCM can alter associations to glow category post facto
+    type_Glow = 6
+    eventScript.SetDefaultShaders()
+    s_glowReasonArray = new String[8]
+    s_glowReasonArray[0] = "$SHSE_GLOW_REASON_LOCKED"
+    s_glowReasonArray[1] = "$SHSE_GLOW_REASON_BOSS"
+    s_glowReasonArray[2] = "$SHSE_GLOW_REASON_QUEST"
+    s_glowReasonArray[3] = "$SHSE_GLOW_REASON_COLLECTIBLE"
+    s_glowReasonArray[4] = "$SHSE_GLOW_REASON_VALUABLE"
+    s_glowReasonArray[5] = "$SHSE_GLOW_REASON_ENCHANTED"
+    s_glowReasonArray[6] = "$SHSE_GLOW_REASON_OWNED"
+    s_glowReasonArray[7] = "$SHSE_GLOW_REASON_SIMPLE"
+    ; MCM constructs
+    id_glowReasonArray = new Int[8]
+    glowReasonSettingArray = new Int[8]
+    ResetShaders()
+    s_shaderColourArray = New String[8]
+    s_shaderColourArray[0] = "$SHSE_GLOW_SHADER_RED"
+    s_shaderColourArray[1] = "$SHSE_GLOW_SHADER_FLAMES"
+    s_shaderColourArray[2] = "$SHSE_GLOW_SHADER_PURPLE"
+    s_shaderColourArray[3] = "$SHSE_GLOW_SHADER_COPPER"
+    s_shaderColourArray[4] = "$SHSE_GLOW_SHADER_GOLD"
+    s_shaderColourArray[5] = "$SHSE_GLOW_SHADER_BLUE"
+    s_shaderColourArray[6] = "$SHSE_GLOW_SHADER_GREEN"
+    s_shaderColourArray[7] = "$SHSE_GLOW_SHADER_SILVER"
+
+EndFunction
+
 Function InstallVerticalRadiusAndDoorRule()
     defaultVerticalRadiusFactor = 1.0
     verticalRadiusFactor = defaultVerticalRadiusFactor
@@ -518,13 +599,14 @@ Function InstallDamageLootOptions()
 EndFunction
 
 Function InitPages()
-    Pages = New String[6]
+    Pages = New String[7]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
     Pages[1] = "$SHSE_SPECIALS_REALISM_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
     Pages[3] = "$SHSE_COLLECTIONS_PAGENAME"
-    Pages[4] = "$SHSE_WHITELIST_PAGENAME"
-    Pages[5] = "$SHSE_BLACKLIST_PAGENAME"
+    Pages[4] = "$SHSE_LOOT_SENSE_PAGENAME"
+    Pages[5] = "$SHSE_WHITELIST_PAGENAME"
+    Pages[6] = "$SHSE_BLACKLIST_PAGENAME"
 EndFunction
 
 Function InitSettingsFileOptions()
@@ -596,7 +678,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 39
+    return 40
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -633,8 +715,7 @@ Event OnVersionUpdate(int a_version)
     	objType_Ammo = GetObjectTypeByName("ammo")
     	objType_Mine = GetObjectTypeByName("orevein")
     	
-    	eventScript.SyncNativeDataTypes()
-        eventScript.SetShaders()
+    	eventScript.SyncUpdatedNativeDataTypes()
     endIf
     if (a_version >= 31 && CurrentVersion < 31)
         ;defaults for all new settings
@@ -666,8 +747,6 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 38 && CurrentVersion < 38)
         ;formID mess sorted out
         AdventurersInstinctPower = Game.GetFormFromFile(0x817, "SmartHarvestSE.esp") as Spell
-        ;formID compacted
-        eventScript.SetShaders()
     endIf
     if a_version >= 39 && CurrentVersion < 39
         ;adventure types swapped for alphabetical ordering
@@ -677,7 +756,10 @@ Event OnVersionUpdate(int a_version)
             adventureType = 9
         endIf
     endIf
-    ;DebugTrace("OnVersionUpdate finished" + a_version)
+    if a_version >= 40 && CurrentVersion < 40
+        InstallFlexibleShaders()
+        InstallFortunePower()
+    endIf
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -1033,7 +1115,30 @@ event OnPageReset(string currentPage)
         AddMenuOptionST("chooseAdventureWorld", "$SHSE_CHOOSE_ADVENTURE_WORLD", initialAdventureWorld, adventureFlags)
         AddToggleOptionST("chooseAdventureActive", "$SHSE_CHOOSE_ADVENTURE_ACTIVE", adventureActive, adventureFlags)
         
-    elseif (currentPage == Pages[4]) ; whiteList
+    elseif (currentPage == Pages[4]) ; Fortune Hunter's Instinct and Glow Config
+;   ======================== LEFT ========================
+        SetCursorFillMode(TOP_TO_BOTTOM)
+
+        AddToggleOptionST("fortuneHuntingEnabled", "$SHSE_LOOT_SENSE_ENABLED", fortuneHuntingEnabled)
+
+;   ======================== RIGHT ========================
+        SetCursorPosition(1)
+
+        AddHeaderOption("$SHSE_GLOW_COLOUR_HEADER")
+        
+        AddToggleOptionST("unlockGlowColours", "$SHSE_GLOW_COLOURS_UNLOCKED", unlockGlowColours)
+        int glowColourFlags = OPTION_FLAG_DISABLED
+        if unlockGlowColours
+            glowColourFlags = OPTION_FLAG_NONE
+        endIf
+
+        int index = 0
+        while index < s_glowReasonArray.length
+            id_glowReasonArray[index] = AddTextOption(s_glowReasonArray[index], s_shaderColourArray[(glowReasonSettingArray[index] as int)], glowColourFlags)
+            index += 1
+        endWhile
+        
+    elseif (currentPage == Pages[5]) ; whiteList
         AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
         int size = eventScript.whitelist_form.GetSize()
@@ -1053,7 +1158,7 @@ event OnPageReset(string currentPage)
             index += 1
         endWhile
 
-    elseif (currentPage == Pages[5]) ; blacklist
+    elseif (currentPage == Pages[6]) ; blacklist
         AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
         int size = eventScript.blacklist_form.GetSize()
@@ -1091,12 +1196,19 @@ Event OnOptionSelect(int a_option)
                 objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
                 SetTextOptionValue(a_option, s_ammoBehaviorArray[(objectSettingArray[index] as int)])
             else
-                int size = s_ammoBehaviorArray.length
+                int size = s_behaviorArray.length
                 objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
                 SetTextOptionValue(a_option, s_behaviorArray[(objectSettingArray[index] as int)])
             endif
-;           PutSetting(type_Harvest, type_ItemObject, keyName, objectSettingArray[index])
         endif
+        return
+    endif
+
+    index = id_glowReasonArray.find(a_option)
+    if (index >= 0)
+        int size = s_shaderColourArray.length
+        glowReasonSettingArray[index] = CycleInt(glowReasonSettingArray[index] as int, size)
+        SetTextOptionValue(a_option, s_shaderColourArray[(glowReasonSettingArray[index] as int)])
         return
     endif
     
@@ -2135,6 +2247,14 @@ Function SetAdventuresStatus()
     ResetAdventureType()
 EndFunction
 
+Function CheckFortunePower()
+    if fortuneHuntingEnabled
+        player.AddSpell(FortuneHuntersInstinctPower)
+    else
+        player.RemoveSpell(FortuneHuntersInstinctPower)
+    endIf
+EndFunction
+
 state adventuresEnabled
     event OnSelectST()
         adventuresEnabled = !adventuresEnabled
@@ -2254,5 +2374,59 @@ state chooseAdventureActive
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_CHOOSE_ADVENTURE_ACTIVE"))
+    endEvent
+endState
+
+state fortuneHuntingEnabled
+    event OnSelectST()
+        fortuneHuntingEnabled = !fortuneHuntingEnabled
+        SetToggleOptionValueST(fortuneHuntingEnabled)
+        CheckFortunePower()
+    endEvent
+
+    event OnDefaultST()
+        fortuneHuntingEnabled = false
+        SetToggleOptionValueST(fortuneHuntingEnabled)
+        CheckFortunePower()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_LOOT_SENSE_ENABLED"))
+    endEvent
+endState
+
+Function SetGlowColourStatus()
+    int flags = OPTION_FLAG_NONE
+    ; reset to default if now locked
+    if !unlockGlowColours
+        flags = OPTION_FLAG_DISABLED
+        ResetShaders()
+    endIf
+    int index = 0
+    while index < s_glowReasonArray.length
+        SetOptionFlags(id_glowReasonArray[index], flags)
+        ; reset to default if now locked
+        if !unlockGlowColours
+            SetTextOptionValue(id_glowReasonArray[index], s_shaderColourArray[(glowReasonSettingArray[index] as int)])
+        endIf
+        index += 1
+    endWhile
+EndFunction
+
+state unlockGlowColours
+    event OnSelectST()
+        unlockGlowColours = !unlockGlowColours
+        SetToggleOptionValueST(unlockGlowColours)
+        SetGlowColourStatus()
+    endEvent
+
+    event OnDefaultST()
+        unlockGlowColours = false
+        SetToggleOptionValueST(unlockGlowColours)
+        SetGlowColourStatus()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_GLOW_COLOURS_UNLOCKED"))
     endEvent
 endState

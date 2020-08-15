@@ -619,6 +619,18 @@ void DataCase::IncludePileOfGold()
 			SetObjectTypeForForm(goldPileForm->GetFormID(), ObjectType::septims);
 		}
 	}
+	// Coin Replacer Redux adds similar
+	static std::string crrName("SkyrimCoinReplacerRedux.esp");
+	static std::vector<RE::FormID> pilesOfCoin({ 0x800, 0x801, 0x802 });
+	for (const auto coinPileFormID : pilesOfCoin)
+	{
+		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
+		if (coinPileForm)
+		{
+			DBG_MESSAGE("Record Coin Replacer Redux Pile of Coin {}(0x{:08x}) as septims", coinPileForm->GetName(), coinPileForm->GetFormID());
+			SetObjectTypeForForm(coinPileForm->GetFormID(), ObjectType::septims);
+		}
+	}
 }
 
 void DataCase::IncludeCorpseCoinage()

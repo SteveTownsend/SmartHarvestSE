@@ -246,7 +246,7 @@ void ScanGovernor::ProgressGlowDemo()
 }
 
 // input may get updated for ashpile
-Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun)
+Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly)
 {
 	if (!refr)
 		return Lootability::NullReference;
@@ -329,7 +329,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) &&
 				DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
-				if (!dryRun)
+				if (!dryRun && !glowOnly)
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);
@@ -372,7 +372,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			// Delay looting exactly once. We only return here after required time since death has expired.
 			if (!HasDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
-				if (!dryRun)
+				if (!dryRun && !glowOnly)
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);
@@ -441,6 +441,7 @@ void ScanGovernor::LootAllEligible()
 		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
 		RE::TESObjectREFR* refr(target.second);
 		static const bool dryRun(false);
+		static const bool glowOnly(false);
 		// Scan radius often includes repeated mundane objects e.g. loose septims, several plates. Optimize for that case here.
 		Lootability lootability(Lootability::Lootable);
 		const auto checkedTarget(checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
@@ -454,7 +455,7 @@ void ScanGovernor::LootAllEligible()
 		}
 		else
 		{
-			lootability = ValidateTarget(refr, possibleDupes, dryRun);
+			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
 			if (refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
 			{
 				// different Actors and Chests have different loot
@@ -466,7 +467,7 @@ void ScanGovernor::LootAllEligible()
 			continue;
 		}
 		static const bool stolen(false);
-		TryLootREFR(refr, m_targetType, stolen).Process(dryRun);
+		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
 	}
 }
 
@@ -511,6 +512,70 @@ void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 	CollectionManager::Instance().Refresh();
 }
 
+// Glow-only, for Immersion enthusiasts
+void ScanGovernor::InvokeLootSense(void)
+{
+	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to glow in an orderly fashion than to do it all on one pass.
+	DistanceToTarget targets;
+	double radius(LocationTracker::Instance().IsPlayerIndoors() ?
+		INIFile::GetInstance()->GetIndoorsRadius(INIFile::PrimaryType::harvest) : INIFile::GetInstance()->GetRadius(INIFile::PrimaryType::harvest));
+	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, INIFile::GetInstance()->GetVerticalFactor());
+	bool respectDoors(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0.);
+	ReferenceFilter filter(targets, rangeCheck, respectDoors, MaxREFRSPerPass);
+	// this adds eligible REFRs ordered by distance from player
+	filter.FindLootableReferences();
+
+	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
+	// This seems no harm apart but offends my aesthetic sensibilities, so prevent it.
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("Glow Eligible Targets");
+#endif
+	std::unordered_map<RE::TESForm*, Lootability> checkedTargets;
+	std::vector<RE::TESObjectREFR*> possibleDupes;
+	for (auto target : targets)
+	{
+		// Filter out borked REFRs. PROJ repro observed in logs as below:
+		/*
+			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54419 micros
+			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\tasks.cpp(1037): [MESSAGE] Process REFR 0x00000000 with base object Iron Arrow/0x0003be11
+			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Process Auto-loot Candidate Iron Arrow/0x0003be11)=35 micros
+
+			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54195 micros
+			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
+		*/
+		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
+		RE::TESObjectREFR* refr(target.second);
+		static const bool dryRun(false);
+		static const bool glowOnly(true);
+		// Scan radius often includes repeated mundane objects e.g. loose septims, several plates. Optimize for that case here.
+		Lootability lootability(Lootability::Lootable);
+		const auto checkedTarget(checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
+		if (checkedTarget != checkedTargets.cend())
+		{
+			m_targetType = INIFile::SecondaryType::itemObjects;
+			lootability = checkedTarget->second;
+			DBG_VMESSAGE("0x{:08x}, base {}/0x{:08x} already checked: {}", refr ? refr->GetFormID() : InvalidForm,
+				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName() : ""),
+				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm), LootabilityName(lootability));
+		}
+		else
+		{
+			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
+			if (refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
+			{
+				// different Actors and Chests have different loot
+				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
+			}
+		}
+		if (lootability != Lootability::Lootable)
+		{
+			continue;
+		}
+		static const bool stolen(false);
+		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
+	}
+}
+
 void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 {
 #ifdef _PROFILING
@@ -518,16 +583,17 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 #endif
 	Lootability result(ReferenceFilter::CheckLootable(refr));
 	static const bool dryRun(true);
+	static const bool glowOnly(false);
 	std::string typeName;
 	if (result == Lootability::Lootable)
 	{
 		std::vector<RE::TESObjectREFR*> possibleDupes;
-		result = ValidateTarget(refr, possibleDupes, dryRun);
+		result = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
 	}
 	if (result == Lootability::Lootable)
 	{
 		// flag to prevent mutation of state when just checking the rules
-		TryLootREFR runner(refr, m_targetType, false);
+		TryLootREFR runner(refr, m_targetType, false, glowOnly);
 		result = runner.Process(dryRun);
 		typeName = runner.ObjectTypeName();
 	}

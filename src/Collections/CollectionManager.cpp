@@ -380,6 +380,8 @@ void CollectionManager::PrintMembership(void) const
 			if (collection->HasMembers())
 			{
 				REL_MESSAGE("Collection {}:\n{}", collection->Name().c_str(), collection->PrintMembers().c_str());
+				const std::string label(MakeLabel(collectionGroup.second->Name(), collection->Name()));
+				m_activeCollectionsByGroupName.insert(std::make_pair(collectionGroup.second->Name(), label));
 			}
 			else
 			{
@@ -421,16 +423,16 @@ std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 	return std::string();
 }
 
-int CollectionManager::NumberOfCollections(const std::string& groupName) const
+int CollectionManager::NumberOfActiveCollections(const std::string& groupName) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	return static_cast<int>(m_collectionsByGroupName.count(groupName));
+	return static_cast<int>(m_activeCollectionsByGroupName.count(groupName));
 }
 
 std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	const auto matches(m_collectionsByGroupName.equal_range(groupName));
+	const auto matches(m_activeCollectionsByGroupName.equal_range(groupName));
 	size_t index(0);
 	for (auto group = matches.first; group != matches.second; ++group)
 	{
@@ -636,7 +638,6 @@ void CollectionManager::BuildDecisionTrees(const std::shared_ptr<CollectionGroup
 		if (m_allCollectionsByLabel.insert(std::make_pair(label, collection)).second)
 		{
 			REL_MESSAGE("Parse OK for Collection {}", label.c_str());
-			m_collectionsByGroupName.insert(std::make_pair(collectionGroup->Name(), label));
 		}
 		else
 		{

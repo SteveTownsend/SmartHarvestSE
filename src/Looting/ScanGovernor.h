@@ -61,6 +61,7 @@ public:
 	bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 
 	void ToggleCalibration(const bool glowDemo);
+	void InvokeLootSense(void);
 	void DisplayLootability(RE::TESObjectREFR* refr);
 
 	void Allow();
@@ -94,7 +95,7 @@ private:
 	void LootAllEligible();
 	void TrackActors();
 
-	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun);
+	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly);
 	void MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const;
 
 	void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);

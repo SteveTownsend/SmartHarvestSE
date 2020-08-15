@@ -45,7 +45,7 @@ public:
 	std::string GroupNameByIndex(const int fileIndex) const;
 	std::string GroupFileByIndex(const int fileIndex) const;
 	// end of functions for MCM-visible Collection Groups
-	int NumberOfCollections(const std::string& groupName) const;
+	int NumberOfActiveCollections(const std::string& groupName) const;
 	std::string NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	std::string DescriptionByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	static std::string MakeLabel(const std::string& groupName, const std::string& collectionName);
@@ -100,7 +100,7 @@ private:
 
 	mutable RecursiveLock m_collectionLock;
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;
-	std::multimap<std::string, std::string> m_collectionsByGroupName;
+	mutable std::multimap<std::string, std::string> m_activeCollectionsByGroupName;
 	std::unordered_map<std::string, std::string> m_mcmVisibleFileByGroupName;
 	std::unordered_map<std::string, std::shared_ptr<CollectionGroup>> m_allGroupsByName;
 	// Link each Form to the Collections in which it belongs
