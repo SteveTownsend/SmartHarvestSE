@@ -741,6 +741,8 @@ void CollectionManager::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell
 
 	if (!IsCellLocatable(cell))
 	{
+		if (!cell)
+			return;
 		// no obvious way to locate - save possibly-reachable doors for the cell
 		bool connected(false);
 		for (const RE::TESObjectREFRPtr& refptr : cell->references)
@@ -785,6 +787,8 @@ bool CollectionManager::IsCellLocatable(const RE::TESObjectCELL* cell)
 #if 1
 	return true;
 #else
+	if (!cell)
+		return false;
 	const RE::ExtraLocation* extraLocation(cell->extraList.GetByType<RE::ExtraLocation>());
 	if (extraLocation && extraLocation->location)
 	{
@@ -817,6 +821,8 @@ void CollectionManager::RecordPlacedObjects(void)
 		DBG_MESSAGE("Search for DOORs {} REFRs in persistent cell for WorldSpace {}/0x{:08x}", worldSpace->persistentCell->references.size(), worldSpace->GetName(), worldSpace->GetFormID());
 		for (const auto& refPtr : worldSpace->persistentCell->references)
 		{
+			if (!refPtr)
+				continue;
 			const RE::TESObjectREFR* refr(refPtr.get());
 			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
 			{
@@ -824,6 +830,8 @@ void CollectionManager::RecordPlacedObjects(void)
 				{
 					// Store door link representing entry from either direction
 					const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
+					if (!teleport || !teleport->teleportData || !teleport->teleportData->linkedDoor)
+						continue;
 					const RE::TESObjectREFR* targetDoorRefr(teleport->teleportData->linkedDoor.get().get());
 					m_linkingDoors.insert({ refr, targetDoorRefr });
 					m_linkingDoors.insert({ targetDoorRefr, refr });
@@ -837,12 +845,16 @@ void CollectionManager::RecordPlacedObjects(void)
 			const auto cell(cellEntry.second);
 			for (const auto& refPtr : cell->references)
 			{
+				if (!refPtr)
+					continue;
 				const RE::TESObjectREFR* refr(refPtr.get());
 				if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
 				{
 					if (refr->extraList.HasType<RE::ExtraTeleport>())
 					{
 						const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
+						if (!teleport || !teleport->teleportData || !teleport->teleportData->linkedDoor)
+							continue;
 						const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
 						if (!target)
 						{
