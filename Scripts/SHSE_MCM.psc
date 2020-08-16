@@ -515,10 +515,11 @@ Function InstallCollectionDescriptionsActions()
     ; context-dependent, settings for Collection indexed by collectionGroup/collectionIndex
     collectionDescriptions = new String[128]
     ; do not allow Print in MCM
-    s_collectibleActions = New String[3]
+    s_collectibleActions = New String[4]
     s_collectibleActions[0] = "$SHSE_DONT_PICK_UP"
     s_collectibleActions[1] = "$SHSE_PICK_UP"
     s_collectibleActions[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
+    s_collectibleActions[3] = "$SHSE_PRINT_MESSAGE"
 EndFunction
 
 Function InstallAdventures()
@@ -676,7 +677,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 40
+    return 41
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -730,7 +731,6 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 34 && CurrentVersion < 34)
         ;adds reset-to-defaults
         InitSettingsFileOptions()
-        InstallCollectionDescriptionsActions()
     endIf
     if (a_version >= 35 && CurrentVersion < 35)
         ;fixes missing entry in plugin
@@ -757,6 +757,9 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 40 && CurrentVersion < 40
         InstallFlexibleShaders()
         InstallFortunePower()
+    endIf
+    if a_version >= 41 && CurrentVersion < 41
+        InstallCollectionDescriptionsActions()
     endIf
 endEvent
 
@@ -2168,7 +2171,7 @@ endState
 
 state collectibleAction
     event OnSelectST()
-        int size = s_specialObjectHandlingArray.length
+        int size = s_collectibleActions.length
         collectibleAction = CycleInt(collectibleAction, size)
         SetTextOptionValueST(s_collectibleActions[collectibleAction])
         PutCollectionAction(collectionGroupNames[collectionGroup], collectionNames[collectionIndex], collectibleAction)
