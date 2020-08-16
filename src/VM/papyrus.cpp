@@ -382,11 +382,6 @@ namespace papyrus
 		return shse::ScanGovernor::Instance().UnlockHarvest(refr, isSilent);
 	}
 
-	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
-	{
-		shse::DataCase::GetInstance()->BlockFirehoseSource(refr);
-	}
-
 	void ProcessContainerCollectibles(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
 		shse::CollectionManager::Instance().CollectFromContainer(refr);
@@ -648,7 +643,6 @@ namespace papyrus
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
-		a_vm->RegisterFunction("BlockFirehose", SHSE_PROXY, papyrus::BlockFirehose);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 

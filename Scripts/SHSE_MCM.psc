@@ -363,9 +363,7 @@ Function ApplySetting(bool reload)
     if ManagesCarryWeight()
         eventScript.RemoveCarryWeightDelta()
     endIf
-    ; hard code for oreVein pickup type, yuck
-    ;DebugTrace("oreVein setting " + objectSettingArray[31] as int)
-    eventScript.ApplySetting(reload, objectSettingArray[31] as int)
+    eventScript.ApplySetting(reload)
     eventScript.SyncShaders(glowReasonSettingArray)
 
     ; do this last so plugin state is in sync   

@@ -130,10 +130,10 @@ void EventPublisher::TriggerResetCarryWeight()
 	m_onResetCarryWeight.SendEvent();
 }
 
-void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify)
+void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify, const bool isFirehose)
 {
 	// We always block the REFR before firing this
-	m_onMining.SendEvent(refr, static_cast<int>(resourceType), manualLootNotify);
+	m_onMining.SendEvent(refr, static_cast<int>(resourceType), manualLootNotify, isFirehose);
 }
 
 void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType objType, int itemCount, const bool isSilent,

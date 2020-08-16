@@ -41,8 +41,10 @@ public:
 
 	void BlockFirehoseSource(const RE::TESObjectREFR* refr);
 	void ForgetFirehoseSources();
+	bool IsFirehose(const RE::TESForm* form) const;
+	void AddFirehose(const RE::TESForm* form);
 
-	bool BlockReference(const RE::TESObjectREFR* refr, const Lootability reason);
+	void BlockReference(const RE::TESObjectREFR* refr, const Lootability reason);
 	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr) const;
 	void ClearBlockedReferences(const bool gameReload);
 
@@ -63,6 +65,7 @@ public:
 
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
+	void ForceObjectTypeForForm(RE::FormID formID, ObjectType objectType);
 	ObjectType GetObjectTypeForFormType(RE::FormType formType) const;
 
 	template <typename T>
@@ -116,6 +119,7 @@ private:
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
 	std::unordered_set<const RE::TESForm*> m_questTargets;
+	std::unordered_set<const RE::TESForm*> m_firehoseForms;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_map<RE::FormID, Lootability> m_blockRefr;
 	std::unordered_set<RE::FormID> m_blacklistRefr;
@@ -501,6 +505,7 @@ private:
 
 	void IncludeFossilMiningExcavation();
 	void IncludeCorpseCoinage();
+	void IncludeHearthfireExtendedApiary();
 	void IncludePileOfGold();
 	void IncludeBSBruma();
 

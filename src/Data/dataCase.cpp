@@ -645,6 +645,21 @@ void DataCase::IncludeCorpseCoinage()
 	}
 }
 
+void DataCase::IncludeHearthfireExtendedApiary()
+{
+	static std::string espName("hearthfireextended.esp");
+	static RE::FormID apiaryFormID(0xd62);
+	RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
+	if (apiaryForm)
+	{
+		// force object type - this was already categorized incorrectly using Activation Verb
+		DBG_MESSAGE("Record HearthfireExtended ACTI {}(0x{:08x}) as critter", apiaryForm->GetName(), apiaryForm->GetFormID());
+		ForceObjectTypeForForm(apiaryForm->GetFormID(), ObjectType::critter);
+		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
+		AddFirehose(apiaryForm);
+	}
+}
+
 void DataCase::IncludeBSBruma()
 {
 	static std::string espName("BSAssets.esm");
@@ -723,6 +738,7 @@ void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
 		return;
 	// looted REFR was 'blocked while I am in this cell' before the triggering event was fired
 	m_firehoseSources.insert(refr->GetFormID());
+	BlockReference(refr, Lootability::CannotRelootFirehoseSource);
 }
 
 void DataCase::ForgetFirehoseSources()
@@ -731,16 +747,26 @@ void DataCase::ForgetFirehoseSources()
 	m_firehoseSources.clear();
 }
 
-
-bool DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
+bool DataCase::IsFirehose(const RE::TESForm* form) const
 {
-	if (!refr)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (refr->IsDynamicForm())
-		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (m_blockRefr.insert({ refr->GetFormID(), reason })).second;
+	return m_firehoseForms.contains(form);
+}
+
+void DataCase::AddFirehose(const RE::TESForm* form)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	m_firehoseForms.insert(form);
+}
+
+void DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
+{
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (!refr || refr->IsDynamicForm())
+		return;
+	RecursiveLockGuard guard(m_blockListLock);
+	// store most recently-generated value
+	m_blockRefr[refr->GetFormID()] = reason;
 }
 
 Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
@@ -765,10 +791,11 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		ForgetFirehoseSources();
 		return;
 	}
-	// Volcanic dig sites from Fossil Mining are only cleared on game reload, to simulate the 30 day delay in
-	// the mining script. Only allow one auto-mining visit per gaming session, unless player dies.
-	// The same goes for Firehose item sources, currently the BYOH mined materials
-	decltype(m_firehoseSources) volcanicDigSites(m_firehoseSources);
+	// Volcanic dig sites from Fossil Mining and firehose item sources are only cleared on game reload,
+	// to simulate the delay in becoming lootable again.
+	// Only allow one auto-loot visit per gaming session, unless player dies.
+	// Firehose item sources are BYOH mined materials and HearthfiresExtended Apiary
+	decltype(m_firehoseSources) firehouseSources(m_firehoseSources);
 	for (const auto refrID : m_blockRefr)
 	{
 		RE::TESForm* form(RE::TESForm::LookupByID(refrID.first));
@@ -780,12 +807,12 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
-			volcanicDigSites.insert(refrID.first);
+			firehouseSources.insert(refrID.first);
 		}
 	}
 	DBG_MESSAGE("Reset blocked REFRs apart from {} volcanic and {} firehose",
-		volcanicDigSites.size() - m_firehoseSources.size(), m_firehoseSources.size());
-	for (const auto digSite : volcanicDigSites)
+		firehouseSources.size() - m_firehoseSources.size(), m_firehoseSources.size());
+	for (const auto digSite : firehouseSources)
 	{
 		m_blockRefr.insert({ digSite, Lootability::CannotRelootFirehoseSource });
 	}
@@ -928,6 +955,11 @@ ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
 bool DataCase::SetObjectTypeForForm(RE::FormID formID, ObjectType objectType)
 {
 	return m_objectTypeByForm.insert(std::make_pair(formID, objectType)).second;
+}
+
+void DataCase::ForceObjectTypeForForm(RE::FormID formID, ObjectType objectType)
+{
+	m_objectTypeByForm[formID] = objectType;
 }
 
 ObjectType DataCase::GetObjectTypeForFormType(RE::FormType formType) const
@@ -1117,6 +1149,8 @@ void DataCase::HandleExceptions()
 	IncludeFossilMiningExcavation();
 	// whitelist CorpseToCoinage producer
 	IncludeCorpseCoinage();
+	// whitelist Hearthfire Extended Apiary
+	IncludeHearthfireExtendedApiary();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
@@ -1379,6 +1413,19 @@ void DataCase::CategorizeStatics()
 	m_objectTypeByForm[LockPick] = ObjectType::lockpick;
 	m_objectTypeByForm[Gold] = ObjectType::septims;
 	m_objectTypeByForm[WispCore] = ObjectType::critter;
+
+	// record firehose BYOH materials
+	static std::string hearthFiresName("HearthFires.esm");
+	static std::vector<RE::FormID> clayOrStone({ 0x9f2, 0x9f3, 0xA14, 0x306b, 0x310b, 0xa511 });
+	for (const auto clayOrStoneFormID : clayOrStone)
+	{
+		RE::TESForm* clayOrStoneForm(RE::TESDataHandler::GetSingleton()->LookupForm(clayOrStoneFormID, hearthFiresName));
+		if (clayOrStoneForm)
+		{
+			DBG_MESSAGE("Record HearthFires Clay Or Stone {}(0x{:08x}) as firehose", clayOrStoneForm->GetName(), clayOrStoneForm->GetFormID());
+			AddFirehose(clayOrStoneForm);
+		}
+	}
 }
 
 template <>

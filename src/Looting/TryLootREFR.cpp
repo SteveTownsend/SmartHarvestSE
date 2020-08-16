@@ -323,13 +323,25 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::ItemTheftTriggered;
 		}
 
+		const bool isFirehose(DataCase::GetInstance()->IsFirehose(m_candidate->GetBaseObject()));
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
 			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
-			bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
-			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
+			const bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
+			const bool mineAll(LootingTypeFromIniSetting(
+				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, "oreVein")) == LootingType::LootOreVeinAlways);
+			if (!isFirehose || mineAll)
+			{
+				EventPublisher::Instance().TriggerMining(
+					m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify, isFirehose);
+				if (isFirehose)
+				{
+					// do not revisit over-generous sources any time soon - this is stronger than the oreVein temp block
+					DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+				}
+			}
 		}
 		else
 		{
@@ -343,6 +355,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
+			if (isFirehose)
+			{
+				// do not revisit over-generous sources any time soon
+				DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+			}
 		}
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)

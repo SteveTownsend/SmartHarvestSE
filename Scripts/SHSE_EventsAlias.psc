@@ -5,6 +5,7 @@ import SHSE_MCM
 GlobalVariable Property g_LootingEnabled Auto
 int CACOModIndex
 int FossilMiningModIndex
+int HearthfireExtendedModIndex
 bool scanActive
 
 GlobalVariable StrikesBeforeCollection
@@ -64,9 +65,6 @@ int location_type_whitelist
 int location_type_blacklist
 
 int maxMiningItems
-int oreMiningOption
-int oreMiningTakeAll
-
 int infiniteWeight
 
 int glowReasonLockedContainer
@@ -266,8 +264,6 @@ Function SyncUpdatedNativeDataTypes()
     location_type_whitelist = 1
     location_type_blacklist = 2
 
-    oreMiningTakeAll = 2
-
     infiniteWeight = 100000
 endFunction
 
@@ -283,10 +279,8 @@ Function ResetCollections()
     currentAddedItem = 0
 EndFunction
 
-Function ApplySetting(bool reload, int oreMining)
+Function ApplySetting(bool reload)
     ;DebugTrace("eventScript ApplySetting start")
-    oreMiningOption = oreMining
-    ;DebugTrace("oreMiningOption = " + oreMiningOption)
     UnregisterForAllKeys()
     UnregisterForMenu("Loading Menu")
 
@@ -311,20 +305,26 @@ Function ApplySetting(bool reload, int oreMining)
 
     ;update CACO index in load order, to handle custom ore mining
     CACOModIndex = Game.GetModByName("Complete Alchemy & Cooking Overhaul.esp")
-    if (CACOModIndex != 255)
+    if CACOModIndex != 255
         ;DebugTrace("CACO mod index: " + CACOModIndex)
         StrikesBeforeCollection = Game.GetFormFromFile(0xCC0503,"Update.esm") as GlobalVariable
     endif
 
     ;update Fossil Mining index in load order, to handle fossil handout after mining
     FossilMiningModIndex = Game.GetModByName("Fossilsyum.esp")
-    if (FossilMiningModIndex != 255)
+    if FossilMiningModIndex != 255
         ;DebugTrace("Fossil Mining mod index: " + FossilMiningModIndex)
         FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
+    endif
+
+    ;update Hearthfire Extended index in load order, to handle Apiary ACTI
+    HearthfireExtendedModIndex = Game.GetModByName("hearthfireextended.esp")
+    if HearthfireExtendedModIndex != 255
+        ;DebugTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
     endif
 
     if reload
@@ -530,23 +530,24 @@ Function RecordItem(Form akBaseItem)
     currentAddedItem += 1
 EndFunction
 
-bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage = false)
+bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount)
     bool bShowHUD = Utility.GetINIBool("bShowHUDMessages:Interface")
     if (bShowHUD && suppressMessage)
         Utility.SetINIBool("bShowHUDMessages:Interface", false)
     endif
-    bool result = akTarget.Activate(akActivator)
+    int activated = 0
+    bool result = True
+    while result && activated < activateCount
+        result = akTarget.Activate(akActivator)
+        activated += 1
+    endWhile
     if (bShowHUD && suppressMessage)
         Utility.SetINIBool("bShowHUDMessages:Interface", true)
     endif
     return result
 endFunction
 
-bool Function isOverlyGenerousResource(string oreName)
-    return oreName == "Quarried Stone" || oreName == "Clay"
-endFunction
-
-Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify)
+Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify, bool isFirehose)
     ;DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
     ;DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
     int miningStrikes = 0
@@ -564,39 +565,34 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         int available = oreScript.ResourceCountCurrent
         int mined = 0
         oreName = oreScript.ore.GetName()
-        ; do not harvest firehose unless set in config
-        if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
-            bool useSperg = spergProspector && player.HasPerk(spergProspector)
-            if useSperg
-                PrepareSPERGMining()
-            endif
-            if (available == -1)
-                ;DebugTrace("Vein not yet initialized, start mining")
-            else
-                ;DebugTrace("Vein has ore available: " + available)
-            endif
-
-            ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
-            ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-            while OKToScan() && available != 0 && mined < maxMiningItems
-                ;DebugTrace("Trigger harvesting")
-                oreScript.giveOre()
-                mined += oreScript.ResourceCount
-                ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
-                available = oreScript.ResourceCountCurrent
-                miningStrikes += 1
-            endwhile
-            if !OKToScan()
-                AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
-            endIf
-            ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
-            if useSperg
-                PostprocessSPERGMining()
-            endif
-            FOSStrikesBeforeFossil = 6
+        bool useSperg = spergProspector && player.HasPerk(spergProspector)
+        if useSperg
+            PrepareSPERGMining()
+        endif
+        if (available == -1)
+            ;DebugTrace("Vein not yet initialized, start mining")
         else
-            ;DebugTrace("Ignoring firehose source")
+            ;DebugTrace("Vein has ore available: " + available)
+        endif
+
+        ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+        ; in ResourceCount and the remaining amount in ResourceCountCurrent 
+        while OKToScan() && available != 0 && mined < maxMiningItems
+            ;DebugTrace("Trigger harvesting")
+            oreScript.giveOre()
+            mined += oreScript.ResourceCount
+            ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
+            available = oreScript.ResourceCountCurrent
+            miningStrikes += 1
+        endwhile
+        if !OKToScan()
+            AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
         endIf
+        ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+        if useSperg
+            PostprocessSPERGMining()
+        endif
+        FOSStrikesBeforeFossil = 6
         handled = true
     endif
     ; CACO provides its own mining script, unfortunately not derived from baseline though largely identical
@@ -615,30 +611,26 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             endif
             int mined = 0
             ; do not harvest firehose unless set in config
-            if !isOverlyGenerousResource(oreName) || oreMiningOption == oreMiningTakeAll
-                if (available == -1)
-                    ;DebugTrace("CACO ore vein not yet initialized, start mining")
-                else
-                    ;DebugTrace("CACO ore vein has ore available: " + available)
-                endif
-
-                ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
-                ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-                while OKToScan() && available != 0 && mined < maxMiningItems
-                    ;DebugTrace("Trigger CACO ore harvesting")
-                    cacoMinable.giveOre()
-                    mined += cacoMinable.ResourceCount
-                    ;DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
-                    available = cacoMinable.ResourceCountCurrent
-                    miningStrikes += 1
-                endwhile
-                if !OKToScan()
-                    AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " " + orename + " obtained")
-                endIf
-                ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            if (available == -1)
+                ;DebugTrace("CACO ore vein not yet initialized, start mining")
             else
-                ;DebugTrace("Ignoring firehose source (CACO)")
+                ;DebugTrace("CACO ore vein has ore available: " + available)
+            endif
+
+            ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+            ; in ResourceCount and the remaining amount in ResourceCountCurrent 
+            while OKToScan() && available != 0 && mined < maxMiningItems
+                ;DebugTrace("Trigger CACO ore harvesting")
+                cacoMinable.giveOre()
+                mined += cacoMinable.ResourceCount
+                ;DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
+                available = cacoMinable.ResourceCountCurrent
+                miningStrikes += 1
+            endwhile
+            if !OKToScan()
+                AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " " + orename + " obtained")
             endIf
+            ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
             handled = true
         endif
     endif
@@ -663,9 +655,8 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         endif
     endif
 
-    if (isOverlyGenerousResource(oreName))
-        ;DebugTrace("Block firehose resource " + akMineable + "/" + akMineable.GetBaseObject() + " until game reload")
-        BlockFirehose(akMineable)
+    if isFirehose
+        ; no-op
 
     elseif (miningStrikes > 0 && FossilMiningModIndex != 255 && resourceType != resource_VolcanicDigSite)
         ; Fossil Mining Drop Logic from oreVein per Fos_AttackMineAlias.psc, bypassing the FURN.
@@ -694,6 +685,18 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
 
 EndEvent
 
+int Function SupportedCritterActivateCount(ObjectReference target)
+    if target as Critter || target as FXFakeCritterScript || target as WispCoreScript
+        return 1
+    endIf
+    if HearthfireExtendedModIndex != 255 && target as KmodApiaryScript
+        return 5
+    endIf
+    ; 'not a critter' sentinel
+    return 0
+EndFunction
+
+
 Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool collectible, float ingredientCount)
     bool notify = false
     form baseForm = akTarget.GetBaseObject()
@@ -713,30 +716,33 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 
     elseif (!akTarget.IsActivationBlocked())
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
-            ActivateEx(akTarget, player, silent)
+            ActivateEx(akTarget, player, silent, 1)
 
         elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
             ;DebugTrace("Player has ingredient count " + ingredientCount)
             bool suppressMessage = silent || ingredientCount as int > 1
             ;DebugTrace("Flora/Tree original base form " + baseForm.GetName())
-            if ActivateEx(akTarget, player, suppressMessage)
+            if ActivateEx(akTarget, player, suppressMessage, 1)
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
                 count = count * ingredientCount as int
             endif
         ; Critter ACTI REFRs cannot be identified by item type
-        elseif akTarget as Critter || akTarget as FXfakeCritterScript
-            ;DebugTrace("Critter " + baseForm.GetName())
-            ActivateEx(akTarget, player, silent)
-        elseif ActivateEx(akTarget, player, true)
-            notify = !silent
-            if count >= 2
-                ; work round for ObjectReference.Activate() known issue
-                ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
-                int toGet = count - 1
-                player.AddItem(baseForm, toGet, true)
-                ;DebugTrace("Add extra count " + toGet + " of " + baseForm)
+        else
+            int critterActivations = SupportedCritterActivateCount(akTarget)
+            if critterActivations > 0
+                ;DebugTrace("Critter " + baseForm.GetName())
+                ActivateEx(akTarget, player, silent, critterActivations)
+            elseif ActivateEx(akTarget, player, true, 1)
+                notify = !silent
+                if count >= 2
+                    ; work round for ObjectReference.Activate() known issue
+                    ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
+                    int toGet = count - 1
+                    player.AddItem(baseForm, toGet, true)
+                    ;DebugTrace("Add extra count " + toGet + " of " + baseForm)
+                endIf
             endIf
         endif
         if collectible
@@ -787,6 +793,9 @@ endEvent
 
 Event OnGetProducerLootable(ObjectReference akTarget)
     ;DebugTrace("OnGetProducerLootable " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
+    if SupportedCritterActivateCount(akTarget) == 0
+        return
+    endIf
     Form baseForm = akTarget.GetBaseObject()
     Critter thisCritter = akTarget as Critter
     if thisCritter
@@ -824,6 +833,15 @@ Event OnGetProducerLootable(ObjectReference akTarget)
     if wispCore
         SetLootableForProducer(baseForm, wispCore.glowDust)
         return
+    endIf
+    ; handle modified apiary if present
+    if HearthfireExtendedModIndex != 255
+        KmodApiaryScript apiary = akTarget as KmodApiaryScript
+        if apiary
+            ; there are three items: we choose the critter for loot rule checking, but all items should be looted
+            SetLootableForProducer(baseForm, apiary.CritterBeeIngredient)
+            return
+        endIf
     endIf
 endEvent
 

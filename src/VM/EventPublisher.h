@@ -38,7 +38,7 @@ public:
 	void TriggerGetProducerLootable(RE::TESObjectREFR* refr);
 	void TriggerCarryWeightDelta(const int delta);
 	void TriggerResetCarryWeight();
-	void TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify);
+	void TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify, const bool isFirehose);
 	void TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType objType, int itemCount, const bool isSilent,
 		const bool collectible, const float ingredientCount);
 	void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const bool collectible);
@@ -58,7 +58,7 @@ private:
 	SKSE::RegistrationSet<int> m_onCarryWeightDelta;
 	SKSE::RegistrationSet<> m_onResetCarryWeight;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int, bool, bool, float> m_onHarvest;
-	SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool> m_onMining;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool, bool> m_onMining;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int, bool> m_onLootFromNPC;
 	SKSE::RegistrationSet<> m_onFlushAddedItems;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
