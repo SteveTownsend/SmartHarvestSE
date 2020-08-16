@@ -22,7 +22,9 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/utils.h"
 
 #include <shlobj.h>
+#ifdef _PROFILING
 #include <psapi.h>
+#endif
 #include <fstream>
 #include <sstream>
 #include <iomanip>
