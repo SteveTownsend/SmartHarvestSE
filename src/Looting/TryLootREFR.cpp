@@ -100,7 +100,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				{
 					if (!dryRun)
 					{
-						ProcessManualLootItem(m_candidate);
+						// print message about loose REFR
+						ProcessManualLootREFR(m_candidate);
 					}
 					//we do not want to blacklist the base object even if it's not a proper objectType
 					return Lootability::ManualLootTarget;
@@ -509,13 +510,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				// this is not a blocker for looting of non-special items
 				lister.ExcludeCollectibleItems();
 
-				if (lister.CollectibleAction() == CollectibleHandling::Glow)
+				if (collectibleAction == CollectibleHandling::Glow)
 				{
 					DBG_VMESSAGE("glow container with collectible object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::Collectible);
 					result = Lootability::CollectibleItemSetToGlow;
 				}
-				else if (lister.CollectibleAction() == CollectibleHandling::Print)
+				else if (collectibleAction == CollectibleHandling::Print)
 				{
 					result = Lootability::ManualLootTarget;
 				}
@@ -603,8 +604,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				bool hasEnchantment = GetEnchantmentFromExtraLists(targetItemInfo.GetExtraDataLists()) != nullptr;
 				if (hasEnchantment) {
-					DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment",
-						targetItemInfo.BoundObject()->GetName(), targetItemInfo.BoundObject()->GetFormID());
+					DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment", target->GetName(), target->GetFormID());
 					switch (objType)
 					{
 					case ObjectType::weapon:
@@ -624,18 +624,28 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			LootingType lootingType(LootingType::LeaveBehind);
 			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-				ConditionMatcher(targetItemInfo.BoundObject(), m_targetType)));
+				ConditionMatcher(target, m_targetType)));
 			if (collectible.first)
 			{
-				if (CanLootCollectible(collectible.second))
+				CollectibleHandling collectibleAction(collectible.second);
+				if (CanLootCollectible(collectibleAction))
 				{
-					DBG_VMESSAGE("Collectible Item 0x{:08x}", targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("Collectible Item 0x{:08x}", target->formID);
 					lootingType = LootingType::LootAlwaysSilent;
+				}
+				else if (collectibleAction == CollectibleHandling::Print)
+				{
+					if (!dryRun)
+					{
+						// print message about container item
+						ProcessManualLootItem(target);
+					}
+					continue;
 				}
 				else
 				{
 					// blacklisted or 'glow'
-					DBG_VMESSAGE("Collectible Item 0x{:08x} skipped", targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("Collectible Item 0x{:08x} skipped", target->formID);
 					continue;
 				}
 			}

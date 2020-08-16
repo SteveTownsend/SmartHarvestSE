@@ -389,7 +389,7 @@ namespace papyrus
 
 	void NotifyManualLootItem(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
-		shse::ProcessManualLootItem(refr);
+		shse::ProcessManualLootREFR(refr);
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
