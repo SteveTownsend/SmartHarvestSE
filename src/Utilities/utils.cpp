@@ -148,11 +148,13 @@ namespace WindowsUtils
 
 	void LogProcessWorkingSet()
 	{
+#ifdef _PROFILING
 		PROCESS_MEMORY_COUNTERS pmc;
 		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
 		{
 			REL_MESSAGE("Working Set is {:0.3f} MB", double(pmc.WorkingSetSize) / (1024.0 * 1024.0));
 		}
+#endif
 	}
 
 	ScopedTimer::ScopedTimer(const std::string& context) : m_startTime(microsecondsNow()), m_context(context) {}
