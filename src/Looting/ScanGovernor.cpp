@@ -32,6 +32,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/LootableREFR.h"
 #include "WorldState/PopulationCenters.h"
 #include "FormHelpers/FormHelper.h"
+#include "Looting/NPCFilter.h"
 #include "Looting/ReferenceFilter.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
@@ -310,6 +311,10 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				else if (IsQuestTargetNPC(actor))
 				{
 					exclusionType = Lootability::CannotLootQuestTarget;
+				}
+				else if (!NPCFilter::Instance().IsLootable(actor->GetActorBase()))
+				{
+					exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
 				}
 				if (exclusionType != Lootability::Lootable)
 				{

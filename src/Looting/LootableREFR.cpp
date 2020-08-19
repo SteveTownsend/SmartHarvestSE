@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "FormHelpers/FormHelper.h"
 #include "Looting/objects.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -39,7 +40,7 @@ bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
 	if (!m_ref)
 		return false;
 	// check REFR vs pre-populated Quest Targets
-	if (DataCase::GetInstance()->ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
+	if (QuestTargets::Instance().ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
 		return true;
 
 	RE::RefHandle handle;

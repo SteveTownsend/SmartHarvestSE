@@ -368,6 +368,7 @@ enum class Lootability {
 	ProducerHasNoLootable,
 	ContainerBlacklistedByUser,
 	DeadBodyBlacklistedByUser,
+	NPCExcludedByDeadBodyFilter,
 	MAX
 };
 

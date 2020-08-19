@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Looting/ManagedLists.h"
 #include "Collections/CollectionManager.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -168,7 +169,7 @@ bool IsSummoned(const RE::Actor* actor)
 bool IsQuestTargetNPC(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
-	bool result(npc && DataCase::GetInstance()->QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
+	bool result(npc && QuestTargets::Instance().QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
 	DBG_DMESSAGE("Actor is Quest Target NPC = {}", result ? "true" : "false");
 	return result;
 }

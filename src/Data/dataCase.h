@@ -60,9 +60,6 @@ public:
 
 	bool ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const;
 
-	Lootability ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const;
-	Lootability QuestTargetLootability(const RE::TESForm* form) const;
-
 	ObjectType GetFormObjectType(RE::FormID formID) const;
 	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
 	void ForceObjectTypeForForm(RE::FormID formID, ObjectType objectType);
@@ -118,7 +115,6 @@ private:
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
-	std::unordered_set<const RE::TESForm*> m_questTargets;
 	std::unordered_set<const RE::TESForm*> m_firehoseForms;
 	std::unordered_set<RE::FormID> m_firehoseSources;
 	std::unordered_map<RE::FormID, Lootability> m_blockRefr;
@@ -425,9 +421,6 @@ private:
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();
-	void ExcludeQuestTargets();
-	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
-	bool BlacklistQuestTargetNPC(const RE::TESNPC* npc);
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)

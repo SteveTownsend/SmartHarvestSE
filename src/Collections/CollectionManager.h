@@ -66,8 +66,6 @@ public:
 
 	size_t TotalItems(const std::string& groupName, const std::string& collectionName) const;
 	size_t ItemsObtained(const std::string& groupName, const std::string& collectionName) const;
-	bool IsPlacedObject(const RE::TESForm* form) const;
-	void RecordPlacedObjects(void);
 
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& j);
@@ -77,10 +75,6 @@ private:
 	bool LoadCollectionGroup(
 		const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator);
 	void BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup);
-	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
-	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
-	bool IsCellLocatable(const RE::TESObjectCELL* cell);
-	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 	void RecordCollectibleForm(
 		const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
 		std::unordered_set<const RE::TESForm*>& uniquePlaced, std::unordered_set<const RE::TESForm*>& uniqueMembers);
@@ -106,11 +100,6 @@ private:
 	// Link each Form to the Collections in which it belongs
 	std::unordered_multimap<RE::FormID, std::shared_ptr<Collection>> m_collectionsByFormID;
 	std::unordered_set<RE::FormID> m_nonCollectionForms;
-	std::unordered_set<const RE::TESForm*> m_placedItems;
-	std::unordered_multimap<const RE::TESForm*, const RE::TESObjectREFR*> m_placedObjects;
-	std::unordered_set<const RE::TESObjectCELL*> m_checkedForPlacedObjects;
-	// for CELL connectivity checking during data load
-	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 
 	std::vector<const RE::TESForm*> m_addedItemQueue;
 	std::unordered_set<const RE::TESForm*> m_lastInventoryCollectibles;

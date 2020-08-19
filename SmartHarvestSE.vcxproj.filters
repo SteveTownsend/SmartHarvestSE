@@ -157,6 +157,15 @@
     <ClCompile Include="src\WorldState\AdventureTargets.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
+    <ClCompile Include="src\Looting\NPCFilter.cpp">
+      <Filter>src\Looting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WorldState\PlacedObjects.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WorldState\QuestTargets.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -324,6 +333,15 @@
     <ClInclude Include="src\WorldState\AdventureTargets.h">
       <Filter>src\WorldState</Filter>
     </ClInclude>
+    <ClInclude Include="src\Looting\NPCFilter.h">
+      <Filter>src\Looting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\PlacedObjects.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\QuestTargets.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">
@@ -377,6 +395,9 @@
     <Filter Include="src\alglib">
       <UniqueIdentifier>{1d6e1faa-e6bf-4ae8-8ece-658e06abe5fa}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Filters">
+      <UniqueIdentifier>{f7416c91-6f98-40bb-b2c3-33bff5426b58}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
@@ -426,6 +447,12 @@
     </None>
     <None Include="Collections\Examples\SHSE.Collections.LoTD2.json">
       <Filter>Collections\Examples</Filter>
+    </None>
+    <None Include="Filters\SHSE.SchemaFilters.json">
+      <Filter>Filters</Filter>
+    </None>
+    <None Include="Filters\SHSE.Filter.DeadBody.json">
+      <Filter>Filters</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

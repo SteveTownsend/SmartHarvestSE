@@ -29,9 +29,11 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/ActorTracker.h"
 #include "WorldState/AdventureTargets.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/PlacedObjects.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -132,7 +134,14 @@ bool PluginFacade::Load()
 	PopulationCenters::Instance().Categorize();
 	AdventureTargets::Instance().Categorize();
 
-	// Collections are layered on top of categorized objects
+	REL_MESSAGE("*** LOAD *** Record Placed Objects");
+	shse::PlacedObjects::Instance().RecordPlacedObjects();
+
+	// Quest Target identification relies on Placed Objects analysis
+	REL_MESSAGE("*** LOAD *** Analyze Quest Targets");
+	shse::QuestTargets::Instance().Analyze();
+
+	// Collections are layered on top of categorized and placed objects
 	REL_MESSAGE("*** LOAD *** Build Collections");
 	shse::CollectionManager::Instance().ProcessDefinitions();
 

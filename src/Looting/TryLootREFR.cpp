@@ -205,7 +205,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 
 		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
-		Lootability forbidden(ItemLootingLegality(collectible.first));
+		Lootability forbidden(ItemLootingLegality(collectible.first, m_targetType));
 		if (forbidden != Lootability::Lootable)
 		{
 			skipLooting = true;
@@ -683,7 +683,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			// crime-check this REFR from the container as individual object, respecting collectibility if not a crime
-			if (ItemLootingLegality(collectible.first) != Lootability::Lootable)
+			if (ItemLootingLegality(collectible.first, m_targetType) != Lootability::Lootable)
 			{
 				continue;
 			}
@@ -827,9 +827,9 @@ void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bo
 	}
 }
 
-Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible)
+Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible, INIFile::SecondaryType targetType)
 {
-	Lootability result(LootingLegality(INIFile::SecondaryType::itemObjects));
+	Lootability result(LootingLegality(targetType));
 	if (isCollectible && LootOwnedItemIfCollectible(result))
 	{
 		DBG_VMESSAGE("Collectible REFR 0x{:08x} overrides Legality {} for {}/0x{:08x}", m_candidate->GetFormID(), LootabilityName(result).c_str(),

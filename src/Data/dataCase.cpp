@@ -32,6 +32,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerState.h"
 #include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
+#include "Looting/NPCFilter.h"
 
 namespace
 {
@@ -518,81 +519,6 @@ void DataCase::ExcludeMissivesBoards()
 	}
 }
 
-void DataCase::ExcludeQuestTargets()
-{
-	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
-	{
-		DBG_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
-		for (const auto alias : quest->aliases)
-		{
-			// Blacklist item if it is a quest ref-alias object
-			if (alias->IsQuestObject() && alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID)
-			{
-				RE::BGSRefAlias* refAlias(static_cast<RE::BGSRefAlias*>(alias));
-				if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated)
-				{
-					if (refAlias->fillData.created.object)
-					{
-						if (BlacklistQuestTargetItem(refAlias->fillData.created.object))
-						{
-							DBG_MESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x}",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
-						}
-						else
-						{
-							DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
-						}
-					}
-				}
-				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced)
-				{
-					if (refAlias->fillData.forced.forcedRef)
-					{
-						RE::TESObjectREFR* refr(refAlias->fillData.forced.forcedRef.get().get());
-						if (refr && refr->GetBaseObject())
-						{
-							DBG_VMESSAGE("Forced RefAlias has ALFR {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							if (BlacklistQuestTargetItem(refr->GetBaseObject()))
-							{
-								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item {}/0x{:08x}",
-									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							}
-							else
-							{
-								DBG_MESSAGE("Skip Forced RefAlias ALFR {}/0x{:08x}",
-									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							}
-						}
-					}
-				}
-				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
-				{
-					// Quest NPC should not be looted
-					if (refAlias->fillData.uniqueActor.uniqueActor)
-					{
-						if (BlacklistQuestTargetNPC(refAlias->fillData.uniqueActor.uniqueActor))
-						{
-							DBG_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
-								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
-						}
-						else
-						{
-							DBG_VMESSAGE("Skip UniqueActor RefAlias ALUA {}/0x{:08x}",
-								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
-						}
-					}
-				}
-				else
-				{
-					DBG_VMESSAGE("RefAlias skipped for Quest: {}/0x{:08x} - unsupported RefAlias fill-type {}",
-						quest->GetName(), quest->GetFormID(), refAlias->fillType.underlying());
-				}
-			}
-		}
-	}
-}
-
 void DataCase::IncludeFossilMiningExcavation()
 {
 	static std::string espName("Fossilsyum.esp");
@@ -894,56 +820,6 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 	return (m_permanentBlockedForms.insert({ form, reason })).second;
 }
 
-// used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
-bool DataCase::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
-{
-	if (!FormUtils::IsConcrete(item))
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (item->IsDynamicForm())
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return (m_questTargets.insert(item)).second;
-}
-
-// used for Quest Target NPCs. Blocks autoloot of the NPC, to preserve immersion and avoid breaking Quests.
-bool DataCase::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
-{
-	if (!npc)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (npc->IsDynamicForm())
-		return false;
-	std::string name(npc->GetName());
-	if (name.empty())
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return (m_questTargets.insert(npc)).second;
-}
-
-Lootability DataCase::ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const
-{
-	if (!refr)
-		return Lootability::NullReference;
-	return QuestTargetLootability(refr->GetBaseObject());
-}
-
-Lootability DataCase::QuestTargetLootability(const RE::TESForm* form) const
-{
-	if (!form)
-		return Lootability::NoBaseObject;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
-	if (form->IsDynamicForm())
-		return Lootability::Lootable;
-	RecursiveLockGuard guard(m_blockListLock);
-	const auto matched(m_questTargets.find(form));
-	if (matched != m_questTargets.cend())
-	{
-		return Lootability::CannotLootQuestTarget;
-	}
-	return Lootability::Lootable;
-}
-
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
 {
 	const auto entry(m_objectTypeByForm.find(formID));
@@ -1122,6 +998,10 @@ void DataCase::CategorizeLootables()
 	DBG_MESSAGE("*** LOAD *** Analyze Perks");
 	AnalyzePerks();
 
+	// Analyze NPC Race and Keywords for dead body filtering
+	DBG_MESSAGE("*** LOAD *** Analyze NPC Race and Keywords");
+	NPCFilter::Instance().Load();
+
 	// Handle any special cases based on Load Order, including base game 'known exceptions'
 	REL_MESSAGE("*** LOAD *** Detect and Handle Exceptions");
 	HandleExceptions();
@@ -1137,8 +1017,6 @@ void DataCase::HandleExceptions()
 
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();
-
-	ExcludeQuestTargets();
 
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();

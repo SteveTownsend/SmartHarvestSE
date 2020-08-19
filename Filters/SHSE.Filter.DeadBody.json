@@ -1,0 +1,50 @@
+{
+  "$comment": "Keyword filters in RACE and NPC_",
+  "$schema": "./SHSE.SchemaFilters.json",
+  "npc": {
+    "$comment": "Exclude humanoids, include non-humanoids (subjective)",
+    "defaultLoot": true,
+    "excludePlayerRace": true,
+    "orderedFilter": [
+      {
+        "priority": 1,
+        "exclude": {
+          "faction": [
+            "Dremora Faction",
+            "Falmer",
+            "GuardFaction (makes an actor a guard)",
+            "SilverHandFaction"
+          ],
+          "race": [
+            "DLC2RieklingRace",
+            "DLC2MountedRieklingRace"
+          ]
+        },
+        "include": {
+          "faction": [
+            "Dwarven Automaton Faction",
+            "Dragon Faction"
+          ],
+          "race": [
+            "Draugr"
+          ]
+        }
+      },
+      {
+        "priority": 2,
+        "exclude": {
+          "keyword": [
+            "ActorTypeNPC",
+            "IsBeastRace"
+          ]
+        },
+        "include": {
+          "keyword": [
+            "ActorTypeAnimal",
+            "ActorTypeCreature"
+          ]
+        }
+      }
+    ]
+  }
+}

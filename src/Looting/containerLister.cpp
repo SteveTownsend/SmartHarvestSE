@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -116,7 +117,7 @@ size_t ContainerLister::AnalyzeLootableItems()
 				continue;
 
 			// Check for enchantment or quest target
-			if (DataCase::GetInstance()->QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
+			if (QuestTargets::Instance().QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
 			{
 				m_questItems.insert(item);
 			}
