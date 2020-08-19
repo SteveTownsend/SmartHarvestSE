@@ -333,28 +333,34 @@ bool CollectionManager::LoadData(void)
 
 	REL_MESSAGE("JSON Schema {} parsed and validated", filePath.c_str());
 
-	// Find and Load Collection Definitions using the validated schema
-	const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json$");
-	for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
-	{
-		if (!std::filesystem::is_regular_file(nextFile))
+	try {
+		// Find and Load Collection Definitions using the validated schema
+		const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json$");
+		for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
 		{
-			DBG_MESSAGE("Skip {}, not a regular file", nextFile.path().generic_string().c_str());
-			continue;
-		}
-		std::string fileName(nextFile.path().filename().generic_string());
-		std::smatch matches;
-		if (!std::regex_search(fileName, matches, collectionsFilePattern))
-		{
-			DBG_MESSAGE("Skip {}, does not match Collections filename pattern", fileName.c_str());
+			if (!std::filesystem::is_regular_file(nextFile))
+			{
+				DBG_MESSAGE("Skip {}, not a regular file", nextFile.path().generic_string().c_str());
 				continue;
+			}
+			std::string fileName(nextFile.path().filename().generic_string());
+			std::smatch matches;
+			if (!std::regex_search(fileName, matches, collectionsFilePattern))
+			{
+				DBG_MESSAGE("Skip {}, does not match Collections filename pattern", fileName.c_str());
+					continue;
+			}
+			// capture string at index 1 is the Collection Name, always present after a regex match
+			REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", fileName.c_str(), matches[1].str().c_str());
+			if (LoadCollectionGroup(nextFile, matches[1].str(), validator))
+			{
+				REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", fileName.c_str(), matches[1].str().c_str());
+			}
 		}
-		// capture string at index 1 is the Collection Name, always present after a regex match
-		REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", fileName.c_str(), matches[1].str().c_str());
-		if (LoadCollectionGroup(nextFile, matches[1].str(), validator))
-		{
-			REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", fileName.c_str(), matches[1].str().c_str());
-		}
+	} catch (const std::exception& e) {
+		REL_ERROR("Collection Definitions not loadable: is the file target at {} inside 'Program Files' or another elevated-privilege location? Error:\n{}",
+			FileUtils::GetPluginPath(), e.what());
+		return false;
 	}
 	PrintDefinitions();
 	RecordPlacedObjects();
