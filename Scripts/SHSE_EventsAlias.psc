@@ -565,7 +565,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         int mined = 0
         bool useSperg = spergProspector && player.HasPerk(spergProspector)
         if useSperg
-            PrepareSPERGMining()
+            ;PrepareSPERGMining()
         endif
         if (available == -1)
             ;DebugTrace("Vein not yet initialized, start mining")
@@ -588,7 +588,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         endIf
         ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
         if useSperg
-            PostprocessSPERGMining()
+            ;PostprocessSPERGMining()
         endif
         FOSStrikesBeforeFossil = 6
         handled = true
