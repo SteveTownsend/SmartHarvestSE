@@ -19,6 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include "Utilities/utils.h"
+
 namespace shse
 {
 class OrderedFilter {
@@ -50,6 +52,7 @@ public:
 	bool IsLootable(const RE::TESNPC* npc) const;
 
 private:
+	bool IsLeveled(const RE::TESNPC* npc) const;
 
 	// no lock as all public functions are const once loaded
 	static std::unique_ptr<NPCFilter> m_instance;

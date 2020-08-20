@@ -554,7 +554,6 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     int targetResourceTotal = 0
     int strikesToCollect = 0
     MineOreScript oreScript = akMineable as MineOreScript
-    string oreName = ""
     int FOSStrikesBeforeFossil
     bool handled = false
     if (oreScript)
@@ -564,7 +563,6 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         strikesToCollect = oreScript.StrikesBeforeCollection
         int available = oreScript.ResourceCountCurrent
         int mined = 0
-        oreName = oreScript.ore.GetName()
         bool useSperg = spergProspector && player.HasPerk(spergProspector)
         if useSperg
             PrepareSPERGMining()
@@ -586,7 +584,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             miningStrikes += 1
         endwhile
         if !OKToScan()
-            AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " " + orename + " obtained")
+            AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " obtained")
         endIf
         ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
         if useSperg
@@ -604,11 +602,6 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             int available = cacoMinable.ResourceCountCurrent
             targetResourceTotal = cacoMinable.ResourceCountTotal
             strikesToCollect = cacoMinable.StrikesBeforeCollection
-            if cacoMinable.Ore
-                oreName = cacoMinable.Ore.GetName()
-            elseif cacoMinable.lItemGems10
-                oreName = "gems"
-            endif
             int mined = 0
             ; do not harvest firehose unless set in config
             if (available == -1)
@@ -628,7 +621,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 miningStrikes += 1
             endwhile
             if !OKToScan()
-                AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " " + orename + " obtained")
+                AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " obtained")
             endIf
             ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
             handled = true

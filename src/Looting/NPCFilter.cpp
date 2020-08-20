@@ -21,7 +21,6 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/NPCFilter.h"
 #include "Utilities/Exception.h"
-#include "Utilities/utils.h"
 #include "WorldState/PlayerState.h"
 
 namespace shse
@@ -46,32 +45,18 @@ OrderedFilter::OrderedFilter(const nlohmann::json& j) : m_priority(0)
 {
 	// parse includes/excludes, if either are present we proceed to build a dead body RACE/KYWD filter
 	std::unordered_set<std::string> excludeKeywords;
-	std::unordered_set<std::string> excludeRaces;
-	std::unordered_set<std::string> excludeFactions;
 	std::unordered_set<std::string> includeKeywords;
-	std::unordered_set<std::string> includeRaces;
-	std::unordered_set<std::string> includeFactions;
 	m_priority = j["priority"].get<unsigned int>();
 	if (j.contains("exclude"))
 	{
 		const nlohmann::json& excluded(j["exclude"]);
 		if (excluded.contains("race"))
 		{
-			const nlohmann::json& races(excluded["race"]);
-			for (const std::string& next : races)
-			{
-				DBG_MESSAGE("NPC Race {} excluded", next);
-				excludeRaces.insert(next);
-			}
+			m_excludeRaces = JSONUtils::ToForms<RE::TESRace>(excluded["race"]);
 		}
 		if (excluded.contains("faction"))
 		{
-			const nlohmann::json& factions(excluded["faction"]);
-			for (const std::string& next : factions)
-			{
-				DBG_MESSAGE("NPC Faction {} excluded", next);
-				excludeFactions.insert(next);
-			}
+			m_excludeFactions = JSONUtils::ToForms<RE::TESFaction>(excluded["faction"]);
 		}
 		if (excluded.contains("keyword"))
 		{
@@ -88,21 +73,11 @@ OrderedFilter::OrderedFilter(const nlohmann::json& j) : m_priority(0)
 		const nlohmann::json included(j["include"]);
 		if (included.contains("race"))
 		{
-			const nlohmann::json races(included["race"]);
-			for (const std::string& next : races)
-			{
-				DBG_MESSAGE("NPC Race {} included", next);
-				includeRaces.insert(next);
-			}
+			m_includeRaces = JSONUtils::ToForms<RE::TESRace>(included["race"]);
 		}
 		if (included.contains("faction"))
 		{
-			const nlohmann::json& factions(included["faction"]);
-			for (const std::string& next : factions)
-			{
-				DBG_MESSAGE("NPC Faction {} included", next);
-				includeFactions.insert(next);
-			}
+			m_includeFactions = JSONUtils::ToForms<RE::TESFaction>(included["faction"]);
 		}
 		if (included.contains("keyword"))
 		{
@@ -115,20 +90,28 @@ OrderedFilter::OrderedFilter(const nlohmann::json& j) : m_priority(0)
 		}
 	}
 
-	for (const auto& includeRace : includeRaces)
+	for (const auto& includeRace : m_includeRaces)
 	{
-		if (excludeRaces.contains(includeRace))
+		if (m_excludeRaces.contains(includeRace))
 		{
-			REL_WARNING("NPC Race {} is in include and exclude list", includeRace);
+			REL_WARNING("NPC Race {}/0x{:08x} is in include and exclude list", includeRace->GetName(), includeRace->GetFormID());
 		}
 	}
-	for (const auto& includeKeyword : includeKeywords)
+	for (const auto& includeFaction : m_includeFactions)
 	{
-		if (excludeKeywords.contains(includeKeyword))
+		if (m_excludeFactions.contains(includeFaction))
 		{
-			REL_WARNING("NPC Keyword {} is in include and exclude list", includeKeyword);
+			REL_WARNING("NPC Faction {}/0x{:08x} is in include and exclude list", includeFaction->GetName(), includeFaction->GetFormID());
 		}
 	}
+	for (const auto& includeKeyword : m_includeKeywords)
+	{
+		if (m_excludeKeywords.contains(includeKeyword))
+		{
+			REL_WARNING("NPC Keyword {}/0x{:08x} is in include and exclude list", FormUtils::SafeGetFormEditorID(includeKeyword), includeKeyword->GetFormID());
+		}
+	}
+
 	// Bucket configured Keywords into fast filters
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	for (const RE::BGSKeyword* keyword : dhnd->GetFormArray<RE::BGSKeyword>())
@@ -145,64 +128,6 @@ OrderedFilter::OrderedFilter(const nlohmann::json& j) : m_priority(0)
 		else if (includeKeywords.contains(keywordName))
 		{
 			m_includeKeywords.insert(keyword);
-		}
-	}
-	// Bucket configured Factions, Races and their Keywords into fast filters
-	for (const RE::TESFaction* faction : dhnd->GetFormArray<RE::TESFaction>())
-	{
-		std::string factionName(FormUtils::SafeGetFormEditorID(faction));
-		if (factionName.empty())
-			continue;
-		if (excludeFactions.contains(factionName))
-		{
-			REL_MESSAGE("Faction {}/0x{:08x} is excluded", factionName, faction->GetFormID());
-			m_excludeFactions.insert(faction);
-		}
-		else if (includeFactions.contains(factionName))
-		{
-			REL_MESSAGE("Faction {}/0x{:08x} is included", factionName, faction->GetFormID());
-			m_includeFactions.insert(faction);
-		}
-	}
-	for (const RE::TESRace* race : dhnd->GetFormArray<RE::TESRace>())
-	{
-		std::string raceName(FormUtils::SafeGetFormEditorID(race));
-		if (raceName.empty())
-			continue;
-		std::unordered_set<const RE::BGSKeyword*> keywords;
-		for (std::uint32_t index = 0; index < race->GetNumKeywords(); ++index)
-		{
-			std::optional<RE::BGSKeyword*> keyword(race->GetKeywordAt(index));
-			if (keyword.has_value())
-			{
-				std::string keywordName(FormUtils::SafeGetFormEditorID(keyword.value()));
-				if (keywordName.empty())
-				{
-					continue;
-				}
-				if (excludeKeywords.contains(keywordName))
-				{
-					REL_MESSAGE("Race {}/0x{:08x} has excluded Keyword {}/0x{:08x}", raceName, race->GetFormID(),
-						keywordName, keyword.value()->GetFormID());
-					m_excludeKeywords.insert(keyword.value());
-				}
-				else if (includeKeywords.contains(keywordName))
-				{
-					REL_MESSAGE("Race {}/0x{:08x} has included Keyword {}/0x{:08x}", raceName, race->GetFormID(),
-						keywordName, keyword.value()->GetFormID());
-					m_includeKeywords.insert(keyword.value());
-				}
-			}
-		}
-		if (excludeRaces.contains(raceName))
-		{
-			REL_MESSAGE("Race {}/0x{:08x} is excluded", raceName, race->GetFormID());
-			m_excludeRaces.insert(race);
-		}
-		else if (includeRaces.contains(raceName))
-		{
-			REL_MESSAGE("Race {}/0x{:08x} is included", raceName, race->GetFormID());
-			m_includeRaces.insert(race);
 		}
 	}
 }
@@ -328,11 +253,37 @@ void NPCFilter::Load()
 	// pretest all NPCs
 	m_logResults = true;
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	for (RE::TESNPC* npc : dhnd->GetFormArray<RE::TESNPC>())
+	for (const RE::TESNPC* npc : dhnd->GetFormArray<RE::TESNPC>())
 	{
+		// Unnamed NPCs are often Leveled at runtime, we won't loot such Records
+		if (std::string(npc->GetName()).empty())
+		{
+			REL_VMESSAGE("Skip unnamed NPC {}/0x{:08x}", npc->GetName(), npc->GetFormID());
+			continue;
+		}
+		// specific check for concreteness - follow chain of TPLTs: if we find LVLN then we won't see this NPC_ Record in the wild
+		if (IsLeveled(npc))
+		{
+			REL_VMESSAGE("Skip Leveled NPC {}/0x{:08x}", npc->GetName(), npc->GetFormID());
+			continue;
+		}
 		IsLootable(npc);
 	}
 	m_logResults = false;
+}
+
+bool NPCFilter::IsLeveled(const RE::TESNPC* npc) const
+{
+	const RE::TESForm* tplt(npc->baseTemplateForm);
+	while (tplt)
+	{
+		if (tplt->As<RE::TESLevCharacter>())
+			return true;
+		if (!tplt->As<RE::TESNPC>())
+			return true;
+		tplt = tplt->As<RE::TESNPC>()->baseTemplateForm;
+	}
+	return false;
 }
 
 bool NPCFilter::IsLootable(const RE::TESNPC* npc) const

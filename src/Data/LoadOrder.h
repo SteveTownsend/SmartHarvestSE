@@ -18,7 +18,14 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
-#include "Utilities/utils.h"
+
+constexpr RE::FormID ESPMask = 0xFF000000;
+constexpr RE::FormID FullRawMask = 0x00FFFFFF;
+constexpr RE::FormID ESPFETypeMask = 0xFE000000;
+constexpr RE::FormID ESPFEMask = 0xFEFFF000;
+constexpr RE::FormID ESPFERawMask = 0x00000FFF;
+constexpr RE::FormID InvalidForm = 0x0;
+constexpr RE::FormID InvalidPlugin = 0xFFFFFFFF;
 
 namespace shse
 {

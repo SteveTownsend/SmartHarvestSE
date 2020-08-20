@@ -1,32 +1,95 @@
 {
-  "$comment": "Keyword filters in RACE and NPC_",
+  "$comment": "Filters Dead Body looting by NPC_ using RACE, FACT, and KYWD",
   "$schema": "./SHSE.SchemaFilters.json",
   "npc": {
     "$comment": "Exclude humanoids, include non-humanoids (subjective)",
-    "defaultLoot": true,
-    "excludePlayerRace": true,
+    "defaultLoot": false,
+    "excludePlayerRace": false,
     "orderedFilter": [
       {
         "priority": 1,
         "exclude": {
           "faction": [
-            "Dremora Faction",
-            "Falmer",
-            "GuardFaction (makes an actor a guard)",
-            "SilverHandFaction"
+            {
+              "plugin": "Skyrim.esm",
+              "form": [
+                "000AA0A4",
+                "00043597",
+                "0002997E",
+                "00086EEE",
+                "0002BF9A",
+                "0002BF9B",
+                "0002584B",
+                "00039F26"
+              ]
+            }
           ],
           "race": [
-            "DLC2RieklingRace",
-            "DLC2MountedRieklingRace"
+            {
+              "plugin": "Dragonborn.esm",
+              "form": [
+                "00017F44",
+                "000179CF"
+              ]
+            },
+            {
+              "plugin": "Skyrim.esm",
+              "form": [
+                "000131F9"
+              ]
+            }
           ]
         },
         "include": {
           "faction": [
-            "Dwarven Automaton Faction",
-            "Dragon Faction"
+            {
+              "plugin": "Skyrim.esm",
+              "form": [
+                "00032D9C",
+                "00043598",
+                "00000013",
+                "0003E094",
+                "000418EA",
+                "0002430D"
+              ]
+            },
+            {
+              "plugin": "Dawnguard.esm",
+              "form": [
+                "001050B0"
+              ]
+            },
+            {
+              "plugin": "arnima.esm",
+              "form": [
+                "000A316D"
+              ]
+            },
+            {
+              "plugin": "Dwarfsphere.esp",
+              "form": [
+                "004FC540"
+              ]
+            }
           ],
           "race": [
-            "Draugr"
+            {
+              "plugin": "Skyrim.esm",
+              "form": [
+                "00000D53",
+                "000F71DC",
+                "000131F1",
+                "000131F2",
+                "000131F3"
+              ]
+            },
+            {
+              "plugin": "Dragonborn.esm",
+              "form": [
+                "0001F98F",
+                "0001DBC9"
+              ]
+            }
           ]
         }
       },
@@ -36,12 +99,28 @@
           "keyword": [
             "ActorTypeNPC",
             "IsBeastRace"
+          ],
+          "faction": [
+            {
+              "plugin": "Skyrim.esm",
+              "form": [
+                "0001BCC0"
+              ]
+            }
           ]
         },
         "include": {
           "keyword": [
             "ActorTypeAnimal",
             "ActorTypeCreature"
+          ],
+          "race": [
+            {
+              "plugin": "Skyrim.esm",
+              "form": [
+                "00109C7C"
+              ]
+            }
           ]
         }
       }
