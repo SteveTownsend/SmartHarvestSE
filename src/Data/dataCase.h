@@ -45,8 +45,9 @@ public:
 	void AddFirehose(const RE::TESForm* form);
 
 	void BlockReference(const RE::TESObjectREFR* refr, const Lootability reason);
+	void BlockReferenceByID(const RE::FormID refrID, const Lootability reason);
 	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr) const;
-	void ClearBlockedReferences(const bool gameReload);
+	void ResetBlockedReferences(const bool gameReload);
 
 	// permanent REFR blacklist, reset on game reload
 	bool BlacklistReference(const RE::TESObjectREFR* refr);
@@ -101,7 +102,7 @@ public:
 	}
 	inline bool IsOffLimitsContainer(const RE::TESObjectREFR* containerRef) const
 	{
-		return m_offLimitsContainers.contains(containerRef);
+		return m_offLimitsContainers.contains(containerRef->GetFormID());
 	}
 
 private:
@@ -111,7 +112,7 @@ private:
 	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
 	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
-	std::unordered_set<const RE::TESObjectREFR*> m_offLimitsContainers;
+	std::unordered_set<RE::FormID> m_offLimitsContainers;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
@@ -421,6 +422,7 @@ private:
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();
+	void ExcludeBuildYourNobleHouseIncomeChest();
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)

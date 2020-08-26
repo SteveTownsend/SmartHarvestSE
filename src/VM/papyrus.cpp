@@ -300,12 +300,12 @@ namespace papyrus
 
 	void PrepareSPERGMining(RE::StaticFunctionTag* base)
 	{
-		shse::ScanGovernor::Instance().SPERGStoreInitial();
+		shse::ScanGovernor::Instance().SPERGMiningStart();
 	}
 
 	void PostprocessSPERGMining(RE::StaticFunctionTag* base)
 	{
-		shse::ScanGovernor::Instance().SPERGCheckNew();
+		shse::ScanGovernor::Instance().SPERGMiningEnd();
 	}
 
 	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)

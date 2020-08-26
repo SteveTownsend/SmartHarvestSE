@@ -35,7 +35,7 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
-bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
+bool LootableREFR::IsQuestItem() const
 {
 	if (!m_ref)
 		return false;
@@ -56,7 +56,7 @@ bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
 	if (!extraListEx.m_extraData)
 		return false;
 
-	return extraListEx.IsQuestObject(requireFullQuestFlags);
+	return extraListEx.IsQuestObject();
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const

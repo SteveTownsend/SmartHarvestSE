@@ -87,8 +87,7 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 	RecursiveLockGuard guard(m_collectionLock);
 	DBG_VMESSAGE("Check REFR 0x{:08x} to Container {}/0x{:08x} for Collectibles",
 		refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-	static const bool requireQuestItemAsTarget(false);
-	ContainerLister lister(INIFile::SecondaryType::deadbodies, refr, requireQuestItemAsTarget);
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, refr);
 	// filter to include only collectibles
 	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return m_collectionsByFormID.contains(item->GetFormID()); });
 	decltype(m_lastInventoryCollectibles) newInventoryCollectibles;
@@ -265,8 +264,7 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 		return;
 
 	// use delta vs last pass to speed this up (resets on game reload)
-	static const bool requireQuestItemAsTarget(false);
-	ContainerLister lister(INIFile::SecondaryType::deadbodies, player, requireQuestItemAsTarget);
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, player);
 	// filter to include only collectibles
 	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return m_collectionsByFormID.contains(item->GetFormID()); });
 	decltype(m_lastInventoryCollectibles) newInventoryCollectibles;

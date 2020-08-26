@@ -87,8 +87,9 @@ public:
 	void ClearGlowExpiration();
 
 	void SetSPERGKeyword(const RE::BGSKeyword* keyword);
-	void SPERGStoreInitial();
-	void SPERGCheckNew();
+	void SPERGMiningStart(void);
+	void SPERGMiningEnd(void);
+	void ReconcileSPERGMined(void);
 
 private:
 	void ProgressGlowDemo();

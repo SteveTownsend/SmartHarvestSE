@@ -62,14 +62,13 @@ int doorsPreventLooting
 
 int iniSaveLoad
 string[] s_iniSaveLoadArray
-int questObjectScope
-string[] s_questObjectScopeArray
 int crimeCheckNotSneaking
 string[] s_crimeCheckNotSneakingArray
 int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
 string[] s_specialObjectHandlingArray
+string[] s_questObjectHandlingArray
 string[] s_behaviorToggleArray
 int playContainerAnimation
 string[] s_playContainerAnimationArray
@@ -238,7 +237,6 @@ function ApplySettingsFromFile()
     crimeCheckSneaking = GetSetting(type_Harvest, type_Config, "CrimeCheckSneaking") as int
 
     questObjectLoot = GetSetting(type_Harvest, type_Config, "QuestObjectLoot") as int
-    questObjectScope = GetSetting(type_Harvest, type_Config, "QuestObjectScope") as int
     lockedChestLoot = GetSetting(type_Harvest, type_Config, "LockedChestLoot") as int
     bossChestLoot = GetSetting(type_Harvest, type_Config, "BossChestLoot") as int
     enchantItemGlow = GetSetting(type_Harvest, type_Config, "EnchantItemGlow") as bool
@@ -310,7 +308,6 @@ Function ApplySetting(bool reload)
     PutSetting(type_Harvest, type_Config, "IndoorsRadiusFeet", radiusIndoors as float)
     PutSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds", intervalIndoors)
 
-    PutSetting(type_Harvest, type_Config, "QuestObjectScope", questObjectScope as float)
     PutSetting(type_Harvest, type_Config, "CrimeCheckNotSneaking", crimeCheckNotSneaking as float)
     PutSetting(type_Harvest, type_Config, "CrimeCheckSneaking", crimeCheckSneaking as float)
     PutSetting(type_Harvest, type_Config, "PlayerBelongingsLoot", playerBelongingsLoot as float)
@@ -490,6 +487,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallAdventures()
     InstallAdventuresPower()
     InstallFlexibleShaders()
+    InstallQuestObjectHandling()
 EndFunction
 
 Function InstallCollections()
@@ -520,6 +518,15 @@ Function InstallCollectionDescriptionsActions()
     s_collectibleActions[1] = "$SHSE_PICK_UP"
     s_collectibleActions[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
     s_collectibleActions[3] = "$SHSE_PRINT_MESSAGE"
+EndFunction
+
+Function InstallQuestObjectHandling()
+    s_questObjectHandlingArray = New String[2]
+    s_questObjectHandlingArray[0] = "$SHSE_DONT_PICK_UP"
+    s_questObjectHandlingArray[1] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
+    if questObjectLoot == 2
+        questObjectLoot = 1
+    endIf
 EndFunction
 
 Function InstallAdventures()
@@ -631,10 +638,6 @@ Event OnConfigInit()
     s_populationCenterArray[2] = "$SHSE_POPULATION_DISALLOW_IN_TOWNS"
     s_populationCenterArray[3] = "$SHSE_POPULATION_DISALLOW_IN_CITIES"
 
-    s_questObjectScopeArray = New String[2]
-    s_questObjectScopeArray[0] = "$SHSE_QUEST_RELATED"
-    s_questObjectScopeArray[1] = "$SHSE_QUEST_FLAG_ONLY"
-
     s_playContainerAnimationArray = New String[3]
     s_playContainerAnimationArray[0] = "$SHSE_CONTAINER_NO_ACTION"
     s_playContainerAnimationArray[1] = "$SHSE_CONTAINER_PLAY_ANIMATION"
@@ -677,7 +680,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 41
+    return 42
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -760,6 +763,9 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 41 && CurrentVersion < 41
         InstallCollectionDescriptionsActions()
+    endIf
+    if a_version >= 42 && CurrentVersion < 42
+        InstallQuestObjectHandling()
     endIf
 endEvent
 
@@ -1007,8 +1013,7 @@ event OnPageReset(string currentPage)
         SetCursorFillMode(TOP_TO_BOTTOM)
 
         AddHeaderOption("$SHSE_SPECIAL_OBJECT_BEHAVIOR_HEADER")
-        AddTextOptionST("questObjectLoot", "$SHSE_QUESTOBJECT_LOOT", s_specialObjectHandlingArray[questObjectLoot])
-        AddTextOptionST("questObjectScope", "$SHSE_QUESTOBJECT_SCOPE", s_questObjectScopeArray[questObjectScope])
+        AddTextOptionST("questObjectLoot", "$SHSE_QUESTOBJECT_LOOT", s_questObjectHandlingArray[questObjectLoot])
         AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_specialObjectHandlingArray[lockedChestLoot])
         AddTextOptionST("bossChestLoot", "$SHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
         AddTextOptionST("playerBelongingsLoot", "$SHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
@@ -1778,35 +1783,16 @@ state playerBelongingsLoot
     endEvent
 endState
 
-state questObjectScope
-    event OnSelectST()
-        int size = s_questObjectScopeArray.length
-        questObjectScope = CycleInt(questObjectScope, size)
-        SetTextOptionValueST(s_questObjectScopeArray[questObjectScope])
-    endEvent
-
-    event OnDefaultST()
-        questObjectScope = 1
-        SetTextOptionValueST(s_questObjectScopeArray[questObjectScope])
-    endEvent
-
-    event OnHighlightST()
-        string trans = GetTranslation("$SHSE_DESC_QUESTOBJECT_SCOPE")
-        ;DebugTrace("Quest object state helptext " + trans)
-        SetInfoText(trans)
-    endEvent
-endState
-
 state questObjectLoot
     event OnSelectST()
-        int size = s_specialObjectHandlingArray.length
+        int size = s_questObjectHandlingArray.length
         questObjectLoot = CycleInt(questObjectLoot, size)
-        SetTextOptionValueST(s_specialObjectHandlingArray[questObjectLoot])
+        SetTextOptionValueST(s_questObjectHandlingArray[questObjectLoot])
     endEvent
 
     event OnDefaultST()
-        questObjectLoot = 2
-        SetTextOptionValueST(s_specialObjectHandlingArray[questObjectLoot])
+        questObjectLoot = 1
+        SetTextOptionValueST(s_questObjectHandlingArray[questObjectLoot])
     endEvent
 
     event OnHighlightST()

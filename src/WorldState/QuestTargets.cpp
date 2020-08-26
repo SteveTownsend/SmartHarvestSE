@@ -41,6 +41,29 @@ QuestTargets::QuestTargets()
 {
 }
 
+bool QuestTargets::ReferenceIsLootable(const RE::TESObjectREFR* refr) const
+{
+	if (refr->As<RE::Actor>())
+		return false;
+	const auto formType(refr->GetBaseObject()->GetFormType());
+	return
+		formType == RE::FormType::AlchemyItem ||
+		formType == RE::FormType::Ammo ||
+		formType == RE::FormType::Armor ||
+		formType == RE::FormType::Book ||
+		formType == RE::FormType::Container ||
+		formType == RE::FormType::Flora ||
+		formType == RE::FormType::Ingredient ||
+		formType == RE::FormType::KeyMaster ||
+		formType == RE::FormType::Misc ||
+		formType == RE::FormType::Note ||
+		formType == RE::FormType::Projectile ||
+		formType == RE::FormType::Scroll ||
+		formType == RE::FormType::SoulGem ||
+		formType == RE::FormType::Tree ||
+		formType == RE::FormType::Weapon;
+}
+
 void QuestTargets::Analyze()
 {
 	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
@@ -49,8 +72,9 @@ void QuestTargets::Analyze()
 		for (const auto alias : quest->aliases)
 		{
 			// Blacklist item if it is a quest ref-alias object
-			if (alias->IsQuestObject() && alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID)
+			if (alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID)
 			{
+				bool isQuest(alias->IsQuestObject());
 				RE::BGSRefAlias* refAlias(static_cast<RE::BGSRefAlias*>(alias));
 				if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated)
 				{
@@ -62,7 +86,9 @@ void QuestTargets::Analyze()
 							DBG_MESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
 								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount, BoringQuestTargetThreshold);
 						}
-						else if (BlacklistQuestTargetItem(refAlias->fillData.created.object))
+						// record if unique or Quest Object flag set
+						else if ((isQuest || (!refAlias->fillData.created.object->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
+							BlacklistQuestTargetItem(refAlias->fillData.created.object))
 						{
 							DBG_MESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
 								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount);
@@ -81,22 +107,22 @@ void QuestTargets::Analyze()
 						RE::TESObjectREFR* refr(refAlias->fillData.forced.forcedRef.get().get());
 						if (refr && refr->GetBaseObject())
 						{
-							DBG_VMESSAGE("Forced RefAlias has ALFR {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+							size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refr->GetBaseObject()));
 							// record this specific REFR as the QUST target
-							if (BlacklistQuestTargetREFR(refr))
+							if ((isQuest || (ReferenceIsLootable(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
 							{
-								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item {}/0x{:08x}",
-									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
+									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), itemCount);
 							}
 							else
 							{
-								DBG_MESSAGE("Skip Forced RefAlias ALFR {}/0x{:08x}",
-									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+								DBG_MESSAGE("Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
+									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 							}
 						}
 					}
 				}
-				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
+				else if (isQuest && refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
 				{
 					// Quest NPC should not be looted
 					if (refAlias->fillData.uniqueActor.uniqueActor)

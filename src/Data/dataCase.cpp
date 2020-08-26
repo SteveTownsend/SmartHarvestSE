@@ -311,7 +311,7 @@ void DataCase::ExcludeFactionContainers()
 			if (containerRef)
 			{
 				DBG_VMESSAGE("Blocked faction/vendor container : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
-				m_offLimitsContainers.insert(containerRef);
+				m_offLimitsContainers.insert(containerRef->GetFormID());
 			}
 		}
 
@@ -319,14 +319,14 @@ void DataCase::ExcludeFactionContainers()
 		if (containerRef)
 		{
 			DBG_VMESSAGE("Blocked stolenGoodsContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
-			m_offLimitsContainers.insert(containerRef);
+			m_offLimitsContainers.insert(containerRef->GetFormID());
 		}
 
 		containerRef = faction->crimeData.factionPlayerInventoryContainer;
 		if (containerRef)
 		{
 			DBG_VMESSAGE("Blocked playerInventoryContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
-			m_offLimitsContainers.insert(containerRef);
+			m_offLimitsContainers.insert(containerRef->GetFormID());
 		}
 	}
 }
@@ -445,7 +445,7 @@ void DataCase::ExcludeVendorContainers()
 	{
 		if (m_containerBlackList.contains(container))
 		{
-			DBG_MESSAGE("SKip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
+			DBG_MESSAGE("Skip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 			continue;
 		}
 		// does container have VendorGold?
@@ -516,6 +516,17 @@ void DataCase::ExcludeMissivesBoards()
 	{
 		REL_MESSAGE("Block Missive Board {}/0x{:08x}", missivesBoard->GetName(), missivesBoard->GetFormID());
 		m_containerBlackList.insert(missivesBoard);
+	}
+}
+
+void DataCase::ExcludeBuildYourNobleHouseIncomeChest()
+{
+	// check for best matching candidate in Load Order
+	RE::TESObjectCONT* incomeChestForm(FindBestMatch<RE::TESObjectCONT>("LC_BuildYourNobleHouse.esp", 0xaacdd, "Income "));
+	if (incomeChestForm)
+	{
+		REL_MESSAGE("Block 'Build Your Noble House' Income Chest {}/0x{:08x}", incomeChestForm->GetName(), incomeChestForm->GetFormID());
+		m_containerBlackList.insert(incomeChestForm);
 	}
 }
 
@@ -624,9 +635,9 @@ void DataCase::BlockOffLimitsContainers()
 {
 	// block all the known off-limits containers - list is invariant during gaming session
 	RecursiveLockGuard guard(m_blockListLock);
-	for (const auto refr : m_offLimitsContainers)
+	for (const auto refrID : m_offLimitsContainers)
 	{
-		BlockReference(refr, Lootability::ContainerPermanentlyOffLimits);
+		BlockReferenceByID(refrID, Lootability::ContainerPermanentlyOffLimits);
 	}
 }
 
@@ -690,9 +701,14 @@ void DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability r
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (!refr || refr->IsDynamicForm())
 		return;
+	BlockReferenceByID(refr->GetFormID(), reason);
+}
+
+void DataCase::BlockReferenceByID(const RE::FormID refrID, const Lootability reason)
+{
 	RecursiveLockGuard guard(m_blockListLock);
-	// store most recently-generated value
-	m_blockRefr[refr->GetFormID()] = reason;
+	// store most recently-generated reason
+	m_blockRefr[refrID] = reason;
 }
 
 Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
@@ -707,7 +723,7 @@ Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
 	return blocked == m_blockRefr.cend() ? Lootability::Lootable : blocked->second;
 }
 
-void DataCase::ClearBlockedReferences(const bool gameReload)
+void DataCase::ResetBlockedReferences(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blockRefr.clear();
@@ -742,6 +758,7 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 	{
 		m_blockRefr.insert({ digSite, Lootability::CannotRelootFirehoseSource });
 	}
+	BlockOffLimitsContainers();
 }
 
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
@@ -894,8 +911,7 @@ void DataCase::ListsClear(const bool gameReload)
 	}
 	// reset blocked Base Objects and REFRs, reseed with off-limits containers
 	ResetBlockedForms();
-	ClearBlockedReferences(gameReload);
-	BlockOffLimitsContainers();
+	ResetBlockedReferences(gameReload);
 }
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
@@ -1014,6 +1030,7 @@ void DataCase::HandleExceptions()
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
 	ExcludeMissivesBoards();
+	ExcludeBuildYourNobleHouseIncomeChest();
 
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();

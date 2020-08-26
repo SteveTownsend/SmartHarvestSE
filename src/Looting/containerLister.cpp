@@ -30,14 +30,7 @@ namespace shse
 {
 
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
-	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(false),
-	m_collectibleAction(CollectibleHandling::Leave)
-{
-}
-
-ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget) :
-	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
-	m_collectibleAction(CollectibleHandling::Leave)
+	m_targetType(targetType), m_refr(refr),	m_collectibleAction(CollectibleHandling::Leave)
 {
 }
 
@@ -127,7 +120,7 @@ size_t ContainerLister::AnalyzeLootableItems()
 				if (*extraList)
 				{
 					ExtraDataListHelper exListHelper(*extraList);
-					if (exListHelper.IsQuestObject(m_requireQuestItemAsTarget))
+					if (exListHelper.IsQuestObject())
 					{
 						m_questItems.insert(item);
 					}

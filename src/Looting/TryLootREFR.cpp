@@ -141,32 +141,28 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::BaseObjectOnBlacklist;
 		}
 
-		bool needsFullQuestFlags(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0);
-		SpecialObjectHandling questObjectLoot =
-			SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
-		if (refrEx.IsQuestItem(needsFullQuestFlags))
+		QuestObjectHandling questObjectLoot =
+			QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+		if (refrEx.IsQuestItem())
 		{
 			if (m_glowOnly)
 			{
-				questObjectLoot = SpecialObjectHandling::GlowTarget;
+				questObjectLoot = QuestObjectHandling::GlowTarget;
 			}
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
-			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
+			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow quest object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			if (!IsSpecialObjectLootable(questObjectLoot))
-			{
-				skipLooting = true;
-				// ignore collectibility from here on, since we've determined it is unlootable as a Quest Target
-				collectible.first = false;
-				result = Lootability::CannotLootQuestTarget;
-			}
+			skipLooting = true;
+			// ignore collectibility from here on, since we've determined it is unlootable as a Quest Target
+			collectible.first = false;
+			result = Lootability::CannotLootQuestTarget;
 		}
 		// glow unread notes as they are often quest-related
-		else if (questObjectLoot == SpecialObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
+		else if (questObjectLoot == QuestObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
 		{
 			DBG_VMESSAGE("Glowable book 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			UpdateGlowReason(GlowReason::SimpleTarget);
@@ -365,17 +361,21 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
+		if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
+		{
+			DBG_MESSAGE("skip blacklisted container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+			return Lootability::ReferencesBlacklistedContainer;
+		}
 		DBG_MESSAGE("scanning container/body {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 #if _DEBUG
 		DumpContainer(LootableREFR(m_candidate, m_targetType));
 #endif
-		bool requireQuestItemAsTarget = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0;
 		bool skipLooting(false);
 		// INI defaults exclude nudity by not looting armor from dead bodies
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
-		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget);
+		ContainerLister lister(m_targetType, m_candidate);
 		size_t lootableItems(lister.AnalyzeLootableItems());
 		if (lootableItems == 0)
 		{
@@ -440,24 +440,21 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (lister.HasQuestItem())
 		{
-			SpecialObjectHandling questObjectLoot =
-				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
+			QuestObjectHandling questObjectLoot =
+				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
 			if (m_glowOnly)
 			{
-				questObjectLoot = SpecialObjectHandling::GlowTarget;
+				questObjectLoot = QuestObjectHandling::GlowTarget;
 			}
-			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
+			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			if (!IsSpecialObjectLootable(questObjectLoot))
-			{
-				// this is not a blocker for looting of non-special items
-				lister.ExcludeQuestItems();
-				result = Lootability::ContainerHasQuestObject;
-			}
+			// this is not a blocker for looting of non-special items
+			lister.ExcludeQuestItems();
+			result = Lootability::ContainerHasQuestObject;
 		}
 
 		if (lister.HasEnchantedItem())
@@ -534,11 +531,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			skipLooting = true;
 			result = forbidden;
-		}
-		else if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
-		{
-			skipLooting = true;
-			result = Lootability::ReferencesBlacklistedContainer;
 		}
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we

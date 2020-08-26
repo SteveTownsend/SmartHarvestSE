@@ -724,7 +724,9 @@ void ScanGovernor::SetSPERGKeyword(const RE::BGSKeyword* keyword)
 	m_spergKeywords.push_back(keyword);
 }
 
-void ScanGovernor::SPERGStoreInitial(void)
+// This is called from script but does not mutate anything in the game data.
+// Saves inventory items applicable for SPERG for later reconciliation.
+void ScanGovernor::SPERGMiningStart(void)
 {
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 	if (!player)
@@ -733,8 +735,8 @@ void ScanGovernor::SPERGStoreInitial(void)
 	RecursiveLockGuard guard(m_searchLock);
 	if (m_spergInventory)
 	{
-		DBG_WARNING("Pre-SPERG inventory already captured");
 		++m_spergQueued;
+		DBG_DMESSAGE("Pre-SPERG inventory snapshot already captured, queue size {}", m_spergQueued);
 		return;
 	}
 	m_spergInventory = std::make_unique<ContainerLister>(INIFile::SecondaryType::deadbodies, player);
@@ -748,22 +750,39 @@ void ScanGovernor::SPERGStoreInitial(void)
 		}
 		return false;
 	});
-	DBG_MESSAGE("SPERG KYWD matches {}", m_spergInventory->GetLootableItems().size());
+	DBG_DMESSAGE("SPERG KYWD matching items {}", m_spergInventory->GetLootableItems().size());
 }
 
-void ScanGovernor::SPERGCheckNew(void)
+void ScanGovernor::SPERGMiningEnd(void)
 {
-	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
-	if (!player)
-		return;
-
 	RecursiveLockGuard guard(m_searchLock);
 	if (m_spergQueued > 0)
 	{
 		--m_spergQueued;
-		DBG_WARNING("SPERG reconciliation queue size now {}", m_spergQueued);
+		DBG_DMESSAGE("SPERG reconciliation queue size {}", m_spergQueued);
 		return;
 	}
+}
+
+// This runs in scan thread whenever there are no mining operations in progress, to avoid problems with player inventory contention
+void ScanGovernor::ReconcileSPERGMined(void)
+{
+	RecursiveLockGuard guard(m_searchLock);
+	if (m_spergQueued > 0)
+	{
+		DBG_DMESSAGE("Skip SPERG reconciliation, queue size {}", m_spergQueued);
+		return;
+	}
+	if (!m_spergInventory)
+	{
+		DBG_DMESSAGE("No SPERG mining operations since last pass");
+		return;
+	}
+	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
+	if (!player)
+		return;
+
+	// get current inventory and duplicate any SPERG items added since snapshot was taken
 	ContainerLister lister(INIFile::SecondaryType::deadbodies, player);
 	lister.FilterLootableItems([&](RE::TESBoundObject* item) -> bool
 	{
@@ -797,6 +816,7 @@ void ScanGovernor::SPERGCheckNew(void)
 			player->AddObjectToContainer(newItem.BoundObject(), nullptr, delta, nullptr);
 		}
 	}
+	// resets the cycle
 	m_spergInventory.reset();
 }
 

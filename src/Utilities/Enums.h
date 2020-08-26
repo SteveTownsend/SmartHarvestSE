@@ -112,6 +112,12 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
+enum class QuestObjectHandling {
+	NoAction = 0,
+	GlowTarget,
+	MAX
+};
+
 inline CollectibleHandling UpdateCollectibleHandling(const CollectibleHandling initial, const CollectibleHandling next)
 {
 	// update if new is more permissive
@@ -193,6 +199,16 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 		return SpecialObjectHandling::DoNotLoot;
 	}
 	return static_cast<SpecialObjectHandling>(intSetting);
+}
+
+inline QuestObjectHandling QuestObjectHandlingFromIniSetting(const double iniSetting)
+{
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(SpecialObjectHandling::MAX))
+	{
+		return QuestObjectHandling::NoAction;
+	}
+	return static_cast<QuestObjectHandling>(intSetting);
 }
 
 inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)

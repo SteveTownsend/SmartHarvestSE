@@ -36,7 +36,10 @@ public:
 private:
 	// don't make item a Quest Target if instances are scattered all over the place
 	static constexpr size_t BoringQuestTargetThreshold = 10;
+	// treat as Quest Target even if flag not set, if there are very few instances (one for QUST, one for display maybe)
+	static constexpr size_t RareQuestTargetThreshold = 2;
 
+	bool ReferenceIsLootable(const RE::TESObjectREFR* refr) const;
 	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
 	bool BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr);
 	bool BlacklistQuestTargetNPC(const RE::TESNPC* npc);
