@@ -30,7 +30,6 @@ struct ContainerLister
 {
 public:
 	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr);
-	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget);
 	size_t AnalyzeLootableItems();
 	void FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
 	size_t CountLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
@@ -50,7 +49,6 @@ private:
 
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;
-	bool m_requireQuestItemAsTarget;
 	std::unordered_set<RE::TESBoundObject*> m_questItems;
 	std::unordered_set<RE::TESBoundObject*> m_enchantedItems;
 	std::unordered_set<RE::TESBoundObject*> m_valuableItems;

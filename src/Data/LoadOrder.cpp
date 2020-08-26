@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "Data/LoadOrder.h"
+#include "Utilities/utils.h"
 #include "Utilities/version.h"
 
 namespace shse

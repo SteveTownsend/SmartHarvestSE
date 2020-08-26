@@ -95,7 +95,7 @@ void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 {
 	RecursiveLockGuard guard(m_actorLock);
 	// only record the perpetrator of this heinous crime once
-	if (!victim || !m_checkedBodies.insert(victim).second)
+	if (!victim || !victim->myKiller || !m_checkedBodies.insert(victim).second)
 		return;
 	RE::Actor* killer(victim->myKiller.get().get());
 	// it's always the player even if a FOllower did the deed

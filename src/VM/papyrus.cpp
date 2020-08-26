@@ -300,12 +300,12 @@ namespace papyrus
 
 	void PrepareSPERGMining(RE::StaticFunctionTag* base)
 	{
-		shse::ScanGovernor::Instance().SPERGStoreInitial();
+		shse::ScanGovernor::Instance().SPERGMiningStart();
 	}
 
 	void PostprocessSPERGMining(RE::StaticFunctionTag* base)
 	{
-		shse::ScanGovernor::Instance().SPERGCheckNew();
+		shse::ScanGovernor::Instance().SPERGMiningEnd();
 	}
 
 	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
@@ -382,11 +382,6 @@ namespace papyrus
 		return shse::ScanGovernor::Instance().UnlockHarvest(refr, isSilent);
 	}
 
-	void BlockFirehose(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
-	{
-		shse::DataCase::GetInstance()->BlockFirehoseSource(refr);
-	}
-
 	void ProcessContainerCollectibles(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
 		shse::CollectionManager::Instance().CollectFromContainer(refr);
@@ -394,7 +389,7 @@ namespace papyrus
 
 	void NotifyManualLootItem(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
 	{
-		shse::ProcessManualLootItem(refr);
+		shse::ProcessManualLootREFR(refr);
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
@@ -648,7 +643,6 @@ namespace papyrus
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
-		a_vm->RegisterFunction("BlockFirehose", SHSE_PROXY, papyrus::BlockFirehose);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 

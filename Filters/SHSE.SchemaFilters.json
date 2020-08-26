@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$comment": "$id tag not required yet",
+  "title": "Smart Harvest SE Miscellaneous Filters",
+  "type": "object",
+  "anyOf": [
+    {
+      "required": [ "npc" ]
+    }
+  ],
+  "properties": {
+    "npc": { "$ref": "#/definitions/npcType" }
+  },
+  "definitions": {
+    "npcType": {
+      "type": "object",
+      "required": [ "defaultLoot", "excludePlayerRace", "orderedFilter" ],
+      "properties": {
+        "defaultLoot": {
+          "type": "boolean",
+          "description": "How to handle NPCs that are neither excluded nor included explicitly"
+        },
+        "excludePlayerRace": {
+          "type": "boolean",
+          "description": "Whether to loot NPCs that are of same Race as Player"
+        },
+        "orderedFilter": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/definitions/filterType" },
+          "description": "Priority-Ordered filters for NPC looting decision"
+        }
+      }
+    },
+    "filterType": {
+      "type": "object",
+      "required": [ "priority" ],
+      "anyOf": [
+        {
+          "required": [ "include" ]
+        },
+        {
+          "required": [ "exclude" ]
+        }
+      ],
+
+      "properties": {
+        "priority": {
+          "type": "integer",
+          "description": "Priority, lowest checked first - dups ignored"
+        },
+        "include": { "$ref": "#/definitions/matchType" },
+        "exclude": { "$ref": "#/definitions/matchType" }
+      }
+    },
+    "formsType": {
+      "type": "object",
+      "required": [ "plugin", "form" ],
+      "properties": {
+        "plugin": {
+          "type": "string"
+        },
+        "form": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "[0-9 a-f A-F]{8}"
+          },
+          "description": "FormID in plugin, discounting load order"
+        }
+      }
+    },
+    "matchType": {
+      "type": "object",
+      "anyOf": [
+        {
+          "required": [ "race" ]
+        },
+        {
+          "required": [ "faction" ]
+        },
+        {
+          "required": [ "keyword" ]
+        }
+      ],
+      "properties": {
+        "race": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "$ref": "#/definitions/formsType" },
+          "description": "Valid RACEs to match"
+        },
+        "faction": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "$ref": "#/definitions/formsType" },
+          "description": "Valid RACEs to match"
+        },
+        "keyword": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": "string",
+          "description": "Valid KYWDs to match, in NPC_ or NPC_.RACE"
+        }
+      }
+    }
+  }
+}

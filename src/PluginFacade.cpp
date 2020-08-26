@@ -29,9 +29,11 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/ActorTracker.h"
 #include "WorldState/AdventureTargets.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/PlacedObjects.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -123,7 +125,7 @@ bool PluginFacade::Load()
 	db.Dump("offsets-1.5.97.0.txt");
 	DBG_MESSAGE("Dumped offsets for 1.5.97.0");
 #endif
-	if (!shse::LoadOrder::Instance().Analyze())
+	if (!LoadOrder::Instance().Analyze())
 	{
 		REL_FATALERROR("Load Order unsupportable");
 		return false;
@@ -132,9 +134,16 @@ bool PluginFacade::Load()
 	PopulationCenters::Instance().Categorize();
 	AdventureTargets::Instance().Categorize();
 
-	// Collections are layered on top of categorized objects
+	REL_MESSAGE("*** LOAD *** Record Placed Objects");
+	PlacedObjects::Instance().RecordPlacedObjects();
+
+	// Quest Target identification relies on Placed Objects analysis
+	REL_MESSAGE("*** LOAD *** Analyze Quest Targets");
+	QuestTargets::Instance().Analyze();
+
+	// Collections are layered on top of categorized and placed objects
 	REL_MESSAGE("*** LOAD *** Build Collections");
-	shse::CollectionManager::Instance().ProcessDefinitions();
+	CollectionManager::Instance().ProcessDefinitions();
 
 	m_pluginOK = true;
 	REL_MESSAGE("Plugin Data load complete!");
@@ -200,10 +209,13 @@ void PluginFacade::ScanThread()
 
 		static const bool onMCMPush(false);
 		static const bool onGameReload(false);
-		shse::PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+		PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 		// process any queued added items since last time
-		shse::CollectionManager::Instance().ProcessAddedItems();
+		CollectionManager::Instance().ProcessAddedItems();
+
+		// reconcile SPERG mined items
+		ScanGovernor::Instance().ReconcileSPERGMined();
 
 		// Skip loot-OK checks if calibrating
 		ReferenceScanType scanType(ReferenceScanType::NoLoot);
@@ -219,7 +231,7 @@ void PluginFacade::ScanThread()
 			{
 				DBG_MESSAGE("Location cannot be looted");
 			}
-			else if (!shse::PlayerState::Instance().CanLoot())
+			else if (!PlayerState::Instance().CanLoot())
 			{
 				DBG_MESSAGE("Player State prevents looting");
 			}
@@ -268,9 +280,9 @@ void PluginFacade::ResetState(const bool gameReload)
 		// unblock possible player house checks after game reload
 		PlayerHouses::Instance().Clear();
 		// reset Actor data
-		shse::ActorTracker::Instance().Reset();
+		ActorTracker::Instance().Reset();
 		// Reset Collections State and reapply the saved-game data
-		shse::CollectionManager::Instance().OnGameReload();
+		CollectionManager::Instance().OnGameReload();
 		// need to wait for the scripts to sync up before performing player house checks
 		m_pluginSynced = true;
 	}
@@ -289,11 +301,11 @@ void PluginFacade::OnSettingsPushed()
 	// refresh player state that could be affected
 	static const bool onMCMPush(true);
 	static const bool onGameReload(false);
-	shse::PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 	// Base Object Forms and REFRs handled for the case where we are not reloading game
 	DataCase::GetInstance()->ResetBlockedForms();
-	DataCase::GetInstance()->ClearBlockedReferences(onGameReload);
+	DataCase::GetInstance()->ResetBlockedReferences(onGameReload);
 
 	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
 	ActorTracker::Instance().Reset();

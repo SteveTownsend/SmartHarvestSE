@@ -38,7 +38,7 @@ private:
 	INIFile::SecondaryType m_targetType;
 	std::string m_typeName;
 
-	Lootability ItemLootingLegality(const bool isCollectible);
+	Lootability ItemLootingLegality(const bool isCollectible, INIFile::SecondaryType targetType);
 	Lootability LootingLegality(const INIFile::SecondaryType targetType);
 	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets,
 		const int animationType, const bool directTransfer);

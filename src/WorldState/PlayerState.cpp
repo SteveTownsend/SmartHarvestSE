@@ -317,6 +317,12 @@ Position PlayerState::GetPosition() const
 	return { player->GetPositionX(), player->GetPositionY(), player->GetPositionZ() };
 }
 
+const RE::TESRace* PlayerState::GetRace() const
+{
+	const auto player(RE::PlayerCharacter::GetSingleton());
+	return player->GetRace();
+}
+
 AlglibPosition PlayerState::GetAlglibPosition() const
 {
 	const auto player(RE::PlayerCharacter::GetSingleton());

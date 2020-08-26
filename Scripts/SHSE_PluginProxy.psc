@@ -7,7 +7,6 @@ string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
-Function BlockFirehose(ObjectReference refr) global native
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 

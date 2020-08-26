@@ -32,6 +32,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerState.h"
 #include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
+#include "Looting/NPCFilter.h"
 
 namespace
 {
@@ -310,7 +311,7 @@ void DataCase::ExcludeFactionContainers()
 			if (containerRef)
 			{
 				DBG_VMESSAGE("Blocked faction/vendor container : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
-				m_offLimitsContainers.insert(containerRef);
+				m_offLimitsContainers.insert(containerRef->GetFormID());
 			}
 		}
 
@@ -318,14 +319,14 @@ void DataCase::ExcludeFactionContainers()
 		if (containerRef)
 		{
 			DBG_VMESSAGE("Blocked stolenGoodsContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
-			m_offLimitsContainers.insert(containerRef);
+			m_offLimitsContainers.insert(containerRef->GetFormID());
 		}
 
 		containerRef = faction->crimeData.factionPlayerInventoryContainer;
 		if (containerRef)
 		{
 			DBG_VMESSAGE("Blocked playerInventoryContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
-			m_offLimitsContainers.insert(containerRef);
+			m_offLimitsContainers.insert(containerRef->GetFormID());
 		}
 	}
 }
@@ -444,7 +445,7 @@ void DataCase::ExcludeVendorContainers()
 	{
 		if (m_containerBlackList.contains(container))
 		{
-			DBG_MESSAGE("SKip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
+			DBG_MESSAGE("Skip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 			continue;
 		}
 		// does container have VendorGold?
@@ -518,78 +519,14 @@ void DataCase::ExcludeMissivesBoards()
 	}
 }
 
-void DataCase::ExcludeQuestTargets()
+void DataCase::ExcludeBuildYourNobleHouseIncomeChest()
 {
-	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
+	// check for best matching candidate in Load Order
+	RE::TESObjectCONT* incomeChestForm(FindBestMatch<RE::TESObjectCONT>("LC_BuildYourNobleHouse.esp", 0xaacdd, "Income "));
+	if (incomeChestForm)
 	{
-		DBG_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
-		for (const auto alias : quest->aliases)
-		{
-			// Blacklist item if it is a quest ref-alias object
-			if (alias->IsQuestObject() && alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID)
-			{
-				RE::BGSRefAlias* refAlias(static_cast<RE::BGSRefAlias*>(alias));
-				if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated)
-				{
-					if (refAlias->fillData.created.object)
-					{
-						if (BlacklistQuestTargetItem(refAlias->fillData.created.object))
-						{
-							DBG_MESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x}",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
-						}
-						else
-						{
-							DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
-						}
-					}
-				}
-				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced)
-				{
-					if (refAlias->fillData.forced.forcedRef)
-					{
-						RE::TESObjectREFR* refr(refAlias->fillData.forced.forcedRef.get().get());
-						if (refr && refr->GetBaseObject())
-						{
-							DBG_VMESSAGE("Forced RefAlias has ALFR {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							if (BlacklistQuestTargetItem(refr->GetBaseObject()))
-							{
-								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item {}/0x{:08x}",
-									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							}
-							else
-							{
-								DBG_MESSAGE("Skip Forced RefAlias ALFR {}/0x{:08x}",
-									refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							}
-						}
-					}
-				}
-				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
-				{
-					// Quest NPC should not be looted
-					if (refAlias->fillData.uniqueActor.uniqueActor)
-					{
-						if (BlacklistQuestTargetNPC(refAlias->fillData.uniqueActor.uniqueActor))
-						{
-							DBG_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
-								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
-						}
-						else
-						{
-							DBG_VMESSAGE("Skip UniqueActor RefAlias ALUA {}/0x{:08x}",
-								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
-						}
-					}
-				}
-				else
-				{
-					DBG_VMESSAGE("RefAlias skipped for Quest: {}/0x{:08x} - unsupported RefAlias fill-type {}",
-						quest->GetName(), quest->GetFormID(), refAlias->fillType.underlying());
-				}
-			}
-		}
+		REL_MESSAGE("Block 'Build Your Noble House' Income Chest {}/0x{:08x}", incomeChestForm->GetName(), incomeChestForm->GetFormID());
+		m_containerBlackList.insert(incomeChestForm);
 	}
 }
 
@@ -645,6 +582,21 @@ void DataCase::IncludeCorpseCoinage()
 	}
 }
 
+void DataCase::IncludeHearthfireExtendedApiary()
+{
+	static std::string espName("hearthfireextended.esp");
+	static RE::FormID apiaryFormID(0xd62);
+	RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
+	if (apiaryForm)
+	{
+		// force object type - this was already categorized incorrectly using Activation Verb
+		DBG_MESSAGE("Record HearthfireExtended ACTI {}(0x{:08x}) as critter", apiaryForm->GetName(), apiaryForm->GetFormID());
+		ForceObjectTypeForForm(apiaryForm->GetFormID(), ObjectType::critter);
+		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
+		AddFirehose(apiaryForm);
+	}
+}
+
 void DataCase::IncludeBSBruma()
 {
 	static std::string espName("BSAssets.esm");
@@ -683,9 +635,9 @@ void DataCase::BlockOffLimitsContainers()
 {
 	// block all the known off-limits containers - list is invariant during gaming session
 	RecursiveLockGuard guard(m_blockListLock);
-	for (const auto refr : m_offLimitsContainers)
+	for (const auto refrID : m_offLimitsContainers)
 	{
-		BlockReference(refr, Lootability::ContainerPermanentlyOffLimits);
+		BlockReferenceByID(refrID, Lootability::ContainerPermanentlyOffLimits);
 	}
 }
 
@@ -723,6 +675,7 @@ void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
 		return;
 	// looted REFR was 'blocked while I am in this cell' before the triggering event was fired
 	m_firehoseSources.insert(refr->GetFormID());
+	BlockReference(refr, Lootability::CannotRelootFirehoseSource);
 }
 
 void DataCase::ForgetFirehoseSources()
@@ -731,16 +684,31 @@ void DataCase::ForgetFirehoseSources()
 	m_firehoseSources.clear();
 }
 
-
-bool DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
+bool DataCase::IsFirehose(const RE::TESForm* form) const
 {
-	if (!refr)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (refr->IsDynamicForm())
-		return false;
 	RecursiveLockGuard guard(m_blockListLock);
-	return (m_blockRefr.insert({ refr->GetFormID(), reason })).second;
+	return m_firehoseForms.contains(form);
+}
+
+void DataCase::AddFirehose(const RE::TESForm* form)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	m_firehoseForms.insert(form);
+}
+
+void DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
+{
+	// dynamic forms must never be recorded as their FormID may be reused
+	if (!refr || refr->IsDynamicForm())
+		return;
+	BlockReferenceByID(refr->GetFormID(), reason);
+}
+
+void DataCase::BlockReferenceByID(const RE::FormID refrID, const Lootability reason)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	// store most recently-generated reason
+	m_blockRefr[refrID] = reason;
 }
 
 Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
@@ -755,7 +723,7 @@ Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
 	return blocked == m_blockRefr.cend() ? Lootability::Lootable : blocked->second;
 }
 
-void DataCase::ClearBlockedReferences(const bool gameReload)
+void DataCase::ResetBlockedReferences(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blockRefr.clear();
@@ -765,10 +733,11 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		ForgetFirehoseSources();
 		return;
 	}
-	// Volcanic dig sites from Fossil Mining are only cleared on game reload, to simulate the 30 day delay in
-	// the mining script. Only allow one auto-mining visit per gaming session, unless player dies.
-	// The same goes for Firehose item sources, currently the BYOH mined materials
-	decltype(m_firehoseSources) volcanicDigSites(m_firehoseSources);
+	// Volcanic dig sites from Fossil Mining and firehose item sources are only cleared on game reload,
+	// to simulate the delay in becoming lootable again.
+	// Only allow one auto-loot visit per gaming session, unless player dies.
+	// Firehose item sources are BYOH mined materials and HearthfiresExtended Apiary
+	decltype(m_firehoseSources) firehouseSources(m_firehoseSources);
 	for (const auto refrID : m_blockRefr)
 	{
 		RE::TESForm* form(RE::TESForm::LookupByID(refrID.first));
@@ -780,15 +749,16 @@ void DataCase::ClearBlockedReferences(const bool gameReload)
 		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
-			volcanicDigSites.insert(refrID.first);
+			firehouseSources.insert(refrID.first);
 		}
 	}
 	DBG_MESSAGE("Reset blocked REFRs apart from {} volcanic and {} firehose",
-		volcanicDigSites.size() - m_firehoseSources.size(), m_firehoseSources.size());
-	for (const auto digSite : volcanicDigSites)
+		firehouseSources.size() - m_firehoseSources.size(), m_firehoseSources.size());
+	for (const auto digSite : firehouseSources)
 	{
 		m_blockRefr.insert({ digSite, Lootability::CannotRelootFirehoseSource });
 	}
+	BlockOffLimitsContainers();
 }
 
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
@@ -867,56 +837,6 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 	return (m_permanentBlockedForms.insert({ form, reason })).second;
 }
 
-// used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
-bool DataCase::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
-{
-	if (!FormUtils::IsConcrete(item))
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (item->IsDynamicForm())
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return (m_questTargets.insert(item)).second;
-}
-
-// used for Quest Target NPCs. Blocks autoloot of the NPC, to preserve immersion and avoid breaking Quests.
-bool DataCase::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
-{
-	if (!npc)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (npc->IsDynamicForm())
-		return false;
-	std::string name(npc->GetName());
-	if (name.empty())
-		return false;
-	RecursiveLockGuard guard(m_blockListLock);
-	return (m_questTargets.insert(npc)).second;
-}
-
-Lootability DataCase::ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const
-{
-	if (!refr)
-		return Lootability::NullReference;
-	return QuestTargetLootability(refr->GetBaseObject());
-}
-
-Lootability DataCase::QuestTargetLootability(const RE::TESForm* form) const
-{
-	if (!form)
-		return Lootability::NoBaseObject;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
-	if (form->IsDynamicForm())
-		return Lootability::Lootable;
-	RecursiveLockGuard guard(m_blockListLock);
-	const auto matched(m_questTargets.find(form));
-	if (matched != m_questTargets.cend())
-	{
-		return Lootability::CannotLootQuestTarget;
-	}
-	return Lootability::Lootable;
-}
-
 ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
 {
 	const auto entry(m_objectTypeByForm.find(formID));
@@ -928,6 +848,11 @@ ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
 bool DataCase::SetObjectTypeForForm(RE::FormID formID, ObjectType objectType)
 {
 	return m_objectTypeByForm.insert(std::make_pair(formID, objectType)).second;
+}
+
+void DataCase::ForceObjectTypeForForm(RE::FormID formID, ObjectType objectType)
+{
+	m_objectTypeByForm[formID] = objectType;
 }
 
 ObjectType DataCase::GetObjectTypeForFormType(RE::FormType formType) const
@@ -986,8 +911,7 @@ void DataCase::ListsClear(const bool gameReload)
 	}
 	// reset blocked Base Objects and REFRs, reseed with off-limits containers
 	ResetBlockedForms();
-	ClearBlockedReferences(gameReload);
-	BlockOffLimitsContainers();
+	ResetBlockedReferences(gameReload);
 }
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
@@ -1090,6 +1014,10 @@ void DataCase::CategorizeLootables()
 	DBG_MESSAGE("*** LOAD *** Analyze Perks");
 	AnalyzePerks();
 
+	// Analyze NPC Race and Keywords for dead body filtering
+	DBG_MESSAGE("*** LOAD *** Analyze NPC Race and Keywords");
+	NPCFilter::Instance().Load();
+
 	// Handle any special cases based on Load Order, including base game 'known exceptions'
 	REL_MESSAGE("*** LOAD *** Detect and Handle Exceptions");
 	HandleExceptions();
@@ -1102,11 +1030,10 @@ void DataCase::HandleExceptions()
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
 	ExcludeMissivesBoards();
+	ExcludeBuildYourNobleHouseIncomeChest();
 
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();
-
-	ExcludeQuestTargets();
 
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
@@ -1117,6 +1044,8 @@ void DataCase::HandleExceptions()
 	IncludeFossilMiningExcavation();
 	// whitelist CorpseToCoinage producer
 	IncludeCorpseCoinage();
+	// whitelist Hearthfire Extended Apiary
+	IncludeHearthfireExtendedApiary();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
@@ -1379,6 +1308,19 @@ void DataCase::CategorizeStatics()
 	m_objectTypeByForm[LockPick] = ObjectType::lockpick;
 	m_objectTypeByForm[Gold] = ObjectType::septims;
 	m_objectTypeByForm[WispCore] = ObjectType::critter;
+
+	// record firehose BYOH materials
+	static std::string hearthFiresName("HearthFires.esm");
+	static std::vector<RE::FormID> clayOrStone({ 0x9f2, 0x9f3, 0xA14, 0x306b, 0x310b, 0xa511 });
+	for (const auto clayOrStoneFormID : clayOrStone)
+	{
+		RE::TESForm* clayOrStoneForm(RE::TESDataHandler::GetSingleton()->LookupForm(clayOrStoneFormID, hearthFiresName));
+		if (clayOrStoneForm)
+		{
+			DBG_MESSAGE("Record HearthFires Clay Or Stone {}(0x{:08x}) as firehose", clayOrStoneForm->GetName(), clayOrStoneForm->GetFormID());
+			AddFirehose(clayOrStoneForm);
+		}
+	}
 }
 
 template <>

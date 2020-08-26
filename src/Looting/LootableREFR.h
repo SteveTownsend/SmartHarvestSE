@@ -31,7 +31,7 @@ public:
 	explicit LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope);
 
 	int16_t GetItemCount();
-	bool IsQuestItem(const bool requireFullQuestFlags);
+	bool IsQuestItem() const;
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	bool IsValuable(void) const;
 
