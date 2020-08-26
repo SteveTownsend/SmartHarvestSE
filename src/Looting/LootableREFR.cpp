@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "FormHelpers/FormHelper.h"
 #include "Looting/objects.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -34,12 +35,12 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
-bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
+bool LootableREFR::IsQuestItem() const
 {
 	if (!m_ref)
 		return false;
 	// check REFR vs pre-populated Quest Targets
-	if (DataCase::GetInstance()->ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
+	if (QuestTargets::Instance().ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
 		return true;
 
 	RE::RefHandle handle;
@@ -55,7 +56,7 @@ bool LootableREFR::IsQuestItem(const bool requireFullQuestFlags)
 	if (!extraListEx.m_extraData)
 		return false;
 
-	return extraListEx.IsQuestObject(requireFullQuestFlags);
+	return extraListEx.IsQuestObject();
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const

@@ -41,6 +41,7 @@ public:
 	double SneakDistanceInterior() const;
 	void ExcludeMountedIfForbidden(void);
 	Position GetPosition() const;
+	const RE::TESRace* GetRace() const;
 	AlglibPosition GetAlglibPosition() const;
 	bool WithinDetectionRange(const double distance) const;
 	void UpdateGameTime(const float gameTime);

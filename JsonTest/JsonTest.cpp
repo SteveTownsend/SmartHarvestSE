@@ -135,52 +135,124 @@ void ParseCollectionGroup(const nlohmann::json& collectionGroup)
 	}
 }
 
-int main(int argc, const char** argv)
+void CheckCollections()
 {
 	// Validate the schema
 	const std::string schemaFileName("SHSE.SchemaCollections.json");
-    std::ifstream schemaFile(schemaFileName);
+	std::ifstream schemaFile(schemaFileName);
+	if (schemaFile.fail())
+	{
+		std::cerr << "JSON Collections Schema " << schemaFileName << " cannot be opened\n";
+		return;
+	}
 	nlohmann::json_schema::json_validator validator;
 	try {
 		nlohmann::json schema(nlohmann::json::parse(schemaFile));
 		validator.set_root_schema(schema); // insert root-schema
 	}
 	catch (const std::exception& e) {
-		std::cerr << "JSON Schema " << schemaFileName << " validation error\n" << e.what() << '/n';
-		return -1;
+		std::cerr << "JSON Collections Schema " << schemaFileName << " validation error\n" << e.what() << '\n';
+		return;
 	}
-	std::cout << "JSON Schema " << schemaFileName << " parsed and validated\n";
+	std::cout << "JSON Collections Schema " << schemaFileName << " parsed and validated\n";
 
 	// Find and Load Collection Definitions using the validated schema
-	const std::regex collectionsFilePattern(".*\\SHSE.Collections\\..*\\.json$");
-	for (const auto& nextFile : std::filesystem::directory_iterator("."))
-	{
-		std::string collectionFileName(nextFile.path().generic_string());
-		if (!std::filesystem::is_regular_file(nextFile))
+	try {
+		const std::regex collectionsFilePattern(".*\\SHSE.Collections\\..*\\.json$");
+		for (const auto& nextFile : std::filesystem::directory_iterator("."))
 		{
-			std::cout << "Skip " << collectionFileName << ", not a regular file\n";
-			continue;
-		}
-		if (!std::regex_match(collectionFileName, collectionsFilePattern))
-		{
-			std::cout << "Skip " << collectionFileName << ", does not match Collections filename pattern\n";
-			continue;
-		}
-		std::ifstream collectionFile(collectionFileName);
-		nlohmann::json collectionGroup;
-		try {
-			collectionGroup = nlohmann::json::parse(collectionFile);
-			validator.validate(collectionGroup);
-		}
-		catch (const std::exception& e) {
-			std::cerr << "JSON Collections " << collectionFileName << " validation error\n" << e.what() << '/n';
-			continue;
-		}
-		std::cout << "JSON Collections " << collectionFileName << " parsed and validated\n";
+			std::string collectionFileName(nextFile.path().generic_string());
+			if (!std::filesystem::is_regular_file(nextFile))
+			{
+				std::cout << "Skip " << collectionFileName << ", not a regular file\n";
+				continue;
+			}
+			if (!std::regex_match(collectionFileName, collectionsFilePattern))
+			{
+				std::cout << "Skip " << collectionFileName << ", does not match Collections filename pattern\n";
+				continue;
+			}
+			std::ifstream collectionFile(collectionFileName);
+			nlohmann::json collectionGroup;
+			try {
+				collectionGroup = nlohmann::json::parse(collectionFile);
+				validator.validate(collectionGroup);
+			}
+			catch (const std::exception& e) {
+				std::cerr << "JSON Collections " << collectionFileName << " validation error\n" << e.what() << '\n';
+				continue;
+			}
+			std::cout << "JSON Collections " << collectionFileName << " parsed and validated\n";
 
-		// walk the tree
-		ParseCollectionGroup(collectionGroup);
-		std::cout << "JSON Collections " << collectionFileName << " walked OK\n";
+			// walk the tree
+			ParseCollectionGroup(collectionGroup);
+			std::cout << "JSON Collections " << collectionFileName << " walked OK\n";
+		}
 	}
+	catch (const std::exception& e) {
+		std::cerr << "JSON Collections Processing Error\n" << e.what() << '\n';
+	}
+}
+
+void CheckFilters()
+{
+	// Validate the schema
+	const std::string schemaFileName("SHSE.SchemaFilters.json");
+	std::ifstream schemaFile(schemaFileName);
+	if (schemaFile.fail())
+	{
+		std::cerr << "JSON Filters Schema " << schemaFileName << " cannot be opened\n";
+		return;
+	}
+	nlohmann::json_schema::json_validator validator;
+	try {
+		nlohmann::json schema(nlohmann::json::parse(schemaFile));
+		validator.set_root_schema(schema); // insert root-schema
+	}
+	catch (const std::exception& e) {
+		std::cerr << "JSON Filters Schema " << schemaFileName << " validation error\n" << e.what() << '\n';
+		return;
+	}
+	std::cout << "JSON Filters Schema " << schemaFileName << " parsed and validated\n";
+
+	// Find and Load Filter Definitions using the validated schema
+	try {
+		const std::regex filtersFilePattern(".*\\SHSE.Filter\\..*\\.json$");
+		for (const auto& nextFile : std::filesystem::directory_iterator("."))
+		{
+			std::string filterFileName(nextFile.path().generic_string());
+			if (!std::filesystem::is_regular_file(nextFile))
+			{
+				std::cout << "Skip " << filterFileName << ", not a regular file\n";
+				continue;
+			}
+			if (!std::regex_match(filterFileName, filtersFilePattern))
+			{
+				std::cout << "Skip " << filterFileName << ", does not match Filters filename pattern\n";
+				continue;
+			}
+			std::ifstream filterFile(filterFileName);
+			nlohmann::json filter;
+			try {
+				filter = nlohmann::json::parse(filterFile);
+				validator.validate(filter);
+			}
+			catch (const std::exception& e) {
+				std::cerr << "JSON Filters " << filterFileName << " validation error\n" << e.what() << '\n';
+				continue;
+			}
+			std::cout << "JSON Filters " << filterFileName << " parsed and validated\n";
+		}
+	}
+	catch (const std::exception& e) {
+		std::cerr << "JSON Filters Processing Error\n" << e.what() << '\n';
+	}
+}
+
+int main(int argc, const char** argv)
+{
+	CheckCollections();
+	CheckFilters();
+
 	return 0;
 }

@@ -100,7 +100,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				{
 					if (!dryRun)
 					{
-						ProcessManualLootItem(m_candidate);
+						// print message about loose REFR
+						ProcessManualLootREFR(m_candidate);
 					}
 					//we do not want to blacklist the base object even if it's not a proper objectType
 					return Lootability::ManualLootTarget;
@@ -140,32 +141,28 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::BaseObjectOnBlacklist;
 		}
 
-		bool needsFullQuestFlags(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0);
-		SpecialObjectHandling questObjectLoot =
-			SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
-		if (refrEx.IsQuestItem(needsFullQuestFlags))
+		QuestObjectHandling questObjectLoot =
+			QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+		if (refrEx.IsQuestItem())
 		{
 			if (m_glowOnly)
 			{
-				questObjectLoot = SpecialObjectHandling::GlowTarget;
+				questObjectLoot = QuestObjectHandling::GlowTarget;
 			}
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
-			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
+			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow quest object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			if (!IsSpecialObjectLootable(questObjectLoot))
-			{
-				skipLooting = true;
-				// ignore collectibility from here on, since we've determined it is unlootable as a Quest Target
-				collectible.first = false;
-				result = Lootability::CannotLootQuestTarget;
-			}
+			skipLooting = true;
+			// ignore collectibility from here on, since we've determined it is unlootable as a Quest Target
+			collectible.first = false;
+			result = Lootability::CannotLootQuestTarget;
 		}
 		// glow unread notes as they are often quest-related
-		else if (questObjectLoot == SpecialObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
+		else if (questObjectLoot == QuestObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
 		{
 			DBG_VMESSAGE("Glowable book 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			UpdateGlowReason(GlowReason::SimpleTarget);
@@ -204,7 +201,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 
 		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
-		Lootability forbidden(ItemLootingLegality(collectible.first));
+		Lootability forbidden(ItemLootingLegality(collectible.first, m_targetType));
 		if (forbidden != Lootability::Lootable)
 		{
 			skipLooting = true;
@@ -323,13 +320,25 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::ItemTheftTriggered;
 		}
 
+		const bool isFirehose(DataCase::GetInstance()->IsFirehose(m_candidate->GetBaseObject()));
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
 			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
-			bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
-			EventPublisher::Instance().TriggerMining(m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify);
+			const bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
+			const bool mineAll(LootingTypeFromIniSetting(
+				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, "oreVein")) == LootingType::LootOreVeinAlways);
+			if (!isFirehose || mineAll)
+			{
+				EventPublisher::Instance().TriggerMining(
+					m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify, isFirehose);
+				if (isFirehose)
+				{
+					// do not revisit over-generous sources any time soon - this is stronger than the oreVein temp block
+					DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+				}
+			}
 		}
 		else
 		{
@@ -343,21 +352,30 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
+			if (isFirehose)
+			{
+				// do not revisit over-generous sources any time soon
+				DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+			}
 		}
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
+		if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
+		{
+			DBG_MESSAGE("skip blacklisted container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+			return Lootability::ReferencesBlacklistedContainer;
+		}
 		DBG_MESSAGE("scanning container/body {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 #if _DEBUG
 		DumpContainer(LootableREFR(m_candidate, m_targetType));
 #endif
-		bool requireQuestItemAsTarget = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectScope") != 0;
 		bool skipLooting(false);
 		// INI defaults exclude nudity by not looting armor from dead bodies
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
-		ContainerLister lister(m_targetType, m_candidate, requireQuestItemAsTarget);
+		ContainerLister lister(m_targetType, m_candidate);
 		size_t lootableItems(lister.AnalyzeLootableItems());
 		if (lootableItems == 0)
 		{
@@ -422,24 +440,21 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (lister.HasQuestItem())
 		{
-			SpecialObjectHandling questObjectLoot =
-				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "questObjectLoot"));
+			QuestObjectHandling questObjectLoot =
+				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
 			if (m_glowOnly)
 			{
-				questObjectLoot = SpecialObjectHandling::GlowTarget;
+				questObjectLoot = QuestObjectHandling::GlowTarget;
 			}
-			if (questObjectLoot == SpecialObjectHandling::GlowTarget)
+			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 				UpdateGlowReason(GlowReason::QuestObject);
 			}
 
-			if (!IsSpecialObjectLootable(questObjectLoot))
-			{
-				// this is not a blocker for looting of non-special items
-				lister.ExcludeQuestItems();
-				result = Lootability::ContainerHasQuestObject;
-			}
+			// this is not a blocker for looting of non-special items
+			lister.ExcludeQuestItems();
+			result = Lootability::ContainerHasQuestObject;
 		}
 
 		if (lister.HasEnchantedItem())
@@ -492,13 +507,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				// this is not a blocker for looting of non-special items
 				lister.ExcludeCollectibleItems();
 
-				if (lister.CollectibleAction() == CollectibleHandling::Glow)
+				if (collectibleAction == CollectibleHandling::Glow)
 				{
 					DBG_VMESSAGE("glow container with collectible object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::Collectible);
 					result = Lootability::CollectibleItemSetToGlow;
 				}
-				else if (lister.CollectibleAction() == CollectibleHandling::Print)
+				else if (collectibleAction == CollectibleHandling::Print)
 				{
 					result = Lootability::ManualLootTarget;
 				}
@@ -516,11 +531,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			skipLooting = true;
 			result = forbidden;
-		}
-		else if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
-		{
-			skipLooting = true;
-			result = Lootability::ReferencesBlacklistedContainer;
 		}
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
@@ -586,8 +596,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				bool hasEnchantment = GetEnchantmentFromExtraLists(targetItemInfo.GetExtraDataLists()) != nullptr;
 				if (hasEnchantment) {
-					DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment",
-						targetItemInfo.BoundObject()->GetName(), targetItemInfo.BoundObject()->GetFormID());
+					DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment", target->GetName(), target->GetFormID());
 					switch (objType)
 					{
 					case ObjectType::weapon:
@@ -607,18 +616,28 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			LootingType lootingType(LootingType::LeaveBehind);
 			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-				ConditionMatcher(targetItemInfo.BoundObject(), m_targetType)));
+				ConditionMatcher(target, m_targetType)));
 			if (collectible.first)
 			{
-				if (CanLootCollectible(collectible.second))
+				CollectibleHandling collectibleAction(collectible.second);
+				if (CanLootCollectible(collectibleAction))
 				{
-					DBG_VMESSAGE("Collectible Item 0x{:08x}", targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("Collectible Item 0x{:08x}", target->formID);
 					lootingType = LootingType::LootAlwaysSilent;
+				}
+				else if (collectibleAction == CollectibleHandling::Print)
+				{
+					if (!dryRun)
+					{
+						// print message about container item
+						ProcessManualLootItem(target);
+					}
+					continue;
 				}
 				else
 				{
 					// blacklisted or 'glow'
-					DBG_VMESSAGE("Collectible Item 0x{:08x} skipped", targetItemInfo.BoundObject()->formID);
+					DBG_VMESSAGE("Collectible Item 0x{:08x} skipped", target->formID);
 					continue;
 				}
 			}
@@ -656,7 +675,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			// crime-check this REFR from the container as individual object, respecting collectibility if not a crime
-			if (ItemLootingLegality(collectible.first) != Lootability::Lootable)
+			if (ItemLootingLegality(collectible.first, m_targetType) != Lootability::Lootable)
 			{
 				continue;
 			}
@@ -800,9 +819,9 @@ void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bo
 	}
 }
 
-Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible)
+Lootability TryLootREFR::ItemLootingLegality(const bool isCollectible, INIFile::SecondaryType targetType)
 {
-	Lootability result(LootingLegality(INIFile::SecondaryType::itemObjects));
+	Lootability result(LootingLegality(targetType));
 	if (isCollectible && LootOwnedItemIfCollectible(result))
 	{
 		DBG_VMESSAGE("Collectible REFR 0x{:08x} overrides Legality {} for {}/0x{:08x}", m_candidate->GetFormID(), LootabilityName(result).c_str(),

@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Looting/ManagedLists.h"
 #include "Collections/CollectionManager.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
@@ -101,21 +102,34 @@ bool IsPlayerOwned(const RE::TESObjectREFR* refr)
 	return false;
 }
 
-void ProcessManualLootItem(const RE::TESObjectREFR* refr)
+void PrintManualLootMessage(const std::string& name)
 {
-	// notify about these, just once
 	static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));
 	if (!manualLootText.empty())
 	{
 		std::string notificationText(manualLootText);
-		StringUtils::Replace(notificationText, "{ITEMNAME}", refr->GetName());
+		StringUtils::Replace(notificationText, "{ITEMNAME}", name);
 		if (!notificationText.empty())
 		{
 			RE::DebugNotification(notificationText.c_str());
 		}
 	}
-	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for 0x{:08x}", refr->GetFormID());
+}
+
+void ProcessManualLootREFR(const RE::TESObjectREFR* refr)
+{
+	// notify about these, just once
+	PrintManualLootMessage(refr->GetName());
+	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for REFR 0x{:08x}", refr->GetFormID());
 	DataCase::GetInstance()->BlockReference(refr, Lootability::ManualLootTarget);
+}
+
+void ProcessManualLootItem(const RE::TESBoundObject* item)
+{
+	// notify about these, just once
+	PrintManualLootMessage(item->GetName());
+	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for Item 0x{:08x}", item->GetFormID());
+	DataCase::GetInstance()->BlockForm(item, Lootability::ManualLootTarget);
 }
 
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr)
@@ -155,7 +169,7 @@ bool IsSummoned(const RE::Actor* actor)
 bool IsQuestTargetNPC(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
-	bool result(npc && DataCase::GetInstance()->QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
+	bool result(npc && QuestTargets::Instance().QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
 	DBG_DMESSAGE("Actor is Quest Target NPC = {}", result ? "true" : "false");
 	return result;
 }

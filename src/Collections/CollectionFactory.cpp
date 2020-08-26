@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Collections/Condition.h"
 #include "Collections/CollectionFactory.h"
+#include "Utilities/utils.h"
 
 namespace shse
 {
@@ -56,20 +57,7 @@ std::unique_ptr<FormListCondition> CollectionFactory::ParseFormList(const nlohma
 
 std::unique_ptr<FormsCondition> CollectionFactory::ParseForms(const nlohmann::json& formsRule) const
 {
-	std::vector<std::pair<std::string, std::vector<std::string>>> forms;
-	forms.reserve(formsRule.size());
-	std::transform(formsRule.begin(), formsRule.end(), std::back_inserter(forms),
-		[&](const nlohmann::json& next)
-	{
-		std::vector<std::string> formIDs;
-		formIDs.reserve(next["form"].size());
-		for (const std::string& form : next["form"])
-		{
-			formIDs.push_back(form);
-		}
-		return std::make_pair(next["plugin"].get<std::string>(), formIDs);
-	});
-	return std::make_unique<FormsCondition>(forms);
+	return std::make_unique<FormsCondition>(JSONUtils::ParseFormsType(formsRule));
 }
 
 std::unique_ptr<KeywordCondition> CollectionFactory::ParseKeyword(const nlohmann::json& keywordRule) const

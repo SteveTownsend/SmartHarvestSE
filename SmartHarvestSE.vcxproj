@@ -214,6 +214,7 @@
     <ClCompile Include="src\Looting\IRangeChecker.cpp" />
     <ClCompile Include="src\Looting\LootableREFR.cpp" />
     <ClCompile Include="src\Looting\ManagedLists.cpp" />
+    <ClCompile Include="src\Looting\NPCFilter.cpp" />
     <ClCompile Include="src\Looting\objects.cpp" />
     <ClCompile Include="src\Looting\ProducerLootables.cpp" />
     <ClCompile Include="src\Looting\ReferenceFilter.cpp" />
@@ -245,6 +246,8 @@
     <ClCompile Include="src\WorldState\ActorTracker.cpp" />
     <ClCompile Include="src\WorldState\AdventureTargets.cpp" />
     <ClCompile Include="src\WorldState\PartyMembers.cpp" />
+    <ClCompile Include="src\WorldState\PlacedObjects.cpp" />
+    <ClCompile Include="src\WorldState\QuestTargets.cpp" />
     <ClCompile Include="src\WorldState\VisitedPlaces.cpp" />
     <ClCompile Include="src\WorldState\LocationTracker.cpp" />
     <ClCompile Include="src\WorldState\PlayerHouses.cpp" />
@@ -277,6 +280,7 @@
     <ClInclude Include="src\Looting\IRangeChecker.h" />
     <ClInclude Include="src\Looting\LootableREFR.h" />
     <ClInclude Include="src\Looting\ManagedLists.h" />
+    <ClInclude Include="src\Looting\NPCFilter.h" />
     <ClInclude Include="src\Looting\objects.h" />
     <ClInclude Include="src\Looting\ObjectType.h" />
     <ClInclude Include="src\Looting\ProducerLootables.h" />
@@ -301,7 +305,9 @@
     <ClInclude Include="src\VM\UIState.h" />
     <ClInclude Include="src\WorldState\ActorTracker.h" />
     <ClInclude Include="src\WorldState\AdventureTargets.h" />
+    <ClInclude Include="src\WorldState\QuestTargets.h" />
     <ClInclude Include="src\WorldState\PartyMembers.h" />
+    <ClInclude Include="src\WorldState\PlacedObjects.h" />
     <ClInclude Include="src\WorldState\VisitedPlaces.h" />
     <ClInclude Include="src\WorldState\LocationTracker.h" />
     <ClInclude Include="src\WorldState\PlayerHouses.h" />
@@ -322,6 +328,8 @@
     <None Include="Config\SmartHarvestSE.Defaults.ini" />
     <None Include="Config\SmartHarvestSE.ini" />
     <None Include="exports.def" />
+    <None Include="Filters\SHSE.Filter.DeadBody.json" />
+    <None Include="Filters\SHSE.SchemaFilters.json" />
     <None Include="Scripts\SHSE_EventsAlias.psc" />
     <None Include="Scripts\SHSE_MCM.psc" />
     <None Include="Scripts\SHSE_PluginProxy.psc" />

@@ -20,16 +20,10 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include <shlobj.h>
+#include "Data/LoadOrder.h"
 
 constexpr RE::FormID ClothKeyword = 0x06BBE8;
 constexpr RE::FormID CurrentFollowerFaction = 0x0005C84E;
-constexpr RE::FormID InvalidForm = 0x0;
-constexpr RE::FormID InvalidPlugin = 0xFFFFFFFF;
-constexpr RE::FormID ESPMask = 0xFF000000;
-constexpr RE::FormID FullRawMask = 0x00FFFFFF;
-constexpr RE::FormID ESPFETypeMask = 0xFE000000;
-constexpr RE::FormID ESPFEMask = 0xFEFFF000;
-constexpr RE::FormID ESPFERawMask = 0x00000FFF;
 
 constexpr double DistanceUnitInFeet = 0.046875;
 constexpr double FeetPerMile = 5280.0;
@@ -131,4 +125,31 @@ namespace CompressionUtils
 {
 	bool DecodeBrotli(const std::string& compressed, nlohmann::json& output);
 	bool EncodeBrotli(const nlohmann::json& plainText, std::string& encoded);
+}
+
+namespace JSONUtils
+{
+	template <typename FORMTYPE> std::unordered_set<const FORMTYPE*> ToForms(const nlohmann::json& formsType)
+	{
+		std::unordered_set<const FORMTYPE*> forms;
+		const auto formNamesByPlugin(ParseFormsType(formsType));
+		for (const auto& entry : formNamesByPlugin)
+		{
+			for (const auto nextID : entry.second)
+			{
+				// schema enforces 8-char HEX format
+				RE::FormID formID(StringUtils::ToFormID(nextID));
+				const FORMTYPE* form(RE::TESDataHandler::GetSingleton()->LookupForm<FORMTYPE>(shse::LoadOrder::Instance().AsRaw(formID), entry.first));
+				if (!form)
+				{
+					REL_WARNING("FormsCondition requires valid Forms, got {}/0x{:08x}", entry.first.c_str(), formID);
+					continue;
+				}
+				DBG_VMESSAGE("Resolved Form 0x{:08x}", formID);
+				forms.insert(form);
+			}
+		}
+		return forms;
+	}
+	std::vector<std::pair<std::string, std::vector<std::string>>> ParseFormsType(const nlohmann::json& formsType);
 }

@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
 #include "VM/papyrus.h"
+#include "WorldState/PlacedObjects.h"
 #include "WorldState/PlayerState.h"
 
 namespace shse
@@ -174,7 +175,7 @@ std::string Collection::PrintDefinition() const
 size_t Collection::PlacedMembers(void) const
 {
 	return std::count_if(m_members.cbegin(), m_members.cend(),
-		[&](const RE::TESForm* form) -> bool { return CollectionManager::Instance().IsPlacedObject(form); });
+		[&](const RE::TESForm* form) -> bool { return PlacedObjects::Instance().IsPlacedObject(form); });
 }
 
 std::string Collection::PrintMembers(void) const
@@ -201,7 +202,7 @@ std::string Collection::PrintMembers(void) const
 	for (const auto member : m_members)
 	{
 		collectionStr << "  0x" << StringUtils::FromFormID(member->GetFormID());
-		collectionStr << ":" << (CollectionManager::Instance().IsPlacedObject(member) ? 'Y' : 'N') << ":" << member->GetName();
+		collectionStr << ":" << (PlacedObjects::Instance().IsPlacedObject(member) ? 'Y' : 'N') << ":" << member->GetName();
 		collectionStr << '\n';
 	}
 	return collectionStr.str();

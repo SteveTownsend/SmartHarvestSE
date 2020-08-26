@@ -24,19 +24,13 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
+#include "WorldState/QuestTargets.h"
 
 namespace shse
 {
 
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
-	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(false),
-	m_collectibleAction(CollectibleHandling::Leave)
-{
-}
-
-ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr, const bool requireQuestItemAsTarget) :
-	m_targetType(targetType), m_refr(refr), m_requireQuestItemAsTarget(requireQuestItemAsTarget),
-	m_collectibleAction(CollectibleHandling::Leave)
+	m_targetType(targetType), m_refr(refr),	m_collectibleAction(CollectibleHandling::Leave)
 {
 }
 
@@ -116,7 +110,7 @@ size_t ContainerLister::AnalyzeLootableItems()
 				continue;
 
 			// Check for enchantment or quest target
-			if (DataCase::GetInstance()->QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
+			if (QuestTargets::Instance().QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
 			{
 				m_questItems.insert(item);
 			}
@@ -126,7 +120,7 @@ size_t ContainerLister::AnalyzeLootableItems()
 				if (*extraList)
 				{
 					ExtraDataListHelper exListHelper(*extraList);
-					if (exListHelper.IsQuestObject(m_requireQuestItemAsTarget))
+					if (exListHelper.IsQuestObject())
 					{
 						m_questItems.insert(item);
 					}

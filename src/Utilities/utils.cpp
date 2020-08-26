@@ -310,3 +310,24 @@ namespace CompressionUtils
 		return false;
 	}
 }
+
+namespace JSONUtils
+{
+	std::vector<std::pair<std::string, std::vector<std::string>>> ParseFormsType(const nlohmann::json& formsType)
+	{
+		std::vector<std::pair<std::string, std::vector<std::string>>> forms;
+		forms.reserve(formsType.size());
+		std::transform(formsType.begin(), formsType.end(), std::back_inserter(forms),
+			[&](const nlohmann::json& next)
+		{
+			std::vector<std::string> formIDs;
+			formIDs.reserve(next["form"].size());
+			for (const std::string& form : next["form"])
+			{
+				formIDs.push_back(form);
+			}
+			return std::make_pair(next["plugin"].get<std::string>(), formIDs);
+		});
+		return forms;
+	}
+}
