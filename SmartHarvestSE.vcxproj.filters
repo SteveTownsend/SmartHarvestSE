@@ -342,6 +342,9 @@
     <ClInclude Include="src\WorldState\QuestTargets.h">
       <Filter>src\WorldState</Filter>
     </ClInclude>
+    <ClInclude Include="src\WorldState\PositionData.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="resources">

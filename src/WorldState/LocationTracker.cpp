@@ -58,35 +58,13 @@ LocationTracker::LocationTracker() :
 // called when Player moves to a new WorldSpace, including on game load/reload
 void LocationTracker::RecordMarkedPlaces()
 {
-	decltype(m_markedPlaces) markedPlaces;
-	// record map marker position for worldspace locations
-	for (const auto& formLocation : m_playerParentWorld->locationMap)
-	{
-		RE::BGSLocation* location(formLocation.second);
-		RE::ObjectRefHandle markerRef(location->worldLocMarker);
-		if (!markerRef)
-		{
-			DBG_VMESSAGE("Location {}/0x{:08x} has no map marker", location->GetName(), location->GetFormID());
-			continue;
-		}
-		shse::Position markerPosition({ markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ() });
-		if (markedPlaces.insert(std::make_pair(location, markerPosition)).second)
-		{
-			DBG_VMESSAGE("Location {}/0x{:08x} has marker at ({:0.2f},{:0.2f},{:0.2f})", location->GetName(), location->GetFormID(),
-				markerRef.get()->GetPositionX(), markerRef.get()->GetPositionY(), markerRef.get()->GetPositionZ());
-		}
-		else
-		{
-			DBG_VMESSAGE("Location {}/0x{:08x} already recorded", location->GetName(), location->GetFormID());
-		}
-	}
-	if (markedPlaces.empty())
+	// replace existing entries with new
+	m_markedPlaces = AdventureTargets::Instance().GetWorldMarkedPlaces(m_playerParentWorld);
+	if (m_markedPlaces.empty())
 	{
 		DBG_VMESSAGE("No map markers within this worldspace");
 		return;
 	}
-	// replace existing entries with new
-	m_markedPlaces.swap(markedPlaces);
 	size_t numPlaces(m_markedPlaces.size());
 	DBG_MESSAGE("Build tree from {} LCTNs", numPlaces);
 
@@ -132,7 +110,7 @@ CompassDirection LocationTracker::DirectionToDestinationFromStart(const AlglibPo
 		{-180., CompassDirection::South}
 	};
 	auto& direction = directions.cbegin();
-	while (degrees > direction->first and direction != directions.cend())
+	while (direction != directions.cend() && degrees > direction->first)
 	{
 		++direction;
 	}
@@ -334,6 +312,7 @@ RelativeLocationDescriptor LocationTracker::NearestMapMarker(const AlglibPositio
 	tags.setcontent(1, &dummy);
 	kdtreequeryresultstags(m_markers, tags);
 	RE::FormID location(static_cast<RE::FormID>(tags[0]));
+	DBG_MESSAGE("Nearest Map Marker to ({:0.2f},{:0.2f},{:0.2f}) has formID 0x{:08x}", refPos[0], refPos[1], refPos[2], location);
 
 	// get coordinates for the nearest marker
 	alglib::real_2d_array marker;
@@ -349,14 +328,16 @@ double DistanceBetween(const AlglibPosition& pos1, const AlglibPosition& pos2)
 	double dx(pos1[0] - pos2[0]);
 	double dy(pos1[1] - pos2[1]);
 	double dz(pos1[2] - pos2[2]);
-	return sqrt(dx * dx + dy * dy + dz * dz);
+	double distance(sqrt((dx * dx) + (dy * dy) + (dz * dz)));
+	DBG_MESSAGE("pos1({:0.2f},{:0.2f},{:0.2f}), pos2({:0.2f},{:0.2f},{:0.2f}), distance {:0.2f} units",
+		pos1[0], pos1[1], pos1[2], pos2[0], pos2[1], pos2[2], distance);
+	return distance;
 }
 
-RelativeLocationDescriptor LocationTracker::LocationMapMarker(
-	const RE::ObjectRefHandle targetMarker, const RE::BGSLocation* location, const AlglibPosition& refPos) const
+RelativeLocationDescriptor LocationTracker::MarkedLocationPosition(
+	const Position targetPosition, const RE::BGSLocation* location, const AlglibPosition& refPos) const
 {
-	const RE::TESObjectREFR* refr(targetMarker.get().get());
-	AlglibPosition markerPos({ refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ() });
+	AlglibPosition markerPos({ targetPosition[0], targetPosition[1], targetPosition[2] });
 	double unitsAway(DistanceBetween(markerPos, refPos));
 	return RelativeLocationDescriptor(refPos, markerPos, location->GetFormID(), unitsAway);
 }
@@ -368,8 +349,8 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 #endif
 	const RE::TESWorldSpace* world(AdventureTargets::Instance().TargetWorld());
 	const RE::BGSLocation* location(AdventureTargets::Instance().TargetLocation());
-	RE::ObjectRefHandle targetMarker(AdventureTargets::Instance().TargetMapMarker());
-	if (!location || !targetMarker)
+	Position targetPosition(AdventureTargets::Instance().TargetPosition());
+	if (!location || targetPosition == InvalidPosition)
 	{
 		// no adventure in progress, or target unmappable
 		return nullptr;
@@ -402,7 +383,7 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 		return nullptr;
 	}
 	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
-	RelativeLocationDescriptor targetLocation(LocationMapMarker(targetMarker, location, playerPos));
+	RelativeLocationDescriptor targetLocation(MarkedLocationPosition(targetPosition, location, playerPos));
 	if (targetLocation == RelativeLocationDescriptor::Invalid())
 	{
 		REL_WARNING("Could not determine adventure target marker");

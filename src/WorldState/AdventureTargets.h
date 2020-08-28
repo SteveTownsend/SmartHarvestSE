@@ -18,6 +18,7 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
+#include "WorldState/PositionData.h"
 
 namespace shse
 {
@@ -109,20 +110,26 @@ public:
 	void AbandonCurrentDestination();
 	const RE::TESWorldSpace* TargetWorld(void) const;
 	const RE::BGSLocation* TargetLocation(void) const;
-	RE::ObjectRefHandle TargetMapMarker(void) const;
+	Position TargetPosition(void) const;
 	bool HasActiveTarget(void) const;
-
+	std::unordered_map<const RE::BGSLocation*, Position> GetWorldMarkedPlaces(const RE::TESWorldSpace* world) const;
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& j);
 
 private:
+	Position GetInteriorCellPosition(const RE::TESObjectCELL* cell) const;
+	Position GetRefHandlePosition(const RE::ObjectRefHandle handle) const;
+	Position GetRefIDPosition(const RE::FormID refID) const;
+	Position GetRefrPosition(const RE::TESObjectREFR* refr) const;
+
 	static std::unique_ptr<AdventureTargets> m_instance;
 	std::array<std::unordered_set<RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
 	mutable std::vector<AdventureTargetType> m_validAdventureTypes;
 
 	std::unordered_map<const RE::BGSLocation*, RE::TESWorldSpace*> m_worldByLocation;
-	std::unordered_map<const RE::BGSLocation*, RE::ObjectRefHandle> m_mapMarkerByLocation;
+	std::unordered_map<const RE::BGSLocation*, Position> m_locationCoordinates;
 
+	std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_markedLocationsByWorld;
 	mutable std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_unvisitedLocationsByWorld;
 	mutable std::vector<const RE::TESWorldSpace*> m_sortedWorlds;
 

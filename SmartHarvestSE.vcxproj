@@ -305,6 +305,7 @@
     <ClInclude Include="src\VM\UIState.h" />
     <ClInclude Include="src\WorldState\ActorTracker.h" />
     <ClInclude Include="src\WorldState\AdventureTargets.h" />
+    <ClInclude Include="src\WorldState\PositionData.h" />
     <ClInclude Include="src\WorldState\QuestTargets.h" />
     <ClInclude Include="src\WorldState\PartyMembers.h" />
     <ClInclude Include="src\WorldState\PlacedObjects.h" />
