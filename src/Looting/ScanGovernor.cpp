@@ -110,13 +110,25 @@ void ScanGovernor::ResetLootedDynamicREFRs()
 	m_lootedDynamicREFRs.clear();
 }
 
-void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
+void ScanGovernor::MarkContainerLootedRepeatGlow(const RE::TESObjectREFR* refr, const int glowDuration)
 {
 	RecursiveLockGuard guard(m_searchLock);
-	// record looting so we don't rescan
-	m_lootedContainers.insert(refr);
+	// record looting so we don't rescan - glow may prevent looting and require repeat processing after the glow wears off
+	std::chrono::steady_clock::time_point expiry;
+	if (glowDuration > 0)
+	{
+		auto currentTime(std::chrono::high_resolution_clock::now());
+		expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(glowDuration * 1000.0));
+	}
+	// overwrite existing to stop repeated glow if container no longer merits it
+	m_lootedContainers[refr] = expiry;
 	// this may be a locked container that we manually emptied, if so we should stop it glowing
 	m_lockedContainers.erase(refr);
+}
+
+void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
+{
+	MarkContainerLootedRepeatGlow(refr, 0);
 }
 
 bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR* refr) const
@@ -124,7 +136,16 @@ bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR* refr) const
 	if (!refr)
 		return false;
 	RecursiveLockGuard guard(m_searchLock);
-	return m_lootedContainers.count(refr) > 0;
+	const auto looted(m_lootedContainers.find(refr));
+	if (looted != m_lootedContainers.cend())
+	{
+		const auto glowExpiry(looted->second);
+		return glowExpiry == std::chrono::steady_clock::time_point() || glowExpiry > std::chrono::high_resolution_clock::now();
+	}
+	else
+	{
+		return false;
+	}
 }
 
 // forget about containers we looted to allow rescan after game load or config settings update
@@ -860,7 +881,8 @@ void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const
 	auto currentTime(std::chrono::high_resolution_clock::now());
 	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
 		return;
-	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0));
+	// lower this by 500ms so that it expires before container recheck timer
+	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0) - 500LL);
 	m_glowExpiration[refr] = expiry;
 	DBG_VMESSAGE("Trigger glow for {}/0x{:08x}", refr->GetName(), refr->formID);
 	EventPublisher::Instance().TriggerObjectGlow(refr, duration, glowReason);
