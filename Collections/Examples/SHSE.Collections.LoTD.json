@@ -9,90 +9,705 @@
   "useMCM": true,
   "collections": [
     {
-      "name": "HOLE Aetherium",
-      "description": "Display: DBM_SectionHOLEAetheriumItems",
+      "name": "NS Gemstone",
+      "description": "Display: DBM_SectionNSGemstoneItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_AetheriumWeapons_Patch.esp",
-              "formID": "FE017833"
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08415118"
             }
           ]
         }
       }
     },
     {
-      "name": "DB Hall AHO",
-      "description": "Display: DBM_SectionDBHallAHOItems",
+      "name": "NS Shells",
+      "description": "Display: DBM_SectionNSShellsItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_AHO_Patch.esp",
-              "formID": "FE018801"
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0833D88C"
             }
           ]
         }
       }
     },
     {
-      "name": "Daedric Gallery AOB Alt",
-      "description": "Display: DBM_SectionDaedricGalleryAOBAltItems",
+      "name": "HOH Cultureand Arts",
+      "description": "Display: DBM_SectionHOHCultureandArtsItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_ArtifactsofBoethiah_Patch.esp",
-              "formID": "FE01A82A"
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161D32"
             }
           ]
         }
       }
     },
     {
-      "name": "HOHAOB",
-      "description": "Display: DBM_SectionHOHAOBItems",
+      "name": "Armory Steel",
+      "description": "Display: DBM_SectionArmorySteelItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_ArtifactsofBoethiah_Patch.esp",
-              "formID": "FE01A826"
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF7"
             }
           ]
         }
       }
     },
     {
-      "name": "Daedric Gallery AOB",
-      "description": "Display: DBM_SectionDaedricGalleryAOBItems",
+      "name": "Armory Stalhrim",
+      "description": "Display: DBM_SectionArmoryStalhrimItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_ArtifactsofBoethiah_Patch.esp",
-              "formID": "FE01A815"
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF6"
             }
           ]
         }
       }
     },
     {
-      "name": "HOO Artifactsof Skyrim",
-      "description": "Display: DBM_SectionHOOArtifactsofSkyrimItems",
+      "name": "Armory Snow Elf",
+      "description": "Display: DBM_SectionArmorySnowElfItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_ArtifactsofSkyrim_Patch.esp",
-              "formID": "FE01B801"
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Orcish",
+      "description": "Display: DBM_SectionArmoryOrcishItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Nordic",
+      "description": "Display: DBM_SectionArmoryNordicItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Iron",
+      "description": "Display: DBM_SectionArmoryIronItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Glass",
+      "description": "Display: DBM_SectionArmoryGlassItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Forsworn",
+      "description": "Display: DBM_SectionArmoryForswornItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CF0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Falmer",
+      "description": "Display: DBM_SectionArmoryFalmerItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEF"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Extra Displays",
+      "description": "Display: DBM_SectionArmoryExtraDisplaysItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEE"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Elven",
+      "description": "Display: DBM_SectionArmoryElvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CED"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Ebony",
+      "description": "Display: DBM_SectionArmoryEbonyItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Dwarven",
+      "description": "Display: DBM_SectionArmoryDwarvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEB"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Dragon",
+      "description": "Display: DBM_SectionArmoryDragonItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CEA"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Dawnguard",
+      "description": "Display: DBM_SectionArmoryDawnguardItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE9"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Daedric",
+      "description": "Display: DBM_SectionArmoryDaedricItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE8"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Blades",
+      "description": "Display: DBM_SectionArmoryBladesItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE7"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Ancient Nord",
+      "description": "Display: DBM_SectionArmoryAncientNordItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Thane Weapons",
+      "description": "Display: DBM_SectionArmoryThaneWeaponsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08161CE1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOS Displays",
+      "description": "Display: DBM_SectionHOSDisplaysItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0815CBC4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Natural Science Animals",
+      "description": "Display: DBM_SectionNaturalScienceAnimalsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0815CBC2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall Achievements",
+      "description": "Display: DBM_SectionDBHallAchievementsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08152948"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOO Main Floor",
+      "description": "Display: DBM_SectionHOOMainFloorItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08152944"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOLE Main Floor",
+      "description": "Display: DBM_SectionHOLEMainFloorItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0814D7DB"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Ground Floor Right",
+      "description": "Display: DBM_SectionHOHGroundFloorRightItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0814CEF2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Daedric Gallery",
+      "description": "Display: DBM_SectionDaedricGalleryItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "081484A0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Reception Hall",
+      "description": "Display: DBM_SectionHOHReceptionHallItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0813D917"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Jewelry",
+      "description": "Display: DBM_SectionHOHJewelryItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0813D915"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Upper Gallery",
+      "description": "Display: DBM_SectionHOHUpperGalleryItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0813D911"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Ground Floor Left",
+      "description": "Display: DBM_SectionHOHGroundFloorLeftItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "081387AD"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOH Masks And Claws",
+      "description": "Display: DBM_SectionHOHMasksAndClawsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "081387AB"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOLE Upper Ring",
+      "description": "Display: DBM_SectionHOLEUpperRingItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "081387A5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Library Maps",
+      "description": "Display: DBM_SectionLibraryMapsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "081387A4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Library Lower Floor Left",
+      "description": "Display: DBM_SectionLibraryLowerFloorLeftItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "081387A1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Library Rare Books",
+      "description": "Display: DBM_SectionLibraryRareBooksItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0813879F"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Library Upper Floor",
+      "description": "Display: DBM_SectionLibraryUpperFloorItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0813879D"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Library Lower Floor Right",
+      "description": "Display: DBM_SectionLibraryLowerFloorRightItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0813879B"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Store Room Reserve Vintages",
+      "description": "Display: DBM_SectionStoreRoomReserveVintagesItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "080AE79D"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Tool Storage",
+      "description": "Display: DBM_SectionToolStorageItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "08099DA4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Guard Armor Display",
+      "description": "Display: DBM_SectionArmoryGuardArmorDisplayItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0808F99E"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Guildhouse",
+      "description": "Display: DBM_SectionGuildhouseItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "LegacyoftheDragonborn.esm",
+              "formID": "0806642A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOO Interesting NP Cs",
+      "description": "Display: DBM_SectionHOOInterestingNPCsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_3DNPC_Patch.esp",
+              "formID": "FE016AB3"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOHOAP",
+      "description": "Display: DBM_SectionHOHOAPItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_OblivionArtifacts_Patch.esp",
+              "formID": "FE01F83D"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOHOAP Jewelry",
+      "description": "Display: DBM_SectionHOHOAPJewelryItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_OblivionArtifacts_Patch.esp",
+              "formID": "FE01F83C"
             }
           ]
         }
@@ -107,7 +722,7 @@
           "formList": [
             {
               "listPlugin": "DBM_BGCollectables_Patch.esp",
-              "formID": "FE01C9C1"
+              "formID": "FE0219C1"
             }
           ]
         }
@@ -122,7 +737,7 @@
           "formList": [
             {
               "listPlugin": "DBM_BGCollectables_Patch.esp",
-              "formID": "FE01C9BF"
+              "formID": "FE0219BF"
             }
           ]
         }
@@ -137,7 +752,7 @@
           "formList": [
             {
               "listPlugin": "DBM_BGCollectables_Patch.esp",
-              "formID": "FE01C802"
+              "formID": "FE021802"
             }
           ]
         }
@@ -152,472 +767,67 @@
           "formList": [
             {
               "listPlugin": "DBM_BGCollectables_Patch.esp",
-              "formID": "FE01C800"
+              "formID": "FE021800"
             }
           ]
         }
       }
     },
     {
-      "name": "Safehouse Cloaks",
-      "description": "Display: DBM_SectionSafehouseCloaksItems",
+      "name": "HOLE Aetherium",
+      "description": "Display: DBM_SectionHOLEAetheriumItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_CloaksofSkyrim_Patch.esp",
-              "formID": "FE01D803"
+              "listPlugin": "DBM_AetheriumWeapons_Patch.esp",
+              "formID": "FE022833"
             }
           ]
         }
       }
     },
     {
-      "name": "DB Hall Clockwork",
-      "description": "Display: DBM_SectionDBHallClockworkItems",
+      "name": "DB Hall AHO",
+      "description": "Display: DBM_SectionDBHallAHOItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_Clockwork_Patch.esp",
-              "formID": "FE01E844"
+              "listPlugin": "DBM_AHO_Patch.esp",
+              "formID": "FE023801"
             }
           ]
         }
       }
     },
     {
-      "name": "Armory DGA",
-      "description": "Display: DBM_SectionArmoryDGAItems",
+      "name": "HOO Vigilant",
+      "description": "Display: DBM_SectionHOOVigilantItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_DGA_Patch.esp",
-              "formID": "FE01F810"
+              "listPlugin": "DBM_Vigilant_Patch.esp",
+              "formID": "FE024913"
             }
           ]
         }
       }
     },
     {
-      "name": "DB Hall Falskaar",
-      "description": "Display: DBM_SectionDBHallFalskaarItems",
+      "name": "HOS Royal Armory",
+      "description": "Display: DBM_SectionHOSRoyalArmoryItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_Falskaar_Patch.esp",
-              "formID": "FE020803"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DB Hall Forgotten City",
-      "description": "Display: DBM_SectionDBHallForgottenCityItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_ForgottenCity_Patch.esp",
-              "formID": "FE021801"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "NS Fossils",
-      "description": "Display: DBM_SectionNSFossilsItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_Fossils_Patch.esp",
-              "formID": "FE022801"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Silver",
-      "description": "Display: DBM_SectionArmoryHASilverItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238DD"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Imperial",
-      "description": "Display: DBM_SectionArmoryHAImperialItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238DB"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Nord Hero",
-      "description": "Display: DBM_SectionArmoryHANordHeroItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238BE"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory Heavy Armory",
-      "description": "Display: DBM_SectionArmoryHeavyArmoryItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238BB"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Dawnguard",
-      "description": "Display: DBM_SectionArmoryHADawnguardItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238B6"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Ebony",
-      "description": "Display: DBM_SectionArmoryHAEbonyItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238B4"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Blades",
-      "description": "Display: DBM_SectionArmoryHABladesItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238B2"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Orcish",
-      "description": "Display: DBM_SectionArmoryHAOrcishItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238B0"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Glass",
-      "description": "Display: DBM_SectionArmoryHAGlassItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238AE"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Elven",
-      "description": "Display: DBM_SectionArmoryHAElvenItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238AC"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Nordic",
-      "description": "Display: DBM_SectionArmoryHANordicItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238AA"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Falmer",
-      "description": "Display: DBM_SectionArmoryHAFalmerItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238A8"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Iron",
-      "description": "Display: DBM_SectionArmoryHAIronItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238A6"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Steel",
-      "description": "Display: DBM_SectionArmoryHASteelItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238A4"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Dwarven",
-      "description": "Display: DBM_SectionArmoryHADwarvenItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238A2"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Ancient Nordic",
-      "description": "Display: DBM_SectionArmoryHAAncientNordicItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE0238A0"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Forsworn",
-      "description": "Display: DBM_SectionArmoryHAForswornItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE02389E"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Stalhrim",
-      "description": "Display: DBM_SectionArmoryHAStalhrimItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE02389C"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Daedric",
-      "description": "Display: DBM_SectionArmoryHADaedricItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE02389A"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory HA Dragon",
-      "description": "Display: DBM_SectionArmoryHADragonItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HA_Patch.esp",
-              "formID": "FE023898"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DB Hall Helgen",
-      "description": "Display: DBM_SectionDBHallHelgenItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_HelgenReborn_Patch.esp",
-              "formID": "FE024831"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory Immersive Armors Blades",
-      "description": "Display: DBM_SectionArmoryImmersiveArmorsBladesItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_IA_Patch.esp",
-              "formID": "FE02587A"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory Immersive Armors CW",
-      "description": "Display: DBM_SectionArmoryImmersiveArmorsCWItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_IA_Patch.esp",
-              "formID": "FE025878"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Armory Immersive Armors Dragon",
-      "description": "Display: DBM_SectionArmoryImmersiveArmorsDragonItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_IA_Patch.esp",
-              "formID": "FE025876"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOH Immersive Armors Unique",
-      "description": "Display: DBM_SectionHOHImmersiveArmorsUniqueItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_IA_Patch.esp",
-              "formID": "FE025805"
+              "listPlugin": "DBM_RoyalArmory_Patch.esp",
+              "formID": "FE025801"
             }
           ]
         }
@@ -864,270 +1074,15 @@
       }
     },
     {
-      "name": "Armory Jaysus Swords",
-      "description": "Display: DBM_SectionArmoryJaysusSwordsItems",
+      "name": "Ho H Wintersun",
+      "description": "Display: DBM_SectionHoHWintersunItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_JaysusSwords_Patch.esp",
-              "formID": "FE02785A"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DBHKA",
-      "description": "Display: DBM_SectionDBHKAItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_KA_Patch.esp",
-              "formID": "FE028817"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DB Hall MAS",
-      "description": "Display: DBM_SectionDBHallMASItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_MAS_Patch.esp",
-              "formID": "FE029870"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DB Hall Moonpath",
-      "description": "Display: DBM_SectionDBHallMoonpathItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_Moonpath_Patch.esp",
-              "formID": "FE02A815"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Library Maps NTH",
-      "description": "Display: DBM_SectionLibraryMapsNTHItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_NewTreasureHunt_Patch.esp",
-              "formID": "FE02B801"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOHOAP",
-      "description": "Display: DBM_SectionHOHOAPItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_OblivionArtifacts_Patch.esp",
-              "formID": "FE02C83D"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOHOAP Jewelry",
-      "description": "Display: DBM_SectionHOHOAPJewelryItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_OblivionArtifacts_Patch.esp",
-              "formID": "FE02C83C"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOH Relic Hunter Addon",
-      "description": "Display: DBM_SectionHOHRelicHunterAddonItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_RelicHunter.esp",
-              "formID": "B7000801"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOS Royal Armory",
-      "description": "Display: DBM_SectionHOSRoyalArmoryItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_RoyalArmory_Patch.esp",
-              "formID": "FE02D801"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Library SU",
-      "description": "Display: DBM_SectionLibrarySUItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_SkyrimUnderground_Patch.esp",
-              "formID": "FE02E83B"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DB Hall Skyrim Underground",
-      "description": "Display: DBM_SectionDBHallSkyrimUndergroundItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_SkyrimUnderground_Patch.esp",
-              "formID": "FE02E801"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOOSUT",
-      "description": "Display: DBM_SectionHOOSUTItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_SUT_Patch.esp",
-              "formID": "FE02F97D"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Library TGCON",
-      "description": "Display: DBM_SectionLibraryTGCONItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_TheGrayCowlofNocturnal_Patch.esp",
-              "formID": "FE030880"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Daedric Gallery Gray Cowl",
-      "description": "Display: DBM_SectionDaedricGalleryGrayCowlItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_TheGrayCowlofNocturnal_Patch.esp",
-              "formID": "FE030868"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "DBH Gray Cowl",
-      "description": "Display: DBM_SectionDBHGrayCowlItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_TheGrayCowlofNocturnal_Patch.esp",
-              "formID": "FE03084C"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOH Jewelry TOK",
-      "description": "Display: DBM_SectionHOHJewelryTOKItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_TOK_Patch.esp",
-              "formID": "FE03184A"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOHTOK",
-      "description": "Display: DBM_SectionHOHTOKItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_TOK_Patch.esp",
-              "formID": "FE03183E"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "HOLETOK",
-      "description": "Display: DBM_SectionHOLETOKItems",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "formList": [
-            {
-              "listPlugin": "DBM_TOK_Patch.esp",
-              "formID": "FE031823"
+              "listPlugin": "DBM_Wintersun_Patch.esp",
+              "formID": "FE02AA26"
             }
           ]
         }
@@ -1142,7 +1097,22 @@
           "formList": [
             {
               "listPlugin": "DBM_TreasureHunter_Patch.esp",
-              "formID": "FE032816"
+              "formID": "FE02B816"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall MAS",
+      "description": "Display: DBM_SectionDBHallMASItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_MAS_Patch.esp",
+              "formID": "FE02E870"
             }
           ]
         }
@@ -1157,67 +1127,67 @@
           "formList": [
             {
               "listPlugin": "DBM_Undeath_Patch.esp",
-              "formID": "FE033801"
+              "formID": "FE02F801"
             }
           ]
         }
       }
     },
     {
-      "name": "HOO Vigilant",
-      "description": "Display: DBM_SectionHOOVigilantItems",
+      "name": "DB Hall Falskaar",
+      "description": "Display: DBM_SectionDBHallFalskaarItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_Vigilant_Patch.esp",
-              "formID": "FE034913"
+              "listPlugin": "DBM_Falskaar_Patch.esp",
+              "formID": "FE030803"
             }
           ]
         }
       }
     },
     {
-      "name": "HOS Volkihar Knight",
-      "description": "Display: DBM_SectionHOSVolkiharKnightItems",
+      "name": "DBHKA",
+      "description": "Display: DBM_SectionDBHKAItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_VolkiharKnight_Patch.esp",
-              "formID": "FE035821"
+              "listPlugin": "DBM_KA_Patch.esp",
+              "formID": "FE031817"
             }
           ]
         }
       }
     },
     {
-      "name": "HOLE Lull",
-      "description": "Display: DBM_SectionHOLELullItems",
+      "name": "Library SU",
+      "description": "Display: DBM_SectionLibrarySUItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_WheelsofLull_Patch.esp",
-              "formID": "FE03686D"
+              "listPlugin": "DBM_SkyrimUnderground_Patch.esp",
+              "formID": "FE03283B"
             }
           ]
         }
       }
     },
     {
-      "name": "Ho H Wintersun",
-      "description": "Display: DBM_SectionHoHWintersunItems",
+      "name": "DB Hall Skyrim Underground",
+      "description": "Display: DBM_SectionDBHallSkyrimUndergroundItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "DBM_Wintersun_Patch.esp",
-              "formID": "FE037A26"
+              "listPlugin": "DBM_SkyrimUnderground_Patch.esp",
+              "formID": "FE032801"
             }
           ]
         }
@@ -1232,367 +1202,667 @@
           "formList": [
             {
               "listPlugin": "DBM_Wyrmstooth_Patch.esp",
-              "formID": "FE03882F"
+              "formID": "FE03382F"
             }
           ]
         }
       }
     },
     {
-      "name": "Tool Storage",
-      "description": "Display: DBM_SectionToolStorageItems",
+      "name": "Library TGCON",
+      "description": "Display: DBM_SectionLibraryTGCONItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "08099DA4"
+              "listPlugin": "DBM_TheGrayCowlofNocturnal_Patch.esp",
+              "formID": "FE035880"
             }
           ]
         }
       }
     },
     {
-      "name": "Store Room Reserve Vintages",
-      "description": "Display: DBM_SectionStoreRoomReserveVintagesItems",
+      "name": "Daedric Gallery Gray Cowl",
+      "description": "Display: DBM_SectionDaedricGalleryGrayCowlItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "080AE79D"
+              "listPlugin": "DBM_TheGrayCowlofNocturnal_Patch.esp",
+              "formID": "FE035868"
             }
           ]
         }
       }
     },
     {
-      "name": "NS Shells",
-      "description": "Display: DBM_SectionNSShellsItems",
+      "name": "DBH Gray Cowl",
+      "description": "Display: DBM_SectionDBHGrayCowlItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0833D88C"
+              "listPlugin": "DBM_TheGrayCowlofNocturnal_Patch.esp",
+              "formID": "FE03584C"
             }
           ]
         }
       }
     },
     {
-      "name": "NS Gemstone",
-      "description": "Display: DBM_SectionNSGemstoneItems",
+      "name": "Library Maps NTH",
+      "description": "Display: DBM_SectionLibraryMapsNTHItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "08415118"
+              "listPlugin": "DBM_NewTreasureHunt_Patch.esp",
+              "formID": "FE036801"
             }
           ]
         }
       }
     },
     {
-      "name": "Natural Science Animals",
-      "description": "Display: DBM_SectionNaturalScienceAnimalsItems",
+      "name": "HOOSUT",
+      "description": "Display: DBM_SectionHOOSUTItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0815CBC2"
+              "listPlugin": "DBM_SUT_Patch.esp",
+              "formID": "FE03797D"
             }
           ]
         }
       }
     },
     {
-      "name": "Library Upper Floor",
-      "description": "Display: DBM_SectionLibraryUpperFloorItems",
+      "name": "Daedric Gallery AOB Alt",
+      "description": "Display: DBM_SectionDaedricGalleryAOBAltItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0813879D"
+              "listPlugin": "DBM_ArtifactsofBoethiah_Patch.esp",
+              "formID": "FE03882A"
             }
           ]
         }
       }
     },
     {
-      "name": "Library Rare Books",
-      "description": "Display: DBM_SectionLibraryRareBooksItems",
+      "name": "HOHAOB",
+      "description": "Display: DBM_SectionHOHAOBItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0813879F"
+              "listPlugin": "DBM_ArtifactsofBoethiah_Patch.esp",
+              "formID": "FE038826"
             }
           ]
         }
       }
     },
     {
-      "name": "Library Maps",
-      "description": "Display: DBM_SectionLibraryMapsItems",
+      "name": "Daedric Gallery AOB",
+      "description": "Display: DBM_SectionDaedricGalleryAOBItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "081387A4"
+              "listPlugin": "DBM_ArtifactsofBoethiah_Patch.esp",
+              "formID": "FE038815"
             }
           ]
         }
       }
     },
     {
-      "name": "Library Lower Floor Right",
-      "description": "Display: DBM_SectionLibraryLowerFloorRightItems",
+      "name": "HOO Artifactsof Skyrim",
+      "description": "Display: DBM_SectionHOOArtifactsofSkyrimItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0813879B"
+              "listPlugin": "DBM_ArtifactsofSkyrim_Patch.esp",
+              "formID": "FE039801"
             }
           ]
         }
       }
     },
     {
-      "name": "Library Lower Floor Left",
-      "description": "Display: DBM_SectionLibraryLowerFloorLeftItems",
+      "name": "DB Hall Clockwork",
+      "description": "Display: DBM_SectionDBHallClockworkItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "081387A1"
+              "listPlugin": "DBM_Clockwork_Patch.esp",
+              "formID": "FE03A844"
             }
           ]
         }
       }
     },
     {
-      "name": "HOS Displays",
-      "description": "Display: DBM_SectionHOSDisplaysItems",
+      "name": "HOLE Lull",
+      "description": "Display: DBM_SectionHOLELullItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0815CBC4"
+              "listPlugin": "DBM_WheelsofLull_Patch.esp",
+              "formID": "FE03B86D"
             }
           ]
         }
       }
     },
     {
-      "name": "HOO Main Floor",
-      "description": "Display: DBM_SectionHOOMainFloorItems",
+      "name": "DB Hall Forgotten City",
+      "description": "Display: DBM_SectionDBHallForgottenCityItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "08152944"
+              "listPlugin": "DBM_ForgottenCity_Patch.esp",
+              "formID": "FE03C801"
             }
           ]
         }
       }
     },
     {
-      "name": "HOLE Upper Ring",
-      "description": "Display: DBM_SectionHOLEUpperRingItems",
+      "name": "Armory Immersive Armors Blades",
+      "description": "Display: DBM_SectionArmoryImmersiveArmorsBladesItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "081387A5"
+              "listPlugin": "DBM_IA_Patch.esp",
+              "formID": "FE03D87A"
             }
           ]
         }
       }
     },
     {
-      "name": "HOLE Main Floor",
-      "description": "Display: DBM_SectionHOLEMainFloorItems",
+      "name": "Armory Immersive Armors CW",
+      "description": "Display: DBM_SectionArmoryImmersiveArmorsCWItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0814D7DB"
+              "listPlugin": "DBM_IA_Patch.esp",
+              "formID": "FE03D878"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Upper Gallery",
-      "description": "Display: DBM_SectionHOHUpperGalleryItems",
+      "name": "Armory Immersive Armors Dragon",
+      "description": "Display: DBM_SectionArmoryImmersiveArmorsDragonItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0813D911"
+              "listPlugin": "DBM_IA_Patch.esp",
+              "formID": "FE03D876"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Reception Hall",
-      "description": "Display: DBM_SectionHOHReceptionHallItems",
+      "name": "HOH Immersive Armors Unique",
+      "description": "Display: DBM_SectionHOHImmersiveArmorsUniqueItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0813D917"
+              "listPlugin": "DBM_IA_Patch.esp",
+              "formID": "FE03D805"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Masks And Claws",
-      "description": "Display: DBM_SectionHOHMasksAndClawsItems",
+      "name": "DB Hall Skyrim Sewers Alt",
+      "description": "Display: DBM_SectionDBHallSkyrimSewersAltItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "081387AB"
+              "listPlugin": "DBM_SkyrimSewers_Patch.esp",
+              "formID": "FE03E82D"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Jewelry",
-      "description": "Display: DBM_SectionHOHJewelryItems",
+      "name": "DB Hall Skyrim Sewers",
+      "description": "Display: DBM_SectionDBHallSkyrimSewersItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0813D915"
+              "listPlugin": "DBM_SkyrimSewers_Patch.esp",
+              "formID": "FE03E813"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Ground Floor Right",
-      "description": "Display: DBM_SectionHOHGroundFloorRightItems",
+      "name": "DB Hall Moonpath",
+      "description": "Display: DBM_SectionDBHallMoonpathItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0814CEF2"
+              "listPlugin": "DBM_Moonpath_Patch.esp",
+              "formID": "FE03F815"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Ground Floor Left",
-      "description": "Display: DBM_SectionHOHGroundFloorLeftItems",
+      "name": "Armory HA Silver",
+      "description": "Display: DBM_SectionArmoryHASilverItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "081387AD"
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428DD"
             }
           ]
         }
       }
     },
     {
-      "name": "HOH Cultureand Arts",
-      "description": "Display: DBM_SectionHOHCultureandArtsItems",
+      "name": "Armory HA Imperial",
+      "description": "Display: DBM_SectionArmoryHAImperialItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "08161D32"
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428DB"
             }
           ]
         }
       }
     },
     {
-      "name": "Guildhouse",
-      "description": "Display: DBM_SectionGuildhouseItems",
+      "name": "Armory HA Nord Hero",
+      "description": "Display: DBM_SectionArmoryHANordHeroItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "0806642A"
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428BE"
             }
           ]
         }
       }
     },
     {
-      "name": "DB Hall Achievements",
-      "description": "Display: DBM_SectionDBHallAchievementsItems",
+      "name": "Armory Heavy Armory",
+      "description": "Display: DBM_SectionArmoryHeavyArmoryItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "08152948"
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428BB"
             }
           ]
         }
       }
     },
     {
-      "name": "Daedric Gallery",
-      "description": "Display: DBM_SectionDaedricGalleryItems",
+      "name": "Armory HA Dawnguard",
+      "description": "Display: DBM_SectionArmoryHADawnguardItems",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "formList": [
             {
-              "listPlugin": "LegacyoftheDragonborn.esm",
-              "formID": "081484A0"
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428B6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Ebony",
+      "description": "Display: DBM_SectionArmoryHAEbonyItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428B4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Blades",
+      "description": "Display: DBM_SectionArmoryHABladesItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428B2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Orcish",
+      "description": "Display: DBM_SectionArmoryHAOrcishItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428B0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Glass",
+      "description": "Display: DBM_SectionArmoryHAGlassItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428AE"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Elven",
+      "description": "Display: DBM_SectionArmoryHAElvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428AC"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Nordic",
+      "description": "Display: DBM_SectionArmoryHANordicItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428AA"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Falmer",
+      "description": "Display: DBM_SectionArmoryHAFalmerItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428A8"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Iron",
+      "description": "Display: DBM_SectionArmoryHAIronItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428A6"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Steel",
+      "description": "Display: DBM_SectionArmoryHASteelItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428A4"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Dwarven",
+      "description": "Display: DBM_SectionArmoryHADwarvenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428A2"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Ancient Nordic",
+      "description": "Display: DBM_SectionArmoryHAAncientNordicItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE0428A0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Forsworn",
+      "description": "Display: DBM_SectionArmoryHAForswornItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE04289E"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Stalhrim",
+      "description": "Display: DBM_SectionArmoryHAStalhrimItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE04289C"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Daedric",
+      "description": "Display: DBM_SectionArmoryHADaedricItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE04289A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory HA Dragon",
+      "description": "Display: DBM_SectionArmoryHADragonItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HA_Patch.esp",
+              "formID": "FE042898"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory DGA",
+      "description": "Display: DBM_SectionArmoryDGAItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_DGA_Patch.esp",
+              "formID": "FE043810"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "NS Fossils",
+      "description": "Display: DBM_SectionNSFossilsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_Fossils_Patch.esp",
+              "formID": "FE044801"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Armory Jaysus Swords",
+      "description": "Display: DBM_SectionArmoryJaysusSwordsItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_JaysusSwords_Patch.esp",
+              "formID": "FE04585A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "HOS Volkihar Knight",
+      "description": "Display: DBM_SectionHOSVolkiharKnightItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_VolkiharKnight_Patch.esp",
+              "formID": "FE046821"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "DB Hall Helgen",
+      "description": "Display: DBM_SectionDBHallHelgenItems",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "DBM_HelgenReborn_Patch.esp",
+              "formID": "FE06A831"
             }
           ]
         }
