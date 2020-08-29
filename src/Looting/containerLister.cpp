@@ -120,7 +120,7 @@ size_t ContainerLister::AnalyzeLootableItems()
 				if (*extraList)
 				{
 					ExtraDataListHelper exListHelper(*extraList);
-					if (exListHelper.IsQuestObject())
+					if (exListHelper.IsItemQuestObject(item))
 					{
 						m_questItems.insert(item);
 					}

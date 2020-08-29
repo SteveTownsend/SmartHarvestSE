@@ -56,7 +56,7 @@ bool LootableREFR::IsQuestItem() const
 	if (!extraListEx.m_extraData)
 		return false;
 
-	return extraListEx.IsQuestObject();
+	return extraListEx.IsREFRQuestObject(m_ref);
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const

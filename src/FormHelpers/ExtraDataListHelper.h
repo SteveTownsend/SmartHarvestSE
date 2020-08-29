@@ -19,12 +19,18 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+namespace shse
+{
+
 class ExtraDataListHelper
 {
 public:
 	ExtraDataListHelper(const RE::ExtraDataList* extraData) : m_extraData(extraData) {}
-	RE::EnchantmentItem* GetEnchantment(void);
-	bool IsQuestObject();
+	RE::EnchantmentItem* GetEnchantment(void) const;
+	bool IsItemQuestObject(const RE::TESBoundObject* item) const;
+	bool IsREFRQuestObject(const RE::TESObjectREFR* refr) const;
 
 	const RE::ExtraDataList* m_extraData;
 };
+
+}

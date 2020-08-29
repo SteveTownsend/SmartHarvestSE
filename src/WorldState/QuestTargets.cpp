@@ -83,19 +83,19 @@ void QuestTargets::Analyze()
 						size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refAlias->fillData.created.object));
 						if (itemCount >= BoringQuestTargetThreshold)
 						{
-							DBG_MESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
+							REL_MESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
 								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount, BoringQuestTargetThreshold);
 						}
 						// record if unique or Quest Object flag set
 						else if ((isQuest || (!refAlias->fillData.created.object->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
 							BlacklistQuestTargetItem(refAlias->fillData.created.object))
 						{
-							DBG_MESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
+							REL_VMESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
 								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount);
 						}
 						else
 						{
-							DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
+							REL_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
 								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
 						}
 					}
@@ -111,12 +111,12 @@ void QuestTargets::Analyze()
 							// record this specific REFR as the QUST target
 							if ((isQuest || (ReferenceIsLootable(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
 							{
-								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
+								REL_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
 									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), itemCount);
 							}
 							else
 							{
-								DBG_MESSAGE("Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
+								REL_VMESSAGE("Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
 									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 							}
 						}
@@ -129,12 +129,12 @@ void QuestTargets::Analyze()
 					{
 						if (BlacklistQuestTargetNPC(refAlias->fillData.uniqueActor.uniqueActor))
 						{
-							DBG_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
+							REL_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
 								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
 						}
 						else
 						{
-							DBG_VMESSAGE("Skip UniqueActor RefAlias ALUA {}/0x{:08x}",
+							REL_VMESSAGE("Skip UniqueActor RefAlias ALUA {}/0x{:08x}",
 								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
 						}
 					}
