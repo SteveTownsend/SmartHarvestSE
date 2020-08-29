@@ -49,11 +49,6 @@ bool ExtraDataListHelper::IsItemQuestObject(const RE::TESBoundObject* item) cons
 					alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
 				return true;
 			}
-			else if (alias->quest)
-			{
-				REL_VMESSAGE("Quest-related Item {}/0x{:08x} skipped for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
-					alias->quest->GetName(), alias->quest->GetFormID());
-			}
 			return false;
 		}) != exAliasArray->aliases.cend();
 }
@@ -73,11 +68,6 @@ bool ExtraDataListHelper::IsREFRQuestObject(const RE::TESObjectREFR* refr) const
 			REL_VMESSAGE("Quest Target REFR {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", refr->GetName(), refr->GetFormID(),
 				alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
 			return true;
-		}
-		else if (alias->quest)
-		{
-			REL_VMESSAGE("Quest-related Item {}/0x{:08x} skipped for quest {}/0x{:08x}", refr->GetName(), refr->GetFormID(),
-				alias->quest->GetName(), alias->quest->GetFormID());
 		}
 		return false;
 	}) != exAliasArray->aliases.cend();

@@ -68,7 +68,7 @@ void QuestTargets::Analyze()
 {
 	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
 	{
-		DBG_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
+		REL_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
 		for (const auto alias : quest->aliases)
 		{
 			// Blacklist item if it is a quest ref-alias object
@@ -83,7 +83,7 @@ void QuestTargets::Analyze()
 						size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refAlias->fillData.created.object));
 						if (itemCount >= BoringQuestTargetThreshold)
 						{
-							REL_MESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
+							REL_VMESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
 								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount, BoringQuestTargetThreshold);
 						}
 						// record if unique or Quest Object flag set
