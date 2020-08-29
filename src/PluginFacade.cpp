@@ -184,7 +184,6 @@ void PluginFacade::ScanThread()
 		// Go no further if game load is in progress.
 		if (!Instance().IsSynced())
 		{
-			REL_MESSAGE("Plugin sync still pending");
 			continue;
 		}
 
@@ -258,6 +257,7 @@ void PluginFacade::PrepareForReload()
 	// Do not scan again until we are in sync with the scripts
 	RecursiveLockGuard guard(m_pluginLock);
 	m_pluginSynced = false;
+	REL_MESSAGE("Plugin sync required");
 }
 
 void PluginFacade::AfterReload()
@@ -269,7 +269,7 @@ void PluginFacade::AfterReload()
 
 void PluginFacade::ResetState(const bool gameReload)
 {
-	REL_MESSAGE("Restrictions reset, new/loaded game={}", gameReload ? "true" : "false");
+	DBG_MESSAGE("Restrictions reset, new/loaded game={}", gameReload ? "true" : "false");
 	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
@@ -285,6 +285,7 @@ void PluginFacade::ResetState(const bool gameReload)
 		CollectionManager::Instance().OnGameReload();
 		// need to wait for the scripts to sync up before performing player house checks
 		m_pluginSynced = true;
+		REL_MESSAGE("Plugin sync completed");
 	}
 }
 

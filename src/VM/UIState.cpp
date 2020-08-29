@@ -110,7 +110,7 @@ bool UIState::OKForSearch()
 	if (vmGoodToGo != goodToGo)
 	{
 		// prefer old-style UI check if they do not match
-		REL_WARNING("plugin UI good-to-go {} (UI {}, controls {}) does not match VM UI good-to-go {} - trust VM",
+		DBG_WARNING("plugin UI good-to-go {} (UI {}, controls {}) does not match VM UI good-to-go {} - trust VM",
 			goodToGo, uiOK, controlsOK, vmGoodToGo);
 		goodToGo = vmGoodToGo;
 	}
