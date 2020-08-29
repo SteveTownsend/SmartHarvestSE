@@ -117,16 +117,18 @@ public:
 	void UpdateFrom(const nlohmann::json& j);
 
 private:
-	Position GetInteriorCellPosition(const RE::TESObjectCELL* cell) const;
-	Position GetRefHandlePosition(const RE::ObjectRefHandle handle) const;
-	Position GetRefIDPosition(const RE::FormID refID) const;
-	Position GetRefrPosition(const RE::TESObjectREFR* refr) const;
+	void LinkLocationToWorld(const RE::BGSLocation* location, const RE::TESWorldSpace* world) const;
+	Position GetInteriorCellPosition(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
+	Position GetRefHandlePosition(const RE::ObjectRefHandle handle, const RE::BGSLocation* location) const;
+	RE::TESWorldSpace* GetRefHandleWorld(const RE::ObjectRefHandle handle) const;
+	Position GetRefIDPosition(const RE::FormID refID, const RE::BGSLocation* location) const;
+	Position GetRefrPosition(const RE::TESObjectREFR* refr, const RE::BGSLocation* location) const;
 
 	static std::unique_ptr<AdventureTargets> m_instance;
-	std::array<std::unordered_set<RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
+	std::array<std::unordered_set<const RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
 	mutable std::vector<AdventureTargetType> m_validAdventureTypes;
 
-	std::unordered_map<const RE::BGSLocation*, RE::TESWorldSpace*> m_worldByLocation;
+	mutable std::unordered_map<const RE::BGSLocation*, const RE::TESWorldSpace*> m_worldByLocation;
 	std::unordered_map<const RE::BGSLocation*, Position> m_locationCoordinates;
 
 	std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_markedLocationsByWorld;

@@ -141,7 +141,7 @@ void AdventureTargets::Reset()
 	m_sortedWorlds.clear();
 }
 
-Position AdventureTargets::GetInteriorCellPosition(const RE::TESObjectCELL* cell) const
+Position AdventureTargets::GetInteriorCellPosition(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const
 {
 	// check for direct CELL linkage to outside world
 	for (const auto cellRefr : cell->references)
@@ -163,6 +163,7 @@ Position AdventureTargets::GetInteriorCellPosition(const RE::TESObjectCELL* cell
 						// Parent Cell is blank for WRLD persistent references, assumed exterior. If CELL is present it must be outdoors.
 						if (!egressRefr->GetParentCell() || egressRefr->GetParentCell()->IsExteriorCell())
 						{
+							LinkLocationToWorld(location, egressRefr->GetWorldspace());
 							DBG_MESSAGE("Interior CELL 0x{:08x} has egress via DOOR 0x{:08x} at Position ({:.2f},{:.2f},{:.2f})", cell->GetFormID(),
 								egressRefr->GetFormID(), egressRefr->GetPositionX(), egressRefr->GetPositionY(), egressRefr->GetPositionZ());
 							return Position({ egressRefr->GetPositionX(), egressRefr->GetPositionY(),egressRefr->GetPositionZ() });
@@ -179,32 +180,60 @@ Position AdventureTargets::GetInteriorCellPosition(const RE::TESObjectCELL* cell
 	return InvalidPosition;
 }
 
-Position AdventureTargets::GetRefHandlePosition(const RE::ObjectRefHandle handle) const
+Position AdventureTargets::GetRefHandlePosition(const RE::ObjectRefHandle handle, const RE::BGSLocation* location) const
 {
 	if (!handle)
 		return InvalidPosition;
 	const RE::TESObjectREFR* refr(handle.get().get());
-	return GetRefrPosition(refr);
+	return GetRefrPosition(refr, location);
 }
 
-Position AdventureTargets::GetRefIDPosition(const RE::FormID refID) const
+RE::TESWorldSpace* AdventureTargets::GetRefHandleWorld(const RE::ObjectRefHandle handle) const
+{
+	if (!handle)
+		return nullptr;
+	const RE::TESObjectREFR* refr(handle.get().get());
+	return refr ? refr->GetWorldspace() : nullptr;
+}
+
+Position AdventureTargets::GetRefIDPosition(const RE::FormID refID, const RE::BGSLocation* location) const
 {
 	const RE::TESObjectREFR* refr(RE::TESForm::LookupByID<RE::TESObjectREFR>(refID));
-	return GetRefrPosition(refr);
+	return GetRefrPosition(refr, location);
 }
 
-Position AdventureTargets::GetRefrPosition(const RE::TESObjectREFR* refr) const
+Position AdventureTargets::GetRefrPosition(const RE::TESObjectREFR* refr, const RE::BGSLocation* location) const
 {
 	if (!refr)
 		return InvalidPosition;
 	// Parent Cell is blank for WRLD persistent references, assumed exterior. If CELL is present it must be outdoors.
 	if (!refr->GetParentCell() || refr->GetParentCell()->IsExteriorCell())
 	{
+		LinkLocationToWorld(location, refr->GetWorldspace());
 		DBG_MESSAGE("Exterior REFR 0x{:08x} has Position ({:.2f},{:.2f},{:.2f})", refr->GetFormID(),
 			refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ());
 		return Position({ refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ() });
 	}
-	return GetInteriorCellPosition(refr->GetParentCell());
+	return GetInteriorCellPosition(refr->GetParentCell(), location);
+}
+
+void AdventureTargets::LinkLocationToWorld(const RE::BGSLocation* location, const RE::TESWorldSpace* world) const
+{
+	if (!location || !world)
+		return;
+
+	const auto inserted(m_worldByLocation.insert({ location, world }));
+	if (inserted.second)
+	{
+		DBG_MESSAGE("Found worldspace {}/0x{:08x} for location {}/0x{:08x}",
+			world->GetName(), world->GetFormID(), location->GetName(), location->GetFormID());
+	}
+	else if (inserted.first->second != world)
+	{
+		REL_WARNING("Found second worldspace {}/0x{:08x} for location {}/0x{:08x}, already have {}/0x{:08x}",
+			world->GetName(), world->GetFormID(), location->GetName(), location->GetFormID(),
+			inserted.first->second->GetName(), inserted.first->second->GetFormID());
+	}
 }
 
 // Classify Locations by their keywords
@@ -229,79 +258,19 @@ void AdventureTargets::Categorize()
 			RE::BGSLocation* tamriel(RE::TESForm::LookupByID<RE::BGSLocation>(TamrielLocation));
 			if (tamriel)
 			{
-				const auto inserted(m_worldByLocation.insert({ tamriel, world }));
-				if (inserted.second)
-				{
-					DBG_MESSAGE("Hard-coded worldspace {}/0x{:08x} for location {}/0x{:08x}",
-						world->GetName(), world->GetFormID(), tamriel->GetName(), tamriel->GetFormID());
-				}
+				LinkLocationToWorld(tamriel, world);
 			}
 		}
 
 		for (const auto location : world->locationMap)
 		{
 			// WRLD has locations, OK to proceed
-			const auto inserted(m_worldByLocation.insert({ location.second, world }));
-			if (inserted.second)
+			if (!location.second->GetFullNameLength())
 			{
-				DBG_MESSAGE("Found worldspace {}/0x{:08x} for location {}/0x{:08x}",
-					world->GetName(), world->GetFormID(), location.second->GetName(), location.second->GetFormID());
+				DBG_MESSAGE("Skip unnamed WRLD Location 0x{:08x}", location.second->GetFormID());
+				continue;
 			}
-			else if (inserted.first->second != world)
-			{
-				DBG_WARNING("Found second worldspace {}/0x{:08x} for location {}/0x{:08x}",
-					world->GetName(), world->GetFormID(), location.second->GetName(), location.second->GetFormID());
-			}
-		}
-	}
-
-	// now scan full Location list and match each Location with its WorldSpace or that of its parents
-	for (const RE::BGSLocation* target : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::BGSLocation>())
-	{
-		if (m_worldByLocation.find(target) != m_worldByLocation.cend())
-			continue;
-
-		const RE::BGSLocation* location(target);
-		while (location)
-		{
-			// check ACPR/LCPR, if WRLD is referenced anywhere in the parent-child tree that is the answer
-			bool added(false);
-			if (location->overrideData)
-			{
-				DBG_MESSAGE("LCPR found for location {}/0x{:08x}", location->GetName(), location->GetFormID());
-				for (const auto& refr : location->overrideData->addedData)
-				{
-					RE::FormID parentID(refr.parentSpaceID);
-					RE::TESForm* parentSpace(RE::TESForm::LookupByID(parentID));
-					const auto worldSpace(parentSpace->As<RE::TESWorldSpace>());
-					if (worldSpace)
-					{
-						DBG_MESSAGE("LCPR 0x{:08x} implies worldspace {}/0x{:08x} for location {}/0x{:08x}", refr.refID,
-							worldSpace->GetName(), worldSpace->GetFormID(), target->GetName(), target->GetFormID());
-						m_worldByLocation.insert({ target, worldSpace });
-						added = true;
-						break;
-					}
-				}
-			}
-			else
-			{
-				DBG_MESSAGE("No LCPR for location {}/0x{:08x}", location->GetName(), location->GetFormID());
-			}
-			if (added)
-				break;
-			if (target != location)
-			{
-				const auto matched(m_worldByLocation.find(location));
-				if (matched != m_worldByLocation.cend())
-				{
-					DBG_MESSAGE("Found worldspace {}/0x{:08x} for parent of location {}/0x{:08x}",
-						matched->second->GetName(), matched->second->GetFormID(), target->GetName(), target->GetFormID());
-					m_worldByLocation.insert({ target, matched->second });
-				}
-				break;
-			}
-			location = location->parentLoc;
+			LinkLocationToWorld(location.second, world);
 		}
 	}
 
@@ -366,26 +335,53 @@ void AdventureTargets::Categorize()
 		{"zzzBMLocVampireDungeon", AdventureTargetType::VampireLair},
 	};
 
-	for (RE::BGSLocation* location : dhnd->GetFormArray<RE::BGSLocation>())
+	// now scan full Location list and match each Location with its WorldSpace, and find Position as XYZ Coordinates
+	for (const RE::BGSLocation* location : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::BGSLocation>())
 	{
 		if (!location->GetFullNameLength())
 		{
 			DBG_MESSAGE("Skip unnamed Location 0x{:08x}", location->GetFormID());
 			continue;
 		}
-		const auto locationWorld(m_worldByLocation.find(location));
-		if (locationWorld == m_worldByLocation.cend())
-		{
-			DBG_MESSAGE("Skip Location {}/0x{:08x} without WRLD", location->GetName(), location->GetFormID());
-			continue;
-		}
-
+		// check for World Location Marker and infer Worldspace via its CELL
+		RE::TESWorldSpace* worldSpace(nullptr);
 		Position position(InvalidPosition);
 		Position fallbackPosition(InvalidPosition);
 		if (location->worldLocMarker)
 		{
-			position = GetRefHandlePosition(location->worldLocMarker);
+			position = GetRefHandlePosition(location->worldLocMarker, location);
+			worldSpace = GetRefHandleWorld(location->worldLocMarker);
+			if (worldSpace)
+			{
+				DBG_MESSAGE("World Location Marker 0x{:08x} implies worldspace {}/0x{:08x} for location {}/0x{:08x}", location->worldLocMarker.get()->GetFormID(),
+					worldSpace->GetName(), worldSpace->GetFormID(), location->GetName(), location->GetFormID());
+			}
+			LinkLocationToWorld(location, worldSpace);
 		}
+
+		// check ACPR/LCPR, if WRLD is referenced anywhere in the parent-child tree that is the answer
+		if (location->overrideData)
+		{
+			DBG_MESSAGE("LCPR found for location {}/0x{:08x}", location->GetName(), location->GetFormID());
+			for (const auto& refr : location->overrideData->addedData)
+			{
+				RE::FormID parentID(refr.parentSpaceID);
+				RE::TESForm* parentSpace(RE::TESForm::LookupByID(parentID));
+				worldSpace = parentSpace->As<RE::TESWorldSpace>();
+				if (worldSpace)
+				{
+					DBG_MESSAGE("LCPR 0x{:08x} implies worldspace {}/0x{:08x} for location {}/0x{:08x}", refr.refID,
+						worldSpace->GetName(), worldSpace->GetFormID(), location->GetName(), location->GetFormID());
+					LinkLocationToWorld(location, worldSpace);
+				}
+			}
+		}
+		else
+		{
+			DBG_MESSAGE("No LCPR for location {}/0x{:08x}", location->GetName(), location->GetFormID());
+		}
+
+		// Position may have been derived from World Location Marker
 		if (position == InvalidPosition)
 		{
 			// check for ACSR/LCSR 
@@ -397,7 +393,7 @@ void AdventureTargets::Categorize()
 				// location-ref-type (LCRT) is a keyword, we want Map Marker (preferred), Location Center or Outside Entrance
 				if (csr.type->GetFormID() == MapMarkerLCRT)
 				{
-					Position newPosition(GetRefIDPosition(csr.refData.refID));
+					Position newPosition(GetRefIDPosition(csr.refData.refID, location));
 					if (newPosition != InvalidPosition)
 					{
 						position = newPosition;
@@ -414,7 +410,7 @@ void AdventureTargets::Categorize()
 					{
 						if (cell->IsInteriorCell())
 						{
-							Position newPosition(GetInteriorCellPosition(cell));
+							Position newPosition(GetInteriorCellPosition(cell, location));
 							if (newPosition != InvalidPosition)
 							{
 								DBG_MESSAGE("Location {}/0x{:08x} is Interior CELL 0x{:08x}", location->GetName(), location->GetFormID(), parentID);
@@ -423,7 +419,7 @@ void AdventureTargets::Categorize()
 						}
 						else
 						{
-							Position newPosition(GetRefIDPosition(csr.refData.refID));
+							Position newPosition(GetRefIDPosition(csr.refData.refID, location));
 							if (newPosition != InvalidPosition)
 							{
 								DBG_MESSAGE("Location {}/0x{:08x} is in Exterior CELL 0x{:08x}", location->GetName(), location->GetFormID(), parentID);
@@ -433,12 +429,13 @@ void AdventureTargets::Categorize()
 					}
 					else if (parentSpace->As<RE::TESWorldSpace>())
 					{
-						Position newPosition(GetRefIDPosition(csr.refData.refID));
+						Position newPosition(GetRefIDPosition(csr.refData.refID, location));
 						if (newPosition != InvalidPosition)
 						{
 							DBG_MESSAGE("Location {}/0x{:08x} is in WRLD 0x{:08x}", location->GetName(), location->GetFormID(), parentID);
 							fallbackPosition = newPosition;
 						}
+						LinkLocationToWorld(location, parentSpace->As<RE::TESWorldSpace>());
 					}
 					else
 					{
@@ -505,7 +502,7 @@ void AdventureTargets::Categorize()
 		else
 		{
 			DBG_MESSAGE("{} Adventure Targets for type {}", locationsForType.size(), AdventureTargetName(adventureType));
-			for (RE::BGSLocation* location : locationsForType)
+			for (const RE::BGSLocation* location : locationsForType)
 			{
 				DBG_MESSAGE("  {}/0x{:08x}", location->GetName(), location->GetFormID());
 			}
