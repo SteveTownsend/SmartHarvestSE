@@ -40,10 +40,16 @@ void PlayerHouses::SetKeyword(RE::BGSKeyword* keyword)
 	m_keyword = keyword;
 }
 
+void PlayerHouses::SetCell(const RE::TESObjectCELL* houseCell)
+{
+	m_validHouseCells.insert(houseCell);
+}
+
 void PlayerHouses::Clear()
 {
 	RecursiveLockGuard guard(m_housesLock);
 	m_houses.clear();
+	m_houseCells.clear();
 }
 
 bool PlayerHouses::Add(const RE::BGSLocation* location)
@@ -52,10 +58,10 @@ bool PlayerHouses::Add(const RE::BGSLocation* location)
 	return location && m_houses.insert(location).second;
 }
 
-bool PlayerHouses::Remove(const RE::BGSLocation* location)
+bool PlayerHouses::AddCell(const RE::TESObjectCELL* cell)
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return location && m_houses.erase(location) > 0;
+	return cell && m_houseCells.insert(cell).second;
 }
 
 // Check indeterminate status of the location, because a requested UI check is pending
@@ -65,8 +71,21 @@ bool PlayerHouses::Contains(const RE::BGSLocation* location) const
 	return location && m_houses.contains(location);
 }
 
+// Check indeterminate status of the location, because a requested UI check is pending
+bool PlayerHouses::ContainsCell(const RE::TESObjectCELL* cell) const
+{
+	RecursiveLockGuard guard(m_housesLock);
+	return cell && m_houseCells.contains(cell);
+}
+
 bool PlayerHouses::IsValidHouse(const RE::BGSLocation* location) const
 {
 	RecursiveLockGuard guard(m_housesLock);
 	return location && location->HasKeyword(m_keyword);
+}
+
+bool PlayerHouses::IsValidHouseCell(const RE::TESObjectCELL* cell) const
+{
+	RecursiveLockGuard guard(m_housesLock);
+	return cell && m_validHouseCells.contains(cell);
 }

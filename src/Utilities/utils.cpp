@@ -241,6 +241,15 @@ namespace StringUtils
 
 		return output;
 	}
+
+	std::string FormIDString(const RE::FormID formID)
+	{
+		std::ostringstream formIDStr;
+		formIDStr << "0x" << std::hex << std::setw(8) << std::setfill('0') << formID;
+		std::string result(formIDStr.str());
+		DBG_VMESSAGE("FormID 0x{:08x} mapped to {}", formID, result.c_str());
+		return result;
+	}
 }
 
 namespace GameSettingUtils

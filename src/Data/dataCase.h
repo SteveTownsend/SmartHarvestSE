@@ -132,6 +132,7 @@ private:
 	mutable RecursiveLock m_blockListLock;
 
 	void RecordOffLimitsLocations(void);
+	void RecordPlayerHouseCells(void);
 	void BlockOffLimitsContainers(void);
 	void GetAmmoData(void);
 

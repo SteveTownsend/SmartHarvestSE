@@ -220,8 +220,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
-		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
-			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()) &&
+		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace() &&
+			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
 			!IsItemLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
@@ -546,8 +546,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
 		if (!skipLooting && m_targetType != INIFile::SecondaryType::deadbodies &&
-			!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
-			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()))
+			!LocationTracker::Instance().IsPlayerInWhitelistedPlace() &&
+			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this target type");
 			skipLooting = true;

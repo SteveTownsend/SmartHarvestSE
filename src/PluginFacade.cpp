@@ -226,7 +226,7 @@ void PluginFacade::ScanThread()
 		{
 			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 			static const bool allowIfRestricted(true);
-			if (!LocationTracker::Instance().IsPlayerInLootablePlace(LocationTracker::Instance().PlayerCell(), allowIfRestricted))
+			if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
 			{
 				DBG_MESSAGE("Location cannot be looted");
 			}

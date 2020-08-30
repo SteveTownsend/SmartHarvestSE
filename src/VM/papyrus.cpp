@@ -394,11 +394,7 @@ namespace papyrus
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
 	{
-		std::ostringstream formIDStr;
-		formIDStr << "0x" << std::hex << std::setw(8) << std::setfill('0') << static_cast<RE::FormID>(formID);
-		std::string result(formIDStr.str());
-		DBG_VMESSAGE("FormID 0x{:08x} mapped to {}", formID, result.c_str());
-		return RE::BSFixedString(result.c_str());
+		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
 	}
 
 	RE::BSFixedString GetTranslation(RE::StaticFunctionTag* base, RE::BSFixedString key)

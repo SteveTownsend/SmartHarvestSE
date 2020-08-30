@@ -119,6 +119,7 @@ namespace StringUtils
 		return ss.fail() ? InvalidFormString : ss.str();
 
 	}
+	std::string FormIDString(const RE::FormID formID);
 }
 
 namespace CompressionUtils
