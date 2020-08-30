@@ -110,8 +110,9 @@ size_t ContainerLister::AnalyzeLootableItems()
 				continue;
 
 			// Check for enchantment or quest target
-			if (QuestTargets::Instance().QuestTargetLootability(item) == Lootability::CannotLootQuestTarget)
+			if (QuestTargets::Instance().QuestTargetLootability(item, m_refr) == Lootability::CannotLootQuestTarget)
 			{
+				DBG_DMESSAGE("Quest Item={}/0x{:08x}", item->GetName(), item->GetFormID());
 				m_questItems.insert(item);
 			}
 
@@ -122,24 +123,29 @@ size_t ContainerLister::AnalyzeLootableItems()
 					ExtraDataListHelper exListHelper(*extraList);
 					if (exListHelper.IsItemQuestObject(item))
 					{
+						DBG_DMESSAGE("Quest Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_questItems.insert(item);
 					}
 					TESFormHelper itemEx(item, m_targetType);
 					if (exListHelper.GetEnchantment() != nullptr)
 					{
+						DBG_DMESSAGE("Enchanted Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_enchantedItems.insert(item);
 					}
 					else if (itemEx.GetEnchantment() != nullptr)
 					{
+						DBG_DMESSAGE("Enchanted Item={}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_enchantedItems.insert(item);
 					}
 					if (itemEx.IsValuable())
 					{
+						DBG_DMESSAGE("Valuable Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_valuableItems.insert(item);
 					}
 					const auto collectible(itemEx.TreatAsCollectible());
 					if (collectible.first)
 					{
+						DBG_DMESSAGE("Collectible Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						// use the most permissive action
 						m_collectibleItems.insert(item);
 						m_collectibleAction = UpdateCollectibleHandling(m_collectibleAction, collectible.second);
