@@ -100,7 +100,6 @@ public:
 	std::string PlayerExactLocation() const;
 
 	const RE::TESObjectCELL* PlayerCell() const;
-	const RE::BGSLocation* PlayerLocation() const;
 };
 
 }

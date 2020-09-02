@@ -555,7 +555,6 @@ bool LocationTracker::Refresh()
 
 		// Output messages for any looting-restriction place change
 		static const bool allowIfRestricted(false);
-
 		std::string oldName(PlaceName(originalPlace));
 		bool couldLootInPrior(LocationTracker::Instance().IsPlaceLootable(originalCell, originalLocation, allowIfRestricted));
 		DBG_MESSAGE("Player was at {}, lootable = {}, now at {}", oldName.c_str(),
@@ -763,12 +762,6 @@ const RE::TESObjectCELL* LocationTracker::PlayerCell() const
 	return m_playerCell && m_playerCell->IsAttached() ? m_playerCell : nullptr;
 }
 
-const RE::BGSLocation* LocationTracker::PlayerLocation() const
-{
-	RecursiveLockGuard guard(m_locationLock);
-	return m_playerLocation;
-}
-
 bool LocationTracker::IsPlayerInWhitelistedPlace() const
 {
 	RecursiveLockGuard guard(m_locationLock);
@@ -833,10 +826,6 @@ std::string LocationTracker::PlaceName(const RE::TESForm* place) const
 	if (place)
 	{
 		name = place->GetName();
-		if (name.empty())
-		{
-			name = FormUtils::SafeGetFormEditorID(place);
-		}
 		if (name.empty())
 		{
 			name = StringUtils::FormIDString(place->GetFormID());
