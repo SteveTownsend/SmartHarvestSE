@@ -73,6 +73,10 @@ enum class AdventureEventType : uint32_t {
 
 class AdventureEvent {
 public:
+	static AdventureEvent StartedAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime);
+	static AdventureEvent CompletedAdventure(const float gameTime);
+	static AdventureEvent AbandonedAdventure(const float gameTime);
+
 	static AdventureEvent StartAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location);
 	static AdventureEvent CompleteAdventure();
 	static AdventureEvent AbandonAdventure();
@@ -80,7 +84,9 @@ public:
 	void AsJSON(nlohmann::json& j) const;
 
 private:
+	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime);
 	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location);
+	AdventureEvent(const AdventureEventType eventType, const float gameTime);
 	AdventureEvent(const AdventureEventType eventType);
 
 	const AdventureEventType m_eventType;

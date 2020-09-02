@@ -656,8 +656,8 @@ bool LocationTracker::IsPlacePlayerHome(const RE::TESObjectCELL* cell, const RE:
 
 void LocationTracker::RecordCurrentPlace(const float gameTime)
 {
-	VisitedPlaces::Instance().RecordNew(
-		m_playerParentWorld, m_playerLocation, m_playerCell, gameTime);
+	VisitedPlaces::Instance().RecordVisit(
+		m_playerParentWorld, m_playerLocation, m_playerCell, PlayerState::Instance().GetPosition(), gameTime);
 }
 
 bool LocationTracker::IsPlayerInLootablePlace(const bool lootableIfRestricted)

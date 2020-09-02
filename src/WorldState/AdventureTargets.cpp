@@ -71,6 +71,21 @@ std::string AdventureTargetName(const AdventureTargetType adventureTarget)
 	};
 }
 
+AdventureEvent AdventureEvent::StartedAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime)
+{
+	return AdventureEvent(AdventureEventType::Started, world, location, gameTime);
+}
+
+AdventureEvent AdventureEvent::CompletedAdventure(const float gameTime)
+{
+	return AdventureEvent(AdventureEventType::Complete, gameTime);
+}
+
+AdventureEvent AdventureEvent::AbandonedAdventure(const float gameTime)
+{
+	return AdventureEvent(AdventureEventType::Abandoned, gameTime);
+}
+
 AdventureEvent AdventureEvent::StartAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location)
 {
 	return AdventureEvent(AdventureEventType::Started, world, location);
@@ -86,10 +101,20 @@ AdventureEvent AdventureEvent::AbandonAdventure()
 	return AdventureEvent(AdventureEventType::Abandoned);
 }
 
+AdventureEvent::AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime) :
+	m_eventType(eventType), m_world(world), m_location(location), m_gameTime(gameTime)
+{
+}
+
 AdventureEvent::AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location) :
 	m_eventType(eventType), m_world(world), m_location(location), m_gameTime(PlayerState::Instance().CurrentGameTime())
 {
 }
+AdventureEvent::AdventureEvent(const AdventureEventType eventType, const float gameTime) :
+	m_eventType(eventType), m_world(nullptr), m_location(nullptr), m_gameTime(gameTime)
+{
+}
+
 
 AdventureEvent::AdventureEvent(const AdventureEventType eventType) :
 	m_eventType(eventType), m_world(nullptr), m_location(nullptr), m_gameTime(PlayerState::Instance().CurrentGameTime())
@@ -750,13 +775,13 @@ void AdventureTargets::UpdateFrom(const nlohmann::json& j)
 		switch(eventType)
 		{
 		case AdventureEventType::Started:
-			m_adventureEvents.push_back(AdventureEvent::StartAdventure(worldspaceForm, locationForm));
+			m_adventureEvents.push_back(AdventureEvent::StartedAdventure(worldspaceForm, locationForm, gameTime));
 			break;
 		case AdventureEventType::Complete:
-			m_adventureEvents.push_back(AdventureEvent::CompleteAdventure());
+			m_adventureEvents.push_back(AdventureEvent::CompletedAdventure(gameTime));
 			break;
 		case AdventureEventType::Abandoned:
-			m_adventureEvents.push_back(AdventureEvent::AbandonAdventure());
+			m_adventureEvents.push_back(AdventureEvent::AbandonedAdventure(gameTime));
 			break;
 		default:
 			break;

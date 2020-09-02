@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "WorldState/PlayerState.h"
+#include "WorldState/GameCalendar.h"
 #include "Data/DataCase.h"
 #include "Data/LoadOrder.h"
 #include "WorldState/LocationTracker.h"
@@ -338,7 +339,7 @@ bool PlayerState::WithinDetectionRange(const double distance) const
 void PlayerState::UpdateGameTime(const float gameTime)
 {
 	RecursiveLockGuard guard(m_playerLock);
-	DBG_MESSAGE("GameTime is now {:0.3f}", gameTime);
+	DBG_MESSAGE("GameTime is now {:0.3f}/{}", gameTime, GameCalendar::Instance().DateTimeString(gameTime));
 	m_gameTime = gameTime;
 }
 
