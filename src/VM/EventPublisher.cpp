@@ -27,7 +27,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-/* do not clean this class up: SKSE::RegistrationSetBase::~Impl (?) faults per https://github.com/SteveTownsend/SmartHarvestSE/issues/200
+/* do not clean this class up: SKSE::Impl::~RegistrationSetBase (?) faults per https://github.com/SteveTownsend/SmartHarvestSE/issues/200
 * 
 From Map file
 	0001:0009a310       ??1RegistrationSetBase@Impl@SKSE@@QEAA@XZ 000000018009b310 f   CommonLibSSE:RegistrationSet.obj
