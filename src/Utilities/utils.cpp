@@ -155,6 +155,17 @@ namespace WindowsUtils
 		}
 	}
 
+	void TakeNap(const double delaySeconds)
+	{
+		DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delaySeconds * 1000.0));
+
+		// flush log output here
+		SHSELogger->flush();
+
+		auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delaySeconds * 1000.0));
+		std::this_thread::sleep_until(nextRunTime);
+	}
+
 	ScopedTimer::ScopedTimer(const std::string& context) : m_startTime(microsecondsNow()), m_context(context) {}
 	ScopedTimer::ScopedTimer(const std::string& context, RE::TESObjectREFR* refr) : m_startTime(microsecondsNow()), m_context(context)
 	{

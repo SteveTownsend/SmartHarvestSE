@@ -335,9 +335,9 @@ namespace papyrus
 		return shse::ScanGovernor::Instance().IsAllowed();
 	}
 
-	void ReportOKToScan(RE::StaticFunctionTag* base, const bool goodToGo, const int nonce)
+	void ReportOKToScan(RE::StaticFunctionTag* base, const bool delayed, const int nonce)
 	{
-		shse::UIState::Instance().ReportVMGoodToGo(goodToGo, nonce);
+		shse::UIState::Instance().ReportVMGoodToGo(delayed, nonce);
 	}
 
 	constexpr int WhiteList = 1;

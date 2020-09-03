@@ -30,20 +30,19 @@ public:
 	static UIState& Instance();
 	UIState();
 
-	bool OKForSearch();
+	void WaitUntilVMGoodToGo();
+	void ReportVMGoodToGo(const bool delayed, const int nonce);
 	void Reset();
-	void ReportVMGoodToGo(const bool goodToGo, const int nonce);
 
 private:
-	bool VMGoodToGo();
+	// Worker thread loop delays once UI ready
+	static constexpr double OnUIClosedThreadDelaySeconds = 1.0;
 
 	static std::unique_ptr<UIState> m_instance;
-	bool m_goodToGo;
 	int m_nonce;
 	std::condition_variable m_uiReport;
 	std::mutex m_uiLock;
 	bool m_vmResponded;
-	bool m_vmGoodToGo;
 };
 
 }

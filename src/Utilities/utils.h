@@ -50,6 +50,7 @@ namespace WindowsUtils
 {
 	long long microsecondsNow();
 	void LogProcessWorkingSet();
+	void TakeNap(const double delaySeconds);
 
 	class ScopedTimer {
 	public:
