@@ -39,7 +39,7 @@ UIState& UIState::Instance()
 	return *m_instance;
 }
 
-UIState::UIState() : m_nonce(0), m_vmResponded(false)
+UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false)
 {
 }
 
@@ -55,10 +55,17 @@ void UIState::WaitUntilVMGoodToGo()
 	// wait for async result from script
 	std::unique_lock<std::mutex> guard(m_uiLock);
 	m_vmResponded = false;
-	m_uiReport.wait(guard, [&] { return m_vmResponded; } );
+	m_uiDelayed = false;
+	m_uiReport.wait(guard, [&] { return m_vmResponded; });
 	const auto endTime(std::chrono::high_resolution_clock::now());
 	DBG_MESSAGE("Script reported UI ready for request {} after {} microseconds",
 		nonce, std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count());
+	if (m_uiDelayed)
+	{
+		REL_MESSAGE("UI/controls were active, delay scan");
+		WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
+	}
+	REL_MESSAGE("Scan progressing");
 }
 
 void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)
@@ -77,9 +84,7 @@ void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)
 	if (delayed)
 	{
 		// OK to continue after blocking check
-		REL_MESSAGE("UI/controls were active, delay scan");
-		WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
-		REL_MESSAGE("Scan progressing");
+		m_uiDelayed = true;
 	}
 	m_uiReport.notify_one();
 }
@@ -88,6 +93,7 @@ void UIState::Reset()
 {
 	m_nonce = 0;
 	m_vmResponded = false;
+	m_uiDelayed = false;
 }
 
 }

@@ -43,6 +43,7 @@ private:
 	std::condition_variable m_uiReport;
 	std::mutex m_uiLock;
 	bool m_vmResponded;
+	bool m_uiDelayed;
 };
 
 }
