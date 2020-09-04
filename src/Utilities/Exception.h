@@ -39,5 +39,6 @@ class FileNotFound : public std::runtime_error
 {
 	static constexpr std::string_view ErrorName = "FileNotFound: ";
 public:
+	FileNotFound(const wchar_t* filename);
 	FileNotFound(const char* filename);
 };

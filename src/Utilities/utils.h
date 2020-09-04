@@ -50,6 +50,7 @@ namespace WindowsUtils
 {
 	long long microsecondsNow();
 	void LogProcessWorkingSet();
+	void TakeNap(const double delaySeconds);
 
 	class ScopedTimer {
 	public:
@@ -88,7 +89,7 @@ namespace FormUtils
 	// https://github.com/Ryan-rsm-McKenzie/CommonLibSSE/issues/20
 	inline std::string SafeGetFormEditorID(const RE::TESForm* form)
 	{
-		const char* edid(form->GetFormEditorID());
+		const char* edid(form ? form->GetFormEditorID() : nullptr);
 		return edid ? std::string(edid) : std::string();
 	}
 
@@ -119,6 +120,7 @@ namespace StringUtils
 		return ss.fail() ? InvalidFormString : ss.str();
 
 	}
+	std::string FormIDString(const RE::FormID formID);
 }
 
 namespace CompressionUtils

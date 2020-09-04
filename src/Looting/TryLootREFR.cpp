@@ -48,9 +48,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 	DataCase* data = DataCase::GetInstance();
 	Lootability result(Lootability::Lootable);
+	LootableREFR refrEx(m_candidate, m_targetType);
+	QuestObjectHandling questObjectLoot =
+		QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+	if (m_glowOnly)
+	{
+		questObjectLoot = QuestObjectHandling::GlowTarget;
+	}
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
-		LootableREFR refrEx(m_candidate, m_targetType);
 		ObjectType objType = refrEx.GetObjectType();
 		m_typeName = refrEx.GetTypeName();
 		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
@@ -141,14 +147,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::BaseObjectOnBlacklist;
 		}
 
-		QuestObjectHandling questObjectLoot =
-			QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
 		if (refrEx.IsQuestItem())
 		{
-			if (m_glowOnly)
-			{
-				questObjectLoot = QuestObjectHandling::GlowTarget;
-			}
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
@@ -220,8 +220,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
-		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
-			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()) &&
+		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace() &&
+			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
 			!IsItemLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
@@ -391,6 +391,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// initially no glow - flag using synthetic value with highest precedence
 		m_glowReason = GlowReason::None;
+		// if we glow for special objects, we do not want to overwrite that with 'items looted' glow lower down, and we want to handle repeat glow
+		int glowDuration(0);
 		if (m_targetType == INIFile::SecondaryType::containers)
 		{
 			// If a container is once found locked, it remains treated the same way according to the looting rules. This means a chest that player unlocked
@@ -440,12 +442,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (lister.HasQuestItem())
 		{
-			QuestObjectHandling questObjectLoot =
-				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
-			if (m_glowOnly)
-			{
-				questObjectLoot = QuestObjectHandling::GlowTarget;
-			}
 			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -524,7 +520,21 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-		// Order is important to ensure we glow correctly even if blocked - IsLootingForbidden must come first.
+		// Container or NPC may itself be a Quest target - if so the entire thing is blocked from autoloot
+		if (refrEx.IsQuestItem())
+		{
+			DBG_VMESSAGE("Quest Container/NPC REFR 0x{:08x} to {}/0x{:08x}, glow={}", m_candidate->GetFormID(),	m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->formID, questObjectLoot == QuestObjectHandling::GlowTarget ? "true" : "false");
+			if (questObjectLoot == QuestObjectHandling::GlowTarget)
+			{
+				UpdateGlowReason(GlowReason::QuestObject);
+			}
+
+			skipLooting = true;
+			result = Lootability::CannotLootQuestTarget;
+		}
+
+		// Order is important to ensure we glow correctly even if blocked.
 		// Check here is on the container, skip all contents if looting not permitted
 		Lootability forbidden(LootingLegality(m_targetType));
 		if (forbidden != Lootability::Lootable)
@@ -536,8 +546,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we
 		// should be able to murder/plunder. And don't forget Margret in Markarth.
 		if (!skipLooting && m_targetType != INIFile::SecondaryType::deadbodies &&
-			!LocationTracker::Instance().IsPlayerInWhitelistedPlace(LocationTracker::Instance().PlayerCell()) &&
-			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement(LocationTracker::Instance().PlayerCell()))
+			!LocationTracker::Instance().IsPlayerInWhitelistedPlace() &&
+			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement())
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this target type");
 			skipLooting = true;
@@ -551,6 +561,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				return result;
 			}
+			glowDuration = ObjectGlowDurationSpecialSeconds;
 		}
 
 		// If it contains white-listed items we must nonetheless skip, due to legality checks at the container level
@@ -712,6 +723,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					playContainerAnimation = 2;
 				}
 			}
+			// Persistent glow for special items overrides "items looted" glow
+			if (playContainerAnimation == 2 && glowDuration > 0)
+			{
+				playContainerAnimation = 0;
+			}
 			// use inline transfer for containers on first attempt - fills in item counts
 			GetLootFromContainer(targets, playContainerAnimation, m_targetType == INIFile::SecondaryType::containers);
 		}
@@ -729,13 +745,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// Main Blacklist does not work for dynamic forms - block those separately. e.g. Hawk shot down outside Solitude
 			if (!ScanGovernor::Instance().HasDynamicData(m_candidate))
 			{
-				ScanGovernor::Instance().MarkContainerLooted(m_candidate);
+				ScanGovernor::Instance().MarkContainerLootedRepeatGlow(m_candidate, glowDuration);
 			}
 		}
 		else
 		{
 			DBG_MESSAGE("block looted container/NPC {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
-			ScanGovernor::Instance().MarkContainerLooted(m_candidate);
+			ScanGovernor::Instance().MarkContainerLootedRepeatGlow(m_candidate, glowDuration);
 		}
 	}
 	return result;

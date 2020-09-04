@@ -26,27 +26,9 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime) :
-	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(PlayerState::Instance().GetPosition()), m_gameTime(gameTime)
-{
-}
-
 VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime) :
 	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(position), m_gameTime(gameTime)
 {
-}
-
-VisitedPlace& VisitedPlace::operator=(const VisitedPlace& rhs)
-{
-	if (this != &rhs)
-	{
-		m_worldspace = rhs.m_worldspace;
-		m_location = rhs.m_location;
-		m_cell = rhs.m_cell;
-		m_position = rhs.m_position;
-		m_gameTime = rhs.m_gameTime;
-	}
-	return *this;
 }
 
 void VisitedPlace::AsJSON(nlohmann::json& j) const
@@ -83,7 +65,7 @@ VisitedPlaces& VisitedPlaces::Instance()
 	return *m_instance;
 }
 
-VisitedPlaces::VisitedPlaces()
+VisitedPlaces::VisitedPlaces() : m_timeLineStart(0.0)
 {
 }
 
@@ -93,12 +75,15 @@ void VisitedPlaces::Reset()
 	m_visited.clear();
 }
 
-void VisitedPlaces::RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime)
+void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell,
+	const Position& position, const float gameTime)
 {
 	bool isNew(false);
 	RecursiveLockGuard guard(m_visitedLock);
 	if (m_visited.empty())
 	{
+		// game start time is not always 0.0 - value depends on save/load sequencing
+		m_timeLineStart = gameTime;
 		isNew = true;
 	}
 	else
@@ -108,7 +93,7 @@ void VisitedPlaces::RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGS
 	}
 	if (isNew)
 	{ 
-		m_visited.emplace_back(worldspace, location, cell, gameTime);
+		m_visited.emplace_back(worldspace, location, cell, position, gameTime);
 		if (location)
 		{
 			m_knownLocations.insert(location);
@@ -145,9 +130,8 @@ void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
 		const auto cell(place.find("cell"));
 		const RE::TESObjectCELL* cellForm(cell != place.cend() ?
 			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESObjectCELL>(StringUtils::ToFormID(cell->get<std::string>())) : nullptr);
-		// the list was already normalized before saving, no need to call RecordNew
-		// player position recorded
-		m_visited.emplace_back(worldspaceForm, locationForm, cellForm, Position(place["position"]), gameTime);
+		// the list was ordered by game time before saving - player position recorded
+		RecordVisit(worldspaceForm, locationForm, cellForm, Position(place["position"]), gameTime);
 		if (locationForm)
 		{
 			m_knownLocations.insert(locationForm);

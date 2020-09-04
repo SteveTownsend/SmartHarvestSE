@@ -155,6 +155,17 @@ namespace WindowsUtils
 		}
 	}
 
+	void TakeNap(const double delaySeconds)
+	{
+		DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delaySeconds * 1000.0));
+
+		// flush log output here
+		SHSELogger->flush();
+
+		auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delaySeconds * 1000.0));
+		std::this_thread::sleep_until(nextRunTime);
+	}
+
 	ScopedTimer::ScopedTimer(const std::string& context) : m_startTime(microsecondsNow()), m_context(context) {}
 	ScopedTimer::ScopedTimer(const std::string& context, RE::TESObjectREFR* refr) : m_startTime(microsecondsNow()), m_context(context)
 	{
@@ -240,6 +251,15 @@ namespace StringUtils
 		if (result == 0) return std::string();
 
 		return output;
+	}
+
+	std::string FormIDString(const RE::FormID formID)
+	{
+		std::ostringstream formIDStr;
+		formIDStr << "0x" << std::hex << std::setw(8) << std::setfill('0') << formID;
+		std::string result(formIDStr.str());
+		DBG_VMESSAGE("FormID 0x{:08x} mapped to {}", formID, result.c_str());
+		return result;
 	}
 }
 

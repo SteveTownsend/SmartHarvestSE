@@ -96,16 +96,31 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 
 extern "C"
 {
+#if _DEBUG
+	int MyCrtReportHook(int reportType, char* message, int* returnValue)
+	{
+		__try {
+			RaiseException(EXCEPTION_NONCONTINUABLE_EXCEPTION, EXCEPTION_NONCONTINUABLE, 0, NULL);
+		}
+		__except (LogStackWalker::LogStack(GetExceptionInformation())) {
+			REL_FATALERROR("JSON Collection Definitions threw structured exception");
+		}
+		return 0;
+	}
+#endif
 
 bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_info)
 {
+#if _DEBUG
+	_CrtSetReportHook(MyCrtReportHook);
+#endif
 	std::filesystem::path logPath(SKSE::log::log_directory());
 	try
 	{
-		std::string fileName(logPath.generic_string());
-		fileName.append("/");
-		fileName.append(SHSE_NAME);
-		fileName.append(".log");
+		std::wstring fileName(logPath.generic_wstring());
+		fileName.append(L"/");
+		fileName.append(L_SHSE_NAME);
+		fileName.append(L".log");
 		SHSELogger = spdlog::basic_logger_mt(LoggerName, fileName, true);
 		SHSELogger->set_pattern("%Y-%m-%d %T.%e %8l %6t %v");
 	}

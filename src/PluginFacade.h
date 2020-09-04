@@ -31,7 +31,6 @@ public:
 	void PrepareForReload();
 	void AfterReload();
 	void ResetState(const bool gameReload);
-	void OnGoodToGo(void);
 	void OnSettingsPushed(void);
 
 	// give the debug message time to catch up during calibration
@@ -40,14 +39,11 @@ public:
 private:
 	bool Load();
 	void Start();
-	void TakeNap(const double delaySeconds);
 	bool IsSynced() const;
 	static void ScanThread(void);
 
 	// Worker thread loop smallest possible delay
 	static constexpr double MinThreadDelaySeconds = 0.1;
-	// Worker thread loop delays once UI ready
-	static constexpr double OnMCMClosedThreadDelaySeconds = 1.0;
 
 	static std::unique_ptr<PluginFacade> m_instance;
 	mutable RecursiveLock m_pluginLock;

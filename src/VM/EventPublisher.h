@@ -51,7 +51,7 @@ private:
 	RE::BGSRefAlias* GetScriptTarget(const char* espName, RE::FormID questID);
 	void HookUp();
 
-	static std::unique_ptr<EventPublisher> m_instance;
+	static EventPublisher* m_instance;
 	RE::BGSRefAlias* m_eventTarget;
 
 	SKSE::RegistrationSet<RE::TESObjectREFR*> m_onGetProducerLootable;

@@ -22,15 +22,31 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-class ExtraDataListHelper
+class GameCalendar
 {
 public:
-	ExtraDataListHelper(const RE::ExtraDataList* extraData) : m_extraData(extraData) {}
-	RE::EnchantmentItem* GetEnchantment(void) const;
-	bool IsItemQuestObject(const RE::TESBoundObject* item) const;
-	bool IsREFRQuestObject(const RE::TESObjectREFR* refr) const;
 
-	const RE::ExtraDataList* m_extraData;
+	static GameCalendar& Instance();
+	GameCalendar();
+
+	std::string DateTimeString(const float gameTime) const;
+
+private:
+	constexpr unsigned int DaysPerYear() const;
+	// start date is 4E 201, 17th of Last Seed
+	/* start time logged in new game is 9.00 am or so:
+		2020-09-01 16:59:23.823     info  18628 GameTime is now 0.375/0.375352
+	*/
+
+	static constexpr unsigned int StartYear = 201;
+	static constexpr unsigned int StartDay = 17;
+	// zero-based offset
+	static constexpr unsigned int StartMonth = 7;
+
+	static std::unique_ptr<GameCalendar> m_instance;
+	static const std::vector<std::pair<std::string, unsigned int>> m_monthDays;
+	static const std::vector<std::string> m_dayNames;
+	static const std::vector<std::string> m_dayOfMonth;
 };
 
 }

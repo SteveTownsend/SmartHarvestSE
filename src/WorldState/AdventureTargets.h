@@ -18,6 +18,7 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
+#include "WorldState/PositionData.h"
 
 namespace shse
 {
@@ -72,6 +73,10 @@ enum class AdventureEventType : uint32_t {
 
 class AdventureEvent {
 public:
+	static AdventureEvent StartedAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime);
+	static AdventureEvent CompletedAdventure(const float gameTime);
+	static AdventureEvent AbandonedAdventure(const float gameTime);
+
 	static AdventureEvent StartAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location);
 	static AdventureEvent CompleteAdventure();
 	static AdventureEvent AbandonAdventure();
@@ -79,7 +84,9 @@ public:
 	void AsJSON(nlohmann::json& j) const;
 
 private:
+	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime);
 	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location);
+	AdventureEvent(const AdventureEventType eventType, const float gameTime);
 	AdventureEvent(const AdventureEventType eventType);
 
 	const AdventureEventType m_eventType;
@@ -101,7 +108,7 @@ public:
 
 	size_t AvailableAdventureTypes() const;
 	// use mapping list to convert MCM index to true index
-	inline std::string AdventureTypeName(const size_t adventureType) const { return AdventureTargetNameByIndex(size_t(m_validAdventureTypes[adventureType])); }
+	std::string AdventureTypeName(const size_t adventureType) const;
 	size_t ViableWorldCount(const size_t adventureType) const;
 	std::string ViableWorldNameByIndexInView(const size_t worldIndex) const;
 	void SelectCurrentDestination(const size_t worldIndex);
@@ -109,20 +116,28 @@ public:
 	void AbandonCurrentDestination();
 	const RE::TESWorldSpace* TargetWorld(void) const;
 	const RE::BGSLocation* TargetLocation(void) const;
-	RE::ObjectRefHandle TargetMapMarker(void) const;
+	Position TargetPosition(void) const;
 	bool HasActiveTarget(void) const;
-
+	std::unordered_map<const RE::BGSLocation*, Position> GetWorldMarkedPlaces(const RE::TESWorldSpace* world) const;
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& j);
 
 private:
+	void LinkLocationToWorld(const RE::BGSLocation* location, const RE::TESWorldSpace* world) const;
+	Position GetInteriorCellPosition(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
+	Position GetRefHandlePosition(const RE::ObjectRefHandle handle, const RE::BGSLocation* location) const;
+	RE::TESWorldSpace* GetRefHandleWorld(const RE::ObjectRefHandle handle) const;
+	Position GetRefIDPosition(const RE::FormID refID, const RE::BGSLocation* location) const;
+	Position GetRefrPosition(const RE::TESObjectREFR* refr, const RE::BGSLocation* location) const;
+
 	static std::unique_ptr<AdventureTargets> m_instance;
-	std::array<std::unordered_set<RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
+	std::array<std::unordered_set<const RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
 	mutable std::vector<AdventureTargetType> m_validAdventureTypes;
 
-	std::unordered_map<const RE::BGSLocation*, RE::TESWorldSpace*> m_worldByLocation;
-	std::unordered_map<const RE::BGSLocation*, RE::ObjectRefHandle> m_mapMarkerByLocation;
+	mutable std::unordered_map<const RE::BGSLocation*, const RE::TESWorldSpace*> m_worldByLocation;
+	std::unordered_map<const RE::BGSLocation*, Position> m_locationCoordinates;
 
+	std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_markedLocationsByWorld;
 	mutable std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_unvisitedLocationsByWorld;
 	mutable std::vector<const RE::TESWorldSpace*> m_sortedWorlds;
 

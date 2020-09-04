@@ -31,7 +31,7 @@ public:
 	void Analyze();
 
 	Lootability ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const;
-	Lootability QuestTargetLootability(const RE::TESForm* form) const;
+	Lootability QuestTargetLootability(const RE::TESForm* form, const RE::TESObjectREFR* refr) const;
 
 private:
 	// don't make item a Quest Target if instances are scattered all over the place
@@ -40,14 +40,18 @@ private:
 	static constexpr size_t RareQuestTargetThreshold = 2;
 
 	bool ReferenceIsLootable(const RE::TESObjectREFR* refr) const;
-	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
+	inline bool BlacklistQuestTargetItem(const RE::TESBoundObject* item)
+	{
+		return BlacklistQuestTargetReferencedItem(item, nullptr);
+	}
+	bool BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* item, const RE::TESObjectREFR* refr);
 	bool BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr);
 	bool BlacklistQuestTargetNPC(const RE::TESNPC* npc);
 
 	static std::unique_ptr<QuestTargets> m_instance;
 	mutable RecursiveLock m_questLock;
 
-	std::unordered_set<const RE::TESForm*> m_questTargetItems;
+	std::unordered_map<const RE::TESForm*, const RE::TESObjectREFR*> m_questTargetItems;
 	std::unordered_set<const RE::TESObjectREFR*> m_questTargetREFRs;
 };
 

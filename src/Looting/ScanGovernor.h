@@ -75,6 +75,7 @@ public:
 	}
 
 	RE::FormID LootedDynamicREFRFormID(const RE::TESObjectREFR* refr) const;
+	void MarkContainerLootedRepeatGlow(const RE::TESObjectREFR* refr, const int glowDuration);
 	void MarkContainerLooted(const RE::TESObjectREFR* refr);
 	bool IsLootedContainer(const RE::TESObjectREFR* refr) const;
 	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const;
@@ -118,8 +119,8 @@ private:
 	// Record looted REFRs to avoid re-scan of empty or looted chest and dead body.
 	// Dynamic REFRs - reset on cell change - includes REFR and BaseObject FormIDs to make this less likely to silently malfunction
 	mutable std::unordered_set<std::pair<RE::FormID, RE::FormID>, pair_hash> m_lootedDynamicREFRs;
-	// Non-dynamic - reset on game reload or MCM settings update.
-	std::unordered_set<const RE::TESObjectREFR*> m_lootedContainers;
+	// Non-dynamic - reset on game reload or MCM settings update. Handle reglow of partially-looted containers
+	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lootedContainers;
 
 	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
 	mutable std::unordered_map<const RE::TESObjectREFR*, size_t> m_lockedContainers;

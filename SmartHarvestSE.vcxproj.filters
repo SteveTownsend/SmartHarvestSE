@@ -166,6 +166,9 @@
     <ClCompile Include="src\WorldState\QuestTargets.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
+    <ClCompile Include="src\WorldState\GameCalendar.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -340,6 +343,12 @@
       <Filter>src\WorldState</Filter>
     </ClInclude>
     <ClInclude Include="src\WorldState\QuestTargets.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\PositionData.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\GameCalendar.h">
       <Filter>src\WorldState</Filter>
     </ClInclude>
   </ItemGroup>

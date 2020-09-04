@@ -169,7 +169,7 @@ bool IsSummoned(const RE::Actor* actor)
 bool IsQuestTargetNPC(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
-	bool result(npc && QuestTargets::Instance().QuestTargetLootability(npc) == Lootability::CannotLootQuestTarget);
+	bool result(npc && QuestTargets::Instance().QuestTargetLootability(npc, nullptr) == Lootability::CannotLootQuestTarget);
 	DBG_DMESSAGE("Actor is Quest Target NPC = {}", result ? "true" : "false");
 	return result;
 }

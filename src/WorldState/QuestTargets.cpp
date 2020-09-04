@@ -69,6 +69,11 @@ void QuestTargets::Analyze()
 	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
 	{
 		DBG_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
+		std::unordered_map<uint32_t, const RE::BGSBaseAlias*> aliasByID;
+		for (const auto alias : quest->aliases)
+		{
+			aliasByID.insert({ alias->aliasID, alias });
+		}
 		for (const auto alias : quest->aliases)
 		{
 			// Blacklist item if it is a quest ref-alias object
@@ -76,28 +81,76 @@ void QuestTargets::Analyze()
 			{
 				bool isQuest(alias->IsQuestObject());
 				RE::BGSRefAlias* refAlias(static_cast<RE::BGSRefAlias*>(alias));
-				if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated)
+				if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated && refAlias->fillData.created.object)
 				{
-					if (refAlias->fillData.created.object)
+					// Check for specific instance of item created-in another alias
+					uint16_t createdIn(refAlias->fillData.created.alias.alias);
+					if (refAlias->fillData.created.alias.create == RE::BGSRefAlias::CreatedFillData::Alias::Create::kIn)
 					{
-						size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refAlias->fillData.created.object));
-						if (itemCount >= BoringQuestTargetThreshold)
+						const auto target(aliasByID.find(createdIn));
+						if (target != aliasByID.cend())
 						{
-							DBG_MESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount, BoringQuestTargetThreshold);
+							const RE::BGSRefAlias* targetAlias(static_cast<const RE::BGSRefAlias*>(target->second));
+							if (targetAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced)
+							{
+								// created in ALFR
+								if (targetAlias->fillData.forced.forcedRef)
+								{
+									RE::TESObjectREFR* refr(targetAlias->fillData.forced.forcedRef.get().get());
+									if (refr)
+									{
+										// this object in this specific REFR is a Quest Target
+										if (BlacklistQuestTargetReferencedItem(refAlias->fillData.created.object, refr))
+										{
+											DBG_VMESSAGE("Blacklist Specific REFR {}/0x{:08x} to ALCO as Quest Target Item {}/0x{:08x}",
+												refr->GetName(), refr->GetFormID(),
+												refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+											continue;
+										}
+										else
+										{
+											DBG_VMESSAGE("Failed to Blacklist Specific REFR {}/0x{:08x} to ALCO as Quest Target Item {}/0x{:08x}",
+												refr->GetName(), refr->GetFormID(),
+												refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+										}
+									}
+								}
+							}
+							else if (targetAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
+							{
+								// created in ALUA
+								if (targetAlias->fillData.uniqueActor.uniqueActor)
+								{
+									// do not blacklist e.g. Torygg's War Horn 0xE77BB
+									DBG_VMESSAGE("RefAlias ALCO {}/0x{:08x} is created-in ALUA {}/0x{:08x}",
+										refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(),
+										targetAlias->fillData.uniqueActor.uniqueActor->GetName(), targetAlias->fillData.uniqueActor.uniqueActor->GetFormID());
+								}
+							}
 						}
-						// record if unique or Quest Object flag set
-						else if ((isQuest || (!refAlias->fillData.created.object->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
-							BlacklistQuestTargetItem(refAlias->fillData.created.object))
-						{
-							DBG_MESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount);
-						}
-						else
-						{
-							DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
-								refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
-						}
+					}
+					else
+					{
+						DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item {}/0x{:08x} has type kAt",
+							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+					}
+					size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refAlias->fillData.created.object));
+					if (itemCount >= BoringQuestTargetThreshold)
+					{
+						DBG_VMESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
+							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount, BoringQuestTargetThreshold);
+					}
+					// record if unique or Quest Object flag set
+					else if ((isQuest || (!refAlias->fillData.created.object->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
+						BlacklistQuestTargetItem(refAlias->fillData.created.object))
+					{
+						DBG_VMESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
+							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount);
+					}
+					else
+					{
+						DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
+							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
 					}
 				}
 				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced)
@@ -111,12 +164,12 @@ void QuestTargets::Analyze()
 							// record this specific REFR as the QUST target
 							if ((isQuest || (ReferenceIsLootable(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
 							{
-								DBG_MESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
+								DBG_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
 									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), itemCount);
 							}
 							else
 							{
-								DBG_MESSAGE("Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
+								DBG_VMESSAGE("Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
 									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 							}
 						}
@@ -149,15 +202,16 @@ void QuestTargets::Analyze()
 	}
 }
 
-// used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
-bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
+// used for Quest Target Items with specific REFR. Blocks autoloot of the item for this REFR (or any if REFR blank),
+// to preserve immersion and avoid breaking Quests.
+bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* item, const RE::TESObjectREFR* refr)
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
 	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
 	if (item->IsDynamicForm())
 		return false;
-	return (m_questTargetItems.insert(item)).second;
+	return (m_questTargetItems.insert({ item, refr })).second;
 }
 
 // used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
@@ -183,7 +237,7 @@ bool QuestTargets::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
 	if (name.empty())
 		return false;
 	RecursiveLockGuard guard(m_questLock);
-	return m_questTargetItems.insert(npc).second;
+	return (m_questTargetItems.insert({ npc, nullptr })).second;
 }
 
 Lootability QuestTargets::ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const
@@ -194,10 +248,10 @@ Lootability QuestTargets::ReferencedQuestTargetLootability(const RE::TESObjectRE
 	{
 		return Lootability::CannotLootQuestTarget;
 	}
-	return QuestTargetLootability(refr->GetBaseObject());
+	return QuestTargetLootability(refr->GetBaseObject(), refr);
 }
 
-Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form) const
+Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const RE::TESObjectREFR* refr) const
 {
 	if (!form)
 		return Lootability::NoBaseObject;
@@ -205,7 +259,9 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form) const
 	if (form->IsDynamicForm())
 		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_questLock);
-	if (m_questTargetItems.contains(form))
+	const auto matchedItem(m_questTargetItems.find(form));
+	// check for specific REFR match, or item match with no stored explicit  REFR
+	if (matchedItem != m_questTargetItems.cend() && (!matchedItem->second || refr == matchedItem->second))
 	{
 		return Lootability::CannotLootQuestTarget;
 	}

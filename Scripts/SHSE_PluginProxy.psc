@@ -32,7 +32,7 @@ Function PostprocessSPERGMining() global native
 Function AllowSearch(bool onMCMClose) global native
 Function DisallowSearch(bool onMCMClose) global native
 bool Function IsSearchAllowed() global native
-Function ReportOKToScan(bool goodToGo, int nonce) global native
+Function ReportOKToScan(bool delayed, int nonce) global native
 
 Function ResetList(bool reload, int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native

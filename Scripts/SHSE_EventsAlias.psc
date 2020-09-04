@@ -7,6 +7,8 @@ int CACOModIndex
 int FossilMiningModIndex
 int HearthfireExtendedModIndex
 bool scanActive
+int pluginNonce
+bool pluginDelayed
 
 GlobalVariable StrikesBeforeCollection
 
@@ -333,6 +335,10 @@ Function ApplySetting(bool reload)
         PushGameTime(Utility.GetCurrentGameTime())
     endIf
     SyncLists(reload)
+    if reload
+        ; kick off scan thread release checking after game reload, use sentinel value for this case
+        StartCheckReportUIState(-1)
+    endIf
 
     utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
@@ -910,10 +916,38 @@ bool Function OKToScan()
     return True
 EndFunction
 
-Event OnCheckOKToScan(int nonce)
+; Periodic poll to check whether native code can be released. If game closes down this will never happen.
+; Enter a poll loop if UI State forbids native code from scanning.
+Function CheckReportUIState()
     bool goodToGo = OKToScan()
-    ;DebugTrace("Report UI Good-to-go = " + goodToGo + " for request " + nonce)
-    ReportOKToScan(goodToGo, nonce)
+    if goodToGo
+        ;DebugTrace("Report UI Good-to-go = " + goodToGo + " for request " + nonce)
+        ReportOKToScan(pluginDelayed, pluginNonce)
+        pluginNonce = 0
+        pluginDelayed = false
+    else
+        pluginDelayed = true
+        RegisterForSingleUpdate(2.0)
+    endIf
+EndFunction
+
+; this should not kick off competing OnUpdate cycles
+Function StartCheckReportUIState(int nonce)
+    if pluginNonce == 0
+        pluginNonce = nonce
+        pluginDelayed = false
+        CheckReportUIState()
+    endIf
+EndFunction
+
+; OnUpdate is used only while UI is active, until UI State becomes inactive and native code can resume scanning
+Event OnUpdate()
+    CheckReportUIState()
+EndEvent
+
+; Check UI State is OK for scan thread - block the plugin if not, rechecking on a timed poll
+Event OnCheckOKToScan(int nonce)
+    StartCheckReportUIState(nonce)
 EndEvent
 
 ; check if Actor detects player - used for real stealing, or stealibility check in dry run
