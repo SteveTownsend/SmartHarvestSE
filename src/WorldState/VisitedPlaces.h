@@ -26,10 +26,7 @@ namespace shse
 
 class VisitedPlace {
 public:
-	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime);
 	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime);
-	VisitedPlace& operator=(const VisitedPlace& rhs);
-
 	void AsJSON(nlohmann::json& j) const;
 
 	inline const RE::TESWorldSpace* Worldspace() const { return m_worldspace; }
@@ -54,7 +51,8 @@ public:
 	VisitedPlaces();
 
 	void Reset();
-	void RecordNew(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const float gameTime);
+	void RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell,
+		const Position& position, const float gameTime);
 
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& j);
@@ -63,6 +61,7 @@ public:
 
 private:
 	static std::unique_ptr<VisitedPlaces> m_instance;
+	float m_timeLineStart;
 	std::vector<VisitedPlace> m_visited;
 	std::unordered_set<const RE::BGSLocation*> m_knownLocations;
 	mutable RecursiveLock m_visitedLock;

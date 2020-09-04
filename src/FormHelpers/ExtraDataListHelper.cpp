@@ -21,7 +21,10 @@ http://www.fsf.org/licensing/licenses
 
 #include "FormHelpers/ExtraDataListHelper.h"
 
-RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void)
+namespace shse
+{
+
+RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void) const
 {
 	if (!m_extraData)
 		return false;
@@ -30,7 +33,7 @@ RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void)
 	return (exEnchant && exEnchant->enchantment) ? exEnchant->enchantment : nullptr;
 }
 
-bool ExtraDataListHelper::IsQuestObject()
+bool ExtraDataListHelper::IsItemQuestObject(const RE::TESBoundObject* item) const
 {
 	if (!m_extraData)
 		return false;
@@ -41,12 +44,33 @@ bool ExtraDataListHelper::IsQuestObject()
 
 	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
 		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
-			if (alias->alias->IsQuestObject() || alias->quest) {
-				DBG_VMESSAGE("Quest Item confirmed in alias for quest 0x{:08x}, alias quest object {}",
-					alias->quest ? alias->quest->formID : 0, alias->alias->IsQuestObject() ? "true" : "false");
+			if (alias->alias->IsQuestObject()) {
+				REL_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
+					alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
 				return true;
 			}
 			return false;
 		}) != exAliasArray->aliases.cend();
 }
 
+bool ExtraDataListHelper::IsREFRQuestObject(const RE::TESObjectREFR* refr) const
+{
+	if (!m_extraData)
+		return false;
+
+	auto exAliasArray = m_extraData->GetByType<RE::ExtraAliasInstanceArray>();
+	if (!exAliasArray)
+		return false;
+
+	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
+		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
+		if (alias->alias->IsQuestObject()) {
+			REL_VMESSAGE("Quest Target REFR {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", refr->GetName(), refr->GetFormID(),
+				alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
+			return true;
+		}
+		return false;
+	}) != exAliasArray->aliases.cend();
+}
+
+}

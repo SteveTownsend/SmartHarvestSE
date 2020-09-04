@@ -19,45 +19,12 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-#include <array>
-
 #include "alglib/alglibmisc.h"
 #include "Utilities/utils.h"
+#include "WorldState/PositionData.h"
 
 namespace shse
 {
-
-// x, y, z coordinates
-typedef std::array<float, 3> Position;
-typedef std::array<double, 3> AlglibPosition;
-
-class RelativeLocationDescriptor
-{
-public:
-	RelativeLocationDescriptor(const AlglibPosition startPoint, const AlglibPosition endPoint, const RE::FormID locationID, const double unitsAway) :
-		m_startPoint(startPoint), m_endPoint(endPoint), m_locationID(locationID), m_unitsAway(unitsAway)
-	{}
-	inline AlglibPosition StartPoint() const { return m_startPoint; }
-	inline AlglibPosition EndPoint() const { return m_endPoint; }
-	inline RE::FormID LocationID() const { return m_locationID; }
-	inline double UnitsAway() const { return m_unitsAway; }
-	static RelativeLocationDescriptor Invalid() { return RelativeLocationDescriptor({ 0.,0.,0. }, { 0.,0.,0. }, 0, 0.0); }
-	inline bool operator==(const RelativeLocationDescriptor& rhs) {
-		return m_startPoint == rhs.m_startPoint && m_endPoint == rhs.m_endPoint;
-	}
-
-private:
-	const AlglibPosition m_startPoint;
-	const AlglibPosition m_endPoint;
-	const RE::FormID m_locationID;	// represents end point
-	const double m_unitsAway;
-};
-
-enum class MapMarkerType {
-	Nearest = 0,
-	AdventureTarget,
-	MAX
-};
 
 class LocationTracker
 {
@@ -66,24 +33,28 @@ private:
 	void RecordMarkedPlaces();
 
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
-	bool IsPlayerInBlacklistedPlace(const RE::TESObjectCELL* cell) const;
+	bool IsPlaceBlacklisted(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
 	void PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const;
 	const RE::BGSLocation* PlayerLocationRelativeToAdventureTarget(void) const;
 	CompassDirection DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const;
 	const RE::TESWorldSpace* ParentWorld(const RE::TESObjectCELL* cell);
 	RelativeLocationDescriptor NearestMapMarker(const AlglibPosition& refPos) const;
-	RelativeLocationDescriptor LocationMapMarker(
-		const RE::ObjectRefHandle targetMarker, const RE::BGSLocation* location, const AlglibPosition& refPos) const;
+	RelativeLocationDescriptor MarkedLocationPosition(
+		const Position targetPosition, const RE::BGSLocation* location, const AlglibPosition& refPos) const;
 	inline double UnitsToMiles(const double units) const
 	{
 		return units * DistanceUnitInMiles;
 	}
 	CellOwnership GetCellOwnership(const RE::TESObjectCELL* cell) const;
 	RE::TESForm* GetCellOwner(const RE::TESObjectCELL* cell) const;
+	std::string PlaceName(const RE::TESForm*) const;
+	bool IsPlacePlayerHome(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
+	bool IsPlaceLootable(const RE::TESObjectCELL* cell, const RE::BGSLocation* location, const bool lootableIfRestricted);
+	bool IsPlaceWhitelisted(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
+	bool IsPlaceRestrictedLootSettlement(const RE::BGSLocation* location) const;
 
 	static std::unique_ptr<LocationTracker> m_instance;
 	std::vector<RE::TESObjectCELL*> m_adjacentCells;
-	const RE::TESObjectCELL* m_priorCell;
 	RE::TESObjectCELL* m_playerCell;
 	bool m_tellPlayerIfCanLootAfterLoad;
 	const RE::BGSLocation* m_playerLocation;
@@ -108,14 +79,14 @@ public:
 	bool Refresh();
 	bool IsPlayerAtHome() const;
 	void RecordCurrentPlace(const float gameTime);
-	bool IsPlayerInLootablePlace(const RE::TESObjectCELL* cell, const bool lootableIfRestricted);
+	bool IsPlayerInLootablePlace(const bool lootableIfRestricted);
 	decltype(m_adjacentCells) AdjacentCells() const;
 	bool IsPlayerIndoors() const;
-	bool IsPlayerInRestrictedLootSettlement(const RE::TESObjectCELL* cell) const;
+	bool IsPlayerInRestrictedLootSettlement() const;
 	bool IsPlayerInFriendlyCell() const;
 	const RE::TESForm* CurrentPlayerPlace() const;
 	const RE::TESWorldSpace* CurrentPlayerWorld() const;
-	bool IsPlayerInWhitelistedPlace(const RE::TESObjectCELL* cell) const;
+	bool IsPlayerInWhitelistedPlace() const;
 
 	void DisplayPlayerLocation(void) const;
 	void PrintPlayerLocation(const RE::BGSLocation* location) const;

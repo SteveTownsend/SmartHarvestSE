@@ -27,13 +27,25 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-std::unique_ptr<EventPublisher> EventPublisher::m_instance;
+/* do not clean this class up: SKSE::Impl::~RegistrationSetBase (?) faults per https://github.com/SteveTownsend/SmartHarvestSE/issues/200
+* 
+From Map file
+	0001:0009a310       ??1RegistrationSetBase@Impl@SKSE@@QEAA@XZ 000000018009b310 f   CommonLibSSE:RegistrationSet.obj
+
+WER output crash address:
+	Sig[3].Value=SmartHarvestSE.dll
+	Sig[6].Name=Exception Code
+	Sig[6].Value=c0000005
+	Sig[7].Name=Exception Offset
+	Sig[7].Value=000000000009b343
+*/
+EventPublisher* EventPublisher::m_instance(nullptr);
 
 EventPublisher& EventPublisher::Instance()
 {
 	if (!m_instance)
 	{
-		m_instance = std::make_unique<EventPublisher>();
+		m_instance = new EventPublisher;
 	}
 	return *m_instance;
 }

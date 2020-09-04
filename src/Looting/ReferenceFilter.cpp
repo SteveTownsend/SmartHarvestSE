@@ -225,6 +225,9 @@ bool ReferenceFilter::IsFollowerOrDead(const RE::TESObjectREFR* refr) const
 	{
 		if (!actor->IsDead(true)) 
 		{
+			// Do not track live summons or any dynamic REFR as Follower
+			if (IsSummoned(actor) || refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
+				return false;
 			PlayerAffinity affinity(GetPlayerAffinity(actor));
 			if (affinity == PlayerAffinity::FollowerFaction)
 			{
@@ -342,8 +345,16 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				PlayerAffinity affinity(GetPlayerAffinity(actor));
 				if (affinity == PlayerAffinity::FollowerFaction || affinity == PlayerAffinity::TeamMate)
 				{
-					DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
-					ActorTracker::Instance().AddFollower(actor);
+					// Do not track live summons or any dynamic REFR as Follower
+					if (!IsSummoned(actor) && !refr->IsDynamicForm() && !refr->GetBaseObject()->IsDynamicForm())
+					{
+						DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+						ActorTracker::Instance().AddFollower(actor);
+					}
+					else
+					{
+						DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} ineligible as Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+					}
 				}
 				else if (affinity == PlayerAffinity::Unaffiliated &&
 					PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected &&

@@ -150,17 +150,6 @@ bool PluginFacade::Load()
 	return true;
 }
 
-void PluginFacade::TakeNap(const double delaySeconds)
-{
-	DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delaySeconds * 1000.0));
-
-	// flush log output here
-	SHSELogger->flush();
-
-	auto nextRunTime = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(static_cast<long long>(delaySeconds * 1000.0));
-	std::this_thread::sleep_until(nextRunTime);
-}
-
 bool PluginFacade::IsSynced() const {
 	RecursiveLockGuard guard(m_pluginLock);
 	return m_pluginSynced;
@@ -179,12 +168,11 @@ void PluginFacade::ScanThread()
 			// use hard-coded delay to make UX comprehensible
 			delaySeconds = CalibrationThreadDelaySeconds;
 		}
-		Instance().TakeNap(delaySeconds);
+		WindowsUtils::TakeNap(delaySeconds);
 
 		// Go no further if game load is in progress.
 		if (!Instance().IsSynced())
 		{
-			REL_MESSAGE("Plugin sync still pending");
 			continue;
 		}
 
@@ -194,11 +182,8 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		if (!UIState::Instance().OKForSearch())
-		{
-			DBG_MESSAGE("UI state not good to loot");
-			continue;
-		}
+		// block until UI is good to go
+		UIState::Instance().WaitUntilVMGoodToGo();
 
 		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
 		if (!LocationTracker::Instance().Refresh())
@@ -227,7 +212,7 @@ void PluginFacade::ScanThread()
 		{
 			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 			static const bool allowIfRestricted(true);
-			if (!LocationTracker::Instance().IsPlayerInLootablePlace(LocationTracker::Instance().PlayerCell(), allowIfRestricted))
+			if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
 			{
 				DBG_MESSAGE("Location cannot be looted");
 			}
@@ -258,6 +243,7 @@ void PluginFacade::PrepareForReload()
 	// Do not scan again until we are in sync with the scripts
 	RecursiveLockGuard guard(m_pluginLock);
 	m_pluginSynced = false;
+	REL_MESSAGE("Plugin sync required");
 }
 
 void PluginFacade::AfterReload()
@@ -269,7 +255,7 @@ void PluginFacade::AfterReload()
 
 void PluginFacade::ResetState(const bool gameReload)
 {
-	REL_MESSAGE("Restrictions reset, new/loaded game={}", gameReload ? "true" : "false");
+	DBG_MESSAGE("Restrictions reset, new/loaded game={}", gameReload ? "true" : "false");
 	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
@@ -285,14 +271,8 @@ void PluginFacade::ResetState(const bool gameReload)
 		CollectionManager::Instance().OnGameReload();
 		// need to wait for the scripts to sync up before performing player house checks
 		m_pluginSynced = true;
+		REL_MESSAGE("Plugin sync completed");
 	}
-}
-
-// lock not required, by construction. This is called-back in ScanThread via UIState so should be fine
-void PluginFacade::OnGoodToGo()
-{
-	REL_MESSAGE("UI/controls now good-to-go, wait before first scan");
-	TakeNap(OnMCMClosedThreadDelaySeconds);
 }
 
 // lock not required, by construction

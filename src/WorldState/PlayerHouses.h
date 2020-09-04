@@ -27,16 +27,22 @@ public:
 
 	void Clear();
 	bool Add(const RE::BGSLocation* location);
-	bool Remove(const RE::BGSLocation* location);
+	bool AddCell(const RE::TESObjectCELL* cell);
 	bool Contains(const RE::BGSLocation* location) const;
+	bool ContainsCell(const RE::TESObjectCELL* cell) const;
 
 	void SetKeyword(RE::BGSKeyword* keyword);
+	void SetCell(const RE::TESObjectCELL* houseCell);
 	bool IsValidHouse(const RE::BGSLocation* location) const;
+	bool IsValidHouseCell(const RE::TESObjectCELL* cell) const;
 
 private:
 	static std::unique_ptr<PlayerHouses> m_instance;
 	RE::BGSKeyword* m_keyword;
 
 	std::unordered_set<const RE::BGSLocation*> m_houses;
+	std::unordered_set<const RE::TESObjectCELL*> m_houseCells;
+	// CELLS that are effectively player house but not in a properly-tagged LCTN
+	std::unordered_set<const RE::TESObjectCELL*> m_validHouseCells;
 	mutable RecursiveLock m_housesLock;
 };

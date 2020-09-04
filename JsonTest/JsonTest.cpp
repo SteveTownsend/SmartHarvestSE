@@ -158,18 +158,18 @@ void CheckCollections()
 
 	// Find and Load Collection Definitions using the validated schema
 	try {
-		const std::regex collectionsFilePattern(".*\\SHSE.Collections\\..*\\.json$");
+		const std::wregex collectionsFilePattern(L".*\\SHSE.Collections\\..*\\.json$");
 		for (const auto& nextFile : std::filesystem::directory_iterator("."))
 		{
-			std::string collectionFileName(nextFile.path().generic_string());
+			std::wstring collectionFileName(nextFile.path().generic_wstring());
 			if (!std::filesystem::is_regular_file(nextFile))
 			{
-				std::cout << "Skip " << collectionFileName << ", not a regular file\n";
+				std::wcout << L"Skip " << collectionFileName << L", not a regular file\n";
 				continue;
 			}
 			if (!std::regex_match(collectionFileName, collectionsFilePattern))
 			{
-				std::cout << "Skip " << collectionFileName << ", does not match Collections filename pattern\n";
+				std::wcout << L"Skip " << collectionFileName << L", does not match Collections filename pattern\n";
 				continue;
 			}
 			std::ifstream collectionFile(collectionFileName);
@@ -179,14 +179,14 @@ void CheckCollections()
 				validator.validate(collectionGroup);
 			}
 			catch (const std::exception& e) {
-				std::cerr << "JSON Collections " << collectionFileName << " validation error\n" << e.what() << '\n';
+				std::wcerr << L"JSON Collections " << collectionFileName << L" validation error\n" << e.what() << '\n';
 				continue;
 			}
-			std::cout << "JSON Collections " << collectionFileName << " parsed and validated\n";
+			std::wcout << L"JSON Collections " << collectionFileName << L" parsed and validated\n";
 
 			// walk the tree
 			ParseCollectionGroup(collectionGroup);
-			std::cout << "JSON Collections " << collectionFileName << " walked OK\n";
+			std::wcout << L"JSON Collections " << collectionFileName << L" walked OK\n";
 		}
 	}
 	catch (const std::exception& e) {
@@ -217,18 +217,18 @@ void CheckFilters()
 
 	// Find and Load Filter Definitions using the validated schema
 	try {
-		const std::regex filtersFilePattern(".*\\SHSE.Filter\\..*\\.json$");
+		const std::wregex filtersFilePattern(L".*\\SHSE.Filter\\..*\\.json$");
 		for (const auto& nextFile : std::filesystem::directory_iterator("."))
 		{
-			std::string filterFileName(nextFile.path().generic_string());
+			std::wstring filterFileName(nextFile.path().generic_wstring());
 			if (!std::filesystem::is_regular_file(nextFile))
 			{
-				std::cout << "Skip " << filterFileName << ", not a regular file\n";
+				std::wcout << L"Skip " << filterFileName << L", not a regular file\n";
 				continue;
 			}
 			if (!std::regex_match(filterFileName, filtersFilePattern))
 			{
-				std::cout << "Skip " << filterFileName << ", does not match Filters filename pattern\n";
+				std::wcout << L"Skip " << filterFileName << L", does not match Filters filename pattern\n";
 				continue;
 			}
 			std::ifstream filterFile(filterFileName);
@@ -238,10 +238,10 @@ void CheckFilters()
 				validator.validate(filter);
 			}
 			catch (const std::exception& e) {
-				std::cerr << "JSON Filters " << filterFileName << " validation error\n" << e.what() << '\n';
+				std::wcerr << L"JSON Filters " << filterFileName << L" validation error\n" << e.what() << '\n';
 				continue;
 			}
-			std::cout << "JSON Filters " << filterFileName << " parsed and validated\n";
+			std::wcout << L"JSON Filters " << filterFileName << L" parsed and validated\n";
 		}
 	}
 	catch (const std::exception& e) {

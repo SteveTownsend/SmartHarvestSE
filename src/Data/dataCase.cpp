@@ -631,6 +631,28 @@ void DataCase::RecordOffLimitsLocations()
 	}
 }
 
+void DataCase::RecordPlayerHouseCells(void)
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	DBG_MESSAGE("Record free CELLs that are actually Player Houses");
+	std::vector<std::tuple<std::string, RE::FormID>> houseCells = {
+		{"Helgen Reborn.esp", 0x4a592},			// aaaBalokTowerDisplay
+		{"Helgen Reborn.esp", 0x28dac},			// aaaBalokTowerLower
+		{"Helgen Reborn.esp", 0x28d9a}			// aaaBalokTower
+	};
+	for (const auto& pluginForm : houseCells)
+	{
+		std::string espName(std::get<0>(pluginForm));
+		RE::FormID formID(std::get<1>(pluginForm));
+		const RE::TESObjectCELL* cell(FindExactMatch<RE::TESObjectCELL>(espName, formID));
+		if (cell)
+		{
+			DBG_MESSAGE("Cell {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
+			PlayerHouses::Instance().SetCell(cell);
+		}
+	}
+}
+
 void DataCase::BlockOffLimitsContainers()
 {
 	// block all the known off-limits containers - list is invariant during gaming session
@@ -1037,6 +1059,7 @@ void DataCase::HandleExceptions()
 
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
+	RecordPlayerHouseCells();
 
 	// whitelist Dragonborn Pile of Gold
 	IncludePileOfGold();
