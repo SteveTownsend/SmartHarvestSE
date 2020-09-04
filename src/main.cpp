@@ -117,10 +117,10 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	std::filesystem::path logPath(SKSE::log::log_directory());
 	try
 	{
-		std::string fileName(logPath.generic_string());
-		fileName.append("/");
-		fileName.append(SHSE_NAME);
-		fileName.append(".log");
+		std::wstring fileName(logPath.generic_wstring());
+		fileName.append(L"/");
+		fileName.append(L_SHSE_NAME);
+		fileName.append(L".log");
 		SHSELogger = spdlog::basic_logger_mt(LoggerName, fileName, true);
 		SHSELogger->set_pattern("%Y-%m-%d %T.%e %8l %6t %v");
 	}

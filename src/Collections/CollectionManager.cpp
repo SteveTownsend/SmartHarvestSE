@@ -292,7 +292,7 @@ bool CollectionManager::LoadCollectionGroup(
 	try {
 		std::ifstream collectionFile(defFile);
 		if (collectionFile.fail()) {
-			throw FileNotFound(defFile.generic_string().c_str());
+			throw FileNotFound(defFile.generic_wstring().c_str());
 		}
 		nlohmann::json collectionGroupData(nlohmann::json::parse(collectionFile));
 		validator.validate(collectionGroupData);
@@ -306,7 +306,7 @@ bool CollectionManager::LoadCollectionGroup(
 		return true;
 	}
 	catch (const std::exception& e) {
-		REL_ERROR("JSON Collection Definitions {} not loadable, error:\n{}", defFile.generic_string().c_str(), e.what());
+		REL_ERROR("JSON Collection Definitions {} not loadable, error:\n{}", StringUtils::FromUnicode(defFile.generic_wstring()), e.what());
 		return false;
 	}
 }
@@ -334,26 +334,26 @@ bool CollectionManager::LoadData(void)
 
 	try {
 		// Find and Load Collection Definitions using the validated schema
-		const std::regex collectionsFilePattern("SHSE.Collections\\.(.*)\\.json$");
+		const std::wregex collectionsFilePattern(L"SHSE.Collections\\.(.*)\\.json$");
 		for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
 		{
 			if (!std::filesystem::is_regular_file(nextFile))
 			{
-				DBG_MESSAGE("Skip {}, not a regular file", nextFile.path().generic_string().c_str());
+				DBG_MESSAGE("Skip {}, not a regular file", StringUtils::FromUnicode(nextFile.path().generic_wstring()));
 				continue;
 			}
-			std::string fileName(nextFile.path().filename().generic_string());
-			std::smatch matches;
+			std::wstring fileName(nextFile.path().filename().generic_wstring());
+			std::wsmatch matches;
 			if (!std::regex_search(fileName, matches, collectionsFilePattern))
 			{
-				DBG_MESSAGE("Skip {}, does not match Collections filename pattern", fileName.c_str());
-					continue;
+				DBG_MESSAGE("Skip {}, does not match Collections filename pattern", StringUtils::FromUnicode(fileName));
+				continue;
 			}
 			// capture string at index 1 is the Collection Name, always present after a regex match
-			REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", fileName.c_str(), matches[1].str().c_str());
-			if (LoadCollectionGroup(nextFile, matches[1].str(), validator))
+			REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
+			if (LoadCollectionGroup(nextFile, StringUtils::FromUnicode(matches[1].str()), validator))
 			{
-				REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", fileName.c_str(), matches[1].str().c_str());
+				REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
 			}
 		}
 	} catch (const std::exception& e) {
