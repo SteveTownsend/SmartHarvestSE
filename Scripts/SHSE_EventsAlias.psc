@@ -336,8 +336,8 @@ Function ApplySetting(bool reload)
     endIf
     SyncLists(reload)
     if reload
-        ; may need to release scan thread after game reload
-        CheckReportUIState()
+        ; kick off scan thread release checking after game reload, use sentinel value for this case
+        StartCheckReportUIState(-1)
     endIf
 
     utility.waitMenumode(0.1)
@@ -931,6 +931,15 @@ Function CheckReportUIState()
     endIf
 EndFunction
 
+; this should not kick off competing OnUpdate cycles
+Function StartCheckReportUIState(int nonce)
+    if pluginNonce == 0
+        pluginNonce = nonce
+        pluginDelayed = false
+        CheckReportUIState()
+    endIf
+EndFunction
+
 ; OnUpdate is used only while UI is active, until UI State becomes inactive and native code can resume scanning
 Event OnUpdate()
     CheckReportUIState()
@@ -938,9 +947,7 @@ EndEvent
 
 ; Check UI State is OK for scan thread - block the plugin if not, rechecking on a timed poll
 Event OnCheckOKToScan(int nonce)
-    pluginNonce = nonce
-    pluginDelayed = false
-    CheckReportUIState()
+    StartCheckReportUIState(nonce)
 EndEvent
 
 ; check if Actor detects player - used for real stealing, or stealibility check in dry run

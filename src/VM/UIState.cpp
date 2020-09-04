@@ -73,7 +73,7 @@ void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)
 	m_vmResponded = true;
 	if (nonce != m_nonce)
 	{
-		// likely suspended request from saved game after reload
+		// likely suspended request from saved game after reload (nonce -1)
 		REL_WARNING("VM Good to Go for request {}, expected request {}", nonce, m_nonce);
 	}
 	else
