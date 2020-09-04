@@ -49,10 +49,10 @@ ManagedList& ManagedList::WhiteList()
 void ManagedList::Reset(const bool reloadGame)
 {
 	// No baseline for whitelist. Blacklist has a list of known no-loot places.
+	RecursiveLockGuard guard(m_listLock);
 	if (this == m_blackList.get())
 	{
 		DBG_MESSAGE("Reset list of locations excluded from looting");
-		RecursiveLockGuard guard(m_listLock);
 		// seed with the always-forbidden
 		m_members = DataCase::GetInstance()->OffLimitsLocations();
 	}
