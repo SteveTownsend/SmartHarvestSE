@@ -108,7 +108,7 @@ public:
 
 	size_t AvailableAdventureTypes() const;
 	// use mapping list to convert MCM index to true index
-	inline std::string AdventureTypeName(const size_t adventureType) const { return AdventureTargetNameByIndex(size_t(m_validAdventureTypes[adventureType])); }
+	std::string AdventureTypeName(const size_t adventureType) const;
 	size_t ViableWorldCount(const size_t adventureType) const;
 	std::string ViableWorldNameByIndexInView(const size_t worldIndex) const;
 	void SelectCurrentDestination(const size_t worldIndex);

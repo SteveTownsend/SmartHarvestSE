@@ -537,6 +537,15 @@ void AdventureTargets::Categorize()
 #endif
 }
 
+std::string AdventureTargets::AdventureTypeName(const size_t adventureType) const
+{
+	if (adventureType >= m_validAdventureTypes.size())
+	{
+		return "";
+	}
+	return AdventureTargetNameByIndex(size_t(m_validAdventureTypes[adventureType]));
+}
+
 // filter adventure types to only show those with unknown locations
 size_t AdventureTargets::AvailableAdventureTypes() const
 {
@@ -595,6 +604,8 @@ size_t AdventureTargets::ViableWorldCount(const size_t adventureType) const
 	RecursiveLockGuard guard(m_adventureLock);
 	m_unvisitedLocationsByWorld.clear();
 	m_sortedWorlds.clear();
+	if (adventureType >= m_validAdventureTypes.size())
+		return 0;
 	// map from MCM index for list of adventure types with valid worlds back to enumeration
 	for (const RE::BGSLocation* location : m_locationsByType[int(m_validAdventureTypes[adventureType])])
 	{
@@ -650,6 +661,8 @@ void AdventureTargets::SelectCurrentDestination(const size_t worldIndex)
 	if (worldLocations == m_unvisitedLocationsByWorld.cend())
 		return;
 	std::vector<const RE::BGSLocation*> candidates(worldLocations->second.cbegin(), worldLocations->second.cend());
+	if (candidates.empty())
+		return;
 	std::random_device rd;  //Will be used to obtain a seed for the random number engine
 	std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
 	std::uniform_int_distribution<size_t> chooser(0, candidates.size() - 1);
