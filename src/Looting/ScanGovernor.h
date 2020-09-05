@@ -128,7 +128,7 @@ private:
 	std::vector<const RE::BGSKeyword*> m_spergKeywords;
 	std::unique_ptr<ContainerLister> m_spergInventory;
 	// handle concurrent ore vein mining by reconciling versus initial inventory snapshot after the last completes
-	size_t m_spergQueued;
+	size_t m_spergInProgress;
 
 	// Loot Range calibration setting
 	bool m_calibrating;
