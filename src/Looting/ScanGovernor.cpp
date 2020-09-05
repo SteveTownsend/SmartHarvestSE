@@ -764,10 +764,13 @@ void ScanGovernor::SPERGMiningStart(void)
 	m_spergInventory->FilterLootableItems([&](RE::TESBoundObject* item) -> bool
 	{
 		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
-		for (const auto keyword : m_spergKeywords)
+		if (keywordHolder)
 		{
-			if (keywordHolder->HasKeyword(keyword))
-				return true;
+			for (const auto keyword : m_spergKeywords)
+			{
+				if (keywordHolder->HasKeyword(keyword))
+					return true;
+			}
 		}
 		return false;
 	});
