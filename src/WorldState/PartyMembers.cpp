@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "WorldState/PartyMembers.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/Saga.h"
 #include "Data/LoadOrder.h"
 
 namespace shse
@@ -29,6 +30,24 @@ namespace shse
 PartyUpdate::PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventType, const float gameTime) :
 	m_follower(follower), m_eventType(eventType), m_gameTime(gameTime)
 {
+}
+
+std::string PartyUpdate::AsString() const
+{
+	std::ostringstream stream;
+	if (m_eventType == PartyUpdateType::Joined)
+	{
+		stream << m_follower->GetName() << " traveled with me.";
+	}
+	else if (m_eventType == PartyUpdateType::Departed)
+	{
+		stream << m_follower->GetName() << " bade me farewell.";
+	}
+	if (m_eventType == PartyUpdateType::Died)
+	{
+		stream << m_follower->GetName() << " died while accompanying me.";
+	}
+	return stream.str();
 }
 
 void PartyUpdate::AsJSON(nlohmann::json& j) const
@@ -60,6 +79,12 @@ void PartyMembers::Reset()
 	m_followers.clear();
 }
 
+void PartyMembers::RecordUpdate(const PartyUpdate& partyUpdate)
+{
+	m_partyUpdates.push_back(partyUpdate);
+	Saga::Instance().AddEvent(partyUpdate);
+}
+
 void PartyMembers::AdjustParty(const Followers& followers, const float gameTime)
 {
 	RecursiveLockGuard guard(m_partyLock);
@@ -70,7 +95,7 @@ void PartyMembers::AdjustParty(const Followers& followers, const float gameTime)
 		if (m_followers.find(newFollower) == m_followers.cend())
 		{
 			updated = true;
-			m_partyUpdates.push_back(PartyUpdate(newFollower, PartyUpdateType::Joined, gameTime));
+			RecordUpdate(PartyUpdate(newFollower, PartyUpdateType::Joined, gameTime));
 			DBG_MESSAGE("Follower {}/0x{:08x} joined party at {:0.3f}", newFollower->GetName(), newFollower->GetFormID(), gameTime);
 		}
 	}
@@ -80,7 +105,7 @@ void PartyMembers::AdjustParty(const Followers& followers, const float gameTime)
 		{
 			updated = true;
 			PartyUpdateType updateType(existingFollower->IsDead(true) ? PartyUpdateType::Died : PartyUpdateType::Departed);
-			m_partyUpdates.push_back(PartyUpdate(existingFollower, updateType, gameTime));
+			RecordUpdate(PartyUpdate(existingFollower, updateType, gameTime));
 			// Ensure Location is recorded
 			LocationTracker::Instance().RecordCurrentPlace(gameTime);
 			DBG_MESSAGE("Follower {}/0x{:08x} left party at {:0.3f}", existingFollower->GetName(), existingFollower->GetFormID(), gameTime);
@@ -125,7 +150,7 @@ void PartyMembers::UpdateFrom(const nlohmann::json& j)
 			REL_WARNING("Historic Follower (Actor) 0x{:08x} not found", followerID);
 			continue;
 		}
-		m_partyUpdates.emplace_back(actor, updateType, gameTime);
+		RecordUpdate(PartyUpdate(actor, updateType, gameTime));
 	}
 	m_followers.clear();
 	for (const nlohmann::json& follower : j["followers"])

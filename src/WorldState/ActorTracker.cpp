@@ -18,8 +18,9 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #include "PrecompiledHeaders.h"
-#include "ActorTracker.h"
-#include "PlayerState.h"
+#include "WorldState/ActorTracker.h"
+#include "WorldState/PlayerState.h"
+#include "WorldState/Saga.h"
 
 namespace shse
 {
@@ -32,6 +33,13 @@ PartyVictim::PartyVictim(const RE::Actor* victim, const float gameTime)
 PartyVictim::PartyVictim(const std::string& name, const float gameTime)
 	: m_victim(name), m_gameTime(gameTime)
 {
+}
+
+std::string PartyVictim::AsString() const
+{
+	std::ostringstream stream;
+	stream << "I killed " << m_victim << '.';
+	return stream.str();
 }
 
 void PartyVictim::AsJSON(nlohmann::json& j) const
@@ -91,6 +99,12 @@ void ActorTracker::RecordTimeOfDeath(RE::TESObjectREFR* refr)
 	DBG_MESSAGE("Enqueued dead body to loot later 0x{:08x}", refr->GetFormID());
 }
 
+void ActorTracker::RecordVictim(const PartyVictim& victim)
+{
+	m_victims.push_back(victim);
+	Saga::Instance().AddEvent(m_victims.back());
+}
+
 void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 {
 	RecursiveLockGuard guard(m_actorLock);
@@ -103,7 +117,8 @@ void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 	{
 		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->GetName(), victim->GetFormID());
 		const float gameTime(PlayerState::Instance().CurrentGameTime());
-		m_victims.emplace_back(victim, gameTime);
+		RecordVictim(PartyVictim(victim, gameTime));
+
 		// Ensure Location is recorded
 		LocationTracker::Instance().RecordCurrentPlace(gameTime);
 	}
@@ -199,7 +214,7 @@ void ActorTracker::UpdateFrom(const nlohmann::json& j)
 	m_victims.reserve(j["victims"].size());
 	for (const nlohmann::json& victim : j["victims"])
 	{
-		m_victims.emplace_back(victim["name"].get<std::string>(), victim["time"].get<float>());
+		RecordVictim(PartyVictim(victim["name"].get<std::string>(), victim["time"].get<float>()));
 	}
 }
 

@@ -34,6 +34,8 @@ public:
 	PartyVictim(const RE::Actor* victim, const float gameTime);
 	PartyVictim(const std::string& name, const float gameTime);
 	void AsJSON(nlohmann::json& j) const;
+	inline float GameTime() const { return m_gameTime; }
+	std::string AsString() const;
 
 private:
 	const std::string m_victim;
@@ -67,8 +69,9 @@ public:
 	void ClearVictims();
 
 private:
-
 	static std::unique_ptr<ActorTracker> m_instance;
+
+	void RecordVictim(const PartyVictim& victim);
 
 	// allow extended interval before looting if 'leveled list on death' perks apply to player
 	static constexpr int ReallyDeadWaitIntervalSeconds = 2;

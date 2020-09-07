@@ -64,8 +64,8 @@ void UIState::WaitUntilVMGoodToGo()
 	{
 		REL_MESSAGE("UI/controls were active, delay scan");
 		WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
+		REL_MESSAGE("Scan progressing");
 	}
-	REL_MESSAGE("Scan progressing");
 }
 
 void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)

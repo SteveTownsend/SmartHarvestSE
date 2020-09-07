@@ -180,23 +180,26 @@ std::string LocationTracker::PlayerExactLocation() const
 
 void LocationTracker::PrintPlayerLocation(const RE::BGSLocation* location) const
 {
-	PrintNearbyLocation(location, 0., CompassDirection::MAX);
+	const bool historic(false);
+	std::string locationStr(NearbyLocationAsString(location, 0., CompassDirection::MAX, historic));
+	if (!locationStr.empty())
+	{
+		RE::DebugNotification(locationStr.c_str());
+	}
 }
 
-void LocationTracker::PrintNearbyLocation(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const
+std::string LocationTracker::NearbyLocationAsString(
+	const RE::BGSLocation* location, const double milesAway, CompassDirection heading, const bool historic) const
 {
-	static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_WHERE_AM_I")));
-	if (!locationText.empty())
+	RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, historic ? RE::BSFixedString("$SHSE_WHERE_WAS_I") : RE::BSFixedString("$SHSE_WHERE_AM_I")));
+	std::string locationMessage(locationText);
+	if (!locationMessage.empty())
 	{
-		std::string locationMessage(locationText);
 		StringUtils::Replace(locationMessage, "{PROXIMITY}", Proximity(milesAway, heading));
 		StringUtils::Replace(locationMessage, "{LOCATION}", location->GetName());
 		StringUtils::Replace(locationMessage, "{VICINITY}", ParentLocationName(location));
-		if (!locationMessage.empty())
-		{
-			RE::DebugNotification(locationMessage.c_str());
-		}
 	}
+	return locationMessage;
 }
 
 void LocationTracker::PrintAdventureTargetInfo(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const
@@ -249,6 +252,32 @@ void LocationTracker::DisplayPlayerLocation() const
 	PlayerLocationRelativeToNearestMapMarker(locationDone);
 }
 
+std::string LocationTracker::LocationRelativeToNearestMapMarker(const AlglibPosition& position, const bool historic) const
+{
+	std::string locationStr;
+	RelativeLocationDescriptor nearestMarker(NearestMapMarker(position));
+	if (nearestMarker == RelativeLocationDescriptor::Invalid())
+	{
+		REL_WARNING("Could not determine nearest map marker to position ({:0.2f}, {:0.2f})", position[0], position[1]);
+		return locationStr;
+	}
+	CompassDirection heading(DirectionToDestinationFromStart(nearestMarker.EndPoint(), nearestMarker.StartPoint()));
+
+	double milesAway(UnitsToMiles(nearestMarker.UnitsAway()));
+	RE::BGSLocation* location(RE::TESForm::LookupByID<RE::BGSLocation>(nearestMarker.LocationID()));
+	if (location)
+	{
+		DBG_MESSAGE("Position is {} of nearest Location map marker {}/0x{:08x} at distance {:0.2f} miles",
+			CompassDirectionName(heading).c_str(), location->GetName(), nearestMarker.LocationID(), milesAway);
+		locationStr = NearbyLocationAsString(location, milesAway, heading, historic);
+	}
+	else
+	{
+		REL_WARNING("Could not determine Location for 0x{:08x}", nearestMarker.LocationID());
+	}
+	return locationStr;
+}
+
 void LocationTracker::PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const
 {
 #ifdef _PROFILING
@@ -266,28 +295,14 @@ void LocationTracker::PlayerLocationRelativeToNearestMapMarker(const RE::BGSLoca
 		}
 		return;
 	}
-	RelativeLocationDescriptor nearestMarker(NearestMapMarker(playerPos));
-	if (nearestMarker == RelativeLocationDescriptor::Invalid())
+	if (m_playerLocation != locationDone)
 	{
-		REL_WARNING("Could not determine nearest map marker to player ({:0.2f}, {:0.2f})", playerPos[0], playerPos[1]);
-		return;
-	}
-	CompassDirection heading(DirectionToDestinationFromStart(nearestMarker.EndPoint(), nearestMarker.StartPoint()));
-
-	double milesAway(UnitsToMiles(nearestMarker.UnitsAway()));
-	RE::BGSLocation* location(RE::TESForm::LookupByID<RE::BGSLocation>(nearestMarker.LocationID()));
-	if (location)
-	{
-		DBG_MESSAGE("Player is {} of nearest Location map marker {}/0x{:08x} at distance {:0.2f} miles",
-			CompassDirectionName(heading).c_str(), location->GetName(), nearestMarker.LocationID(), milesAway);
-		if (m_playerLocation != locationDone)
+		static const bool historic(false);
+		std::string locationStr(LocationRelativeToNearestMapMarker(playerPos, historic));
+		if (!locationStr.empty())
 		{
-			PrintNearbyLocation(location, milesAway, heading);
+			RE::DebugNotification(locationStr.c_str());
 		}
-	}
-	else
-	{
-		REL_WARNING("Could not determine Location for 0x{:08x}", nearestMarker.LocationID());
 	}
 }
 
