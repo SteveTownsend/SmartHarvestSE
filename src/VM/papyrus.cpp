@@ -36,6 +36,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
 #include "WorldState/PlayerState.h"
+#include "WorldState/Saga.h"
 
 namespace
 {
@@ -630,6 +631,26 @@ namespace papyrus
 		WindowsUtils::ScopedTimerFactory::Instance().StopTimer(timerHandle);
 	}
 
+	int GetTimelineDays(RE::StaticFunctionTag* base)
+	{
+		return static_cast<int>(shse::Saga::Instance().DaysWithEvents());
+	}
+
+	std::string TimelineDayName(RE::StaticFunctionTag* base, const int timelineDay)
+	{
+		return shse::Saga::Instance().DateStringByIndex(timelineDay);
+	}
+
+	int RenderedLineCountForDay(RE::StaticFunctionTag* base)
+	{
+		return static_cast<int>(shse::Saga::Instance().TextLineCount());
+	}
+
+	std::string GetSagaDayLine(RE::StaticFunctionTag* base, const int lineNumber)
+	{
+		return shse::Saga::Instance().TextLine(lineNumber);
+	}
+
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
 	{
 		a_vm->RegisterFunction("DebugTrace", SHSE_PROXY, papyrus::DebugTrace);
@@ -719,6 +740,10 @@ namespace papyrus
 		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);
 		a_vm->RegisterFunction("StopTimer", SHSE_PROXY, papyrus::StopTimer);
 
+		a_vm->RegisterFunction("GetTimelineDays", SHSE_PROXY, papyrus::GetTimelineDays);
+		a_vm->RegisterFunction("TimelineDayName", SHSE_PROXY, papyrus::TimelineDayName);
+		a_vm->RegisterFunction("RenderedLineCountForDay", SHSE_PROXY, papyrus::RenderedLineCountForDay);
+		a_vm->RegisterFunction("GetSagaDayLine", SHSE_PROXY, papyrus::GetSagaDayLine);
 		return true;
 	}
 }

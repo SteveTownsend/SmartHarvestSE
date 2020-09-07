@@ -81,6 +81,9 @@ public:
 	static AdventureEvent CompleteAdventure();
 	static AdventureEvent AbandonAdventure();
 
+	inline float GameTime() const { return m_gameTime; }
+	std::string AsString() const;
+
 	void AsJSON(nlohmann::json& j) const;
 
 private:
@@ -129,6 +132,7 @@ private:
 	RE::TESWorldSpace* GetRefHandleWorld(const RE::ObjectRefHandle handle) const;
 	Position GetRefIDPosition(const RE::FormID refID, const RE::BGSLocation* location) const;
 	Position GetRefrPosition(const RE::TESObjectREFR* refr, const RE::BGSLocation* location) const;
+	void RecordEvent(const AdventureEvent& event);
 
 	static std::unique_ptr<AdventureTargets> m_instance;
 	std::array<std::unordered_set<const RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;

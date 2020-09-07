@@ -19,8 +19,9 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
-#include "WorldState/PlayerState.h"
 #include "WorldState/VisitedPlaces.h"
+#include "WorldState/PlayerState.h"
+#include "WorldState/Saga.h"
 #include "Data/LoadOrder.h"
 
 namespace shse
@@ -29,6 +30,26 @@ namespace shse
 VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime) :
 	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(position), m_gameTime(gameTime)
 {
+}
+
+std::string VisitedPlace::AsString() const
+{
+	std::ostringstream stream;
+	stream << "I entered";
+	if (m_location)
+	{
+		stream << ' ' << m_location->GetName();
+	}
+	else if (m_cell)
+	{
+		stream << " an unknown location";
+	}
+	if (m_worldspace)
+	{
+		stream << " in " << m_worldspace->GetName();
+	}
+
+	return stream.str();
 }
 
 void VisitedPlace::AsJSON(nlohmann::json& j) const
@@ -65,7 +86,7 @@ VisitedPlaces& VisitedPlaces::Instance()
 	return *m_instance;
 }
 
-VisitedPlaces::VisitedPlaces() : m_timeLineStart(0.0)
+VisitedPlaces::VisitedPlaces()
 {
 }
 
@@ -82,8 +103,6 @@ void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::B
 	RecursiveLockGuard guard(m_visitedLock);
 	if (m_visited.empty())
 	{
-		// game start time is not always 0.0 - value depends on save/load sequencing
-		m_timeLineStart = gameTime;
 		isNew = true;
 	}
 	else
@@ -94,6 +113,7 @@ void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::B
 	if (isNew)
 	{ 
 		m_visited.emplace_back(worldspace, location, cell, position, gameTime);
+		Saga::Instance().AddEvent(m_visited.back());
 		if (location)
 		{
 			m_knownLocations.insert(location);

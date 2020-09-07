@@ -34,6 +34,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
 #include "WorldState/QuestTargets.h"
+#include "WorldState/Saga.h"
 
 namespace shse
 {
@@ -239,6 +240,7 @@ void PluginFacade::PrepareForReload()
 {
 	UIState::Instance().Reset();
 	CosaveData::Instance().Clear();
+	Saga::Instance().Reset();
 
 	// Do not scan again until we are in sync with the scripts
 	RecursiveLockGuard guard(m_pluginLock);

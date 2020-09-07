@@ -104,24 +104,10 @@ constexpr unsigned int GameCalendar::DaysPerYear() const
 		[&] (const unsigned int& total, const auto& value) { return total + value.second; });
 }
 
-constexpr const char* DateTimeFormat() {
-	return "{H}.{m} {p} on {W}, {D} day of {M}, 4E {Y}";
-}
-
-std::string GameCalendar::DateTimeString(const float gameTime) const
+std::string GameCalendar::DateString(const unsigned int days) const
 {
-	float daysPart(std::floor(gameTime));
-	float timeOfDay(gameTime - daysPart);
-	float hours(timeOfDay * 24.0f);
-	float minutes((hours - std::floor(hours)) * 60.0f);
-	bool isPM(hours >= 12.0f);
-	// do not print 0 as the midnight hour
-	if (hours == 0.0)
-		hours = 12.0f;
-	else if (hours > 12.0f)
-		hours -= 12.0f;
-	unsigned int elapsedDays(static_cast<unsigned int>(daysPart));
-	unsigned int dayOfWeek(elapsedDays % 7);
+	unsigned int elapsedDays(days);
+	unsigned int dayOfWeek(days % 7);
 	// count elapsed days to determine YMD
 	unsigned int dayOfMonth(StartDay);
 	unsigned int month(StartMonth);
@@ -143,10 +129,42 @@ std::string GameCalendar::DateTimeString(const float gameTime) const
 		elapsedDays -= (m_monthDays[month].second - dayOfMonth + 1);
 	}
 	dayOfMonth += elapsedDays - 1;
+
+	std::ostringstream oss;
+	oss << m_dayNames[dayOfWeek] << ", " << m_dayOfMonth[dayOfMonth] << " day of " << m_monthDays[month].first << ", 4E " << year;
+	return oss.str();
+}
+
+std::string GameCalendar::TimeString(const unsigned int timeOfDayMinutes) const
+{
+	unsigned int hours(timeOfDayMinutes / 60);
+	unsigned int minutes(timeOfDayMinutes % 60);
+	bool isPM(hours >= 12);
+	// do not print 0 as the midnight hour
+	if (hours == 0)
+		hours = 12;
+	else if (hours > 12)
+		hours -= 12;
+	std::ostringstream oss;
+	oss << std::to_string(hours) << '.' << std::setfill('0') << std::setw(2) << std::to_string(minutes) << (isPM ? "pm" : "am");
+	return oss.str();
+}
+
+std::string GameCalendar::DateTimeString(const float gameTime) const
+{
+	float daysPart(std::floor(gameTime));
+	float timeOfDay(gameTime - daysPart);
+	unsigned int elapsedDays(static_cast<unsigned int>(daysPart));
 	std::ostringstream dtString;
-	dtString << unsigned int(hours) << '.' << std::setfill('0') << std::setw(2) << unsigned int(minutes) << (isPM ? "pm, " : "am, ");
-	dtString << m_dayNames[dayOfWeek] << ", " << m_dayOfMonth[dayOfMonth] << " day of " << m_monthDays[month].first << ", 4E " << year;
+	dtString << TimeString(unsigned int(timeOfDay * MinutesPerDay)) << ", " << DateString(elapsedDays);
 	return dtString.str();
+}
+
+unsigned int GameCalendar::DayPartInMinutes(const float gameTime) const
+{
+	float daysPart(std::floor(gameTime));
+	float timeOfDay(gameTime - daysPart);
+	return static_cast<unsigned int>(std::floor(timeOfDay * MinutesPerDay));
 }
 
 }

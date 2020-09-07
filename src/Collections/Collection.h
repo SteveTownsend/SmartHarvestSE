@@ -28,6 +28,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse {
 
 class CollectionGroup;
+class Collection;
 
 class CollectionPolicy {
 public:
@@ -55,6 +56,18 @@ private:
 };
 
 void to_json(nlohmann::json& j, const CollectionPolicy& collection);
+
+class ItemCollected {
+public:
+	ItemCollected(const RE::TESForm* item, const Collection* collection, const float gameTime);
+	inline float GameTime() const { return m_gameTime; }
+	std::string AsString() const;
+
+private:
+	const RE::TESForm* m_item;
+	const Collection* m_collection;
+	const float m_gameTime;
+};
 
 class Collection {
 protected:

@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "WorldState/AdventureTargets.h"
 #include "WorldState/PlayerState.h"
+#include "WorldState/Saga.h"
 #include "WorldState/VisitedPlaces.h"
 #include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
@@ -119,6 +120,24 @@ AdventureEvent::AdventureEvent(const AdventureEventType eventType, const float g
 AdventureEvent::AdventureEvent(const AdventureEventType eventType) :
 	m_eventType(eventType), m_world(nullptr), m_location(nullptr), m_gameTime(PlayerState::Instance().CurrentGameTime())
 {
+}
+
+std::string AdventureEvent::AsString() const
+{
+	std::ostringstream stream;
+	if (m_eventType == AdventureEventType::Started)
+	{
+		stream << "My Adventure to " << m_location->GetName() << " in " << m_world->GetName() << " began.";
+	}
+	else if (m_eventType == AdventureEventType::Complete)
+	{
+		stream << "My current Adventure was complete.";
+	}
+	else if (m_eventType == AdventureEventType::Abandoned)
+	{
+		stream << "I abandoned my current Adventure.";
+	}
+	return stream.str();
 }
 
 void AdventureEvent::AsJSON(nlohmann::json& j) const
@@ -671,7 +690,7 @@ void AdventureTargets::SelectCurrentDestination(const size_t worldIndex)
 
 	DBG_MESSAGE("Adventure started to random location {}/0x{:08x} of {} candidates in WorldSpace {}/0x{:08x}",
 		m_targetLocation->GetName(), m_targetLocation->GetFormID(), candidates.size(), m_targetWorld->GetName(), m_targetWorld->GetFormID());
-	m_adventureEvents.push_back(AdventureEvent::StartAdventure(m_targetWorld, m_targetLocation));
+	RecordEvent(AdventureEvent::StartAdventure(m_targetWorld, m_targetLocation));
 }
 
 void AdventureTargets::CheckReachedCurrentDestination(const RE::BGSLocation* newLocation)
@@ -683,7 +702,7 @@ void AdventureTargets::CheckReachedCurrentDestination(const RE::BGSLocation* new
 		{
 			DBG_MESSAGE("Completed Adventure to location {}/0x{:08x} in WorldSpace {}/0x{:08x}",
 				m_targetLocation->GetName(), m_targetLocation->GetFormID(), m_targetWorld->GetName(), m_targetWorld->GetFormID());
-			m_adventureEvents.push_back(AdventureEvent::CompleteAdventure());
+			RecordEvent(AdventureEvent::CompleteAdventure());
 			static RE::BSFixedString arrivalMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_ADVENTURE_ARRIVED")));
 			if (!arrivalMsg.empty())
 			{
@@ -706,7 +725,7 @@ void AdventureTargets::AbandonCurrentDestination()
 			m_targetLocation->GetName(), m_targetLocation->GetFormID(), m_targetWorld->GetName(), m_targetWorld->GetFormID());
 		m_targetLocation = nullptr;
 		m_targetWorld = nullptr;
-		m_adventureEvents.push_back(AdventureEvent::AbandonAdventure());
+		RecordEvent(AdventureEvent::AbandonAdventure());
 	}
 }
 
@@ -754,6 +773,12 @@ void AdventureTargets::AsJSON(nlohmann::json& j) const
 	}
 }
 
+void AdventureTargets::RecordEvent(const AdventureEvent& event)
+{
+	m_adventureEvents.push_back(event);
+	Saga::Instance().AddEvent(event);
+}
+
 // rehydrate from cosave data
 void AdventureTargets::UpdateFrom(const nlohmann::json& j)
 {
@@ -788,13 +813,13 @@ void AdventureTargets::UpdateFrom(const nlohmann::json& j)
 		switch(eventType)
 		{
 		case AdventureEventType::Started:
-			m_adventureEvents.push_back(AdventureEvent::StartedAdventure(worldspaceForm, locationForm, gameTime));
+			RecordEvent(AdventureEvent::StartedAdventure(worldspaceForm, locationForm, gameTime));
 			break;
 		case AdventureEventType::Complete:
-			m_adventureEvents.push_back(AdventureEvent::CompletedAdventure(gameTime));
+			RecordEvent(AdventureEvent::CompletedAdventure(gameTime));
 			break;
 		case AdventureEventType::Abandoned:
-			m_adventureEvents.push_back(AdventureEvent::AbandonedAdventure(gameTime));
+			RecordEvent(AdventureEvent::AbandonedAdventure(gameTime));
 			break;
 		default:
 			break;

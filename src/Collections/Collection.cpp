@@ -26,6 +26,7 @@ http://www.fsf.org/licensing/licenses
 #include "VM/papyrus.h"
 #include "WorldState/PlacedObjects.h"
 #include "WorldState/PlayerState.h"
+#include "WorldState/Saga.h"
 
 namespace shse
 {
@@ -40,6 +41,18 @@ void CollectionPolicy::AsJSON(nlohmann::json& j) const
 void to_json(nlohmann::json& j, const CollectionPolicy& policy)
 {
 	policy.AsJSON(j);
+}
+
+ItemCollected::ItemCollected(const RE::TESForm* item, const Collection* collection, const float gameTime) :
+	m_item(item), m_collection(collection), m_gameTime(gameTime)
+{
+}
+
+std::string ItemCollected::AsString() const
+{
+	std::ostringstream stream;
+	stream << "I added " << m_item->GetName() << " to my " << m_collection->Name() << " Collection.";
+	return stream.str();
 }
 
 Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
@@ -125,6 +138,7 @@ bool Collection::RecordItem(const RE::TESForm* form, const float gameTime, const
 	DBG_VMESSAGE("Collect {}/0x{:08x} in {}", form->GetName(), form->GetFormID(), m_name.c_str());
 	if (m_observed.insert({ form, gameTime }).second)
 	{
+		Saga::Instance().AddEvent(ItemCollected(form, this, gameTime));
 		if (m_effectivePolicy.Notify())
 		{
 			// don't flood the screen for ages on one pass (especially first-time inventory reconciliation)
@@ -302,7 +316,9 @@ void Collection::SetMembersFrom(const nlohmann::json & members)
 		if (observed != member.cend())
 		{
 			// optional, observed member only
-			m_observed.insert({ form, observed->get<float>() });
+			const float gameTime(observed->get<float>());
+			m_observed.insert({ form, gameTime });
+			Saga::Instance().AddEvent(ItemCollected(form, this, gameTime));
 		}
 	}
 }

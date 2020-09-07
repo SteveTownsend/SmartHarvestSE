@@ -169,6 +169,9 @@
     <ClCompile Include="src\WorldState\GameCalendar.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
+    <ClCompile Include="src\WorldState\Saga.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -349,6 +352,9 @@
       <Filter>src\WorldState</Filter>
     </ClInclude>
     <ClInclude Include="src\WorldState\GameCalendar.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\Saga.h">
       <Filter>src\WorldState</Filter>
     </ClInclude>
   </ItemGroup>
