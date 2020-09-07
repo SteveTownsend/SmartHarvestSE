@@ -37,11 +37,11 @@ std::string PartyUpdate::AsString() const
 	std::ostringstream stream;
 	if (m_eventType == PartyUpdateType::Joined)
 	{
-		stream << m_follower->GetName() << " joined me in my travels.";
+		stream << m_follower->GetName() << " traveled with me.";
 	}
 	else if (m_eventType == PartyUpdateType::Departed)
 	{
-		stream << m_follower->GetName() << " bid me farewell.";
+		stream << m_follower->GetName() << " bade me farewell.";
 	}
 	if (m_eventType == PartyUpdateType::Died)
 	{

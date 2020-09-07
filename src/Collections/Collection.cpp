@@ -51,7 +51,7 @@ ItemCollected::ItemCollected(const RE::TESForm* item, const Collection* collecti
 std::string ItemCollected::AsString() const
 {
 	std::ostringstream stream;
-	stream << "I added " << m_item->GetName() << " to my " << m_collection->Name() << " Collection.";
+	stream << "I collected " << m_item->GetName() << " for " << m_collection->Name() << '.';
 	return stream.str();
 }
 

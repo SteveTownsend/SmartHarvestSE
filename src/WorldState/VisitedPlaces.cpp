@@ -27,29 +27,99 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
+VisitedPlace VisitedPlace::m_lastPlace(nullptr, nullptr, nullptr, InvalidPosition, 0.0);
+const RE::TESWorldSpace* VisitedPlace::m_lastWorld(nullptr);
+const RE::BGSLocation* VisitedPlace::m_lastLocation(nullptr);
+
+void VisitedPlace::ResetSagaState()
+{
+	m_lastPlace = VisitedPlace(nullptr, nullptr, nullptr, InvalidPosition, 0.0);
+	m_lastWorld = nullptr;
+	m_lastLocation = nullptr;
+}
+
 VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime) :
 	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(position), m_gameTime(gameTime)
 {
 }
 
+bool VisitedPlace::operator==(const VisitedPlace& rhs) const
+{
+	return m_worldspace == rhs.m_worldspace && m_location == rhs.m_location && m_cell == rhs.m_cell;
+}
+
 std::string VisitedPlace::AsString() const
 {
+	// skip redundant entries
+	if (m_lastPlace == *this)
+		return "";
 	std::ostringstream stream;
-	stream << "I entered";
-	if (m_location)
+	bool wrote(false);
+	if (m_location != m_lastLocation)
 	{
-		stream << ' ' << m_location->GetName();
+		std::string departed;
+		if (m_lastLocation)
+		{
+			stream << "I left " << m_lastLocation->GetName();
+			departed = m_lastLocation->GetName();
+			m_lastLocation = nullptr;
+			wrote = true;
+		}
+		if (m_location)
+		{
+			std::string newLocation(m_location->GetName());
+			if (newLocation != departed)
+			{
+				if (departed.empty())
+				{
+					stream << "I ";
+				}
+				else
+				{
+					stream << " and ";
+				}
+				stream << "entered " << m_location->GetName();
+				m_lastLocation = m_location;
+				wrote = true;
+			}
+		}
 	}
-	else if (m_cell)
+	else if (!m_location)
 	{
-		stream << " an unknown location";
+		// event between locations: print position info relative to nearby Location
+		static const bool historic(true);
+		std::string locationStr(LocationTracker::Instance().LocationRelativeToNearestMapMarker(
+			AlglibPosition({ m_position[0], m_position[1], m_position[2] }), true));
+		if (locationStr.empty())
+		{
+			stream << "I was exploring";
+		}
+		else
+		{
+			stream << locationStr;
+		}
+		wrote = true;
 	}
-	if (m_worldspace)
+	// only output WorldSpace for the first event in scope
+	if (m_worldspace != m_lastWorld)
 	{
-		stream << " in " << m_worldspace->GetName();
+		if (m_worldspace)
+		{
+			stream << " in " << m_worldspace->GetName();
+			wrote = true;
+		}
+		m_lastWorld = m_worldspace;
 	}
-
-	return stream.str();
+	if (wrote)
+	{
+		stream << '.';
+		return stream.str();
+	}
+	else
+	{
+		return "";
+	}
+	m_lastPlace = *this;
 }
 
 void VisitedPlace::AsJSON(nlohmann::json& j) const

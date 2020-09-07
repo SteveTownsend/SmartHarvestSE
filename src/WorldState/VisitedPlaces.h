@@ -28,6 +28,7 @@ class VisitedPlace {
 public:
 	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime);
 	inline float GameTime() const { return m_gameTime; }
+	static void ResetSagaState();
 	std::string AsString() const;
 
 	void AsJSON(nlohmann::json& j) const;
@@ -38,11 +39,15 @@ public:
 	inline const Position GetPosition() const { return m_position; }
 
 private:
+	bool operator==(const VisitedPlace& rhs) const;
 	const RE::TESWorldSpace* m_worldspace;
 	const RE::BGSLocation* m_location;
 	const RE::TESObjectCELL* m_cell;
 	Position m_position;
 	float m_gameTime;
+	static VisitedPlace m_lastPlace;
+	static const RE::TESWorldSpace* m_lastWorld;
+	static const RE::BGSLocation* m_lastLocation;
 };
 
 void to_json(nlohmann::json& j, const VisitedPlace& visitedPlace);

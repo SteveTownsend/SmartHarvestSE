@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "WorldState/Saga.h"
+#include "WorldState/AdventureTargets.h"
 #include "WorldState/GameCalendar.h"
 
 namespace shse
@@ -36,7 +37,7 @@ Saga& Saga::Instance()
 	return *m_instance;
 }
 
-Saga::Saga()
+Saga::Saga() : m_currentPageLength(0), m_hasContent(false)
 {
 }
 
@@ -45,7 +46,7 @@ void Saga::Reset()
 	RecursiveLockGuard guard(m_sagaLock);
 	m_daysWithEvents.clear();
 	m_eventsByDay.clear();
-	m_currentDayText.clear();
+	m_currentDayPages.clear();
 }
 
 size_t Saga::DaysWithEvents() const
@@ -77,55 +78,111 @@ size_t Saga::DaysWithEvents() const
 	return count;
 }
 
+void Saga::AddPaginatedText(std::ostringstream& page, const std::string& text, const bool skipIfNewPage) const
+{
+	if (text.empty())
+		return;
+	// 1023 is the limit but we want display to not go off the edge of the screen
+	constexpr size_t MaxPageLength = 620;
+	if (m_currentPageLength + text.length() >= MaxPageLength)
+	{
+		if (skipIfNewPage)
+			return;
+		FlushPaginatedText(page);
+	}
+	page << text;
+	m_currentPageLength += text.length();
+	if (!skipIfNewPage)
+	{
+		m_hasContent = true;
+	}
+}
+
+void Saga::FlushPaginatedText(std::ostringstream& page) const
+{
+	if (m_currentPageLength > 0 && m_hasContent)
+	{
+		page << std::ends;		// terminate text we wrote for use with str()
+		std::string pageStr(page.str());
+		pageStr.resize(m_currentPageLength);
+		m_currentDayPages.push_back(pageStr);
+		DBG_MESSAGE("Flushed page {}\n{}", m_currentDayPages.size(), page.str());
+
+		// see https://stackoverflow.com/questions/624260/how-to-reuse-an-ostringstream including comments
+		page.seekp(0);			// seek put ptr to start - no reallocation unless next page has more text
+		m_currentPageLength = 0;
+		m_hasContent = false;
+	}
+}
+
 std::string Saga::DateStringByIndex(const unsigned int dayIndex) const
 {
 	RecursiveLockGuard guard(m_sagaLock);
 	if (dayIndex - 1 < m_daysWithEvents.size())
 	{
-		// seed text lines for this day's events
-		m_currentDayText.clear();
+		// seed freeform text pages for this day's events. Text is stateful for some events.
+		AdventureEvent::ResetSagaState();
+		VisitedPlace::ResetSagaState();
+		m_currentDayPages.clear();
 		const auto& sortedEvents = m_daysWithEvents[dayIndex - 1].second;
 		unsigned int currentMinute(0);
 		bool first(true);
+		std::ostringstream thisPage;
+		m_currentPageLength = 0;
 		for (const auto timeEvent : sortedEvents)
 		{
-			std::ostringstream thisLine;
-			if (first || currentMinute != timeEvent.first)
+			// check if event has anything to output
+			std::string eventStr(std::visit([&](auto const& e) { return e.AsString(); }, timeEvent.second));
+			if (!eventStr.empty())
 			{
-				first = false;
-				currentMinute = timeEvent.first;
-				thisLine << GameCalendar::Instance().TimeString(currentMinute) << ' ';
+				if (first || currentMinute != timeEvent.first)
+				{
+					// add newline for new paragraph if this is a time change - not needed if this forces new page
+					if (!first)
+					{
+						AddPaginatedText(thisPage, "\n", true);
+					}
+					first = false;
+					currentMinute = timeEvent.first;
+					// timestamp and first entry need to be on the same page
+					std::string timestampedEvent(GameCalendar::Instance().TimeString(currentMinute));
+					timestampedEvent.append(" ");
+					timestampedEvent.append(eventStr);
+					AddPaginatedText(thisPage, timestampedEvent, false);
+				}
+				else
+				{
+					AddPaginatedText(thisPage, " ", true);
+					AddPaginatedText(thisPage, eventStr, false);
+				}
 			}
-			thisLine << std::visit([&](auto const& e) { return e.AsString(); }, timeEvent.second);
-			m_currentDayText.push_back(thisLine.str());
 		}
-		DBG_MESSAGE("Current day has {} events", m_currentDayText.size());
+		FlushPaginatedText(thisPage);
+
+		DBG_MESSAGE("Current day has {} pages for {} events", m_currentDayPages.size(),sortedEvents.size());
 		return GameCalendar::Instance().DateString(m_daysWithEvents[dayIndex - 1].first);
 	}
 	return "";
 }
 
 // Relies on context set by last call to DateStringByIndex
-size_t Saga::TextLineCount() const
+size_t Saga::CurrentDayPageCount() const
 {
 	RecursiveLockGuard guard(m_sagaLock);
-	DBG_MESSAGE("{} lines available", m_currentDayText.size());
-	return m_currentDayText.size();
+	DBG_MESSAGE("{} pages available", m_currentDayPages.size());
+	return m_currentDayPages.size();
 }
 
-std::string Saga::TextLine(const unsigned int lineNumber) const
+std::string Saga::PageByNumber(const unsigned int pageNumber) const
 {
 	RecursiveLockGuard guard(m_sagaLock);
 	std::string result;
-	if (lineNumber < m_currentDayText.size())
+	// use 1-based MCM offset, 0-based vector offset
+	if (pageNumber <= m_currentDayPages.size())
 	{
-		constexpr size_t MaxLineLength = 75;
-		result = m_currentDayText[lineNumber];
-		// Don't send MCM too much data. Pad to ensure output left-justified.
-		result.resize(MaxLineLength, ' ');
-		result.back() = '_';
+		result = m_currentDayPages[pageNumber-1];
 	}
-	DBG_MESSAGE("Saga line number {} = {}", lineNumber, result);
+	DBG_MESSAGE("Saga page {} =\n{}", pageNumber, result);
 	return result;
 }
 

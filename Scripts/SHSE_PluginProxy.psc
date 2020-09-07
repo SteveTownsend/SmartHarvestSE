@@ -91,8 +91,8 @@ Function StopTimer(int handle) global native
 
 int Function GetTimelineDays() global native
 string Function TimelineDayName(int whichDay) global native
-int Function RenderedLineCountForDay() global native
-string Function GetSagaDayLine(int lineNumber) global native
+int Function PageCountForDay() global native
+string Function GetSagaDayPage(int pageNumber) global native
 
 int location_type_whitelist = 1
 int location_type_blacklist = 2

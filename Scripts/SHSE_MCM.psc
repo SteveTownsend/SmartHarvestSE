@@ -162,10 +162,6 @@ int currentSagaDay
 string currentSagaDayName
 int currentSagaDayPage
 int sagaDayPageCount
-int sagaDayLines
-int sagaDayLinesPerColumn
-int sagaDayLinesPerPage
-int[] id_sagaDayLinesOfText
 
 Actor player
 
@@ -545,11 +541,6 @@ Function InstallSagaRendering()
     currentSagaDay = 0
     currentSagaDayPage = 0
     sagaDayPageCount = 0
-    sagaDayLines = 0
-    ; these counts are coupled
-    sagaDayLinesPerColumn = 11
-    sagaDayLinesPerPage = 2 * sagaDayLinesPerColumn
-    id_sagaDayLinesOfText = new Int[22]
 EndFunction
 
 Function InstallAdventures()
@@ -1149,23 +1140,11 @@ event OnPageReset(string currentPage)
         AddToggleOptionST("chooseAdventureActive", "$SHSE_CHOOSE_ADVENTURE_ACTIVE", adventureActive, adventureFlags)
 
     elseif (currentPage == Pages[4]) ; Player saga
-;   ======================== LEFT ========================
         SetCursorFillMode(TOP_TO_BOTTOM)
         sagaDayCount = GetTimelineDays()
         currentSagaDay = sagaDayCount
         AddSliderOptionST("SagaDayState", "$SHSE_SAGA_DAY", currentSagaDay)
-        int index = 0
-        while index < sagaDayLinesPerColumn
-            id_sagaDayLinesOfText[index] = AddTextOption("", "")
-            index += 1
-        endWhile
-;   ======================== LEFT ========================
-        SetCursorPosition(1)
         AddSliderOptionST("SagaDayPageState", "$SHSE_SAGA_DAY_PAGE", currentSagaDayPage, "{0}", OPTION_FLAG_DISABLED)
-        while index < sagaDayLinesPerPage
-            id_sagaDayLinesOfText[index] = AddTextOption("", "")
-            index += 1
-        endWhile
 
     elseif (currentPage == Pages[5]) ; Fortune Hunter's Instinct and Glow Config
 ;   ======================== LEFT ========================
@@ -2466,45 +2445,28 @@ endState
 
 Function CreateSagaForDay()
     currentSagaDayName = TimelineDayName(currentSagaDay)
-    sagaDayLines = RenderedLineCountForDay()
+    sagaDayPageCount = PageCountForDay()
     currentSagaDayPage = 1
-    sagaDayPageCount = sagaDayLines / sagaDayLinesPerPage
-    int spareLines = sagaDayLines % sagaDayLinesPerPage
-    if spareLines > 0
-        sagaDayPageCount += 1
-    endIf
-    ;enable page turning and display page 1
+    ;enable 'open at page' for current day excerpt
     SetOptionFlagsST(OPTION_FLAG_NONE, false, "SagaDayPageState")
-    DisplaySagaForDayPage(1)
 EndFunction
 
-Function DisplaySagaForDayPage(int pageNumber)
-    int linesOnPage = sagaDayLinesPerPage
-    if pageNumber == sagaDayPageCount
-        int spareLines = sagaDayLines % sagaDayLinesPerPage
-        if spareLines > 0
-            linesOnPage = spareLines
+Function DisplaySagaFromPage(int pageNumber)
+    while pageNumber <= sagaDayPageCount
+        string okPrompt = Replace(GetTranslation("$SHSE_NEXT_PAGE"), "{PAGEDESCRIPTOR}", pageNumber + "/" + sagaDayPageCount)
+        bool result = ShowMessage(GetSagaDayPage(pageNumber), true, okPrompt, "$SHSE_CLOSE_BOOK")
+        if result
+            pageNumber += 1
+            if pageNumber > sagaDayPageCount
+                pageNumber = 1
+            endIf
+        else
+            return
         endIf
-    endIf
-    int lineNumber = 0
-    int sagaLineNumber = (pageNumber - 1) * sagaDayLinesPerPage
-    while lineNumber < linesOnPage
-        SetTextOptionValue(id_sagaDayLinesOfText[lineNumber], GetSagaDayLine(sagaLineNumber))
-        lineNumber += 1
-        sagaLineNumber += 1
-    endWhile
-    while lineNumber < sagaDayLinesPerPage
-        SetTextOptionValue(id_sagaDayLinesOfText[lineNumber], "")
-        lineNumber += 1
     endWhile
 EndFunction
 
 Function ResetSagaDay()
-    int lineNumber = 0
-    while lineNumber < sagaDayLinesPerPage
-        SetTextOptionValue(id_sagaDayLinesOfText[lineNumber], "")
-        lineNumber += 1
-    endWhile
     SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "SagaDayPageState")
     SetSliderOptionValueST(1, "{0}", false, "SagaDayPageState")
     currentSagaDayPage = 1
@@ -2547,13 +2509,13 @@ state SagaDayPageState
     event OnSliderAcceptST(float value)
         currentSagaDayPage = value as int
         SetSliderOptionValueST(currentSagaDayPage)
-        DisplaySagaForDayPage(currentSagaDayPage)
+        DisplaySagaFromPage(currentSagaDayPage)
     endEvent
 
     event OnDefaultST()
         currentSagaDayPage = 1
         SetSliderOptionValueST(currentSagaDayPage)
-        DisplaySagaForDayPage(currentSagaDayPage)
+        DisplaySagaFromPage(currentSagaDayPage)
     endEvent
 
     event OnHighlightST()

@@ -71,6 +71,12 @@ std::string AdventureTargetName(const AdventureTargetType adventureTarget)
 		default: return "";
 	};
 }
+const RE::BGSLocation* AdventureEvent::m_lastTarget(nullptr);
+
+void AdventureEvent::ResetSagaState()
+{
+	m_lastTarget = nullptr;
+}
 
 AdventureEvent AdventureEvent::StartedAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime)
 {
@@ -128,14 +134,27 @@ std::string AdventureEvent::AsString() const
 	if (m_eventType == AdventureEventType::Started)
 	{
 		stream << "My Adventure to " << m_location->GetName() << " in " << m_world->GetName() << " began.";
+		m_lastTarget = m_location;
 	}
 	else if (m_eventType == AdventureEventType::Complete)
 	{
-		stream << "My current Adventure was complete.";
+		stream << "My Adventure";
+		if (m_lastTarget)
+		{
+			stream << " to " << m_lastTarget->GetName();
+			m_lastTarget = nullptr;
+		}
+		stream << " was complete.";
 	}
 	else if (m_eventType == AdventureEventType::Abandoned)
 	{
-		stream << "I abandoned my current Adventure.";
+		stream << "I abandoned my Adventure";
+		if (m_lastTarget)
+		{
+			stream << " to " << m_lastTarget->GetName();
+			m_lastTarget = nullptr;
+		}
+		stream << '.';
 	}
 	return stream.str();
 }

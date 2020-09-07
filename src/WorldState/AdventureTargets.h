@@ -83,6 +83,7 @@ public:
 
 	inline float GameTime() const { return m_gameTime; }
 	std::string AsString() const;
+	static void ResetSagaState();
 
 	void AsJSON(nlohmann::json& j) const;
 
@@ -96,6 +97,7 @@ private:
 	const RE::TESWorldSpace* m_world;
 	const RE::BGSLocation* m_location;
 	const float m_gameTime;
+	static const RE::BGSLocation* m_lastTarget;
 };
 
 void to_json(nlohmann::json& j, const AdventureEvent& adventureEvent);

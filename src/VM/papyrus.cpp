@@ -641,14 +641,14 @@ namespace papyrus
 		return shse::Saga::Instance().DateStringByIndex(timelineDay);
 	}
 
-	int RenderedLineCountForDay(RE::StaticFunctionTag* base)
+	int PageCountForDay(RE::StaticFunctionTag* base)
 	{
-		return static_cast<int>(shse::Saga::Instance().TextLineCount());
+		return static_cast<int>(shse::Saga::Instance().CurrentDayPageCount());
 	}
 
-	std::string GetSagaDayLine(RE::StaticFunctionTag* base, const int lineNumber)
+	std::string GetSagaDayPage(RE::StaticFunctionTag* base, const int pageNumber)
 	{
-		return shse::Saga::Instance().TextLine(lineNumber);
+		return shse::Saga::Instance().PageByNumber(pageNumber);
 	}
 
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)
@@ -742,8 +742,8 @@ namespace papyrus
 
 		a_vm->RegisterFunction("GetTimelineDays", SHSE_PROXY, papyrus::GetTimelineDays);
 		a_vm->RegisterFunction("TimelineDayName", SHSE_PROXY, papyrus::TimelineDayName);
-		a_vm->RegisterFunction("RenderedLineCountForDay", SHSE_PROXY, papyrus::RenderedLineCountForDay);
-		a_vm->RegisterFunction("GetSagaDayLine", SHSE_PROXY, papyrus::GetSagaDayLine);
+		a_vm->RegisterFunction("PageCountForDay", SHSE_PROXY, papyrus::PageCountForDay);
+		a_vm->RegisterFunction("GetSagaDayPage", SHSE_PROXY, papyrus::GetSagaDayPage);
 		return true;
 	}
 }
