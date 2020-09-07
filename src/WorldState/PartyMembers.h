@@ -25,6 +25,8 @@ namespace shse
 class PartyUpdate {
 public:
 	PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventType, const float gameTime);
+	inline float GameTime() const { return m_gameTime; }
+	std::string AsString() const;
 
 	void AsJSON(nlohmann::json& j) const;
 
@@ -44,6 +46,7 @@ public:
 	PartyMembers() {}
 
 	void Reset();
+	void RecordUpdate(const PartyUpdate& partyUpdate);
 	void AdjustParty(const Followers& followers, const float gameTime);
 
 	void AsJSON(nlohmann::json& j) const;

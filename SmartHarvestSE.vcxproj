@@ -249,6 +249,7 @@
     <ClCompile Include="src\WorldState\PartyMembers.cpp" />
     <ClCompile Include="src\WorldState\PlacedObjects.cpp" />
     <ClCompile Include="src\WorldState\QuestTargets.cpp" />
+    <ClCompile Include="src\WorldState\Saga.cpp" />
     <ClCompile Include="src\WorldState\VisitedPlaces.cpp" />
     <ClCompile Include="src\WorldState\LocationTracker.cpp" />
     <ClCompile Include="src\WorldState\PlayerHouses.cpp" />
@@ -311,6 +312,7 @@
     <ClInclude Include="src\WorldState\QuestTargets.h" />
     <ClInclude Include="src\WorldState\PartyMembers.h" />
     <ClInclude Include="src\WorldState\PlacedObjects.h" />
+    <ClInclude Include="src\WorldState\Saga.h" />
     <ClInclude Include="src\WorldState\VisitedPlaces.h" />
     <ClInclude Include="src\WorldState\LocationTracker.h" />
     <ClInclude Include="src\WorldState\PlayerHouses.h" />

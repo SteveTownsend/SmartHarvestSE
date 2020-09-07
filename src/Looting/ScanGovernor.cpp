@@ -62,7 +62,7 @@ ScanGovernor& ScanGovernor::Instance()
 
 ScanGovernor::ScanGovernor() : m_searchAllowed(false), m_pendingNotifies(0), m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
 	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget),
-	m_targetType(INIFile::SecondaryType::NONE2), m_spergQueued(0)
+	m_targetType(INIFile::SecondaryType::NONE2), m_spergInProgress(0)
 {
 }
 
@@ -754,20 +754,23 @@ void ScanGovernor::SPERGMiningStart(void)
 		return;
 
 	RecursiveLockGuard guard(m_searchLock);
+	++m_spergInProgress;
 	if (m_spergInventory)
 	{
-		++m_spergQueued;
-		DBG_DMESSAGE("Pre-SPERG inventory snapshot already captured, queue size {}", m_spergQueued);
+		REL_MESSAGE("Pre-SPERG inventory snapshot already captured, {} in progress", m_spergInProgress);
 		return;
 	}
 	m_spergInventory = std::make_unique<ContainerLister>(INIFile::SecondaryType::deadbodies, player);
 	m_spergInventory->FilterLootableItems([&](RE::TESBoundObject* item) -> bool
 	{
 		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
-		for (const auto keyword : m_spergKeywords)
+		if (keywordHolder)
 		{
-			if (keywordHolder->HasKeyword(keyword))
-				return true;
+			for (const auto keyword : m_spergKeywords)
+			{
+				if (keywordHolder->HasKeyword(keyword))
+					return true;
+			}
 		}
 		return false;
 	});
@@ -777,11 +780,17 @@ void ScanGovernor::SPERGMiningStart(void)
 void ScanGovernor::SPERGMiningEnd(void)
 {
 	RecursiveLockGuard guard(m_searchLock);
-	if (m_spergQueued > 0)
+	if (m_spergInProgress > 0)
 	{
-		--m_spergQueued;
-		DBG_DMESSAGE("SPERG reconciliation queue size {}", m_spergQueued);
-		return;
+		--m_spergInProgress;
+		if (m_spergInProgress > 0)
+		{
+			REL_MESSAGE("SPERG completion, {} still in progress", m_spergInProgress);
+		}
+	}
+	else
+	{
+		REL_WARNING("SPERG completion, no operations in progress");
 	}
 }
 
@@ -789,9 +798,9 @@ void ScanGovernor::SPERGMiningEnd(void)
 void ScanGovernor::ReconcileSPERGMined(void)
 {
 	RecursiveLockGuard guard(m_searchLock);
-	if (m_spergQueued > 0)
+	if (m_spergInProgress > 0)
 	{
-		DBG_DMESSAGE("Skip SPERG reconciliation, queue size {}", m_spergQueued);
+		REL_MESSAGE("Skip SPERG reconciliation, {} in progress", m_spergInProgress);
 		return;
 	}
 	if (!m_spergInventory)
@@ -808,10 +817,13 @@ void ScanGovernor::ReconcileSPERGMined(void)
 	lister.FilterLootableItems([&](RE::TESBoundObject* item) -> bool
 	{
 		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
-		for (const auto keyword : m_spergKeywords)
+		if (keywordHolder)
 		{
-			if (keywordHolder->HasKeyword(keyword))
-				return true;
+			for (const auto keyword : m_spergKeywords)
+			{
+				if (keywordHolder->HasKeyword(keyword))
+					return true;
+			}
 		}
 		return false;
 	});

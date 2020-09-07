@@ -157,6 +157,12 @@ int[] glowReasonSettingArray
 String[] s_glowReasonArray
 String[] s_shaderColourArray
 
+int sagaDayCount
+int currentSagaDay
+string currentSagaDayName
+int currentSagaDayPage
+int sagaDayPageCount
+
 Actor player
 
 int Function CycleInt(int num, int max)
@@ -488,6 +494,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallAdventuresPower()
     InstallFlexibleShaders()
     InstallQuestObjectHandling()
+    InstallSagaRendering()
 EndFunction
 
 Function InstallCollections()
@@ -527,6 +534,13 @@ Function InstallQuestObjectHandling()
     if questObjectLoot == 2
         questObjectLoot = 1
     endIf
+EndFunction
+
+Function InstallSagaRendering()
+    sagaDayCount = 0
+    currentSagaDay = 0
+    currentSagaDayPage = 0
+    sagaDayPageCount = 0
 EndFunction
 
 Function InstallAdventures()
@@ -605,14 +619,15 @@ Function InstallDamageLootOptions()
 EndFunction
 
 Function InitPages()
-    Pages = New String[7]
+    Pages = New String[8]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
     Pages[1] = "$SHSE_SPECIALS_REALISM_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
     Pages[3] = "$SHSE_COLLECTIONS_PAGENAME"
-    Pages[4] = "$SHSE_LOOT_SENSE_PAGENAME"
-    Pages[5] = "$SHSE_WHITELIST_PAGENAME"
-    Pages[6] = "$SHSE_BLACKLIST_PAGENAME"
+    Pages[4] = Replace(GetTranslation("$SHSE_PLAYER_SAGA_PAGENAME"), "{PLAYERNAME}", player.GetBaseObject().GetName())
+    Pages[5] = "$SHSE_LOOT_SENSE_PAGENAME"
+    Pages[6] = "$SHSE_WHITELIST_PAGENAME"
+    Pages[7] = "$SHSE_BLACKLIST_PAGENAME"
 EndFunction
 
 Function InitSettingsFileOptions()
@@ -680,7 +695,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 42
+    return 43
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -766,6 +781,9 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 42 && CurrentVersion < 42
         InstallQuestObjectHandling()
+    endIf
+    if a_version >= 43 && CurrentVersion < 43
+        InstallSagaRendering()
     endIf
 endEvent
 
@@ -1120,8 +1138,15 @@ event OnPageReset(string currentPage)
         AddMenuOptionST("chooseAdventureType", "$SHSE_CHOOSE_ADVENTURE_TYPE", initialAdventureType, adventureTypeFlags)
         AddMenuOptionST("chooseAdventureWorld", "$SHSE_CHOOSE_ADVENTURE_WORLD", initialAdventureWorld, adventureFlags)
         AddToggleOptionST("chooseAdventureActive", "$SHSE_CHOOSE_ADVENTURE_ACTIVE", adventureActive, adventureFlags)
-        
-    elseif (currentPage == Pages[4]) ; Fortune Hunter's Instinct and Glow Config
+
+    elseif (currentPage == Pages[4]) ; Player saga
+        SetCursorFillMode(TOP_TO_BOTTOM)
+        sagaDayCount = GetTimelineDays()
+        currentSagaDay = sagaDayCount
+        AddSliderOptionST("SagaDayState", "$SHSE_SAGA_DAY", currentSagaDay)
+        AddSliderOptionST("SagaDayPageState", "$SHSE_SAGA_DAY_PAGE", currentSagaDayPage, "{0}", OPTION_FLAG_DISABLED)
+
+    elseif (currentPage == Pages[5]) ; Fortune Hunter's Instinct and Glow Config
 ;   ======================== LEFT ========================
         SetCursorFillMode(TOP_TO_BOTTOM)
 
@@ -1144,7 +1169,7 @@ event OnPageReset(string currentPage)
             index += 1
         endWhile
         
-    elseif (currentPage == Pages[5]) ; whiteList
+    elseif (currentPage == Pages[6]) ; whiteList
         AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
         int size = eventScript.whitelist_form.GetSize()
@@ -1164,7 +1189,7 @@ event OnPageReset(string currentPage)
             index += 1
         endWhile
 
-    elseif (currentPage == Pages[6]) ; blacklist
+    elseif (currentPage == Pages[7]) ; blacklist
         AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
         int size = eventScript.blacklist_form.GetSize()
@@ -2415,5 +2440,85 @@ state unlockGlowColours
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_GLOW_COLOURS_UNLOCKED"))
+    endEvent
+endState
+
+Function CreateSagaForDay()
+    currentSagaDayName = TimelineDayName(currentSagaDay)
+    sagaDayPageCount = PageCountForDay()
+    currentSagaDayPage = 1
+    ;enable 'open at page' for current day excerpt
+    SetOptionFlagsST(OPTION_FLAG_NONE, false, "SagaDayPageState")
+EndFunction
+
+Function DisplaySagaFromPage(int pageNumber)
+    while pageNumber <= sagaDayPageCount
+        string okPrompt = Replace(GetTranslation("$SHSE_NEXT_PAGE"), "{PAGEDESCRIPTOR}", pageNumber + "/" + sagaDayPageCount)
+        bool result = ShowMessage(GetSagaDayPage(pageNumber), true, okPrompt, "$SHSE_CLOSE_BOOK")
+        if result
+            pageNumber += 1
+            if pageNumber > sagaDayPageCount
+                pageNumber = 1
+            endIf
+        else
+            return
+        endIf
+    endWhile
+EndFunction
+
+Function ResetSagaDay()
+    SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "SagaDayPageState")
+    SetSliderOptionValueST(1, "{0}", false, "SagaDayPageState")
+    currentSagaDayPage = 1
+EndFunction
+
+state SagaDayState
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(currentSagaDay)
+        SetSliderDialogDefaultValue(sagaDayCount)
+        SetSliderDialogRange(1, sagaDayCount)
+        SetSliderDialogInterval(1)
+        ResetSagaDay()
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        currentSagaDay = value as int
+        SetSliderOptionValueST(currentSagaDay)
+        CreateSagaForDay()
+    endEvent
+
+    event OnDefaultST()
+        currentSagaDay = sagaDayCount
+        SetSliderOptionValueST(currentSagaDay)
+        CreateSagaForDay()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(currentSagaDayName)
+    endEvent
+endState
+
+state SagaDayPageState
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(currentSagaDayPage)
+        SetSliderDialogDefaultValue(1)
+        SetSliderDialogRange(1, sagaDayPageCount)
+        SetSliderDialogInterval(1)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        currentSagaDayPage = value as int
+        SetSliderOptionValueST(currentSagaDayPage)
+        DisplaySagaFromPage(currentSagaDayPage)
+    endEvent
+
+    event OnDefaultST()
+        currentSagaDayPage = 1
+        SetSliderOptionValueST(currentSagaDayPage)
+        DisplaySagaFromPage(currentSagaDayPage)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(currentSagaDayName)
     endEvent
 endState

@@ -90,7 +90,9 @@ public:
 
 	void DisplayPlayerLocation(void) const;
 	void PrintPlayerLocation(const RE::BGSLocation* location) const;
-	void PrintNearbyLocation(const RE::BGSLocation* location, const double milesAway, const CompassDirection heading) const;
+	std::string NearbyLocationAsString(
+		const RE::BGSLocation* location, const double milesAway, const CompassDirection heading, const bool historic) const;
+	std::string LocationRelativeToNearestMapMarker(const AlglibPosition& position, const bool historic) const;
 	void PrintAdventureTargetInfo(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const;
 	void PrintDifferentWorld(const RE::TESWorldSpace* world) const;
 
