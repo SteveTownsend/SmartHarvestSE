@@ -79,6 +79,10 @@ bool PluginFacade::Init(const bool onGameReload)
 		CosaveData::Instance().SeedState();
 		WindowsUtils::LogProcessWorkingSet();
 	}
+
+	// print effective membership - no members for new game, cosave state may include members so print reconciled version
+	shse::CollectionManager::Instance().PrintMembership();
+
 	if (!m_threadStarted)
 	{
 		// Start the thread once data is loaded

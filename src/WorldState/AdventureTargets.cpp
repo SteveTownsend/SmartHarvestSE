@@ -554,25 +554,28 @@ void AdventureTargets::Categorize()
 				worldList->first->GetName(), worldList->first->GetFormID(), location->GetName(), location->GetFormID());
 		}
 	}
-#if _DEBUG
+
 	AdventureTargetType adventureType(static_cast<AdventureTargetType>(0));
+	size_t targets(0);
 	for (const auto locationsForType : m_locationsByType)
 	{
 		if (locationsForType.empty())
 		{
-			DBG_WARNING("No Adventure Targets for type {}", AdventureTargetName(adventureType));
+			REL_WARNING("No Adventure Targets for type {}", AdventureTargetName(adventureType));
 		}
 		else
 		{
-			DBG_MESSAGE("{} Adventure Targets for type {}", locationsForType.size(), AdventureTargetName(adventureType));
+			REL_MESSAGE("{} Adventure Targets for type {}", locationsForType.size(), AdventureTargetName(adventureType));
+			targets += locationsForType.size();
 			for (const RE::BGSLocation* location : locationsForType)
 			{
-				DBG_MESSAGE("  {}/0x{:08x}", location->GetName(), location->GetFormID());
+				REL_MESSAGE("  {}/0x{:08x}", location->GetName(), location->GetFormID());
 			}
 		}
 		adventureType = static_cast<AdventureTargetType>(uint32_t(adventureType) + 1);
 	}
-#endif
+	REL_MESSAGE("{} Adventure Targets created from {} unique Locations", targets,
+		RE::TESDataHandler::GetSingleton()->GetFormArray<RE::BGSLocation>().size());
 }
 
 std::string AdventureTargets::AdventureTypeName(const size_t adventureType) const
@@ -801,7 +804,7 @@ void AdventureTargets::RecordEvent(const AdventureEvent& event)
 // rehydrate from cosave data
 void AdventureTargets::UpdateFrom(const nlohmann::json& j)
 {
-	DBG_MESSAGE("Cosave Adventure Targets\n{}", j.dump(2));
+	REL_MESSAGE("Cosave Adventure Targets\n{}", j.dump(2));
 	RecursiveLockGuard guard(m_adventureLock);
 	const auto worldspace(j.find("currentWorld"));
 	m_targetWorld = worldspace != j.cend() ?

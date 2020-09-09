@@ -237,7 +237,28 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm)
 	return ObjectType::unknown;
 }
 
-const std::unordered_map<ObjectType, std::string> nameByType({
+
+const std::unordered_map<RE::FormType, std::string> nameByFormType({
+	{RE::FormType::ActorCharacter, "ActorCharacter"},
+	{RE::FormType::Container, "Container"},
+	{RE::FormType::Ingredient, "Ingredient"},
+	{RE::FormType::SoulGem, "SoulGem"},
+	{RE::FormType::KeyMaster, "KeyMaster"},
+	{RE::FormType::Scroll, "Scroll"},
+	{RE::FormType::Ammo, "Ammo"},
+	{RE::FormType::ProjectileArrow, "ProjectileArrow"},
+	{RE::FormType::Light, "Light"}
+	});
+
+std::string GetFormTypeName(const RE::FormType formType)
+{
+	const auto result(nameByFormType.find(formType));
+	if (result != nameByFormType.cend())
+		return result->second;
+	return "unknown";
+}
+
+const std::unordered_map<ObjectType, std::string> nameByObjectType({
 	{ObjectType::unknown, "unknown"},
 	{ObjectType::flora, "flora"},
 	{ObjectType::critter, "critter"},
@@ -274,10 +295,10 @@ const std::unordered_map<ObjectType, std::string> nameByType({
 	{ObjectType::actor, "actor"}
 	});
 
-std::string GetObjectTypeName(ObjectType objectType)
+std::string GetObjectTypeName(const ObjectType objectType)
 {
-	const auto result(nameByType.find(objectType));
-	if (result != nameByType.cend())
+	const auto result(nameByObjectType.find(objectType));
+	if (result != nameByObjectType.cend())
 		return result->second;
 	return "unknown";
 }
@@ -287,7 +308,7 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 	// normalize from BSFixedString
 	std::string lcName;
 	std::transform(name.cbegin(), name.cend(), std::back_inserter(lcName), [](const char& c) { return std::tolower(c); });
-	for (const auto& nextPair : nameByType)
+	for (const auto& nextPair : nameByObjectType)
 	{
 		if (nextPair.second == lcName)
 		{

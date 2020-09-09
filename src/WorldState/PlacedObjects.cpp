@@ -47,7 +47,10 @@ PlacedObjects::PlacedObjects()
 void PlacedObjects::RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr)
 {
 	m_placedItems.insert(item);
-	m_placedObjects.insert(std::make_pair(item, refr));
+	if (m_placedObjects[item].insert(refr).second)
+	{
+		REL_VMESSAGE("REFR 0x{:08x} to item {}/0x{:08x} is a Placed Object", refr->GetFormID(), item->GetName(), item->GetFormID());
+	}
 }
 
 void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
@@ -109,8 +112,6 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 			}
 			else
 			{
-				DBG_VMESSAGE("Container/NPC {}/0x{:08x} item {}/0x{:08x} is a Placed Object", refr->GetName(), refr->GetFormID(), entryContents->GetName(),
-					entryContents->GetFormID());
 				RecordPlacedItem(entryContents, refr);
 			}
 			// continue the scan
@@ -119,8 +120,6 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 	else
 	{
-		DBG_VMESSAGE("Loose 0x{:08x} item {}/0x{:08x} is a Placed Object", refr->GetFormID(), refr->GetBaseObject()->GetName(),
-			refr->GetBaseObject()->GetFormID());
 		RecordPlacedItem(refr->GetBaseObject(), refr);
 	}
 }
@@ -134,6 +133,9 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 		return;
 
 	if (ManagedList::BlackList().Contains(cell))
+		return;
+
+	if (DataCase::GetInstance()->IsOffLimitsLocation(cell))
 		return;
 
 	if (!IsCellLocatable(cell))
@@ -295,19 +297,27 @@ void PlacedObjects::RecordPlacedObjects(void)
 	{
 		RecordPlacedObjectsForCell(cell);
 	}
-	REL_MESSAGE("{} Placed Objects recorded for {} Items", m_placedItems.size(), m_placedObjects.size());
+	size_t placed(0);
+	placed = std::accumulate(m_placedObjects.cbegin(), m_placedObjects.cend(), placed,
+		[&] (const size_t& result, const auto& keyList) { return result + keyList.second.size(); });
+	REL_MESSAGE("{} Placed Objects recorded for {} Items", placed, m_placedItems.size());
 }
 
 bool PlacedObjects::IsPlacedObject(const RE::TESForm* form) const
 {
 	RecursiveLockGuard guard(m_placedLock);
-	return m_placedObjects.contains(form);
+	return m_placedObjects.find(form) != m_placedObjects.cend();
 }
 
 size_t PlacedObjects::NumberOfInstances(const RE::TESForm* form) const
 {
 	RecursiveLockGuard guard(m_placedLock);
-	return m_placedObjects.count(form);
+	const auto& matched(m_placedObjects.find(form));
+	if (matched != m_placedObjects.cend())
+	{
+		return matched->second.size();
+	}
+	return 0;
 }
 
 }

@@ -55,7 +55,7 @@ bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESFor
 		}
 		else
 		{
-			DBG_VMESSAGE("Producer {}/0x{:08x} has lootable {}/0x{:08x}", producer->GetName(), producer->formID, lootable->GetName(), lootable->formID);
+			REL_VMESSAGE("Producer {}/0x{:08x} has lootable {}/0x{:08x}", producer->GetName(), producer->formID, lootable->GetName(), lootable->formID);
 			m_producerLootable[producer] = lootable;
 		}
 		return true;

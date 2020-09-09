@@ -69,6 +69,48 @@
           "signature": [ "WEAP" ]
         }
       }
+    },
+
+    {
+      "name": "Dwemer Boat Anchors",
+      "description": "Misc Dwemer Clutter",
+      "policy": {
+        "action": "leave",
+        "notify": false,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "Skyrim.esm",
+              "form": [ "000aebf1", "000c8861", "000c8868", "000c886e", "000c886a", "000c8870", "000c886c", "000c8878", "000c8864", "000c8872", "000c8866", "000c8874" ]
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "name": "Dragon It Out",
+      "description": "Grab Dragon Bones and Scales",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "Skyrim.esm",
+              "form": [ "0003ada4", "000d0756", "0003ada3" ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

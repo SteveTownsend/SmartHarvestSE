@@ -521,7 +521,7 @@ Function InstallCollectionDescriptionsActions()
     collectionDescriptions = new String[128]
     ; do not allow Print in MCM
     s_collectibleActions = New String[4]
-    s_collectibleActions[0] = "$SHSE_DONT_PICK_UP"
+    s_collectibleActions[0] = "$SHSE_LEAVE_BEHIND"
     s_collectibleActions[1] = "$SHSE_PICK_UP"
     s_collectibleActions[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
     s_collectibleActions[3] = "$SHSE_PRINT_MESSAGE"
@@ -695,7 +695,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 43
+    return 44
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -784,6 +784,10 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 43 && CurrentVersion < 43
         InstallSagaRendering()
+    endIf
+    if a_version >= 44 && CurrentVersion < 44
+        ; update to Leave action string
+        InstallCollectionDescriptionsActions()
     endIf
 endEvent
 

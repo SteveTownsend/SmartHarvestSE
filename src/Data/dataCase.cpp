@@ -219,10 +219,8 @@ void DataCase::CategorizeByActivationVerb()
 			ObjectType activatorType(GetObjectTypeForActivationText(activationText));
 			if (activatorType != ObjectType::unknown)
 			{
-				if (SetObjectTypeForForm(activator->GetFormID(), activatorType))
+				if (SetObjectTypeForForm(activator, activatorType))
 				{
-					DBG_VMESSAGE("{}/0x{:08x} activated using '{}' categorized as {}", formName, activator->GetFormID(),
-						GetVerbFromActivationText(activationText).c_str(), GetObjectTypeName(activatorType).c_str());
 					// set resourceType for oreVein
 					if (activatorType == ObjectType::oreVein)
 					{
@@ -242,12 +240,8 @@ void DataCase::CategorizeByActivationVerb()
 						resourceType = ResourceType::ore;
 						}
 						m_resourceTypeByOreVein.insert(std::make_pair(activator, resourceType));
-						DBG_VMESSAGE("{}/0x{:08x} has ResourceType {}", formName, activator->GetFormID(), PrintResourceType(resourceType));
+						REL_VMESSAGE("{}/0x{:08x} has ResourceType {}", formName, activator->GetFormID(), PrintResourceType(resourceType));
 					}
-				}
-				else
-				{
-				REL_WARNING("{}/0x{:08x} ({}) already stored, check data", formName, activator->GetFormID(), GetObjectTypeName(activatorType).c_str());
 				}
 				continue;
 			}
@@ -310,7 +304,7 @@ void DataCase::ExcludeFactionContainers()
 			containerRef = faction->vendorData.merchantContainer;
 			if (containerRef)
 			{
-				DBG_VMESSAGE("Blocked faction/vendor container : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
+				REL_VMESSAGE("Blocked faction/vendor container : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
 				m_offLimitsContainers.insert(containerRef->GetFormID());
 			}
 		}
@@ -318,14 +312,14 @@ void DataCase::ExcludeFactionContainers()
 		containerRef = faction->crimeData.factionStolenContainer;
 		if (containerRef)
 		{
-			DBG_VMESSAGE("Blocked stolenGoodsContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
+			REL_VMESSAGE("Blocked stolenGoodsContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
 			m_offLimitsContainers.insert(containerRef->GetFormID());
 		}
 
 		containerRef = faction->crimeData.factionPlayerInventoryContainer;
 		if (containerRef)
 		{
-			DBG_VMESSAGE("Blocked playerInventoryContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
+			REL_VMESSAGE("Blocked playerInventoryContainer : {}({:08x})", containerRef->GetName(), containerRef->GetFormID());
 			m_offLimitsContainers.insert(containerRef->GetFormID());
 		}
 	}
@@ -537,8 +531,8 @@ void DataCase::IncludeFossilMiningExcavation()
 	RE::TESForm* excavationSiteForm(RE::TESDataHandler::GetSingleton()->LookupForm(excavationSiteFormID, espName));
 	if (excavationSiteForm)
 	{
-		DBG_MESSAGE("Record Fossil Mining Excavation Site {}(0x{:08x}) as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
-		SetObjectTypeForForm(excavationSiteForm->GetFormID(), ObjectType::oreVein);
+		REL_MESSAGE("Record Fossil Mining Excavation Site {}/0x{:08x} as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
+		SetObjectTypeForForm(excavationSiteForm, ObjectType::oreVein);
 		m_resourceTypeByOreVein.insert(std::make_pair(excavationSiteForm->As<RE::TESObjectACTI>(), ResourceType::volcanicDigSite));
 	}
 }
@@ -552,8 +546,7 @@ void DataCase::IncludePileOfGold()
 		RE::TESForm* goldPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(goldPileFormID, espName));
 		if (goldPileForm)
 		{
-			DBG_MESSAGE("Record Pile of Gold {}(0x{:08x}) as septims", goldPileForm->GetName(), goldPileForm->GetFormID());
-			SetObjectTypeForForm(goldPileForm->GetFormID(), ObjectType::septims);
+			SetObjectTypeForForm(goldPileForm, ObjectType::septims);
 		}
 	}
 	// Coin Replacer Redux adds similar
@@ -564,8 +557,7 @@ void DataCase::IncludePileOfGold()
 		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
 		if (coinPileForm)
 		{
-			DBG_MESSAGE("Record Coin Replacer Redux Pile of Coin {}(0x{:08x}) as septims", coinPileForm->GetName(), coinPileForm->GetFormID());
-			SetObjectTypeForForm(coinPileForm->GetFormID(), ObjectType::septims);
+			SetObjectTypeForForm(coinPileForm, ObjectType::septims);
 		}
 	}
 }
@@ -577,8 +569,7 @@ void DataCase::IncludeCorpseCoinage()
 	RE::TESForm* corpseCoinageForm(RE::TESDataHandler::GetSingleton()->LookupForm(corpseCoinageFormID, espName));
 	if (corpseCoinageForm)
 	{
-		DBG_MESSAGE("Record CorpseToCoinage ACTI {}(0x{:08x}) as septims", corpseCoinageForm->GetName(), corpseCoinageForm->GetFormID());
-		SetObjectTypeForForm(corpseCoinageForm->GetFormID(), ObjectType::septims);
+		SetObjectTypeForForm(corpseCoinageForm, ObjectType::septims);
 	}
 }
 
@@ -590,8 +581,7 @@ void DataCase::IncludeHearthfireExtendedApiary()
 	if (apiaryForm)
 	{
 		// force object type - this was already categorized incorrectly using Activation Verb
-		DBG_MESSAGE("Record HearthfireExtended ACTI {}(0x{:08x}) as critter", apiaryForm->GetName(), apiaryForm->GetFormID());
-		ForceObjectTypeForForm(apiaryForm->GetFormID(), ObjectType::critter);
+		ForceObjectTypeForForm(apiaryForm, ObjectType::critter);
 		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
 		AddFirehose(apiaryForm);
 	}
@@ -604,8 +594,7 @@ void DataCase::IncludeBSBruma()
 	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
 	if (ayleidGoldForm)
 	{
-		DBG_MESSAGE("Record BS:Bruma {}(0x{:08x}) as septims", ayleidGoldForm->GetName(), ayleidGoldForm->GetFormID());
-		SetObjectTypeForForm(ayleidGoldForm->GetFormID(), ObjectType::septims);
+		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
 	}
 }
 
@@ -614,9 +603,10 @@ void DataCase::RecordOffLimitsLocations()
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
-		{"Skyrim.esm", 0x32ae7},				// QASmoke
-		{"CerwidenCompanion.esp", 0x4a4bb},		// kcfAssetsCell01
-		{"konahrik_accoutrements.esp", 0x625d3}	// KAxTestCell
+		{"Skyrim.esm", 0x32ae7},					// QASmoke
+		{"CerwidenCompanion.esp", 0x4a4bb},			// kcfAssetsCell01
+		{"konahrik_accoutrements.esp", 0x625d3},	// KAxTestCell
+		{"Helgen Reborn.esp", 0xA886CD}				// aaaBalokDummyCell
 	};
 	for (const auto& pluginForm : illegalCells)
 	{
@@ -625,7 +615,7 @@ void DataCase::RecordOffLimitsLocations()
 		RE::TESObjectCELL* cell(FindExactMatch<RE::TESObjectCELL>(espName, formID));
 		if (cell)
 		{
-			DBG_MESSAGE("No looting in cell {}/0x{:08x}", cell->GetName(), cell->GetFormID());
+			REL_MESSAGE("No looting in cell {}/0x{:08x}", cell->GetName(), cell->GetFormID());
 			m_offLimitsLocations.insert(cell);
 		}
 	}
@@ -647,7 +637,7 @@ void DataCase::RecordPlayerHouseCells(void)
 		const RE::TESObjectCELL* cell(FindExactMatch<RE::TESObjectCELL>(espName, formID));
 		if (cell)
 		{
-			DBG_MESSAGE("Cell {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
+			REL_MESSAGE("Cell {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
 			PlayerHouses::Instance().SetCell(cell);
 		}
 	}
@@ -678,16 +668,14 @@ void DataCase::GetAmmoData()
 			continue;
 		}
 		RE::BGSProjectile* proj = ammo->data.projectile;
-		if (!proj)
+		if (!FormUtils::IsConcrete(proj))
 		{
-			DBG_VMESSAGE("Ammo 0x{:08x} has no projectile", ammo->GetFormID());
+			DBG_VMESSAGE("Projectile 0x{:08x} not usable", proj ? proj->GetFormID() : InvalidForm);
 			continue;
 		}
-		DBG_VMESSAGE("Adding Projectile {} with ammo {}", proj->GetFullName(), ammo->GetFullName());
+		REL_VMESSAGE("Projectile 0x{:08x}/{} has Ammo 0x{:08x}/{}", proj->GetFormID(), proj->GetFullName(), ammo->GetFormID(), ammo->GetFullName());
 		m_ammoList[proj] = ammo;
 	}
-
-	REL_MESSAGE("* AmmoData({})", m_ammoList.size());
 }
 
 void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
@@ -715,6 +703,7 @@ bool DataCase::IsFirehose(const RE::TESForm* form) const
 void DataCase::AddFirehose(const RE::TESForm* form)
 {
 	RecursiveLockGuard guard(m_blockListLock);
+	REL_MESSAGE("Record 0x{:08x}/{} as FireHose", form->GetFormID(), form->GetName());
 	m_firehoseForms.insert(form);
 }
 
@@ -859,7 +848,7 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 	return (m_permanentBlockedForms.insert({ form, reason })).second;
 }
 
-ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
+ObjectType DataCase::GetFormObjectType(const RE::FormID formID) const
 {
 	const auto entry(m_objectTypeByForm.find(formID));
 	if (entry != m_objectTypeByForm.cend())
@@ -867,22 +856,76 @@ ObjectType DataCase::GetFormObjectType(RE::FormID formID) const
 	return ObjectType::unknown;
 }
 
-bool DataCase::SetObjectTypeForForm(RE::FormID formID, ObjectType objectType)
+bool DataCase::SetObjectTypeForFormID(const RE::FormID formID, const ObjectType objectType)
 {
-	return m_objectTypeByForm.insert(std::make_pair(formID, objectType)).second;
+	const RE::TESForm* target(RE::TESForm::LookupByID(formID));
+	if (target)
+	{
+		return SetObjectTypeForForm(target, objectType);
+	}
+	else
+	{
+		REL_WARNING("FormID 0x{:08x} cannot be loaded, ignoring attmempt to categorize as {}", formID, GetObjectTypeName(objectType));
+		return false;
+	}
 }
 
-void DataCase::ForceObjectTypeForForm(RE::FormID formID, ObjectType objectType)
+bool DataCase::SetObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType)
 {
-	m_objectTypeByForm[formID] = objectType;
+	const auto inserted(m_objectTypeByForm.insert(std::make_pair(form->GetFormID(), objectType)));
+	std::string name(form->GetName());
+	if (name.empty())
+	{
+		name = FormUtils::SafeGetFormEditorID(form);
+	}
+	if (inserted.second)
+	{
+		REL_VMESSAGE("{}/0x{:08x} uses ObjectType {}", name, form->GetFormID(), GetObjectTypeName(objectType));
+	}
+	else if (objectType != inserted.first->second)
+	{
+		REL_WARNING("Cannot use ObjectType {} for {}/0x{:08x}, already using {}", GetObjectTypeName(objectType),
+			name, form->GetFormID(), GetObjectTypeName(inserted.first->second));
+	}
+	return inserted.second;
 }
 
-ObjectType DataCase::GetObjectTypeForFormType(RE::FormType formType) const
+void DataCase::ForceObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType)
+{
+	auto& inserted(m_objectTypeByForm.insert(std::make_pair(form->GetFormID(), objectType)));
+	if (inserted.second)
+	{
+		REL_VMESSAGE("{}/0x{:08x} force-categorized as {}", form->GetName(), form->GetFormID(), GetObjectTypeName(objectType).c_str());
+	}
+	else
+	{
+		REL_WARNING("{}/0x{:08x} force-categorized as {}, overwriting {}", form->GetName(), form->GetFormID(),
+			GetObjectTypeName(objectType), GetObjectTypeName(inserted.first->second));
+		inserted.first->second = objectType;
+	}
+}
+
+ObjectType DataCase::GetObjectTypeForFormType(const RE::FormType formType) const
 {
 	const auto entry(m_objectTypeByFormType.find(formType));
 	if (entry != m_objectTypeByFormType.cend())
 		return entry->second;
 	return ObjectType::unknown;
+}
+
+bool DataCase::SetObjectTypeForFormType(const RE::FormType formType, const ObjectType objectType)
+{
+	const auto inserted(m_objectTypeByFormType.insert({ formType, objectType }));
+	if (inserted.second)
+	{
+		REL_VMESSAGE("Formtype {} categorized as {}", GetFormTypeName(formType), GetObjectTypeName(objectType));
+	}
+	else
+	{
+		REL_WARNING("Cannot categorize FormType {} as {}, already stored as {}", GetFormTypeName(formType),
+			GetObjectTypeName(objectType), GetObjectTypeName(inserted.first->second));
+	}
+	return inserted.second;
 }
 
 ResourceType DataCase::OreVeinResourceType(const RE::TESObjectACTI* mineable) const
@@ -1169,19 +1212,19 @@ void DataCase::SetObjectTypeByKeywords()
 		// Store player house keyword for SearchTask usage
 		if (keywordName == "LocTypePlayerHouse")
 		{
-			DBG_VMESSAGE("Found PlayerHouse KYWD formID 0x{:08x}", keywordDef->GetFormID());
+			REL_VMESSAGE("Found PlayerHouse KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			PlayerHouses::Instance().SetKeyword(keywordDef);
 			continue;
 		}
 		// SPERG mining resource types
 		if (keywordName == "VendorItemOreIngot" || keywordName == "VendorItemGem")
 		{
-			DBG_VMESSAGE("Found SPERG Prospector Perk resource type {}/0x{:08x}", keywordName, keywordDef->GetFormID());
+			REL_VMESSAGE("Found SPERG Prospector Perk resource type KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			ScanGovernor::Instance().SetSPERGKeyword(keywordDef);
 		}
 		if (glowableBooks.find(keywordName) != glowableBooks.cend())
 		{
-			DBG_VMESSAGE("Found Glowable Book KYWD formID 0x{:08x}", keywordDef->GetFormID());
+			REL_VMESSAGE("Found Glowable Book KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			m_glowableBookKeywords.insert(keywordDef->GetFormID());
 		}
 
@@ -1209,8 +1252,7 @@ void DataCase::SetObjectTypeByKeywords()
 			DBG_VMESSAGE("KYWD 0x{:08x} ({}) skipped", keywordDef->GetFormID(), keywordName.c_str());
 			continue;
 		}
-		m_objectTypeByForm[keywordDef->GetFormID()] = DecorateIfEnchanted(keywordDef, objectType);
-		DBG_VMESSAGE("KYWD 0x{:08x} ({}) stored as {}", keywordDef->GetFormID(), keywordName, GetObjectTypeName(objectType));
+		SetObjectTypeForForm(keywordDef, DecorateIfEnchanted(keywordDef, objectType));
 	}
 }
 
@@ -1317,20 +1359,20 @@ bool DataCase::CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg
 void DataCase::CategorizeStatics()
 {
 	// These form types always map to the same Object Type
-	m_objectTypeByFormType[RE::FormType::ActorCharacter] = ObjectType::actor;
-	m_objectTypeByFormType[RE::FormType::Container] = ObjectType::container;
-	m_objectTypeByFormType[RE::FormType::Ingredient] = ObjectType::ingredient;
-	m_objectTypeByFormType[RE::FormType::SoulGem] = ObjectType::soulgem;
-	m_objectTypeByFormType[RE::FormType::KeyMaster] = ObjectType::key;
-	m_objectTypeByFormType[RE::FormType::Scroll] = ObjectType::scroll;
-	m_objectTypeByFormType[RE::FormType::Ammo] = ObjectType::ammo;
-	m_objectTypeByFormType[RE::FormType::ProjectileArrow] = ObjectType::ammo;
-	m_objectTypeByFormType[RE::FormType::Light] = ObjectType::light;
+	SetObjectTypeForFormType(RE::FormType::ActorCharacter, ObjectType::actor);
+	SetObjectTypeForFormType(RE::FormType::Container, ObjectType::container);
+	SetObjectTypeForFormType(RE::FormType::Ingredient, ObjectType::ingredient);
+	SetObjectTypeForFormType(RE::FormType::SoulGem, ObjectType::soulgem);
+	SetObjectTypeForFormType(RE::FormType::KeyMaster, ObjectType::key);
+	SetObjectTypeForFormType(RE::FormType::Scroll, ObjectType::scroll);
+	SetObjectTypeForFormType(RE::FormType::Ammo, ObjectType::ammo);
+	SetObjectTypeForFormType(RE::FormType::ProjectileArrow, ObjectType::ammo);
+	SetObjectTypeForFormType(RE::FormType::Light, ObjectType::light);
 
 	// Map well-known forms to ObjectType
-	m_objectTypeByForm[LockPick] = ObjectType::lockpick;
-	m_objectTypeByForm[Gold] = ObjectType::septims;
-	m_objectTypeByForm[WispCore] = ObjectType::critter;
+	SetObjectTypeForFormID(LockPick, ObjectType::lockpick);
+	SetObjectTypeForFormID(Gold, ObjectType::septims);
+	SetObjectTypeForFormID(WispCore, ObjectType::critter);
 
 	// record firehose BYOH materials
 	static std::string hearthFiresName("HearthFires.esm");
@@ -1340,7 +1382,6 @@ void DataCase::CategorizeStatics()
 		RE::TESForm* clayOrStoneForm(RE::TESDataHandler::GetSingleton()->LookupForm(clayOrStoneFormID, hearthFiresName));
 		if (clayOrStoneForm)
 		{
-			DBG_MESSAGE("Record HearthFires Clay Or Stone {}(0x{:08x}) as firehose", clayOrStoneForm->GetName(), clayOrStoneForm->GetFormID());
 			AddFirehose(clayOrStoneForm);
 		}
 	}
@@ -1400,25 +1441,15 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 {
 	if (!m_contents)
 	{
-		DBG_VMESSAGE("Target {}/0x{:08x} has contents type {} in form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
+		REL_VMESSAGE("Target {}/0x{:08x} has contents type {} in form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
 			GetObjectTypeName(itemType), itemForm->GetName(), itemForm->GetFormID());
 		if (!DataCase::GetInstance()->m_produceFormContents.insert(std::make_pair(m_produceForm, itemForm)).second)
 		{
-			DBG_VMESSAGE("Leveled Item {}/0x{:08x} contents already present", m_targetName, m_rootItem->GetFormID());
+			REL_WARNING("Leveled Item {}/0x{:08x} contents already present", m_targetName, m_rootItem->GetFormID());
 		}
 		else
 		{
-			DBG_VMESSAGE("Leveled Item {}/0x{:08x} has contents {}/0x{:08x}",
-				m_targetName, m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
-			if (!DataCase::GetInstance()->m_objectTypeByForm.insert(std::make_pair(itemForm->GetFormID(), itemType)).second)
-			{
-				DBG_VMESSAGE("Leveled Item {}/0x{:08x} contents {}/0x{:08x} already has an ObjectType",
-					m_targetName, m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
-			}
-			else
-			{
-				DBG_VMESSAGE("Leveled Item {}/0x{:08x} not stored", m_targetName, m_rootItem->GetFormID());
-			}
+			DataCase::GetInstance()->SetObjectTypeForForm(itemForm, itemType);
 			m_contents = itemForm;
 		}
 	}

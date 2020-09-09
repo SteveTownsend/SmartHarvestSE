@@ -107,53 +107,6 @@ void CosaveData::SeedState()
 bool CosaveData::Serialize(SKSE::SerializationInterface* intf)
 {
 	// Serialize JSON and compress per https://github.com/google/brotli
-#if 0
-	// output LoadOrder
-	{
-		nlohmann::json j(shse::LoadOrder::Instance());
-		DBG_MESSAGE("Wrote {} :\n{}", LORDFILE, j.dump().c_str());
-		std::string compressed(CompressionUtils::EncodeBrotli(j));
-		std::ofstream saveData(LORDFILE, std::ios::out | std::ios::binary);
-		saveData.write(compressed.c_str(), compressed.length());
-		saveData.close();
-	}
-	// output Collection Groups - Definitions and Members
-	{
-		nlohmann::json j(shse::CollectionManager::Instance());
-		DBG_MESSAGE("Wrote {} :\n{}", COLLFILE, j.dump().c_str());
-		std::string compressed(CompressionUtils::EncodeBrotli(j));
-		std::ofstream saveData(COLLFILE, std::ios::out | std::ios::binary);
-		saveData.write(compressed.c_str(), compressed.length());
-		saveData.close();
-	}
-	// output Location history
-	{
-		nlohmann::json j(shse::VisitedPlaces::Instance());
-		DBG_MESSAGE("Wrote {} :\n{}", PLACFILE, j.dump().c_str());
-		std::string compressed(CompressionUtils::EncodeBrotli(j));
-		std::ofstream saveData(PLACFILE, std::ios::out | std::ios::binary);
-		saveData.write(compressed.c_str(), compressed.length());
-		saveData.close();
-	}
-	// output Followers-in-Party history
-	{
-		nlohmann::json j(shse::PartyMembers::Instance());
-		DBG_MESSAGE("Wrote {} :\n{}", PRTYFILE, j.dump().c_str());
-		std::string compressed(CompressionUtils::EncodeBrotli(j));
-		std::ofstream saveData(PRTYFILE, std::ios::out | std::ios::binary);
-		saveData.write(compressed.c_str(), compressed.length());
-		saveData.close();
-	}
-	// output Party Kills history
-	{
-		nlohmann::json j(shse::ActorTracker::Instance());
-		DBG_MESSAGE("Wrote {} :\n{}", VCTMFILE, j.dump().c_str());
-		std::string compressed(CompressionUtils::EncodeBrotli(j));
-		std::ofstream saveData(VCTMFILE, std::ios::out | std::ios::binary);
-		saveData.write(compressed.c_str(), compressed.length());
-		saveData.close();
-	}
-#else
 	// output LoadOrder
 	std::string record;
 	if (!CompressionUtils::EncodeBrotli(shse::LoadOrder::Instance(), record))
@@ -238,78 +191,10 @@ bool CosaveData::Serialize(SKSE::SerializationInterface* intf)
 		REL_MESSAGE("Wrote ADVN record {} bytes", record.length());
 	}
 	return true;
-#endif
 }
 
 bool CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 {
-#if 0
-	try {
-		// decompress per https://github.com/google/brotli and rehydrate to JSON
-		size_t fileSize(std::filesystem::file_size(LORDFILE));
-		std::ifstream readData(LORDFILE, std::ios::in | std::ios::binary);
-		std::string roundTrip(fileSize, 0);
-		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
-		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read {}:\n{}", LORDFILE, jRead.dump().c_str());
-	}
-	catch (const std::exception& exc)
-	{
-		DBG_ERROR("Load error on {}: {}", LORDFILE, exc.what());
-	}
-	try {
-		// decompress per https://github.com/google/brotli and rehydrate to JSON
-		size_t fileSize(std::filesystem::file_size(COLLFILE));
-		std::ifstream readData(COLLFILE, std::ios::in | std::ios::binary);
-		std::string roundTrip(fileSize, 0);
-		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
-		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read {}:\n{}", COLLFILE, jRead.dump().c_str());
-	}
-	catch (const std::exception& exc)
-	{
-		DBG_ERROR("Load error on {}: {}", COLLFILE, exc.what());
-	}
-	try {
-		// decompress per https://github.com/google/brotli and rehydrate to JSON
-		size_t fileSize(std::filesystem::file_size(PLACFILE));
-		std::ifstream readData(PLACFILE, std::ios::in | std::ios::binary);
-		std::string roundTrip(fileSize, 0);
-		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
-		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read {}:\n{}", PLACFILE, jRead.dump().c_str());
-	}
-	catch (const std::exception& exc)
-	{
-		DBG_ERROR("Load error on {}: {}", PLACFILE, exc.what());
-	}
-	try {
-		// decompress per https://github.com/google/brotli and rehydrate to JSON
-		size_t fileSize(std::filesystem::file_size(PRTYFILE));
-		std::ifstream readData(PRTYFILE, std::ios::in | std::ios::binary);
-		std::string roundTrip(fileSize, 0);
-		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
-		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read {}:\n{}", PRTYFILE, jRead.dump().c_str());
-	}
-	catch (const std::exception& exc)
-	{
-		DBG_ERROR("Load error on {}: {}", PRTYFILE, exc.what());
-	}
-	try {
-		// decompress per https://github.com/google/brotli and rehydrate to JSON
-		size_t fileSize(std::filesystem::file_size(VCTMFILE));
-		std::ifstream readData(VCTMFILE, std::ios::in | std::ios::binary);
-		std::string roundTrip(fileSize, 0);
-		readData.read(const_cast<char*>(roundTrip.c_str()), roundTrip.length());
-		nlohmann::json jRead(CompressionUtils::DecodeBrotli(roundTrip));
-		DBG_MESSAGE("Read {}:\n{}", VCTMFILE, jRead.dump().c_str());
-	}
-	catch (const std::exception& exc)
-	{
-		DBG_ERROR("Load error on {}: {}", VCTMFILE, exc.what());
-	}
-#else
 	uint32_t readType;
 	uint32_t version;
 	uint32_t length;
@@ -371,7 +256,6 @@ bool CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 		}
 	}
 	return true;
-#endif
 }
 
 }

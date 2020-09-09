@@ -42,7 +42,7 @@ private:
 	mutable RecursiveLock m_placedLock;
 
 	std::unordered_set<const RE::TESForm*> m_placedItems;
-	std::unordered_multimap<const RE::TESForm*, const RE::TESObjectREFR*> m_placedObjects;
+	std::unordered_map<const RE::TESForm*, std::set<const RE::TESObjectREFR*>> m_placedObjects;
 	std::unordered_set<const RE::TESObjectCELL*> m_checkedForPlacedObjects;
 	// for CELL connectivity checking during data load
 	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
