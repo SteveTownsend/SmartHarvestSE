@@ -1638,7 +1638,7 @@ state LootAllowedItemsInSettlementState
     endEvent
 
     event OnDefaultST()
-        lootAllowedItemsInSettlement = 1
+        lootAllowedItemsInSettlement = true
         SetToggleOptionValueST(lootAllowedItemsInSettlement as bool)
     endEvent
 
