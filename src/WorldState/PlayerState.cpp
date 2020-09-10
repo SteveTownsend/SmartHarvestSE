@@ -73,17 +73,12 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 {
 	// re-evaluate perks if timer has popped - force after game reload or settings update
 	static const bool force(onGameReload || onMCMPush);
-	shse::PlayerState::Instance().CheckPerks(force);
+	CheckPerks(force);
 
 	if (onGameReload || onMCMPush)
 	{
 		// reset carry weight state
 		ResetCarryWeight(onGameReload);
-		// reset location history after game reload - also forces proper recalculation of carry-weight
-		if (onGameReload)
-		{
-			LocationTracker::Instance().Reset();
-		}
 	}
 	else
 	{

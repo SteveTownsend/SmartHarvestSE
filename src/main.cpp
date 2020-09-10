@@ -89,7 +89,6 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 			return;
 		}
 		REL_MESSAGE("Initialized SearchTask, looting available");
-		shse::PluginFacade::Instance().AfterReload();
 		break;
 	}
 }

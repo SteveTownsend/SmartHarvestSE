@@ -31,6 +31,7 @@ http://www.fsf.org/licensing/licenses
 #include "VM/papyrus.h"
 #include "Collections/CollectionManager.h"
 #include "Collections/CollectionFactory.h"
+#include "Data/CosaveData.h"
 #include "Data/DataCase.h"
 #include "Data/iniSettings.h"
 #include "Data/LoadOrder.h"
@@ -716,6 +717,12 @@ void CollectionManager::OnGameReload()
 	// logic depends on prior and new state
 	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
 	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
+
+	// seed state using cosave data
+	CosaveData::Instance().SeedState();
+
+	// print effective membership - no members for new game, cosave state may include members so print reconciled version
+	shse::CollectionManager::Instance().PrintMembership();
 }
 
 void CollectionManager::AsJSON(nlohmann::json& j) const

@@ -285,6 +285,9 @@
     <ProjectReference Include="$(SourceRoot)\json-schema-validator\json-schema-validator.vcxproj">
       <Project>{0d43801e-1d25-4614-a6a1-f79b3fc9897d}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\SmartHarvestSE.vcxproj">
+      <Project>{a9d9042d-d2ff-47ea-b77e-5bd1e424734c}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
