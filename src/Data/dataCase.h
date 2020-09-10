@@ -134,6 +134,7 @@ private:
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
 	// assume simple setters for now, like vanilla Green Thumb
 	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
+	RE::BGSKeyword* m_spellTomeKeyword;
 
 	mutable RecursiveLock m_blockListLock;
 
@@ -351,6 +352,12 @@ private:
 					{
 						continue;
 					}
+					// Immersive Armors gives some armors the VendorItemSpellTome keyword. No, they are not spellBook
+					if (keyword == m_spellTomeKeyword)
+					{
+						// spellBook is not a legal mapping for MISC, ARMO or WEAP. Revisit if we add more instantiations.
+						REL_WARNING("Spell tome Keyword not valid for {}/0x{:08x}",formName, typedForm->GetFormID());
+					}
 					else if (correctType != ObjectType::unknown)
 					{
 						REL_WARNING("{}/0x{:08x} mapped to {} already stored with keyword {}, check data", formName, typedForm->GetFormID(),
@@ -399,6 +406,7 @@ private:
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
 	static constexpr RE::FormID WispCore = 0x10EB2A;
+	static constexpr RE::FormID RollOfPaper = 0x33761;
 
 	void CategorizeStatics();
 	void SetPermanentBlockedItems();

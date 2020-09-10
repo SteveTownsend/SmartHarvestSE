@@ -60,7 +60,7 @@ namespace shse
 
 DataCase* DataCase::s_pInstance = nullptr;
 
-DataCase::DataCase()
+DataCase::DataCase() : m_spellTomeKeyword(nullptr)
 {
 }
 
@@ -1216,6 +1216,12 @@ void DataCase::SetObjectTypeByKeywords()
 			PlayerHouses::Instance().SetKeyword(keywordDef);
 			continue;
 		}
+		// Immersive Armors gives some armors the VendorItemSpellTome keyword. No, they are not spellBook
+		if (keywordName == "VendorItemSpellTome")
+		{
+			REL_VMESSAGE("Found Spell Tome KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
+			m_spellTomeKeyword = keywordDef;
+		}
 		// SPERG mining resource types
 		if (keywordName == "VendorItemOreIngot" || keywordName == "VendorItemGem")
 		{
@@ -1373,6 +1379,8 @@ void DataCase::CategorizeStatics()
 	SetObjectTypeForFormID(LockPick, ObjectType::lockpick);
 	SetObjectTypeForFormID(Gold, ObjectType::septims);
 	SetObjectTypeForFormID(WispCore, ObjectType::critter);
+	// WACCF makes this a Scroll. It's not a Scroll.
+	SetObjectTypeForFormID(RollOfPaper, ObjectType::clutter);
 
 	// record firehose BYOH materials
 	static std::string hearthFiresName("HearthFires.esm");
