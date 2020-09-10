@@ -58,6 +58,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::CannotLootQuestTarget : return "CannotLootQuestTarget";
 	case Lootability::ObjectIsInBlacklistCollection : return "ObjectIsInBlacklistCollection";
 	case Lootability::CannotLootValuableObject : return "CannotLootValuableObject";
+	case Lootability::CannotLootEnchantedObject: return "CannotLootEnchantedObject";
 	case Lootability::CannotLootAmmo : return "CannotLootAmmo";
 	case Lootability::PlayerOwned : return "PlayerOwned";
 	case Lootability::CrimeToLoot : return "CrimeToLoot";
@@ -76,6 +77,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerIsBossChest : return "ContainerIsBossChest";
 	case Lootability::ContainerHasQuestObject : return "ContainerHasQuestObject";
 	case Lootability::ContainerHasValuableObject : return "ContainerHasValuableObject";
+	case Lootability::ContainerHasEnchantedObject: return "ContainerHasEnchantedObject";
 	case Lootability::ReferencesBlacklistedContainer : return "ReferencesBlacklistedContainer";
 	case Lootability::CannotGetAshPile: return "CannotGetAshPile";
 	case Lootability::ProducerHasNoLootable: return "ProducerHasNoLootable";

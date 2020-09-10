@@ -71,7 +71,10 @@ inline bool IsValueWeightExempt(ObjectType objectType)
 
 inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
 {
-	// Allow auto - mining in settlements, which Mines mostly are. No picks for you!
+	// Config setting overrides
+	if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInSettlement") == 0)
+		return false;
+	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
 	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.
 	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
 }
