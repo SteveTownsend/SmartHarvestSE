@@ -68,7 +68,7 @@ void QuestTargets::Analyze()
 {
 	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
 	{
-		DBG_VMESSAGE("Check Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
+		DBG_VMESSAGE("Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
 		std::unordered_map<uint32_t, const RE::BGSBaseAlias*> aliasByID;
 		for (const auto alias : quest->aliases)
 		{
@@ -102,7 +102,7 @@ void QuestTargets::Analyze()
 										// this object in this specific REFR is a Quest Target
 										if (BlacklistQuestTargetReferencedItem(refAlias->fillData.created.object, refr))
 										{
-											DBG_VMESSAGE("Blacklist Specific REFR {}/0x{:08x} to ALCO as Quest Target Item {}/0x{:08x}",
+											REL_VMESSAGE("Blacklist Specific REFR {}/0x{:08x} to ALCO as Quest Target Item {}/0x{:08x}",
 												refr->GetName(), refr->GetFormID(),
 												refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
 											continue;
@@ -144,7 +144,7 @@ void QuestTargets::Analyze()
 					else if ((isQuest || (!refAlias->fillData.created.object->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
 						BlacklistQuestTargetItem(refAlias->fillData.created.object))
 					{
-						DBG_VMESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
+						REL_VMESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
 							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount);
 					}
 					else
@@ -164,7 +164,7 @@ void QuestTargets::Analyze()
 							// record this specific REFR as the QUST target
 							if ((isQuest || (ReferenceIsLootable(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
 							{
-								DBG_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
+								REL_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
 									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), itemCount);
 							}
 							else
@@ -182,7 +182,7 @@ void QuestTargets::Analyze()
 					{
 						if (BlacklistQuestTargetNPC(refAlias->fillData.uniqueActor.uniqueActor))
 						{
-							DBG_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
+							REL_VMESSAGE("Blacklist UniqueActor RefAlias ALUA as Quest Target NPC {}/0x{:08x}",
 								refAlias->fillData.uniqueActor.uniqueActor->GetName(), refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
 						}
 						else

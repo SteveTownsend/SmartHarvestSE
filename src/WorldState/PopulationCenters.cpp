@@ -74,6 +74,8 @@ void PopulationCenters::Categorize()
 
 	for (RE::BGSLocation* location : dhnd->GetFormArray<RE::BGSLocation>())
 	{
+		if (std::string(location->GetName()).empty())
+			continue;
 		// Scan location keywords to check if it's a settlement
 		uint32_t numKeywords(location->GetNumKeywords());
 		PopulationCenterSize size(PopulationCenterSize::None);
@@ -97,7 +99,7 @@ void PopulationCenters::Categorize()
 		// record population center size in case looting is selectively prevented
 		if (size != PopulationCenterSize::None)
 		{
-			DBG_MESSAGE("{}/0x{:08x} is population center of type {}", location->GetName(), location->GetFormID(), largestMatch.c_str());
+			REL_MESSAGE("{}/0x{:08x} is population center of type {}", location->GetName(), location->GetFormID(), largestMatch);
 			m_centers.insert(std::make_pair(location, size));
 		}
 		else
@@ -124,6 +126,8 @@ void PopulationCenters::Categorize()
 #endif
 	for (RE::BGSLocation* location : dhnd->GetFormArray<RE::BGSLocation>())
 	{
+		if (std::string(location->GetName()).empty())
+			continue;
 		// check if this is a descendant of a population center
 		RE::BGSLocation* antecedent(location->parentLoc);
 		PopulationCenterSize parentSize(PopulationCenterSize::None);
@@ -134,7 +138,7 @@ void PopulationCenters::Categorize()
 			{
 				parentSize = matched->second;
 				DBG_MESSAGE("{}/0x{:08x} is a descendant of population center {}/0x{:08x} with size {}", location->GetName(), location->GetFormID(),
-					antecedent->GetName(), antecedent->GetFormID(), parentSize);
+					antecedent->GetName(), antecedent->GetFormID(), PopulationCenterSizeName(parentSize));
 				break;
 			}
 			antecedent = antecedent->parentLoc;
@@ -159,7 +163,7 @@ void PopulationCenters::Categorize()
 			if (lootableChildLocations.find(keywordName) != lootableChildLocations.cend())
 			{
 				allowLooting = true;
-				DBG_MESSAGE("{}/0x{:08x} is lootable child location due to keyword {}", location->GetName(), location->GetFormID(), keywordName.c_str());
+				REL_MESSAGE("{}/0x{:08x} is lootable child location due to keyword {}", location->GetName(), location->GetFormID(), keywordName);
 				break;
 			}
 		}
@@ -168,7 +172,8 @@ void PopulationCenters::Categorize()
 
 		// Store the child location with the same criterion as parent, unless it's inherently lootable
 		// e.g. dungeon within the city limits like Whiterun Sewers, parts of the Ratway
-		DBG_MESSAGE("{}/0x{:08x} stored with same rule as its parent population center", location->GetName(), location->GetFormID());
+		REL_MESSAGE("{}/0x{:08x} stored with same rule {} as its parent population center", location->GetName(), location->GetFormID(),
+			PopulationCenterSizeName(parentSize));
 		m_centers.insert(std::make_pair(location, parentSize));
 	}
 #if _DEBUG

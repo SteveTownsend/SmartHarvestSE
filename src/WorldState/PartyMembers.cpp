@@ -135,7 +135,7 @@ void PartyMembers::AsJSON(nlohmann::json& j) const
 
 void PartyMembers::UpdateFrom(const nlohmann::json& j)
 {
-	DBG_MESSAGE("Cosave Party Members\n{}", j.dump(2));
+	REL_MESSAGE("Cosave Party Members\n{}", j.dump(2));
 	RecursiveLockGuard guard(m_partyLock);
 	m_partyUpdates.clear();
 	m_partyUpdates.reserve(j["updates"].size());

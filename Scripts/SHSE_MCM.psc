@@ -59,6 +59,7 @@ float defaultVerticalRadiusFactor
 float verticalRadiusFactor
 int defaultDoorsPreventLooting
 int doorsPreventLooting
+bool lootAllowedItemsInSettlement
 
 int iniSaveLoad
 string[] s_iniSaveLoadArray
@@ -76,8 +77,8 @@ string[] s_playContainerAnimationArray
 int questObjectLoot
 int lockedChestLoot
 int bossChestLoot
+int enchantedItemLoot
 
-bool enchantItemGlow
 bool manualLootTargetNotify
 
 bool disableDuringCombat
@@ -245,7 +246,7 @@ function ApplySettingsFromFile()
     questObjectLoot = GetSetting(type_Harvest, type_Config, "QuestObjectLoot") as int
     lockedChestLoot = GetSetting(type_Harvest, type_Config, "LockedChestLoot") as int
     bossChestLoot = GetSetting(type_Harvest, type_Config, "BossChestLoot") as int
-    enchantItemGlow = GetSetting(type_Harvest, type_Config, "EnchantItemGlow") as bool
+    enchantedItemLoot = GetSetting(type_Harvest, type_Config, "EnchantedItemLoot") as int
     valuableItemLoot = GetSetting(type_Harvest, type_Config, "valuableItemLoot") as int
     valuableItemThreshold = GetSetting(type_Harvest, type_Config, "ValuableItemThreshold") as int
     playerBelongingsLoot = GetSetting(type_Harvest, type_Config, "PlayerBelongingsLoot") as int
@@ -257,6 +258,7 @@ function ApplySettingsFromFile()
 
     verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor") as float
     doorsPreventLooting = GetSetting(type_Harvest, type_Config, "DoorsPreventLooting") as int
+    lootAllowedItemsInSettlement = GetSetting(type_Harvest, type_Config, "LootAllowedItemsInSettlement") as bool
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
@@ -320,7 +322,7 @@ Function ApplySetting(bool reload)
     PutSetting(type_Harvest, type_Config, "PlayContainerAnimation", playContainerAnimation as float)
 
     PutSetting(type_Harvest, type_Config, "QuestObjectLoot", questObjectLoot as float)
-    PutSetting(type_Harvest, type_Config, "EnchantItemGlow", enchantItemGlow as float)
+    PutSetting(type_Harvest, type_Config, "EnchantedItemLoot", enchantedItemLoot as float)
     PutSetting(type_Harvest, type_Config, "valuableItemLoot", valuableItemLoot as float)
     PutSetting(type_Harvest, type_Config, "ValuableItemThreshold", valuableItemThreshold as float)
     PutSetting(type_Harvest, type_Config, "LockedChestLoot", lockedChestLoot as float)
@@ -333,6 +335,7 @@ Function ApplySetting(bool reload)
 
     PutSetting(type_Harvest, type_Config, "VerticalRadiusFactor", verticalRadiusFactor as float)
     PutSetting(type_Harvest, type_Config, "DoorsPreventLooting", doorsPreventLooting as float)
+    PutSetting(type_Harvest, type_Config, "LootAllowedItemsInSettlement", lootAllowedItemsInSettlement as float)
 
     PutSettingObjectArray(type_Harvest, type_ItemObject, 32, objectSettingArray)
 
@@ -485,8 +488,11 @@ Function SetMiscDefaults(bool firstTime)
     eventScript.UpdateMaxMiningItems(maxMiningItems)
 
     notifyLocationChange = false
-    valuableItemLoot = 2
+    enchantedItemLoot = 1
+    valuableItemLoot = 1
     valuableItemThreshold = 500
+    lootAllowedItemsInSettlement = true
+
     InstallCollections()
     InstallCollectionGroupPolicy()
     InstallCollectionDescriptionsActions()
@@ -521,7 +527,7 @@ Function InstallCollectionDescriptionsActions()
     collectionDescriptions = new String[128]
     ; do not allow Print in MCM
     s_collectibleActions = New String[4]
-    s_collectibleActions[0] = "$SHSE_DONT_PICK_UP"
+    s_collectibleActions[0] = "$SHSE_LEAVE_BEHIND"
     s_collectibleActions[1] = "$SHSE_PICK_UP"
     s_collectibleActions[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
     s_collectibleActions[3] = "$SHSE_PRINT_MESSAGE"
@@ -695,7 +701,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 43
+    return 44
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -784,6 +790,13 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 43 && CurrentVersion < 43
         InstallSagaRendering()
+    endIf
+    if a_version >= 44 && CurrentVersion < 44
+        ; update to Leave action string
+        InstallCollectionDescriptionsActions()
+        ; Nuke enchanted item setting with new default
+        enchantedItemLoot = 1
+        lootAllowedItemsInSettlement = true
     endIf
 endEvent
 
@@ -1035,7 +1048,7 @@ event OnPageReset(string currentPage)
         AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_specialObjectHandlingArray[lockedChestLoot])
         AddTextOptionST("bossChestLoot", "$SHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
         AddTextOptionST("playerBelongingsLoot", "$SHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
-        AddToggleOptionST("enchantItemGlow", "$SHSE_ENCHANTITEM_GLOW", enchantItemGlow)
+        AddTextOptionST("enchantedItemLootState", "$SHSE_ENCHANTED_ITEM_LOOT", s_specialObjectHandlingArray[enchantedItemLoot])
         AddTextOptionST("valuableItemLoot", "$SHSE_VALUABLE_ITEM_LOOT", s_specialObjectHandlingArray[valuableItemLoot])
         AddSliderOptionST("valuableItemThreshold", "$SHSE_VALUABLE_ITEM_THRESHOLD", valuableItemThreshold as float, "$SHSE_MONEY")
         AddToggleOptionST("manualLootTargetNotify", "$SHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
@@ -1047,6 +1060,7 @@ event OnPageReset(string currentPage)
         AddHeaderOption("$SHSE_MORE_REALISM_HEADER")
         AddSliderOptionST("VerticalRadiusFactorState", "$SHSE_VERTICAL_RADIUS_FACTOR", verticalRadiusFactor as float, "{2}")
         AddToggleOptionST("DoorsPreventLootingState", "$SHSE_DOORS_PREVENT_LOOTING", doorsPreventLooting as bool)
+        AddToggleOptionST("LootAllowedItemsInSettlementState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT", lootAllowedItemsInSettlement as bool)
 
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -1617,6 +1631,22 @@ state DoorsPreventLootingState
     endEvent
 endState
 
+state LootAllowedItemsInSettlementState
+    event OnSelectST()
+        lootAllowedItemsInSettlement = (!(lootAllowedItemsInSettlement as bool)) as int
+        SetToggleOptionValueST(lootAllowedItemsInSettlement as bool)
+    endEvent
+
+    event OnDefaultST()
+        lootAllowedItemsInSettlement = true
+        SetToggleOptionValueST(lootAllowedItemsInSettlement as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT"))
+    endEvent
+endState
+
 state ValueWeightDefault
     event OnSliderOpenST()
         SetSliderDialogStartValue(valueWeightDefault)
@@ -1825,19 +1855,20 @@ state questObjectLoot
     endEvent
 endState
 
-state enchantItemGlow
+state enchantedItemLootState
     event OnSelectST()
-        enchantItemGlow = !(enchantItemGlow as bool)
-        SetToggleOptionValueST(enchantItemGlow)
+        int size = s_specialObjectHandlingArray.length
+        enchantedItemLoot = CycleInt(enchantedItemLoot, size)
+        SetTextOptionValueST(s_specialObjectHandlingArray[enchantedItemLoot])
     endEvent
 
     event OnDefaultST()
-        enchantItemGlow = true
-        SetToggleOptionValueST(enchantItemGlow)
+        enchantedItemLoot = 1
+        SetTextOptionValueST(s_specialObjectHandlingArray[enchantedItemLoot])
     endEvent
 
     event OnHighlightST()
-        SetInfoText(GetTranslation("$SHSE_DESC_ENCHANTITEM_GLOW"))
+        SetInfoText(GetTranslation("$SHSE_DESC_ENCHANTED_ITEM_LOOT"))
     endEvent
 endState
 
@@ -1849,7 +1880,7 @@ state valuableItemLoot
     endEvent
 
     event OnDefaultST()
-        valuableItemLoot = 2
+        valuableItemLoot = 1
         SetTextOptionValueST(s_specialObjectHandlingArray[valuableItemLoot])
     endEvent
 

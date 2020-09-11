@@ -208,7 +208,7 @@ void ActorTracker::AsJSON(nlohmann::json& j) const
 // rehydrate from cosave data
 void ActorTracker::UpdateFrom(const nlohmann::json& j)
 {
-	DBG_MESSAGE("Cosave Party Victims\n{}", j.dump(2));
+	REL_MESSAGE("Cosave Party Victims\n{}", j.dump(2));
 	RecursiveLockGuard guard(m_actorLock);
 	m_victims.clear();
 	m_victims.reserve(j["victims"].size());

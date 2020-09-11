@@ -61,10 +61,12 @@ public:
 
 	bool ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const;
 
-	ObjectType GetFormObjectType(RE::FormID formID) const;
-	bool SetObjectTypeForForm(RE::FormID formID, ObjectType objectType);
-	void ForceObjectTypeForForm(RE::FormID formID, ObjectType objectType);
-	ObjectType GetObjectTypeForFormType(RE::FormType formType) const;
+	ObjectType GetFormObjectType(const RE::FormID formID) const;
+	bool SetObjectTypeForFormID(const RE::FormID formID, const ObjectType objectType);
+	bool SetObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType);
+	void ForceObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType);
+	ObjectType GetObjectTypeForFormType(const RE::FormType formType) const;
+	bool SetObjectTypeForFormType(const RE::FormType formType, const ObjectType objectType);
 
 	template <typename T>
 	ObjectType GetObjectTypeForForm(T* form) const
@@ -100,6 +102,10 @@ public:
 	{
 		return m_offLimitsLocations;
 	}
+	inline bool IsOffLimitsLocation(const RE::TESForm* badPlace) const
+	{
+		return m_offLimitsLocations.contains(badPlace);
+	}
 	inline bool IsOffLimitsContainer(const RE::TESObjectREFR* containerRef) const
 	{
 		return m_offLimitsContainers.contains(containerRef->GetFormID());
@@ -128,6 +134,7 @@ private:
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
 	// assume simple setters for now, like vanilla Green Thumb
 	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
+	RE::BGSKeyword* m_spellTomeKeyword;
 
 	mutable RecursiveLock m_blockListLock;
 
@@ -218,14 +225,7 @@ private:
 				if (storedType != ObjectType::unknown)
 				{ 
 					// Store mapping of Produce holder to ingredient - this is the most correct type for this item producer
-					if (SetObjectTypeForForm(target->GetFormID(), storedType))
-					{
-						DBG_VMESSAGE("Target {}/0x{:08x} stored as type {}", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
-					}
-					else
-					{
-						REL_WARNING("Target {}/0x{:08x} ({}) already stored, check data", targetName, target->GetFormID(), GetObjectTypeName(storedType).c_str());
-					}
+					SetObjectTypeForForm(target, storedType);
 				}
 				else
 				{
@@ -270,8 +270,7 @@ private:
 			}
 
 			ObjectType objectType(ConsumableObjectType<T>(consumable));
-			DBG_MESSAGE("Consumable {}/0x{:08x} has type {}", formName.c_str(), consumable->GetFormID(), GetObjectTypeName(objectType).c_str());
-			m_objectTypeByForm[consumable->GetFormID()] = objectType;
+			SetObjectTypeForForm(consumable, objectType);
 		}
 	}
 
@@ -353,6 +352,12 @@ private:
 					{
 						continue;
 					}
+					// Immersive Armors gives some armors the VendorItemSpellTome keyword. No, they are not spellBook
+					if (keyword == m_spellTomeKeyword)
+					{
+						// spellBook is not a legal mapping for MISC, ARMO or WEAP. Revisit if we add more instantiations.
+						REL_WARNING("Spell tome Keyword not valid for {}/0x{:08x}",formName, typedForm->GetFormID());
+					}
 					else if (correctType != ObjectType::unknown)
 					{
 						REL_WARNING("{}/0x{:08x} mapped to {} already stored with keyword {}, check data", formName, typedForm->GetFormID(),
@@ -371,14 +376,7 @@ private:
 			correctType = OverrideIfBadChoice<T>(typedForm, correctType);
 			if (correctType != ObjectType::unknown)
 			{
-				if (SetObjectTypeForForm(typedForm->GetFormID(), correctType))
-				{
-					DBG_VMESSAGE("{}/0x{:08x} stored as {}", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
-				}
-				else
-				{
-					REL_WARNING("{}/0x{:08x} ({}) already stored, check data", formName, typedForm->GetFormID(), GetObjectTypeName(correctType).c_str());
-				}
+				SetObjectTypeForForm(typedForm, correctType);
 				continue;
 			}
 
@@ -386,14 +384,7 @@ private:
 			// Also, check model path for - you guessed it - clutter. Some base game MISC objects lack keywords.
 			if (typedForm->value > 0 || CheckObjectModelPath(typedForm, "clutter"))
 			{
-				if (SetObjectTypeForForm(typedForm->GetFormID(), ObjectType::clutter))
-				{
-					DBG_VMESSAGE("{}/0x{:08x} with value {} stored as clutter", formName, typedForm->GetFormID(), std::max(typedForm->value, int32_t(0)));
-				}
-				else
-				{
-					REL_WARNING("{}/0x{:08x} (defaulting as clutter) already stored, check data", formName, typedForm->GetFormID());
-				}
+				SetObjectTypeForForm(typedForm, ObjectType::clutter);
 				continue;
 			}
 			DBG_VMESSAGE("{}/0x{:08x} not mappable", formName, typedForm->GetFormID());
@@ -415,6 +406,7 @@ private:
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
 	static constexpr RE::FormID WispCore = 0x10EB2A;
+	static constexpr RE::FormID RollOfPaper = 0x33761;
 
 	void CategorizeStatics();
 	void SetPermanentBlockedItems();

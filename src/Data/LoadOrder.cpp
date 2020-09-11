@@ -141,7 +141,7 @@ void LoadOrder::AsJSON(nlohmann::json& j) const
 // used to relink old form IDs to Load Order from saved game - no-op if the two Load Orders are the same
 void LoadOrder::UpdateFrom(const nlohmann::json& j)
 {
-	DBG_MESSAGE("Cosave Load Order\n{}", j.dump(2));
+	REL_MESSAGE("Cosave Load Order\n{}", j.dump(2));
 	RecursiveLockGuard guard(m_loadLock);
 	m_cosaveLoadInfoByName.clear();
 	m_cosaveModNameByMask.clear();
@@ -175,16 +175,19 @@ RE::TESForm* LoadOrder::RehydrateCosaveForm(const RE::FormID cosaveID) const
 			target = RE::TESDataHandler::GetSingleton()->LookupForm(AsRaw(cosaveID), cosaveMod->second);
 			if (target)
 			{
-				REL_WARNING("FormID {}/0x{:08x} in non-aligned cosave mapped to 0x{:08x}", cosaveMod->second, cosaveID, target->GetFormID());
+				if (cosaveID != target->GetFormID())
+				{
+					REL_WARNING("FormID {}/0x{:08x} in non-aligned cosave mapped into current Load Order as 0x{:08x}", cosaveMod->second, cosaveID, target->GetFormID());
+				}
 			}
 			else
 			{
-				REL_WARNING("FormID {}/0x{:08x} in non-aligned cosave cannot be mapped", cosaveMod->second, cosaveID);
+				REL_WARNING("FormID {}/0x{:08x} in non-aligned cosave cannot be loaded", cosaveMod->second, cosaveID);
 			}
 		}
 		else
 		{
-			REL_WARNING("FormID 0x{:08x} in non-aligned cosave is unusable", cosaveID);
+			REL_WARNING("FormID 0x{:08x} in non-aligned cosave is not valid for cosave Load Order", cosaveID);
 		}
 	}
 	else
@@ -197,7 +200,7 @@ RE::TESForm* LoadOrder::RehydrateCosaveForm(const RE::FormID cosaveID) const
 		}
 		else
 		{
-			REL_WARNING("FormID 0x{:08x} from cosave is unusable", cosaveID);
+			REL_WARNING("FormID 0x{:08x} from notionally identical cosave Load Order cannot be loaded", cosaveID);
 		}
 	}
 	return target;

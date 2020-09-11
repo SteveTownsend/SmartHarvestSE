@@ -204,7 +204,7 @@ void VisitedPlaces::AsJSON(nlohmann::json& j) const
 // rehydrate from cosave data
 void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
 {
-	DBG_MESSAGE("Cosave Visited Places\n{}", j.dump(2));
+	REL_MESSAGE("Cosave Visited Places\n{}", j.dump(2));
 	RecursiveLockGuard guard(m_visitedLock);
 	m_visited.clear();
 	m_visited.reserve(j["visited"].size());

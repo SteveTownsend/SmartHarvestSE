@@ -49,12 +49,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	DataCase* data = DataCase::GetInstance();
 	Lootability result(Lootability::Lootable);
 	LootableREFR refrEx(m_candidate, m_targetType);
-	QuestObjectHandling questObjectLoot =
-		QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
-	if (m_glowOnly)
-	{
-		questObjectLoot = QuestObjectHandling::GlowTarget;
-	}
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
 		ObjectType objType = refrEx.GetObjectType();
@@ -149,7 +143,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (refrEx.IsQuestItem())
 		{
+			QuestObjectHandling questObjectLoot =
+				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
+			if (m_glowOnly)
+			{
+				questObjectLoot = QuestObjectHandling::GlowTarget;
+			}
 			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
 				DBG_VMESSAGE("glow quest object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
@@ -162,16 +162,44 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			result = Lootability::CannotLootQuestTarget;
 		}
 		// glow unread notes as they are often quest-related
-		else if (questObjectLoot == QuestObjectHandling::GlowTarget && objType == ObjectType::book && IsBookGlowable())
+		else if (objType == ObjectType::book)
 		{
-			DBG_VMESSAGE("Glowable book 0x{:08x}", m_candidate->GetBaseObject()->formID);
-			UpdateGlowReason(GlowReason::SimpleTarget);
+			QuestObjectHandling questObjectLoot =
+				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+			if (questObjectLoot == QuestObjectHandling::GlowTarget && IsBookGlowable())
+			{
+				DBG_VMESSAGE("Glowable book 0x{:08x}", m_candidate->GetBaseObject()->formID);
+				UpdateGlowReason(GlowReason::SimpleTarget);
+			}
 		}
 
-		SpecialObjectHandling valuableLoot =
-			SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+		if (m_candidate->IsEnchanted())
+		{
+			SpecialObjectHandling enchantedLoot =
+				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
+			DBG_VMESSAGE("Enchanted Item {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			if (m_glowOnly)
+			{
+				enchantedLoot = SpecialObjectHandling::GlowTarget;
+			}
+			if (enchantedLoot == SpecialObjectHandling::GlowTarget)
+			{
+				DBG_VMESSAGE("glow enchanted object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				UpdateGlowReason(GlowReason::EnchantedItem);
+			}
+
+			if (!IsSpecialObjectLootable(enchantedLoot))
+			{
+				skipLooting = true;
+				// in this case, Collectibility can override the decision
+				result = Lootability::CannotLootEnchantedObject;
+			}
+		}
+
 		if (refrEx.IsValuable())
 		{
+			SpecialObjectHandling valuableLoot =
+				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
 			DBG_VMESSAGE("Valuable Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (m_glowOnly)
 			{
@@ -440,90 +468,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-		if (lister.HasQuestItem())
-		{
-			if (questObjectLoot == QuestObjectHandling::GlowTarget)
-			{
-				DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
-				UpdateGlowReason(GlowReason::QuestObject);
-			}
-
-			// this is not a blocker for looting of non-special items
-			lister.ExcludeQuestItems();
-			result = Lootability::ContainerHasQuestObject;
-		}
-
-		if (lister.HasEnchantedItem())
-		{
-			int32_t enchantItemGlow = static_cast<int>(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "enchantItemGlow"));
-			if (m_glowOnly)
-			{
-				enchantItemGlow = 1;
-			}
-			if (enchantItemGlow == 1)
-			{
-				DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
-				UpdateGlowReason(GlowReason::EnchantedItem);
-				// this is not a blocker for looting of non-special items
-				lister.ExcludeEnchantedItems();
-			}
-		}
-
-		if (lister.HasValuableItem())
-		{
-			SpecialObjectHandling valuableLoot =
-				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
-			if (m_glowOnly)
-			{
-				valuableLoot = SpecialObjectHandling::GlowTarget;
-			}
-			if (valuableLoot == SpecialObjectHandling::GlowTarget)
-			{
-				DBG_VMESSAGE("glow container with valuable object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
-				UpdateGlowReason(GlowReason::Valuable);
-				// this is not a blocker for looting of non-special items
-				lister.ExcludeValuableItems();
-			}
-
-			if (!IsSpecialObjectLootable(valuableLoot))
-			{
-				result = Lootability::ContainerHasValuableObject;
-			}
-		}
-
-		if (lister.HasCollectibleItem())
-		{
-			CollectibleHandling collectibleAction(lister.CollectibleAction());
-			if (m_glowOnly)
-			{
-				collectibleAction = CollectibleHandling::Glow;
-			}
-			if (!CanLootCollectible(collectibleAction))
-			{
-				// this is not a blocker for looting of non-special items
-				lister.ExcludeCollectibleItems();
-
-				if (collectibleAction == CollectibleHandling::Glow)
-				{
-					DBG_VMESSAGE("glow container with collectible object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
-					UpdateGlowReason(GlowReason::Collectible);
-					result = Lootability::CollectibleItemSetToGlow;
-				}
-				else if (collectibleAction == CollectibleHandling::Print)
-				{
-					result = Lootability::ManualLootTarget;
-				}
-				else
-				{
-					result = Lootability::ItemInBlacklistCollection;
-				}
-			}
-		}
-
 		// Container or NPC may itself be a Quest target - if so the entire thing is blocked from autoloot
 		if (refrEx.IsQuestItem())
 		{
-			DBG_VMESSAGE("Quest Container/NPC REFR 0x{:08x} to {}/0x{:08x}, glow={}", m_candidate->GetFormID(),	m_candidate->GetBaseObject()->GetName(),
+			QuestObjectHandling questObjectLoot =
+				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+			DBG_VMESSAGE("Quest Container/NPC REFR 0x{:08x} to {}/0x{:08x}, glow={}", m_candidate->GetFormID(), m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->formID, questObjectLoot == QuestObjectHandling::GlowTarget ? "true" : "false");
 			if (questObjectLoot == QuestObjectHandling::GlowTarget)
 			{
@@ -533,14 +483,103 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			skipLooting = true;
 			result = Lootability::CannotLootQuestTarget;
 		}
-
-		// Order is important to ensure we glow correctly even if blocked.
-		// Check here is on the container, skip all contents if looting not permitted
-		Lootability forbidden(LootingLegality(m_targetType));
-		if (forbidden != Lootability::Lootable)
+		else
 		{
-			skipLooting = true;
-			result = forbidden;
+			if (lister.HasQuestItem())
+			{
+				QuestObjectHandling questObjectLoot =
+					QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+				if (questObjectLoot == QuestObjectHandling::GlowTarget)
+				{
+					DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+					UpdateGlowReason(GlowReason::QuestObject);
+				}
+
+				// this is not a blocker for looting of non-special items
+				lister.ExcludeQuestItems();
+				result = Lootability::ContainerHasQuestObject;
+			}
+
+			if (lister.HasEnchantedItem())
+			{
+				SpecialObjectHandling enchantedLoot =
+					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
+				if (m_glowOnly)
+				{
+					enchantedLoot = SpecialObjectHandling::GlowTarget;
+				}
+				if (enchantedLoot == SpecialObjectHandling::GlowTarget)
+				{
+					DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+					UpdateGlowReason(GlowReason::EnchantedItem);
+				}
+				if (!IsSpecialObjectLootable(enchantedLoot))
+				{
+					// this is not a blocker for looting of non-special items
+					lister.ExcludeEnchantedItems();
+					result = Lootability::ContainerHasEnchantedObject;
+				}
+			}
+
+			if (lister.HasValuableItem())
+			{
+				SpecialObjectHandling valuableLoot =
+					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+				if (m_glowOnly)
+				{
+					valuableLoot = SpecialObjectHandling::GlowTarget;
+				}
+				if (valuableLoot == SpecialObjectHandling::GlowTarget)
+				{
+					DBG_VMESSAGE("glow container with valuable object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+					UpdateGlowReason(GlowReason::Valuable);
+				}
+
+				if (!IsSpecialObjectLootable(valuableLoot))
+				{
+					// this is not a blocker for looting of non-special items
+					lister.ExcludeValuableItems();
+					result = Lootability::ContainerHasValuableObject;
+				}
+			}
+
+			if (lister.HasCollectibleItem())
+			{
+				CollectibleHandling collectibleAction(lister.CollectibleAction());
+				if (m_glowOnly)
+				{
+					collectibleAction = CollectibleHandling::Glow;
+				}
+				if (!CanLootCollectible(collectibleAction))
+				{
+					// this is not a blocker for looting of non-special items
+					lister.ExcludeCollectibleItems();
+
+					if (collectibleAction == CollectibleHandling::Glow)
+					{
+						DBG_VMESSAGE("glow container with collectible object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+						UpdateGlowReason(GlowReason::Collectible);
+						result = Lootability::CollectibleItemSetToGlow;
+					}
+					else if (collectibleAction == CollectibleHandling::Print)
+					{
+						result = Lootability::ManualLootTarget;
+					}
+					else
+					{
+						result = Lootability::ItemInBlacklistCollection;
+					}
+				}
+			}
+
+			// Order is important to ensure we glow correctly even if blocked.
+			// Check here is on the container, skip all contents if looting not permitted
+			Lootability forbidden(LootingLegality(m_targetType));
+			if (forbidden != Lootability::Lootable)
+			{
+				skipLooting = true;
+				result = forbidden;
+			}
 		}
 
 		// Always allow auto-looting of dead bodies, e.g. Solitude Hall of the Dead in LCTN Solitude has skeletons that we

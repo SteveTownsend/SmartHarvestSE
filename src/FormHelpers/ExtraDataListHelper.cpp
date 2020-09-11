@@ -45,7 +45,7 @@ bool ExtraDataListHelper::IsItemQuestObject(const RE::TESBoundObject* item) cons
 	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
 		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
 			if (alias->alias->IsQuestObject()) {
-				REL_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
+				DBG_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
 					alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
 				return true;
 			}
@@ -65,7 +65,7 @@ bool ExtraDataListHelper::IsREFRQuestObject(const RE::TESObjectREFR* refr) const
 	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
 		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
 		if (alias->alias->IsQuestObject()) {
-			REL_VMESSAGE("Quest Target REFR {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", refr->GetName(), refr->GetFormID(),
+			DBG_VMESSAGE("Quest Target REFR {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", refr->GetName(), refr->GetFormID(),
 				alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
 			return true;
 		}
