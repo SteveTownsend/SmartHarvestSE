@@ -50,8 +50,8 @@ LocationTracker& LocationTracker::Instance()
 }
 
 LocationTracker::LocationTracker() : 
-	m_playerCell(nullptr), m_playerLocation(nullptr), m_playerParentWorld(nullptr),
-	m_tellPlayerIfCanLootAfterLoad(false)
+	m_playerCellID(InvalidForm), m_playerIndoors(false), m_playerCellX(0), m_playerCellY(0), m_playerLocation(nullptr),
+	m_playerParentWorld(nullptr), m_tellPlayerIfCanLootAfterLoad(false)
 {
 }
 
@@ -163,7 +163,7 @@ std::string LocationTracker::ConversationalDistance(const double milesAway) cons
 
 std::string LocationTracker::PlayerExactLocation() const
 {
-	if (!m_playerCell && !m_playerLocation)
+	if (m_playerCellID == InvalidForm && !m_playerLocation)
 		return "unknown";
 
 	std::ostringstream locationStr;
@@ -171,9 +171,10 @@ std::string LocationTracker::PlayerExactLocation() const
 	{
 		locationStr << "at " << m_playerLocation->GetName() << "/0x" << StringUtils::FromFormID(m_playerLocation->GetFormID()) << ' ';
 	}
-	if (m_playerCell)
+	if (m_playerCellID != InvalidForm)
 	{
-		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(m_playerCell) << "/0x" << StringUtils::FromFormID(m_playerCell->GetFormID());
+		RE::TESObjectCELL* cell(RE::TESForm::LookupByID<RE::TESObjectCELL>(m_playerCellID));
+		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(cell) << "/0x" << StringUtils::FromFormID(m_playerCellID);
 	}
 	return locationStr.str();
 }
@@ -372,13 +373,13 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 	}
 
 	RecursiveLockGuard guard(m_locationLock);
-	if (!m_playerCell)
+	if (!m_playerCellID == InvalidForm)
 	{
 		// setup in progress
 		return nullptr;
 	}
 	// Adventure Target sensing only works outdoors
-	if (m_playerCell->IsInteriorCell())
+	if (m_playerIndoors)
 	{
 		static RE::BSFixedString locationText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_GO_OUTSIDE_ADVENTURE_TARGET")));
 		if (!locationText.empty())
@@ -461,7 +462,11 @@ void LocationTracker::Reset()
 	DBG_MESSAGE("Reset Location Tracking after reload");
 	RecursiveLockGuard guard(m_locationLock);
 	m_tellPlayerIfCanLootAfterLoad = true;
-	m_playerCell = nullptr;
+	m_playerCellID = InvalidForm;
+	m_playerIndoors = false;
+	m_playerPlaceName.clear();
+    m_playerCellX = 0;
+    m_playerCellY = 0;
 	m_adjacentCells.clear();
 	m_playerLocation = nullptr;
 	m_playerParentWorld = nullptr;
@@ -524,23 +529,36 @@ bool LocationTracker::Refresh()
 	// Reset blocked lists if player cell has changed
 	bool playerMoved(false);
 	// save current context
-	const RE::TESForm* originalPlace(CurrentPlayerPlace());
-	const RE::TESObjectCELL* originalCell(m_playerCell);
+	const std::string originalPlaceName(m_playerPlaceName);
+	const RE::FormID originalCellID(m_playerCellID);
 	const RE::BGSLocation* originalLocation(m_playerLocation);
 
-	RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
-	if (playerCell != originalCell)
+	const RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
+	RE::FormID playerCellID(playerCell ? playerCell->GetFormID() : InvalidForm);
+	bool indoorsNow(playerCell ? playerCell->IsInteriorCell() : false);
+	if (playerCellID != originalCellID)
 	{
 		// CELL change only triggers visited-place update if we went from outdoors to indoors or vice versa
-		playerMoved = !originalCell || !playerCell || originalCell->IsInteriorCell() != playerCell->IsInteriorCell();
-		m_playerCell = playerCell;
-		if (m_playerCell)
+		playerMoved = originalCellID == InvalidForm || playerCellID == InvalidForm || m_playerIndoors != indoorsNow;
+		m_playerCellID = playerCellID;
+		m_playerIndoors = indoorsNow;
+		if (playerCell)
 		{
-			DBG_MESSAGE("Player cell updated to 0x{:08x}", m_playerCell->GetFormID());
-			RecordAdjacentCells();
+			DBG_MESSAGE("Player cell updated to 0x{:08x}", m_playerCellID);
+			if (m_playerIndoors)
+			{
+				m_playerCellX = 0;
+				m_playerCellY = 0;
+			}
+			else
+			{
+				const auto playerCoordinates(const_cast<RE::TESObjectCELL*>(playerCell)->GetCoordinates());
+				m_playerCellX = playerCoordinates->cellX;
+				m_playerCellY = playerCoordinates->cellY;
+			}
 
 			// player cell is valid - check for worldspace update
-			const RE::TESWorldSpace* parentWorld(ParentWorld(m_playerCell));
+			const RE::TESWorldSpace* parentWorld(ParentWorld(playerCell));
 			if (parentWorld && parentWorld != m_playerParentWorld)
 			{
 				m_playerParentWorld = parentWorld;
@@ -548,6 +566,8 @@ bool LocationTracker::Refresh()
 
 				RecordMarkedPlaces();
 			}
+
+			RecordAdjacentCells();
 		}
 		else
 		{
@@ -559,22 +579,22 @@ bool LocationTracker::Refresh()
 	}
 
 	// Scan and Location tracking should not run if Player cell is not yet filled in
-	if (!m_playerCell)
+	if (m_playerCellID == InvalidForm)
 		return false;
 
 	const RE::BGSLocation* playerLocation(player->currentLocation);
-	if (m_playerCell != originalCell || playerLocation != originalLocation || m_tellPlayerIfCanLootAfterLoad)
+	if (m_playerCellID != originalCellID || playerLocation != originalLocation || m_tellPlayerIfCanLootAfterLoad)
 	{
         // record all Location changes - Location may be blank now but we want to know we left a Location
 		playerMoved = playerMoved || playerLocation != originalLocation || m_tellPlayerIfCanLootAfterLoad;
 
 		// Output messages for any looting-restriction place change
 		static const bool allowIfRestricted(false);
-		std::string oldName(PlaceName(originalPlace));
-		bool couldLootInPrior(LocationTracker::Instance().IsPlaceLootable(originalCell, originalLocation, allowIfRestricted));
-		DBG_MESSAGE("Player was at {}, lootable = {}, now at {}", oldName.c_str(),
-			couldLootInPrior ? "true" : "false", PlaceName(CurrentPlayerPlace()));
+		bool couldLootInPrior(LocationTracker::Instance().IsPlaceLootable(originalCellID, originalLocation, allowIfRestricted));
 		m_playerLocation = playerLocation;
+		m_playerPlaceName = PlaceName(CurrentPlayerPlace());
+		DBG_MESSAGE("Player was at {}, lootable = {}, now at {}", originalPlaceName,
+			couldLootInPrior ? "true" : "false", m_playerPlaceName);
 
 		// location change may mark the end of an in-progress 'Venture into the Unknown'
 		AdventureTargets::Instance().CheckReachedCurrentDestination(m_playerLocation);
@@ -583,7 +603,7 @@ bool LocationTracker::Refresh()
 		bool tellPlayer(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0);
 
 		// check if new location/cell is a newly-visited player house
-		if (!IsPlacePlayerHome(m_playerCell, m_playerLocation))
+		if (!IsPlacePlayerHome(m_playerCellID, m_playerLocation))
 		{
 			if (m_playerLocation && PlayerHouses::Instance().IsValidHouse(m_playerLocation))
 			{
@@ -591,25 +611,24 @@ bool LocationTracker::Refresh()
 				DBG_MESSAGE("Player House LCTN {}/0x{:08x} detected", m_playerLocation->GetName(), m_playerLocation->GetFormID());
 				PlayerHouses::Instance().Add(m_playerLocation);
 			}
-			else if (m_playerCell && PlayerHouses::Instance().IsValidHouseCell(m_playerCell))
+			else if (m_playerCellID != InvalidForm && PlayerHouses::Instance().IsValidHouseCell(m_playerCellID))
 			{
 				// record Cell as a player house and notify as it is a new one in this game load
-				DBG_MESSAGE("Player House CELL {}/0x{:08x} detected", m_playerCell->GetName(), m_playerCell->GetFormID());
-				PlayerHouses::Instance().AddCell(m_playerCell);
+				DBG_MESSAGE("Player House CELL {}/0x{:08x} detected", PlayerCell()->GetName(), m_playerCellID);
+				PlayerHouses::Instance().AddCell(m_playerCellID);
 			}
 		}
 		// Display messages about location auto-loot restrictions, if set in config
 		if (tellPlayer)
 		{
 			// notify entry to player home unless this was a menu reset, regardless of whether it's new to us
-			const std::string placeName(PlaceName(CurrentPlayerPlace()));
 			if (IsPlayerAtHome())
 			{
 				static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
 				if (!playerHouseMsg.empty())
 				{
 					std::string notificationText(playerHouseMsg);
-					StringUtils::Replace(notificationText, "{HOUSENAME}", placeName);
+					StringUtils::Replace(notificationText, "{HOUSENAME}", m_playerPlaceName);
 					RE::DebugNotification(notificationText.c_str());
 				}
 			}
@@ -617,12 +636,12 @@ bool LocationTracker::Refresh()
 			if ((couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) &&
 				!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
 			{
-				DBG_MESSAGE("Player Location {} no-loot message", placeName);
+				DBG_MESSAGE("Player Location {} no-loot message", m_playerPlaceName);
 				static RE::BSFixedString restrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
 				if (!restrictedPlaceMsg.empty())
 				{
 					std::string notificationText(restrictedPlaceMsg);
-					StringUtils::Replace(notificationText, "{LOCATIONNAME}", placeName);
+					StringUtils::Replace(notificationText, "{LOCATIONNAME}", m_playerPlaceName);
 					RE::DebugNotification(notificationText.c_str());
 				}
 			}
@@ -635,12 +654,12 @@ bool LocationTracker::Refresh()
 			if ((!couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) &&
 				LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
 			{
-				DBG_MESSAGE("Player Location {} OK-loot message", oldName.c_str());
+				DBG_MESSAGE("Player Location {} OK-loot message", originalPlaceName);
 				static RE::BSFixedString unrestrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_UNPOPULATED_CHECK")));
 				if (!unrestrictedPlaceMsg.empty())
 				{
 					std::string notificationText(unrestrictedPlaceMsg);
-					StringUtils::Replace(notificationText, "{LOCATIONNAME}", oldName.c_str());
+					StringUtils::Replace(notificationText, "{LOCATIONNAME}", originalPlaceName);
 					RE::DebugNotification(notificationText.c_str());
 				}
 			}
@@ -660,42 +679,44 @@ bool LocationTracker::Refresh()
 bool LocationTracker::IsPlayerAtHome() const
 {
 	RecursiveLockGuard guard(m_locationLock);
-	return IsPlacePlayerHome(m_playerCell, m_playerLocation);
+	return IsPlacePlayerHome(m_playerCellID, m_playerLocation);
 }
 
-bool LocationTracker::IsPlacePlayerHome(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const
+bool LocationTracker::IsPlacePlayerHome(const RE::FormID cellID, const RE::BGSLocation* location) const
 {
-	return PlayerHouses::Instance().Contains(location) || PlayerHouses::Instance().ContainsCell(cell);
+	return PlayerHouses::Instance().Contains(location) || PlayerHouses::Instance().ContainsCell(cellID);
 }
 
 void LocationTracker::RecordCurrentPlace(const float gameTime)
 {
-	VisitedPlaces::Instance().RecordVisit(
-		m_playerParentWorld, m_playerLocation, m_playerCell, PlayerState::Instance().GetPosition(), gameTime);
+	VisitedPlaces::Instance().RecordVisit(m_playerParentWorld, m_playerLocation, m_playerCellID,
+		PlayerState::Instance().GetPosition(), gameTime);
 }
 
 bool LocationTracker::IsPlayerInLootablePlace(const bool lootableIfRestricted)
 {
 	RecursiveLockGuard guard(m_locationLock);
-	return IsPlaceLootable(m_playerCell, m_playerLocation, lootableIfRestricted);
+	return IsPlaceLootable(m_playerCellID, m_playerLocation, lootableIfRestricted);
 }
 
 bool LocationTracker::IsPlaceLootable(
-	const RE::TESObjectCELL* cell, const RE::BGSLocation* location, const bool lootableIfRestricted)
+	const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted)
 {
 	RecursiveLockGuard guard(m_locationLock);
 	// whitelist overrides all other considerations
-	if (IsPlaceWhitelisted(cell, location))
+	DBG_DMESSAGE("Check autoloot for cell 0x{:08x}, location {}/0x{:08x}", cellID,
+		location ? location->GetName() : "", location ? location->GetFormID() : InvalidForm);
+	if (IsPlaceWhitelisted(cellID, location))
 	{
 		DBG_DMESSAGE("Player location is on WhiteList");
 		return true;
 	}
-	if (IsPlacePlayerHome(cell, location))
+	if (IsPlacePlayerHome(cellID, location))
 	{
 		DBG_DMESSAGE("Player House: no looting");
 		return false;
 	}
-	if (IsPlaceBlacklisted(cell, location))
+	if (IsPlaceBlacklisted(cellID, location))
 	{
 		DBG_DMESSAGE("Player location is on BlackList");
 		return false;
@@ -705,7 +726,6 @@ bool LocationTracker::IsPlaceLootable(
 		DBG_DMESSAGE("Player location is restricted as population center");
 		return false;
 	}
-	DBG_DMESSAGE("Place {} OK to autoloot", PlaceName(location ? static_cast<const RE::TESForm*>(location) : static_cast<const RE::TESForm*>(cell)));
 	return true;
 }
 
@@ -719,9 +739,8 @@ bool LocationTracker::IsAdjacent(RE::TESObjectCELL* cell) const
 {
 	// XCLC data available since both are exterior cells, by construction
 	const auto checkCoordinates(cell->GetCoordinates());
-	const auto myCoordinates(m_playerCell->GetCoordinates());
-	return std::abs(myCoordinates->cellX - checkCoordinates->cellX) <= 1 &&
-		std::abs(myCoordinates->cellY - checkCoordinates->cellY) <= 1;
+	return std::abs(m_playerCellX - checkCoordinates->cellX) <= 1 &&
+		std::abs(m_playerCellY - checkCoordinates->cellY) <= 1;
 }
 
 // this is only called when we updated player-cell with a valid value
@@ -730,18 +749,17 @@ void LocationTracker::RecordAdjacentCells()
 	m_adjacentCells.clear();
 
 	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
-	if (!m_playerCell->IsInteriorCell())
+	if (!m_playerIndoors)
 	{
-		DBG_VMESSAGE("Check for adjacent cells to 0x{:08x}", m_playerCell->GetFormID());
-		RE::TESWorldSpace* worldSpace(m_playerCell->worldSpace);
-		if (worldSpace)
+		DBG_VMESSAGE("Check for adjacent cells to 0x{:08x}", m_playerCellID);
+		if (m_playerParentWorld)
 		{
-			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", worldSpace->GetName(), worldSpace->GetFormID());
-			for (const auto& worldCell : worldSpace->cellMap)
+			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", m_playerParentWorld->GetName(), m_playerParentWorld->GetFormID());
+			for (const auto& worldCell : m_playerParentWorld->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
 				// skip player cell, handled above
-				if (candidateCell == m_playerCell)
+				if (candidateCell->GetFormID() == m_playerCellID)
 				{
 					DBG_VMESSAGE("Player cell, already handled");
 					continue;
@@ -768,35 +786,38 @@ void LocationTracker::RecordAdjacentCells()
 bool LocationTracker::IsPlayerIndoors() const
 {
 	RecursiveLockGuard guard(m_locationLock);
-	return m_playerCell && m_playerCell->IsInteriorCell();
+	return m_playerIndoors;
 }
 
+// get current from game and check consistent with our stored state
 const RE::TESObjectCELL* LocationTracker::PlayerCell() const
 {
 	RecursiveLockGuard guard(m_locationLock);
-	return m_playerCell && m_playerCell->IsAttached() ? m_playerCell : nullptr;
+	const RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
+	RE::FormID currentCellID(playerCell && playerCell->IsAttached() ? playerCell->GetFormID() : InvalidForm);
+	return currentCellID == m_playerCellID ? playerCell : nullptr;
 }
 
 bool LocationTracker::IsPlayerInWhitelistedPlace() const
 {
 	RecursiveLockGuard guard(m_locationLock);
-	return IsPlaceWhitelisted(m_playerCell, m_playerLocation);
+	return IsPlaceWhitelisted(m_playerCellID, m_playerLocation);
 }
 
-bool LocationTracker::IsPlaceWhitelisted(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const
+bool LocationTracker::IsPlaceWhitelisted(const RE::FormID cellID, const RE::BGSLocation* location) const
 {
 	RecursiveLockGuard guard(m_locationLock);
 	// Player Location may be empty e.g. if we are in the wilderness
 	// Player Cell should never be empty
-	return ManagedList::WhiteList().Contains(location) || ManagedList::WhiteList().Contains(cell);
+	return ManagedList::WhiteList().Contains(location) || ManagedList::WhiteList().ContainsID(cellID);
 }
 
-bool LocationTracker::IsPlaceBlacklisted(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const
+bool LocationTracker::IsPlaceBlacklisted(const RE::FormID cellID, const RE::BGSLocation* location) const
 {
 	RecursiveLockGuard guard(m_locationLock);
 	// Player Location may be empty e.g. if we are in the wilderness
 	// Player Cell should never be empty
-	return ManagedList::BlackList().Contains(location) || ManagedList::BlackList().Contains(cell);
+	return ManagedList::BlackList().Contains(location) || ManagedList::BlackList().ContainsID(cellID);
 }
 
 bool LocationTracker::IsPlayerInRestrictedLootSettlement() const
@@ -820,7 +841,7 @@ bool LocationTracker::IsPlayerInFriendlyCell() const
 	RecursiveLockGuard guard(m_locationLock);
 	// Player Location may be empty e.g. if we are in the wilderness
 	// Player Cell should never be empty
-	CellOwnership ownership(GetCellOwnership(m_playerCell));
+	CellOwnership ownership(GetCellOwnership(PlayerCell()));
 	bool isFriendly(IsPlayerFriendly(ownership));
 	DBG_DMESSAGE("Cell ownership {}, allow Ownerless looting = {}", CellOwnershipName(ownership).c_str(), isFriendly ? "true" : "false");
 	return isFriendly;
@@ -832,7 +853,7 @@ const RE::TESForm* LocationTracker::CurrentPlayerPlace() const
 	RecursiveLockGuard guard(m_locationLock);
 	if (m_playerLocation)
 		return m_playerLocation;
-	return m_playerCell;
+	return PlayerCell();
 }
 
 std::string LocationTracker::PlaceName(const RE::TESForm* place) const

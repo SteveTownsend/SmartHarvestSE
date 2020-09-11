@@ -18,7 +18,11 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #include "PrecompiledHeaders.h"
-#include "PlayerHouses.h"
+#include "WorldState/PlayerHouses.h"
+#include "Data/LoadOrder.h"
+
+namespace shse
+{
 
 std::unique_ptr<PlayerHouses> PlayerHouses::m_instance;
 
@@ -42,7 +46,7 @@ void PlayerHouses::SetKeyword(RE::BGSKeyword* keyword)
 
 void PlayerHouses::SetCell(const RE::TESObjectCELL* houseCell)
 {
-	m_validHouseCells.insert(houseCell);
+	m_validHouseCells.insert(houseCell->GetFormID());
 }
 
 void PlayerHouses::Clear()
@@ -55,27 +59,27 @@ void PlayerHouses::Clear()
 bool PlayerHouses::Add(const RE::BGSLocation* location)
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return location && m_houses.insert(location).second;
+	return location && m_houses.insert(location->GetFormID()).second;
 }
 
-bool PlayerHouses::AddCell(const RE::TESObjectCELL* cell)
+bool PlayerHouses::AddCell(const RE::FormID cellID)
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return cell && m_houseCells.insert(cell).second;
+	return cellID != InvalidForm && m_houseCells.insert(cellID).second;
 }
 
 // Check indeterminate status of the location, because a requested UI check is pending
 bool PlayerHouses::Contains(const RE::BGSLocation* location) const
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return location && m_houses.contains(location);
+	return location && m_houses.contains(location->GetFormID());
 }
 
 // Check indeterminate status of the location, because a requested UI check is pending
-bool PlayerHouses::ContainsCell(const RE::TESObjectCELL* cell) const
+bool PlayerHouses::ContainsCell(const RE::FormID cellID) const
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return cell && m_houseCells.contains(cell);
+	return m_houseCells.contains(cellID);
 }
 
 bool PlayerHouses::IsValidHouse(const RE::BGSLocation* location) const
@@ -84,8 +88,10 @@ bool PlayerHouses::IsValidHouse(const RE::BGSLocation* location) const
 	return location && location->HasKeyword(m_keyword);
 }
 
-bool PlayerHouses::IsValidHouseCell(const RE::TESObjectCELL* cell) const
+bool PlayerHouses::IsValidHouseCell(const RE::FormID cellID) const
 {
 	RecursiveLockGuard guard(m_housesLock);
-	return cell && m_validHouseCells.contains(cell);
+	return m_validHouseCells.contains(cellID);
+}
+
 }
