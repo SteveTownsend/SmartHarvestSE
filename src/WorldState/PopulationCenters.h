@@ -28,6 +28,22 @@ enum class PopulationCenterSize {
 	MAX
 };
 
+inline std::string PopulationCenterSizeName(const PopulationCenterSize centerSize)
+{
+	switch (centerSize) {
+	case PopulationCenterSize::None:
+		return "None";
+	case PopulationCenterSize::Settlements:
+		return "Settlement";
+	case PopulationCenterSize::Towns:
+		return "Town";
+	case PopulationCenterSize::Cities:
+		return "Cities";
+	default:
+		return "Unknown";
+	}
+}
+
 class PopulationCenters
 {
 public:

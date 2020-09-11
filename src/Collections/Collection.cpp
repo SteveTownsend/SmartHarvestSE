@@ -216,8 +216,8 @@ std::string Collection::PrintMembers(void) const
 	for (const auto member : m_members)
 	{
 		collectionStr << "  0x" << StringUtils::FromFormID(member->GetFormID());
-		collectionStr << ":" << (PlacedObjects::Instance().IsPlacedObject(member) ? 'Y' : 'N') << ":" << member->GetName();
-		collectionStr << '\n';
+		collectionStr << ": Placed? " << (PlacedObjects::Instance().IsPlacedObject(member) ? 'Y' : 'N');
+		collectionStr << ", Collected? " << (m_observed.contains(member) ? 'Y' : 'N') << ", (" << member->GetName() << ")\n";
 	}
 	return collectionStr.str();
 }
@@ -278,7 +278,7 @@ void Collection::UpdateFrom(const nlohmann::json& collectionState, const Collect
 	m_name = name;
 	m_description = description;
 
-	DBG_VMESSAGE("Collection State {} overrides Policy = {}", name, overridesPolicy ? "true" : "false");
+	REL_VMESSAGE("Collection State {} overrides Policy = {}", name, overridesPolicy ? "true" : "false");
 	SetOverridesGroup(overridesPolicy);
 	m_effectivePolicy = overridesPolicy ? CollectionFactory::Instance().ParsePolicy(*policy) : defaultPolicy;
 	m_scopes.clear();
@@ -340,7 +340,7 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 			m_collections.push_back(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
 		}
 		catch (const std::exception& exc) {
-			REL_ERROR("Error {} parsing Collection\n{}", exc.what(), collection.dump(2).c_str());
+			REL_ERROR("Error {} parsing Collection\n{}", exc.what(), collection.dump());
 		}
 	});
 }

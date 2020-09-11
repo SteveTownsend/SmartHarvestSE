@@ -370,7 +370,14 @@ namespace papyrus
 	// This is called for game reload, or whitelist/blacklist updates (reload=false)
 	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
 	{
-		shse::PluginFacade::Instance().ResetState(reload);
+		if (reload)
+		{
+			shse::PluginFacade::Instance().AfterReload();
+		}
+		else
+		{
+			shse::PluginFacade::Instance().ResetTransientState(reload);
+		}
 	}
 
 	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)

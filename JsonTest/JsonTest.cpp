@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <regex>
+#include "libloaderapi.h"
 
 void ParsePlugin(const nlohmann::json& pluginRule)
 {
@@ -251,6 +252,7 @@ void CheckFilters()
 
 int main(int argc, const char** argv)
 {
+	LoadLibrary("SmartHarvestSE.dll");
 	CheckCollections();
 	CheckFilters();
 

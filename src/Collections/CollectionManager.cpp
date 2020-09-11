@@ -31,6 +31,7 @@ http://www.fsf.org/licensing/licenses
 #include "VM/papyrus.h"
 #include "Collections/CollectionManager.h"
 #include "Collections/CollectionFactory.h"
+#include "Data/CosaveData.h"
 #include "Data/DataCase.h"
 #include "Data/iniSettings.h"
 #include "Data/LoadOrder.h"
@@ -361,35 +362,27 @@ bool CollectionManager::LoadData(void)
 			FileUtils::GetPluginPath(), e.what());
 		return false;
 	}
-	PrintDefinitions();
 	ResolveMembership();
 	return true;
-}
-
-void CollectionManager::PrintDefinitions(void) const
-{
-	for (const auto& collection : m_allCollectionsByLabel)
-	{
-		REL_MESSAGE("Collection {}:\n{}", collection.first.c_str(), collection.second->PrintDefinition().c_str());
-	}
 }
 
 void CollectionManager::PrintMembership(void) const
 {
 	for (const auto& collectionGroup : m_allGroupsByName)
 	{
-		REL_MESSAGE("Collection Group {}:", collectionGroup.second->Name().c_str());
+		REL_MESSAGE("* Collection Group {}:", collectionGroup.second->Name());
 		for (const auto& collection : collectionGroup.second->Collections())
 		{
+			REL_MESSAGE("** Collection {}:\n{}", collection->Name(), collection->PrintDefinition());
 			if (collection->HasMembers())
 			{
-				REL_MESSAGE("Collection {}:\n{}", collection->Name().c_str(), collection->PrintMembers().c_str());
+				REL_MESSAGE("{}", collection->PrintMembers());
 				const std::string label(MakeLabel(collectionGroup.second->Name(), collection->Name()));
 				m_activeCollectionsByGroupName.insert(std::make_pair(collectionGroup.second->Name(), label));
 			}
 			else
 			{
-				REL_ERROR("Collection {} is empty", collection->Name().c_str());
+				REL_ERROR("[No Members]");
 			}
 		}
 	}
@@ -700,8 +693,6 @@ void CollectionManager::ResolveMembership(void)
 		}
 	}
 	REL_MESSAGE("Collections contain {} unique objects, {} of which are placed in the world", uniqueMembers.size(), uniquePlaced.size());
-
-	PrintMembership();
 }
 
 // clear state before game reload
@@ -726,6 +717,12 @@ void CollectionManager::OnGameReload()
 	// logic depends on prior and new state
 	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
 	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
+
+	// seed state using cosave data
+	CosaveData::Instance().SeedState();
+
+	// print effective membership - no members for new game, cosave state may include members so print reconciled version
+	shse::CollectionManager::Instance().PrintMembership();
 }
 
 void CollectionManager::AsJSON(nlohmann::json& j) const
@@ -741,7 +738,7 @@ void CollectionManager::AsJSON(nlohmann::json& j) const
 // reset Collection state from cosave data
 void CollectionManager::UpdateFrom(const nlohmann::json& j)
 {
-	DBG_MESSAGE("Cosave Collections\n{}", j.dump(2));
+	REL_MESSAGE("Cosave Collections\n{}", j.dump(2));
 	RecursiveLockGuard guard(m_collectionLock);
 	for (const nlohmann::json& group : j["groups"])
 	{

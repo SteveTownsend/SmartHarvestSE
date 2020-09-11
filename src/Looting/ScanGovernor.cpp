@@ -736,7 +736,7 @@ void ScanGovernor::ClearPendingHarvestNotifications()
 void ScanGovernor::ClearGlowExpiration()
 {
 	RecursiveLockGuard guard(m_searchLock);
-	return m_HarvestLock.clear();
+	return m_glowExpiration.clear();
 }
 
 // SPERG doubles mined item amounts based on KYWD values. Store those items beforehand and recheck afterwards, adjusting counts for Player.
@@ -884,7 +884,6 @@ void ScanGovernor::ToggleCalibration(const bool glowDemo)
 
 void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
 {
-
 	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
 	// never be so many in a cell that this is a problem.

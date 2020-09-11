@@ -29,8 +29,8 @@ public:
 
 	bool Init(const bool onGameReload);
 	void PrepareForReload();
+	void ResetTransientState(const bool gameReload);
 	void AfterReload();
-	void ResetState(const bool gameReload);
 	void OnSettingsPushed(void);
 
 	// give the debug message time to catch up during calibration

@@ -233,16 +233,16 @@ void NPCFilter::Load()
 		const nlohmann::json filterData(nlohmann::json::parse(filterFile));
 		const nlohmann::json filters(filterData["npc"]);
 		m_defaultLoot = filters["defaultLoot"].get<bool>();
-		DBG_MESSAGE("Default looting = {}", m_defaultLoot ? "true" : "false");
+		REL_MESSAGE("Default looting = {}", m_defaultLoot ? "true" : "false");
 
 		m_excludePlayerRace = filters["excludePlayerRace"].get<bool>();
-		DBG_MESSAGE("Exclude Player Race = {}", m_excludePlayerRace ? "true" : "false");
+		REL_MESSAGE("Exclude Player Race = {}", m_excludePlayerRace ? "true" : "false");
 
 		for (const auto& nextFilter : filters["orderedFilter"])
 		{
 			m_orderedFilters.insert(std::move(new OrderedFilter(nextFilter)));
 		}
-		REL_MESSAGE("NPC AutoLoot Filtering JSON loaded OK from {} :\n{}", filePath, filterData.dump(2));
+		REL_MESSAGE("NPC AutoLoot Filtering JSON loaded OK from {}", filePath);
 		m_active = true;
 	}
 	catch (const std::exception& exc) {

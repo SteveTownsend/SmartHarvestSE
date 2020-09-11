@@ -25,7 +25,7 @@ extern std::shared_ptr<spdlog::logger> SHSELogger;
 
 // wrappers for spdLog to make release/debug logging easier
 // Debug build only
-#if _DEBUG
+#if _DEBUG || defined(_FULL_LOGGING)
 #define DBG_DMESSAGE(a_fmt, ...) SHSELogger->debug(a_fmt, __VA_ARGS__)
 #define DBG_VMESSAGE(a_fmt, ...) SHSELogger->trace(a_fmt, __VA_ARGS__)
 #define DBG_MESSAGE(a_fmt, ...) SHSELogger->info(a_fmt, __VA_ARGS__)

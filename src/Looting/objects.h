@@ -47,7 +47,8 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm);
 // this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
 ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr);
 // end link-time misuse guard
-std::string GetObjectTypeName(ObjectType objectType);
+std::string GetFormTypeName(const RE::FormType formType);
+std::string GetObjectTypeName(const ObjectType objectType);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
 RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraDataList*>* extraLists);
 ResourceType ResourceTypeByName(const std::string& name);
@@ -70,7 +71,10 @@ inline bool IsValueWeightExempt(ObjectType objectType)
 
 inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
 {
-	// Allow auto - mining in settlements, which Mines mostly are. No picks for you!
+	// Config setting overrides
+	if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInSettlement") == 0)
+		return false;
+	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
 	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.
 	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
 }

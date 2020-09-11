@@ -71,11 +71,16 @@
     {
       "name": "Novocaine Optional",
       "description": "Dragon teeth from Zim's Dragon Improvements",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "plugin": [ "Zim's Dragon Improvements.esp" ],
-          "signature": [ "MISC" ]
+          "signature": [ "INGR", "MISC" ]
         }
       }
     },

@@ -73,12 +73,7 @@ bool PluginFacade::Init(const bool onGameReload)
 			return false;
 		}
 	}
-	if (onGameReload)
-	{
-		// seed state using cosave data
-		CosaveData::Instance().SeedState();
-		WindowsUtils::LogProcessWorkingSet();
-	}
+
 	if (!m_threadStarted)
 	{
 		// Start the thread once data is loaded
@@ -248,33 +243,35 @@ void PluginFacade::PrepareForReload()
 	REL_MESSAGE("Plugin sync required");
 }
 
-void PluginFacade::AfterReload()
+void PluginFacade::ResetTransientState(const bool gameReload)
 {
-	static const bool onMCMPush(false);
-	static const bool onGameReload(true);
-	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
-}
-
-void PluginFacade::ResetState(const bool gameReload)
-{
-	DBG_MESSAGE("Restrictions reset, new/loaded game={}", gameReload ? "true" : "false");
+	DBG_MESSAGE("Transient in-game restrictions reset, reload={}", gameReload ? "true" : "false");
 	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
 	RecursiveLockGuard guard(m_pluginLock);
 	DataCase::GetInstance()->ListsClear(gameReload);
 	ScanGovernor::Instance().Clear();
+}
 
-	if (gameReload)
-	{
-		// unblock possible player house checks after game reload
-		PlayerHouses::Instance().Clear();
-		// reset Actor data
-		ActorTracker::Instance().Reset();
-		// Reset Collections State and reapply the saved-game data
-		CollectionManager::Instance().OnGameReload();
-		// need to wait for the scripts to sync up before performing player house checks
-		m_pluginSynced = true;
-		REL_MESSAGE("Plugin sync completed");
-	}
+void PluginFacade::AfterReload()
+{
+	REL_MESSAGE("Plugin called after reload");
+	ResetTransientState(true);
+	// reset player state
+	static const bool onMCMPush(false);
+	static const bool onGameReload(true);
+	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+	// reset location history - also forces proper recalculation of carry-weight per refreshed PayerState
+	LocationTracker::Instance().Reset();
+	// unblock possible player house checks after game reload
+	PlayerHouses::Instance().Clear();
+	// reset Actor data
+	ActorTracker::Instance().Reset();
+	// Reset Collections State and reapply the saved-game data
+	CollectionManager::Instance().OnGameReload();
+	// need to wait for the scripts to sync up before performing player house checks
+	m_pluginSynced = true;
+	REL_MESSAGE("Plugin sync completed");
+	WindowsUtils::LogProcessWorkingSet();
 }
 
 // lock not required, by construction
