@@ -616,7 +616,7 @@ void DataCase::RecordOffLimitsLocations()
 		if (cell)
 		{
 			REL_MESSAGE("No looting in cell {}/0x{:08x}", cell->GetName(), cell->GetFormID());
-			m_offLimitsLocations.insert(cell);
+			m_offLimitsLocations.insert({ cell->GetFormID(), "" });
 		}
 	}
 }

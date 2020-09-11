@@ -206,6 +206,27 @@ RE::TESForm* LoadOrder::RehydrateCosaveForm(const RE::FormID cosaveID) const
 	return target;
 }
 
+// only used for CELLs, best guess mapping as they are not guaranteed to be in-RAM
+RE::FormID LoadOrder::MapCosaveFormID(const RE::FormID cosaveID, const RE::FormID modMaskHint) const
+{
+	if (modMaskHint == InvalidForm)
+		return InvalidForm;
+	RecursiveLockGuard guard(m_loadLock);
+	if (m_coSaveLoadOrderDiffers)
+	{
+		const auto cosaveMod(m_cosaveModNameByMask.find(modMaskHint));
+		if (cosaveMod != m_cosaveModNameByMask.cend())
+		{
+			return MakeFormID(cosaveMod->first, AsRaw(cosaveID));
+		}
+		else
+		{
+			return InvalidForm;
+		}
+	}
+	return cosaveID;
+}
+
 void to_json(nlohmann::json& j, const LoadOrder& loadOrder)
 {
 	loadOrder.AsJSON(j);

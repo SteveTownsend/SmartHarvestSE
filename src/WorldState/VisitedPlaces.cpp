@@ -27,25 +27,25 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-VisitedPlace VisitedPlace::m_lastPlace(nullptr, nullptr, nullptr, InvalidPosition, 0.0);
+VisitedPlace VisitedPlace::m_lastPlace(nullptr, nullptr, InvalidForm, InvalidPosition, 0.0);
 const RE::TESWorldSpace* VisitedPlace::m_lastWorld(nullptr);
 const RE::BGSLocation* VisitedPlace::m_lastLocation(nullptr);
 
 void VisitedPlace::ResetSagaState()
 {
-	m_lastPlace = VisitedPlace(nullptr, nullptr, nullptr, InvalidPosition, 0.0);
+	m_lastPlace = VisitedPlace(nullptr, nullptr, InvalidForm, InvalidPosition, 0.0);
 	m_lastWorld = nullptr;
 	m_lastLocation = nullptr;
 }
 
-VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime) :
-	m_worldspace(worldspace), m_location(location), m_cell(cell), m_position(position), m_gameTime(gameTime)
+VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::FormID cellID, const Position position, const float gameTime) :
+	m_worldspace(worldspace), m_location(location), m_cellID(cellID), m_position(position), m_gameTime(gameTime)
 {
 }
 
 bool VisitedPlace::operator==(const VisitedPlace& rhs) const
 {
-	return m_worldspace == rhs.m_worldspace && m_location == rhs.m_location && m_cell == rhs.m_cell;
+	return m_worldspace == rhs.m_worldspace && m_location == rhs.m_location && m_cellID == rhs.m_cellID;
 }
 
 std::string VisitedPlace::AsString() const
@@ -133,9 +133,9 @@ void VisitedPlace::AsJSON(nlohmann::json& j) const
 	{
 		j["location"] = StringUtils::FromFormID(m_location->GetFormID());
 	}
-	if (m_cell)
+	if (m_cellID != InvalidForm)
 	{
-		j["cell"] = StringUtils::FromFormID(m_cell->GetFormID());
+		j["cell"] = StringUtils::FromFormID(m_cellID);
 	}
 	j["position"] = nlohmann::json(m_position);
 }
@@ -166,7 +166,7 @@ void VisitedPlaces::Reset()
 	m_visited.clear();
 }
 
-void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell,
+void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::FormID cellID,
 	const Position& position, const float gameTime)
 {
 	bool isNew(false);
@@ -178,11 +178,11 @@ void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::B
 	else
 	{
 		const VisitedPlace& currentPlace(m_visited.back());
-		isNew = worldspace != currentPlace.Worldspace() || location != currentPlace.Location() || cell != currentPlace.Cell();
+		isNew = worldspace != currentPlace.Worldspace() || location != currentPlace.Location() || cellID != currentPlace.CellID();
 	}
 	if (isNew)
 	{ 
-		m_visited.emplace_back(worldspace, location, cell, position, gameTime);
+		m_visited.emplace_back(worldspace, location, cellID, position, gameTime);
 		Saga::Instance().AddEvent(m_visited.back());
 		if (location)
 		{
@@ -217,11 +217,21 @@ void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
 		const auto location(place.find("location"));
 		const RE::BGSLocation* locationForm(location != place.cend() ?
 			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr);
+		// CELLs may not be in-RAM so we do not rehydrate, but map the FormID all the same
+		RE::FormID modMaskHint(InvalidForm);
+		if (worldspaceForm)
+		{
+			modMaskHint = LoadOrder::Instance().AsMask(worldspaceForm->GetFormID());
+		}
+		else if (locationForm)
+		{
+			modMaskHint = LoadOrder::Instance().AsMask(locationForm->GetFormID());
+		}
 		const auto cell(place.find("cell"));
-		const RE::TESObjectCELL* cellForm(cell != place.cend() ?
-			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESObjectCELL>(StringUtils::ToFormID(cell->get<std::string>())) : nullptr);
+		const RE::FormID cellFormID(cell != place.cend() ?
+			LoadOrder::Instance().MapCosaveFormID(StringUtils::ToFormID(cell->get<std::string>()), modMaskHint) : InvalidForm);
 		// the list was ordered by game time before saving - player position recorded
-		RecordVisit(worldspaceForm, locationForm, cellForm, Position(place["position"]), gameTime);
+		RecordVisit(worldspaceForm, locationForm, cellFormID, Position(place["position"]), gameTime);
 		if (locationForm)
 		{
 			m_knownLocations.insert(locationForm);

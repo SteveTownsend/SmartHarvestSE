@@ -19,6 +19,9 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+namespace shse
+{
+
 class PlayerHouses
 {
 public:
@@ -27,22 +30,26 @@ public:
 
 	void Clear();
 	bool Add(const RE::BGSLocation* location);
-	bool AddCell(const RE::TESObjectCELL* cell);
+	bool AddCell(const RE::FormID cellID);
 	bool Contains(const RE::BGSLocation* location) const;
-	bool ContainsCell(const RE::TESObjectCELL* cell) const;
+	bool ContainsCell(const RE::FormID cellID) const;
 
 	void SetKeyword(RE::BGSKeyword* keyword);
 	void SetCell(const RE::TESObjectCELL* houseCell);
 	bool IsValidHouse(const RE::BGSLocation* location) const;
-	bool IsValidHouseCell(const RE::TESObjectCELL* cell) const;
+	bool IsValidHouseCell(const RE::FormID cellID) const;
 
 private:
 	static std::unique_ptr<PlayerHouses> m_instance;
 	RE::BGSKeyword* m_keyword;
 
-	std::unordered_set<const RE::BGSLocation*> m_houses;
-	std::unordered_set<const RE::TESObjectCELL*> m_houseCells;
+	// LCTN forms
+	std::unordered_set<RE::FormID> m_houses;
+	// CELL forms
+	std::unordered_set<RE::FormID> m_houseCells;
 	// CELLS that are effectively player house but not in a properly-tagged LCTN
-	std::unordered_set<const RE::TESObjectCELL*> m_validHouseCells;
+	std::unordered_set<RE::FormID> m_validHouseCells;
 	mutable RecursiveLock m_housesLock;
 };
+
+}
