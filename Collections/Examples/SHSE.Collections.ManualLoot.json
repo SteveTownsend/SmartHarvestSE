@@ -24,6 +24,21 @@
       }
     },
     {
+      "name": "Canticle Bark",
+      "description": "Canticle Bark",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "Dawnguard.esm",
+              "form": [ "00019328" ]
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "LoTD Excavation Sites",
       "description": "LoTD Excavation Sites",
       "rootFilter": {
