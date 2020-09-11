@@ -34,6 +34,7 @@ public:
 	void Add(const RE::TESForm* entry);
 	void Drop(const RE::TESForm* entry);
 	bool Contains(const RE::TESForm* entry) const;
+	bool ContainsID(const RE::FormID entryID) const;
 
 private:
 	bool HasEntryWithSameName(const RE::TESForm* form) const;
@@ -41,7 +42,7 @@ private:
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;
 
-	std::unordered_set<const RE::TESForm*> m_members;
+	std::unordered_map<RE::FormID, std::string> m_members;
 	mutable RecursiveLock m_listLock;
 };
 

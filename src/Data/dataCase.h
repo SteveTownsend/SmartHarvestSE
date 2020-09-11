@@ -98,13 +98,13 @@ public:
 	bool PerksAddLeveledItemsOnDeath(const RE::Actor* actor) const;
 	float PerkIngredientMultiplier(const RE::Actor* actor) const;
 
-	inline const std::unordered_set<const RE::TESForm*>& OffLimitsLocations()
+	inline const std::unordered_map<RE::FormID, std::string>& OffLimitsLocations()
 	{
 		return m_offLimitsLocations;
 	}
 	inline bool IsOffLimitsLocation(const RE::TESForm* badPlace) const
 	{
-		return m_offLimitsLocations.contains(badPlace);
+		return m_offLimitsLocations.contains(badPlace->GetFormID());
 	}
 	inline bool IsOffLimitsContainer(const RE::TESObjectREFR* containerRef) const
 	{
@@ -117,7 +117,7 @@ private:
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
 	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
-	std::unordered_set<const RE::TESForm*> m_offLimitsLocations;
+	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;

@@ -48,10 +48,10 @@ public:
 		RE::TESForm* form(RehydrateCosaveForm(cosaveID));
 		return form ? form->As<T>() : nullptr;
 	}
+	RE::FormID MapCosaveFormID(const RE::FormID cosaveID, const RE::FormID modMaskHint) const;
 
 	inline RE::FormID AsMask(const RE::FormID formID) const
 	{
-		constexpr RE::FormID ESPFERawMask = 0x00000FFF;
 		if ((formID & ESPFETypeMask) == ESPFETypeMask)
 			return formID & ESPFEMask;
 		return formID & ESPMask;
@@ -62,6 +62,10 @@ public:
 		if ((formID & ESPFETypeMask) == ESPFETypeMask)
 			return formID & ESPFERawMask;
 		return formID & FullRawMask;
+	}
+	inline RE::FormID MakeFormID(const RE::FormID modMask, const RE::FormID rawID) const
+	{
+		return modMask | rawID;
 	}
 
 	struct LoadInfo {

@@ -26,7 +26,7 @@ namespace shse
 
 class VisitedPlace {
 public:
-	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell, const Position position, const float gameTime);
+	VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::FormID cellID, const Position position, const float gameTime);
 	inline float GameTime() const { return m_gameTime; }
 	static void ResetSagaState();
 	std::string AsString() const;
@@ -35,14 +35,14 @@ public:
 
 	inline const RE::TESWorldSpace* Worldspace() const { return m_worldspace; }
 	inline const RE::BGSLocation* Location() const { return m_location; }
-	inline const RE::TESObjectCELL* Cell() const { return m_cell; }
+	inline const RE::FormID CellID() const { return m_cellID; }
 	inline const Position GetPosition() const { return m_position; }
 
 private:
 	bool operator==(const VisitedPlace& rhs) const;
 	const RE::TESWorldSpace* m_worldspace;
 	const RE::BGSLocation* m_location;
-	const RE::TESObjectCELL* m_cell;
+	RE::FormID m_cellID;
 	Position m_position;
 	float m_gameTime;
 	static VisitedPlace m_lastPlace;
@@ -59,7 +59,7 @@ public:
 	VisitedPlaces();
 
 	void Reset();
-	void RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::TESObjectCELL* cell,
+	void RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::FormID cellID,
 		const Position& position, const float gameTime);
 
 	void AsJSON(nlohmann::json& j) const;

@@ -33,7 +33,7 @@ private:
 	void RecordMarkedPlaces();
 
 	bool IsAdjacent(RE::TESObjectCELL* cell) const;
-	bool IsPlaceBlacklisted(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
+	bool IsPlaceBlacklisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	void PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const;
 	const RE::BGSLocation* PlayerLocationRelativeToAdventureTarget(void) const;
 	CompassDirection DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const;
@@ -48,14 +48,18 @@ private:
 	CellOwnership GetCellOwnership(const RE::TESObjectCELL* cell) const;
 	RE::TESForm* GetCellOwner(const RE::TESObjectCELL* cell) const;
 	std::string PlaceName(const RE::TESForm*) const;
-	bool IsPlacePlayerHome(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
-	bool IsPlaceLootable(const RE::TESObjectCELL* cell, const RE::BGSLocation* location, const bool lootableIfRestricted);
-	bool IsPlaceWhitelisted(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
+	bool IsPlacePlayerHome(const RE::FormID cellID, const RE::BGSLocation* location) const;
+	bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted);
+	bool IsPlaceWhitelisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	bool IsPlaceRestrictedLootSettlement(const RE::BGSLocation* location) const;
 
 	static std::unique_ptr<LocationTracker> m_instance;
 	std::vector<RE::TESObjectCELL*> m_adjacentCells;
-	RE::TESObjectCELL* m_playerCell;
+	RE::FormID m_playerCellID;
+	int32_t m_playerCellX;
+	int32_t m_playerCellY;
+	bool m_playerIndoors;
+	std::string m_playerPlaceName;
 	bool m_tellPlayerIfCanLootAfterLoad;
 	const RE::BGSLocation* m_playerLocation;
 	const RE::TESWorldSpace* m_playerParentWorld;

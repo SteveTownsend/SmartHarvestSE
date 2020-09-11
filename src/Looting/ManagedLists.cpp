@@ -68,7 +68,7 @@ void ManagedList::Add(const RE::TESForm* entry)
 	DBG_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
-	m_members.insert(entry);
+	m_members.insert({ entry->GetFormID(), entry->GetName() });
 }
 
 void ManagedList::Drop(const RE::TESForm* entry)
@@ -76,7 +76,7 @@ void ManagedList::Drop(const RE::TESForm* entry)
 	DBG_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
 		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
-	m_members.erase(entry);
+	m_members.erase(entry->GetFormID());
 }
 
 bool ManagedList::Contains(const RE::TESForm* entry) const
@@ -84,7 +84,13 @@ bool ManagedList::Contains(const RE::TESForm* entry) const
 	if (!entry)
 		return false;
 	RecursiveLockGuard guard(m_listLock);
-	return m_members.contains(entry) || HasEntryWithSameName(entry);
+	return m_members.contains(entry->GetFormID()) || HasEntryWithSameName(entry);
+}
+
+bool ManagedList::ContainsID(const RE::FormID entryID) const
+{
+	RecursiveLockGuard guard(m_listLock);
+	return m_members.contains(entryID);
 }
 
 // sometimes multiple items use the same name - we treat them all the same
@@ -95,9 +101,9 @@ bool ManagedList::HasEntryWithSameName(const RE::TESForm* form) const
 	if (formType == RE::FormType::Location || formType == RE::FormType::Cell || form->As<RE::TESObjectREFR>())
 		return false;
 	const std::string name(form->GetName());
-	return !name.empty() && std::find_if(m_members.cbegin(), m_members.cend(), [&](const RE::TESForm* form) -> bool
+	return !name.empty() && std::find_if(m_members.cbegin(), m_members.cend(), [&](const auto& element) -> bool
 	{
-		return form->GetName() == name;
+		return element.second == name;
 	}) != m_members.cend();
 }
 
