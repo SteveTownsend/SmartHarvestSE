@@ -373,7 +373,7 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 	}
 
 	RecursiveLockGuard guard(m_locationLock);
-	if (!m_playerCellID == InvalidForm)
+	if (m_playerCellID == InvalidForm)
 	{
 		// setup in progress
 		return nullptr;
