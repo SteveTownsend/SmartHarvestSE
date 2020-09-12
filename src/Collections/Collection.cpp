@@ -24,7 +24,6 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
 #include "VM/papyrus.h"
-#include "WorldState/PlacedObjects.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/Saga.h"
 
@@ -166,6 +165,8 @@ bool Collection::RecordItem(const RE::TESForm* form, const float gameTime, const
 void Collection::Reset()
 {
 	m_observed.clear();
+	m_members.clear();
+	m_scopes.clear();
 }
 
 std::string Collection::Name(void) const
@@ -185,17 +186,10 @@ std::string Collection::PrintDefinition() const
 	return collectionStr.str();
 }
 
-
-size_t Collection::PlacedMembers(void) const
-{
-	return std::count_if(m_members.cbegin(), m_members.cend(),
-		[&](const RE::TESForm* form) -> bool { return PlacedObjects::Instance().IsPlacedObject(form); });
-}
-
 std::string Collection::PrintMembers(void) const
 {
 	std::ostringstream collectionStr;
-	collectionStr << m_members.size() << " members of which " << PlacedMembers() << " are placed in the world\n";
+	collectionStr << m_members.size() << " members\n";
 	if (!m_scopes.empty())
 	{
 		collectionStr << "Scope: ";
@@ -216,7 +210,6 @@ std::string Collection::PrintMembers(void) const
 	for (const auto member : m_members)
 	{
 		collectionStr << "  0x" << StringUtils::FromFormID(member->GetFormID());
-		collectionStr << ": Placed? " << (PlacedObjects::Instance().IsPlacedObject(member) ? 'Y' : 'N');
 		collectionStr << ", Collected? " << (m_observed.contains(member) ? 'Y' : 'N') << ", (" << member->GetName() << ")\n";
 	}
 	return collectionStr.str();
@@ -300,8 +293,6 @@ void Collection::SetScopesFrom(const nlohmann::json& scopes)
 
 void Collection::SetMembersFrom(const nlohmann::json & members)
 {
-	m_observed.clear();
-	m_members.clear();
 	for (const nlohmann::json& member : members)
 	{
 		RE::FormID formID(StringUtils::ToFormID(member["form"].get<std::string>()));

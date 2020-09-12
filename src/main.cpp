@@ -45,7 +45,6 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	if (!shse::CosaveData::Instance().Serialize(a_intfc))
 	{
 		REL_ERROR("Cosave data write failed");
-		shse::CosaveData::Instance().Clear();
 	}
 }
 

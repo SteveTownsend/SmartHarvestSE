@@ -43,7 +43,7 @@ PlacedObjects::PlacedObjects()
 {
 }
 
-// record all the Placed instances, so we can validate Collections and send Player to find items later
+// record all the Placed instances, so we can validate Quest Targets later
 void PlacedObjects::RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr)
 {
 	m_placedItems.insert(item);
@@ -124,9 +124,8 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 }
 
-// This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we can
+// This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we could
 // check again then.
-// TODO check if this does work on cell load, and that the REFRs are still valid after we change location
 void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 {
 	if (!m_checkedForPlacedObjects.insert(cell).second)
@@ -138,37 +137,6 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 	if (DataCase::GetInstance()->IsOffLimitsLocation(cell))
 		return;
 
-	if (!IsCellLocatable(cell))
-	{
-		if (!cell)
-			return;
-		// no obvious way to locate - save possibly-reachable doors for the cell
-		bool connected(false);
-		for (const RE::TESObjectREFRPtr& refptr : cell->references)
-		{
-			const RE::TESObjectREFR* refr(refptr.get());
-			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
-			{
-				// check Worldspace connection
-				const auto linkage(m_linkingDoors.find(refr));
-				if (linkage != m_linkingDoors.cend())
-				{
-					if (linkage->second->parentCell && IsCellLocatable(linkage->second->parentCell))
-					{
-						DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} can teleport via {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-							cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second->parentCell).c_str(), linkage->second->parentCell->GetFormID());
-						connected = true;
-						break;
-					}
-					DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} cannot teleport via REFR {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-						cell->GetFormID(), FormUtils::SafeGetFormEditorID(linkage->second).c_str(), linkage->second->GetFormID());
-				}
-			}
-		}
-		if (!connected)
-			return;
-	}
-
 	size_t actors(std::count_if(cell->references.cbegin(), cell->references.cend(),
 		[&](const auto refr) -> bool { return refr->GetFormType() == RE::FormType::ActorCharacter; }));
 	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->references.size(), actors, FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
@@ -179,111 +147,13 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 	}
 }
 
-// skip if not in a valid worldspace or Location
-// TODO might miss some stray CELLs
-bool PlacedObjects::IsCellLocatable(const RE::TESObjectCELL* cell)
-{
-#if 1
-	return true;
-#else
-	if (!cell)
-		return false;
-	const RE::ExtraLocation* extraLocation(cell->extraList.GetByType<RE::ExtraLocation>());
-	if (extraLocation && extraLocation->location)
-	{
-		DBG_VMESSAGE("CELL {}/0x{:08x} is in Location {}/0x{:08x}", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(),
-			extraLocation->location->GetName(), extraLocation->location->GetFormID());
-		return true;
-	}
-	else if (cell->worldSpace)
-	{
-		DBG_VMESSAGE("CELL {}/0x{:08x} is in WorldSpace {}", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID(), cell->worldSpace->GetName());
-		return true;
-	}
-	DBG_VMESSAGE("CELL {}/0x{:08x} unlocatable", FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
-	return false;
-#endif
-}
-
 void PlacedObjects::RecordPlacedObjects(void)
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Record Placed Objects");
 #endif
 
-	// list all placed objects of interest for Collections - don't quest for anything we cannot see
-	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
-	{
-		if (!worldSpace->persistentCell)
-			continue;
-		// find all DOORs in the persistent CELL, these link other CELLs
-		DBG_MESSAGE("Search for DOORs {} REFRs in persistent cell for WorldSpace {}/0x{:08x}", worldSpace->persistentCell->references.size(), worldSpace->GetName(), worldSpace->GetFormID());
-		for (const auto& refPtr : worldSpace->persistentCell->references)
-		{
-			if (!refPtr)
-				continue;
-			const RE::TESObjectREFR* refr(refPtr.get());
-			if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
-			{
-				if (refr->extraList.HasType<RE::ExtraTeleport>())
-				{
-					// Store door link representing entry from either direction
-					const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
-					if (!teleport || !teleport->teleportData || !teleport->teleportData->linkedDoor)
-						continue;
-					const RE::TESObjectREFR* targetDoorRefr(teleport->teleportData->linkedDoor.get().get());
-					m_linkingDoors.insert({ refr, targetDoorRefr });
-					m_linkingDoors.insert({ targetDoorRefr, refr });
-					DBG_VMESSAGE("Linking Doors 0x{:08x} and 0x{:08x}", refr->GetFormID(), targetDoorRefr->GetFormID());
-				}
-			}
-		}
-		// check direct CELL to CELL connection
-		for (const auto cellEntry : worldSpace->cellMap)
-		{
-			const auto cell(cellEntry.second);
-			for (const auto& refPtr : cell->references)
-			{
-				if (!refPtr)
-					continue;
-				const RE::TESObjectREFR* refr(refPtr.get());
-				if (refr->GetBaseObject() && refr->GetBaseObject()->GetFormType() == RE::FormType::Door)
-				{
-					if (refr->extraList.HasType<RE::ExtraTeleport>())
-					{
-						const auto teleport(refr->extraList.GetByType<RE::ExtraTeleport>());
-						if (!teleport || !teleport->teleportData || !teleport->teleportData->linkedDoor)
-							continue;
-						const RE::TESObjectREFR* target(teleport->teleportData->linkedDoor.get().get());
-						if (!target)
-						{
-							DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport unusable via RefHandle 0x{:08x}", refr->GetFormID(),
-								FormUtils::SafeGetFormEditorID(cell), cell->GetFormID(), teleport->teleportData->linkedDoor.native_handle());
-							continue;
-						}
-						if (!target->parentCell)
-						{
-							DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport unusable via REFR 0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell).c_str(),
-								cell->GetFormID(), target->GetFormID());
-							continue;
-						}
-						if (!IsCellLocatable(target->parentCell))
-						{
-							DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport unusable via {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell),
-								cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell), target->parentCell->GetFormID());
-							continue;
-						}
-						DBG_VMESSAGE("REFR 0x{:08x} in CELL {}/0x{:08x} teleport connects to CELL {}/0x{:08x}", refr->GetFormID(), FormUtils::SafeGetFormEditorID(cell),
-							cell->GetFormID(), FormUtils::SafeGetFormEditorID(target->parentCell), target->parentCell->GetFormID());
-						m_linkingDoors.insert({ refr, target });
-						m_linkingDoors.insert({ target, refr });
-					}
-				}
-			}
-		}
-	}
-
-	// Process CELLs now linking DOORs are identified
+	// Process CELLs to list all placed objects of interest for Quest Target checking
 	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
 		DBG_MESSAGE("Process {} CELLs in WorldSpace Map for {}/0x{:08x}", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
@@ -301,12 +171,6 @@ void PlacedObjects::RecordPlacedObjects(void)
 	placed = std::accumulate(m_placedObjects.cbegin(), m_placedObjects.cend(), placed,
 		[&] (const size_t& result, const auto& keyList) { return result + keyList.second.size(); });
 	REL_MESSAGE("{} Placed Objects recorded for {} Items", placed, m_placedItems.size());
-}
-
-bool PlacedObjects::IsPlacedObject(const RE::TESForm* form) const
-{
-	RecursiveLockGuard guard(m_placedLock);
-	return m_placedObjects.find(form) != m_placedObjects.cend();
 }
 
 size_t PlacedObjects::NumberOfInstances(const RE::TESForm* form) const
