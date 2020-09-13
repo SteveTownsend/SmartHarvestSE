@@ -307,7 +307,7 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 {
 	// normalize from BSFixedString
 	std::string lcName;
-	std::transform(name.cbegin(), name.cend(), std::back_inserter(lcName), [](const char& c) { return std::tolower(c); });
+	std::transform(name.cbegin(), name.cend(), std::back_inserter(lcName), [](const char& c) { return static_cast<char>(std::tolower(c)); });
 	for (const auto& nextPair : nameByObjectType)
 	{
 		if (nextPair.second == lcName)
