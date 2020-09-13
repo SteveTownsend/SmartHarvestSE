@@ -68,7 +68,7 @@ void TheftCoordinator::StealIfUndetected(void)
 	}
 }
 
-const RE::Actor* TheftCoordinator::ActorByIndex(const int actorIndex) const
+const RE::Actor* TheftCoordinator::ActorByIndex(const size_t actorIndex) const
 {
 	RecursiveLockGuard guard(m_theftLock);
 	if (actorIndex < m_detectingActors.size())

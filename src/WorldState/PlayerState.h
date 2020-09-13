@@ -49,7 +49,7 @@ public:
 
 private:
 	void CheckPerks(const bool force);
-	void ResetCarryWeight(const bool reloaded);
+	void ResetCarryWeight();
 	void AdjustCarryWeight();
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
 

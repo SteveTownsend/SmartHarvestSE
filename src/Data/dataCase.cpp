@@ -211,8 +211,6 @@ void DataCase::CategorizeByActivationVerb()
 		const char* formName(activator->GetFullName());
 		DBG_VMESSAGE("Categorizing {}/0x{:08x} by activation verb", formName, activator->GetFormID());
 
-		ObjectType correctType(ObjectType::unknown);
-		bool hasDefault(false);
 		RE::BSString activationText;
 		if (activator->GetActivateText(RE::PlayerCharacter::GetSingleton(), activationText))
 		{
@@ -299,7 +297,7 @@ void DataCase::ExcludeFactionContainers()
 	for (RE::TESFaction* faction : dhnd->GetFormArray<RE::TESFaction>())
 	{
 		const RE::TESObjectREFR* containerRef(nullptr);
-		if (faction->data.kVendor)
+		if ((faction->data.flags & RE::FACTION_DATA::Flag::kVendor) == RE::FACTION_DATA::Flag::kVendor)
 		{
 			containerRef = faction->vendorData.merchantContainer;
 			if (containerRef)
@@ -405,12 +403,12 @@ void DataCase::ExcludeVendorContainers()
 			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
-	size_t expectedFromMods(std::count_if(modVendorGoldLVLI.cbegin(), modVendorGoldLVLI.cend(),
+	ptrdiff_t expectedFromMods(std::count_if(modVendorGoldLVLI.cbegin(), modVendorGoldLVLI.cend(),
 		[&](const auto& espForm) -> bool { return shse::LoadOrder::Instance().IncludesMod(std::get<0>(espForm)); }));
-	if (vendorGoldForms.size() - interimSize != modVendorGoldLVLI.size())
+	if (vendorGoldForms.size() - interimSize != static_cast<size_t>(expectedFromMods))
 	{
 		REL_ERROR("LVLI count {} (mods) for Vendor Gold inconsistent with expected {}",
-			vendorGoldForms.size() - interimSize, modVendorGoldLVLI.size());
+			vendorGoldForms.size() - interimSize, expectedFromMods);
 	}
 
 	// mod-added Containers to avoid looting
@@ -600,7 +598,6 @@ void DataCase::IncludeBSBruma()
 
 void DataCase::RecordOffLimitsLocations()
 {
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
 		{"Skyrim.esm", 0x32ae7},					// QASmoke
@@ -623,7 +620,6 @@ void DataCase::RecordOffLimitsLocations()
 
 void DataCase::RecordPlayerHouseCells(void)
 {
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	DBG_MESSAGE("Record free CELLs that are actually Player Houses");
 	std::vector<std::tuple<std::string, RE::FormID>> houseCells = {
 		{"Helgen Reborn.esp", 0x4a592},			// aaaBalokTowerDisplay
@@ -892,7 +888,7 @@ bool DataCase::SetObjectTypeForForm(const RE::TESForm* form, const ObjectType ob
 
 void DataCase::ForceObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType)
 {
-	auto& inserted(m_objectTypeByForm.insert(std::make_pair(form->GetFormID(), objectType)));
+	auto inserted(m_objectTypeByForm.insert(std::make_pair(form->GetFormID(), objectType)));
 	if (inserted.second)
 	{
 		REL_VMESSAGE("{}/0x{:08x} force-categorized as {}", form->GetName(), form->GetFormID(), GetObjectTypeName(objectType).c_str());
@@ -1004,9 +1000,9 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	else
 	{
 		RE::NiPoint3 prev = m_arrowCheck.at(refr);
-		double dx(pos.x - prev.x);
-		double dy(pos.y - prev.y);
-		double dz(pos.z - prev.z);
+		float dx(pos.x - prev.x);
+		float dy(pos.y - prev.y);
+		float dz(pos.z - prev.z);
 		if (fabs(dx) > ArrowInFlightUnits || fabs(dy) > ArrowInFlightUnits || fabs(dz) > ArrowInFlightUnits)
 		{
 			DBG_VMESSAGE("In flight, change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f}", dx, dy, dz);
@@ -1296,7 +1292,7 @@ template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::Alche
 	return objectType;
 }
 
-template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem* consumable)
+template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem*)
 {
 	return ObjectType::ingredient;
 }
@@ -1396,13 +1392,13 @@ void DataCase::CategorizeStatics()
 }
 
 template <>
-ObjectType DataCase::DefaultIngredientObjectType(const RE::TESFlora* form)
+ObjectType DataCase::DefaultIngredientObjectType(const RE::TESFlora*)
 {
 	return ObjectType::flora;
 }
 
 template <>
-ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE* form)
+ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE*)
 {
 	return ObjectType::food;
 }
@@ -1425,10 +1421,10 @@ void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevIt
 		if (!itemForm)
 			continue;
 		// Handle nesting of leveled items
-		RE::TESLevItem* leveledItem(itemForm->As<RE::TESLevItem>());
-		if (leveledItem)
+		RE::TESLevItem* leveledItemForm(itemForm->As<RE::TESLevItem>());
+		if (leveledItemForm)
 		{
-			ProcessContentsAtLevel(leveledItem);
+			ProcessContentsAtLevel(leveledItemForm);
 			continue;
 		}
 		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));

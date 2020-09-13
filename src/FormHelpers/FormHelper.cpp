@@ -58,7 +58,7 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 	return false;
 }
 
-int32_t TESFormHelper::GetGoldValue() const
+uint32_t TESFormHelper::GetGoldValue() const
 {
 	if (!m_form)
 		return 0;
@@ -87,7 +87,7 @@ int32_t TESFormHelper::GetGoldValue() const
 	if (!pValue)
 		return 0;
 
-	return pValue->value;
+	return static_cast<uint32_t>(pValue->value);
 }
 
 std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(void) const
@@ -108,7 +108,7 @@ double TESFormHelper::GetWeight() const
 	return pWeight->weight;
 }
 
-int32_t TESFormHelper::CalculateWorth() const
+uint32_t TESFormHelper::CalculateWorth(void) const 
 {
 	if (!m_form)
 		return 0;
@@ -119,7 +119,7 @@ int32_t TESFormHelper::CalculateWorth() const
 		if (ammo)
 		{
 			DBG_VMESSAGE("Ammo {}({:08x}) damage = {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
-			return static_cast<int>(ammo->data.damage);
+			return static_cast<uint32_t>(ammo->data.damage);
 		}
 		return 0;
 	}
@@ -132,14 +132,14 @@ int32_t TESFormHelper::CalculateWorth() const
 			if (ammo)
 			{
 				DBG_VMESSAGE("Projectile has ammo {}({:08x}) damage {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
-				return static_cast<int>(ammo->data.damage);
+				return static_cast<uint32_t>(ammo->data.damage);
 			}
 			return 0;
 		}
 	}
 	else
 	{
-		int32_t result(0);
+		uint32_t result(0);
 		if (m_form->formType == RE::FormType::Weapon)
 		{
 			result = TESObjectWEAPHelper(m_form->As<RE::TESObjectWEAP>()).GetGoldValue();

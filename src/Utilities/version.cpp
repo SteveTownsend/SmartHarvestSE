@@ -47,7 +47,7 @@ uint32_t VersionInfo::GetVersionMajor() const
 void VersionInfo::GetPluginVersionInfo()
 {
 	m_versionString = "unknown";
-	m_majorVersion = -1;
+	m_majorVersion = 0;
 
 	std::string moduleName = FileUtils::GetPluginFileName();
 	DWORD zero = 0;		// handle bizarro Win API

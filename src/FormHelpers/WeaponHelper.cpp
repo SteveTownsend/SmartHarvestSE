@@ -38,7 +38,7 @@ uint32_t TESObjectWEAPHelper::GetGoldValue(void) const
 
 	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (!ench)
-		return m_weapon->value;
+		return static_cast<uint32_t>(m_weapon->value);
 
 	int16_t charge = this->GetMaxCharge();
 	uint32_t cost = static_cast<uint32_t>(ench->data.costOverride);

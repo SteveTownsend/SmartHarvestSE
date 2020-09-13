@@ -29,13 +29,11 @@ public:
 	PlacedObjects();
 
 	void RecordPlacedObjects(void);
-	bool IsPlacedObject(const RE::TESForm* form) const;
 	size_t NumberOfInstances(const RE::TESForm* form) const;
 
 private:
 	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
 	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
-	bool IsCellLocatable(const RE::TESObjectCELL* cell);
 	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
 
 	static std::unique_ptr<PlacedObjects> m_instance;
@@ -44,8 +42,6 @@ private:
 	std::unordered_set<const RE::TESForm*> m_placedItems;
 	std::unordered_map<const RE::TESForm*, std::set<const RE::TESObjectREFR*>> m_placedObjects;
 	std::unordered_set<const RE::TESObjectCELL*> m_checkedForPlacedObjects;
-	// for CELL connectivity checking during data load
-	std::unordered_map<const RE::TESObjectREFR*, const RE::TESObjectREFR*> m_linkingDoors;
 };
 
 }

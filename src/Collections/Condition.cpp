@@ -227,7 +227,7 @@ KeywordCondition::KeywordCondition(const std::vector<std::string>& keywords)
 	}
 	for (const std::string& badKeyword : keywordsLeft)
 	{
-		DBG_WARNING("Collection has invalid KYWD {}", badKeyword.c_str());
+		REL_WARNING("Collection has invalid KYWD {}", badKeyword.c_str());
 	}
 	if (!keywordsLeft.empty())
 	{

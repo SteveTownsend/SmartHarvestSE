@@ -37,7 +37,7 @@ namespace shse
 {
 
 TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly)
-	: m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None), m_stolen(stolen), m_glowOnly(glowOnly)
+	: m_stolen(stolen), m_glowOnly(glowOnly), m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None)
 {
 }
 
@@ -775,7 +775,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// items and blacklist the REFR to avoid revisiting. Confirm looting by checking lootable target count now vs start
 		// value. This logic only applies to containers: NPC auto-looting is scripted and not known to fail.
 		if (m_targetType == INIFile::SecondaryType::containers && !targets.empty() &&
-			lister.CountLootableItems([=](RE::TESBoundObject* item) -> bool { return true; }) >= lootableItems)
+			lister.CountLootableItems([=](RE::TESBoundObject*) -> bool { return true; }) >= lootableItems)
 		{
 			// nothing looted - make copies of targets and blacklist the reference (e.g. MrB's Lootable Things)
 			REL_WARNING("looting {} items from container {}/0x{:08x} resulted in no-op, make copies", targets.size(),

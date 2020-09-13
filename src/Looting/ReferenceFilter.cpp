@@ -43,7 +43,9 @@ Lootability ReferenceFilter::CheckLootable(const RE::TESObjectREFR* refr)
 	static const bool dryRun(true);
 	if (!refr)
 		return Lootability::NullReference;
-	return ReferenceFilter(DistanceToTarget(), AbsoluteRange(refr ,0., 0.), false, 1).AnalyzeREFR(refr, dryRun);
+	DistanceToTarget distance;
+	AbsoluteRange range(refr, 0., 0.);
+	return ReferenceFilter(distance, range, false, 1).AnalyzeREFR(refr, dryRun);
 }
 
 /*
@@ -422,7 +424,7 @@ void ReferenceFilter::FilterNearbyReferences()
 	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
 	// no more than N. std::nth_element does precisely what we need.
 	// End-of-range iterator remains valid as the container is processed in situ by each algorithms
-	auto endOfRange(m_refs.begin() + std::min(m_limit, m_refs.size()));
+	auto endOfRange(m_refs.begin() + static_cast<ptrdiff_t>(std::min(m_limit, m_refs.size())));
 	std::nth_element(m_refs.begin(), endOfRange, m_refs.end(),
 		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	std::sort(m_refs.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });

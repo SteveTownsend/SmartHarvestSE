@@ -53,51 +53,35 @@ namespace
 		}
 		return result;
 	}
-
-	void ToLower(std::string &str)
-	{
-		for (auto &c : str)
-			c = tolower(c);
-	}
-	void ToUpper(std::string &str)
-	{
-		for (auto &c : str)
-			c = toupper(c);
-	}
-
-	std::string ToStringID(uint32_t id)
-	{
-		return StringUtils::FromFormID(id);
-	}
 }
 
 namespace papyrus
 {
 	// available in release build, but typically unused
-	void DebugTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
+	void DebugTrace(RE::StaticFunctionTag*, RE::BSFixedString str)
 	{
 		DBG_MESSAGE("{}", str.c_str());
 	}
 
 	// available in release build for important output
-	void AlwaysTrace(RE::StaticFunctionTag* base, RE::BSFixedString str)
+	void AlwaysTrace(RE::StaticFunctionTag*, RE::BSFixedString str)
 	{
 		REL_MESSAGE("{}", str.c_str());
 	}
 
-	RE::BSFixedString GetPluginName(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
+	RE::BSFixedString GetPluginName(RE::StaticFunctionTag*, RE::TESForm* thisForm)
 	{
 		if (!thisForm)
 			return nullptr;
 		return ::GetPluginName(thisForm).c_str();
 	}
 
-	RE::BSFixedString GetPluginVersion(RE::StaticFunctionTag* base)
+	RE::BSFixedString GetPluginVersion(RE::StaticFunctionTag*)
 	{
 		return RE::BSFixedString(VersionInfo::Instance().GetPluginVersionString());
 	}
 
-	RE::BSFixedString GetTextObjectType(RE::StaticFunctionTag* base, RE::TESForm* thisForm)
+	RE::BSFixedString GetTextObjectType(RE::StaticFunctionTag*, RE::TESForm* thisForm)
 	{
 		if (!thisForm)
 			return nullptr;
@@ -107,31 +91,31 @@ namespace papyrus
 			return "NON-CLASSIFIED";
 
 		std::string result = shse::GetObjectTypeName(objType);
-		::ToUpper(result);
+		StringUtils::ToUpper(result);
 		return (!result.empty()) ? result.c_str() : nullptr;
 	}
 
-	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag* base, int32_t objectNumber)
+	RE::BSFixedString GetObjectTypeNameByType(RE::StaticFunctionTag*, int32_t objectNumber)
 	{
 		RE::BSFixedString result;
 		std::string str = shse::GetObjectTypeName(ObjectType(objectNumber));
-		if (str.empty() || str.c_str() == "unknown")
+		if (str.empty() || str == "unknown")
 			return result;
 		else
 			return str.c_str();
 	}
 
-	int32_t GetObjectTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString objectTypeName)
+	int32_t GetObjectTypeByName(RE::StaticFunctionTag*, RE::BSFixedString objectTypeName)
 	{
 		return static_cast<int32_t>(shse::GetObjectTypeByTypeName(objectTypeName.c_str()));
 	}
 
-	int32_t GetResourceTypeByName(RE::StaticFunctionTag* base, RE::BSFixedString resourceTypeName)
+	int32_t GetResourceTypeByName(RE::StaticFunctionTag*, RE::BSFixedString resourceTypeName)
 	{
 		return static_cast<int32_t>(shse::ResourceTypeByName(resourceTypeName.c_str()));
 	}
 
-	float GetSetting(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, RE::BSFixedString key)
+	float GetSetting(RE::StaticFunctionTag*, int32_t section_first, int32_t section_second, RE::BSFixedString key)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -141,14 +125,14 @@ namespace papyrus
 			return 0.0;
 
 		std::string str = key.c_str();
-		::ToLower(str);
+		StringUtils::ToLower(str);
 
 		float result(static_cast<float>(ini->GetSetting(first, second, str.c_str())));
 		DBG_VMESSAGE("Config setting {}/{}/{} = {}", first, second, str.c_str(), result);
 		return result;
 	}
 
-	float GetSettingObjectArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int32_t index)
+	float GetSettingObjectArrayEntry(RE::StaticFunctionTag*, int32_t section_first, int32_t section_second, int32_t index)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -158,7 +142,7 @@ namespace papyrus
 			return 0.0;
 
 		std::string key(shse::GetObjectTypeName(ObjectType(index)));
-		::ToLower(key);
+		StringUtils::ToLower(key);
 		// constrain INI values to sensible values
 		float value(0.0f);
 		if (second == INIFile::SecondaryType::valueWeight)
@@ -198,7 +182,7 @@ namespace papyrus
 		return value;
 	}
 
-	int GetSettingGlowArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int32_t index)
+	int GetSettingGlowArrayEntry(RE::StaticFunctionTag*, int32_t section_first, int32_t section_second, int32_t index)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -208,7 +192,7 @@ namespace papyrus
 			return static_cast<int>(shse::GlowReason::SimpleTarget);
 
 		std::string key(shse::GlowName(shse::GlowReason(index)));
-		::ToLower(key);
+		StringUtils::ToLower(key);
 		// constrain INI values to sensible values
 		int value(0);
 		int tmp_value = static_cast<int>(ini->GetSetting(first, second, key.c_str()));
@@ -224,7 +208,7 @@ namespace papyrus
 		return value;
 	}
 
-	void PutSetting(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, RE::BSFixedString key, float value)
+	void PutSetting(RE::StaticFunctionTag*, int32_t section_first, int32_t section_second, RE::BSFixedString key, float value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -234,12 +218,12 @@ namespace papyrus
 			return;
 
 		std::string str = key.c_str();
-		::ToLower(str);
+		StringUtils::ToLower(str);
 
 		ini->PutSetting(first, second, str.c_str(), static_cast<double>(value));
 	}
 
-	void PutSettingObjectArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int index, float value)
+	void PutSettingObjectArrayEntry(RE::StaticFunctionTag*, int32_t section_first, int32_t section_second, int index, float value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -249,12 +233,12 @@ namespace papyrus
 			return;
 
 		std::string key(shse::GetObjectTypeName(ObjectType(index)));
-		::ToLower(key);
+		StringUtils::ToLower(key);
 		DBG_VMESSAGE("Put config setting (array) {}/{}/{} = {}", first, second, key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 
-	void PutSettingGlowArrayEntry(RE::StaticFunctionTag* base, int32_t section_first, int32_t section_second, int index, int value)
+	void PutSettingGlowArrayEntry(RE::StaticFunctionTag*, int32_t section_first, int32_t section_second, int index, int value)
 	{
 		INIFile::PrimaryType first = static_cast<INIFile::PrimaryType>(section_first);
 		INIFile::SecondaryType second = static_cast<INIFile::SecondaryType>(section_second);
@@ -264,12 +248,12 @@ namespace papyrus
 			return;
 
 		std::string key(shse::GlowName(shse::GlowReason(index)));
-		::ToLower(key);
+		StringUtils::ToLower(key);
 		DBG_VMESSAGE("Put config setting (glow array) {}/{}/{} = {}", first, second, key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 
-	bool Reconfigure(RE::StaticFunctionTag* base)
+	bool Reconfigure(RE::StaticFunctionTag*)
 	{
 		INIFile* ini = INIFile::GetInstance();
 		if (ini)
@@ -280,7 +264,7 @@ namespace papyrus
 		return false;
 	}
 
-	void LoadIniFile(RE::StaticFunctionTag* base, const bool useDefaults)
+	void LoadIniFile(RE::StaticFunctionTag*, const bool useDefaults)
 	{
 		INIFile* ini = INIFile::GetInstance();
 		if (!ini || !ini->LoadFile(useDefaults))
@@ -289,27 +273,27 @@ namespace papyrus
 		}
 	}
 
-	void SaveIniFile(RE::StaticFunctionTag* base)
+	void SaveIniFile(RE::StaticFunctionTag*)
 	{
 		INIFile::GetInstance()->SaveFile();
 	}
 
-	void SetLootableForProducer(RE::StaticFunctionTag* base, RE::TESForm* critter, RE::TESForm* lootable)
+	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* critter, RE::TESForm* lootable)
 	{
 		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
 	}
 
-	void PrepareSPERGMining(RE::StaticFunctionTag* base)
+	void PrepareSPERGMining(RE::StaticFunctionTag*)
 	{
 		shse::ScanGovernor::Instance().SPERGMiningStart();
 	}
 
-	void PostprocessSPERGMining(RE::StaticFunctionTag* base)
+	void PostprocessSPERGMining(RE::StaticFunctionTag*)
 	{
 		shse::ScanGovernor::Instance().SPERGMiningEnd();
 	}
 
-	void AllowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
+	void AllowSearch(RE::StaticFunctionTag*, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search enabled");
 		// clean lists if MCM has just been active, then enable scan
@@ -320,7 +304,7 @@ namespace papyrus
 		shse::ScanGovernor::Instance().Allow();
 	}
 
-	void DisallowSearch(RE::StaticFunctionTag* base, const bool onMCMClose)
+	void DisallowSearch(RE::StaticFunctionTag*, const bool onMCMClose)
 	{
 		REL_MESSAGE("Reference Search disabled");
 		// clean lists if MCM has just been active, then enable scan
@@ -331,12 +315,12 @@ namespace papyrus
 		shse::ScanGovernor::Instance().Disallow();
 	}
 
-	bool IsSearchAllowed(RE::StaticFunctionTag* base)
+	bool IsSearchAllowed(RE::StaticFunctionTag*)
 	{
 		return shse::ScanGovernor::Instance().IsAllowed();
 	}
 
-	void ReportOKToScan(RE::StaticFunctionTag* base, const bool delayed, const int nonce)
+	void ReportOKToScan(RE::StaticFunctionTag*, const bool delayed, const int nonce)
 	{
 		shse::UIState::Instance().ReportVMGoodToGo(delayed, nonce);
 	}
@@ -344,18 +328,18 @@ namespace papyrus
 	constexpr int WhiteList = 1;
 	constexpr int BlackList = 2;
 
-	void ResetList(RE::StaticFunctionTag* base, const bool reloadGame, const int entryType)
+	void ResetList(RE::StaticFunctionTag*, const int entryType)
 	{
 		if (entryType == BlackList)
 		{
-			shse::ManagedList::BlackList().Reset(reloadGame);
+			shse::ManagedList::BlackList().Reset();
 		}
 		else
 		{
-			shse::ManagedList::WhiteList().Reset(reloadGame);
+			shse::ManagedList::WhiteList().Reset();
 		}
 	}
-	void AddEntryToList(RE::StaticFunctionTag* base, const int entryType, const RE::TESForm* entry)
+	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, const RE::TESForm* entry)
 	{
 		if (entryType == BlackList)
 		{
@@ -368,7 +352,7 @@ namespace papyrus
 	}
 	// This is the last function called by the scripts when re-syncing state
 	// This is called for game reload, or whitelist/blacklist updates (reload=false)
-	void SyncDone(RE::StaticFunctionTag* base, const bool reload)
+	void SyncDone(RE::StaticFunctionTag*, const bool reload)
 	{
 		if (reload)
 		{
@@ -380,38 +364,38 @@ namespace papyrus
 		}
 	}
 
-	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag* base)
+	const RE::TESForm* GetPlayerPlace(RE::StaticFunctionTag*)
 	{
 		return shse::LocationTracker::Instance().CurrentPlayerPlace();
 	}
 
-	bool UnlockHarvest(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr, const bool isSilent)
+	bool UnlockHarvest(RE::StaticFunctionTag*, RE::TESObjectREFR* refr, const bool isSilent)
 	{
 		return shse::ScanGovernor::Instance().UnlockHarvest(refr, isSilent);
 	}
 
-	void ProcessContainerCollectibles(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
 		shse::CollectionManager::Instance().CollectFromContainer(refr);
 	}
 
-	void NotifyManualLootItem(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	void NotifyManualLootItem(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
 		shse::ProcessManualLootREFR(refr);
 	}
 
-	RE::BSFixedString PrintFormID(RE::StaticFunctionTag* base, const int formID)
+	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
 	{
 		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
 	}
 
-	RE::BSFixedString GetTranslation(RE::StaticFunctionTag* base, RE::BSFixedString key)
+	RE::BSFixedString GetTranslation(RE::StaticFunctionTag*, RE::BSFixedString key)
 	{
 		shse::DataCase* data = shse::DataCase::GetInstance();
 		return data->GetTranslation(key.c_str());
 	}
 
-	RE::BSFixedString Replace(RE::StaticFunctionTag* base, RE::BSFixedString str, RE::BSFixedString target, RE::BSFixedString replacement)
+	RE::BSFixedString Replace(RE::StaticFunctionTag*, RE::BSFixedString str, RE::BSFixedString target, RE::BSFixedString replacement)
 	{
 		std::string s_str(str.c_str());
 		std::string s_target(target.c_str());
@@ -419,14 +403,12 @@ namespace papyrus
 		return (StringUtils::Replace(s_str, s_target, s_replacement)) ? s_str.c_str() : nullptr;
 	}
 
-	RE::BSFixedString ReplaceArray(RE::StaticFunctionTag* base, RE::BSFixedString str, std::vector<RE::BSFixedString> targets, std::vector<RE::BSFixedString> replacements)
+	RE::BSFixedString ReplaceArray(RE::StaticFunctionTag*, RE::BSFixedString str, std::vector<RE::BSFixedString> targets, std::vector<RE::BSFixedString> replacements)
 	{
 		std::string result(str.c_str());
 		if (result.empty() || targets.size() != replacements.size())
 			return nullptr;
 
-		RE::BSFixedString target;
-		RE::BSFixedString replacement;
 		for (std::vector<RE::BSFixedString>::const_iterator target = targets.cbegin(), replacement = replacements.cbegin();
 			target != targets.cend(); ++target, ++replacement)
 		{
@@ -441,12 +423,12 @@ namespace papyrus
 		return result.c_str();
 	}
 
-	bool CollectionsInUse(RE::StaticFunctionTag* base)
+	bool CollectionsInUse(RE::StaticFunctionTag*)
 	{
 		return shse::CollectionManager::Instance().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag* base, const float gameTime, const std::vector<const RE::TESForm*> forms, const int itemCount)
+	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<const RE::TESForm*> forms, const int itemCount)
 	{
 		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
 		auto form(forms.cbegin());
@@ -461,201 +443,201 @@ namespace papyrus
 		}
 	}
 
-	void PushGameTime(RE::StaticFunctionTag* base, const float gameTime)
+	void PushGameTime(RE::StaticFunctionTag*, const float gameTime)
 	{
 		shse::PlayerState::Instance().UpdateGameTime(gameTime);
 	}
 
-	int CollectionGroups(RE::StaticFunctionTag* base)
+	int CollectionGroups(RE::StaticFunctionTag*)
 	{
 		return shse::CollectionManager::Instance().NumberOfFiles();
 	}
 
-	std::string CollectionGroupName(RE::StaticFunctionTag* base, const int fileIndex)
+	std::string CollectionGroupName(RE::StaticFunctionTag*, const int fileIndex)
 	{
 		return shse::CollectionManager::Instance().GroupNameByIndex(fileIndex);
 	}
 
-	std::string CollectionGroupFile(RE::StaticFunctionTag* base, const int fileIndex)
+	std::string CollectionGroupFile(RE::StaticFunctionTag*, const int fileIndex)
 	{
 		return shse::CollectionManager::Instance().GroupFileByIndex(fileIndex);
 	}
 
-	int CollectionsInGroup(RE::StaticFunctionTag* base, const std::string fileName)
+	int CollectionsInGroup(RE::StaticFunctionTag*, const std::string fileName)
 	{
 		return shse::CollectionManager::Instance().NumberOfActiveCollections(fileName);
 	}
 
-	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
+	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
 	{
 		return shse::CollectionManager::Instance().NameByIndexInGroup(groupName, collectionIndex);
 	}
 
-	std::string CollectionDescriptionByIndexInGroup(RE::StaticFunctionTag* base, const std::string groupName, const int collectionIndex)
+	std::string CollectionDescriptionByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
 	{
 		return shse::CollectionManager::Instance().DescriptionByIndexInGroup(groupName, collectionIndex);
 	}
 
-	bool CollectionAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	bool CollectionAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
 		return shse::CollectionManager::Instance().PolicyRepeat(groupName, collectionName);
 	}
-	bool CollectionNotifies(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	bool CollectionNotifies(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
 		return shse::CollectionManager::Instance().PolicyNotify(groupName, collectionName);
 	}
-	int CollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	int CollectionAction(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
 		return static_cast<int>(shse::CollectionManager::Instance().PolicyAction(groupName, collectionName));
 	}
-	void PutCollectionAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const bool allowRepeats)
+	void PutCollectionAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const bool allowRepeats)
 	{
 		shse::CollectionManager::Instance().PolicySetRepeat(groupName, collectionName, allowRepeats);
 	}
-	void PutCollectionNotifies(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const bool notifies)
+	void PutCollectionNotifies(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const bool notifies)
 	{
 		shse::CollectionManager::Instance().PolicySetNotify(groupName, collectionName, notifies);
 	}
-	void PutCollectionAction(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName, const int action)
+	void PutCollectionAction(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const int action)
 	{
 		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
-	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName)
+	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName)
 	{
 		return shse::CollectionManager::Instance().GroupPolicyRepeat(groupName);
 	}
-	bool CollectionGroupNotifies(RE::StaticFunctionTag* base, const std::string groupName)
+	bool CollectionGroupNotifies(RE::StaticFunctionTag*, const std::string groupName)
 	{
 		return shse::CollectionManager::Instance().GroupPolicyNotify(groupName);
 	}
-	int CollectionGroupAction(RE::StaticFunctionTag* base, const std::string groupName)
+	int CollectionGroupAction(RE::StaticFunctionTag*, const std::string groupName)
 	{
 		return static_cast<int>(shse::CollectionManager::Instance().GroupPolicyAction(groupName));
 	}
-	void PutCollectionGroupAllowsRepeats(RE::StaticFunctionTag* base, const std::string groupName, const bool allowRepeats)
+	void PutCollectionGroupAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const bool allowRepeats)
 	{
 		shse::CollectionManager::Instance().GroupPolicySetRepeat(groupName, allowRepeats);
 	}
-	void PutCollectionGroupNotifies(RE::StaticFunctionTag* base, const std::string groupName, const bool notifies)
+	void PutCollectionGroupNotifies(RE::StaticFunctionTag*, const std::string groupName, const bool notifies)
 	{
 		shse::CollectionManager::Instance().GroupPolicySetNotify(groupName, notifies);
 	}
-	void PutCollectionGroupAction(RE::StaticFunctionTag* base, const std::string groupName, const int action)
+	void PutCollectionGroupAction(RE::StaticFunctionTag*, const std::string groupName, const int action)
 	{
 		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
-	int CollectionTotal(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	int CollectionTotal(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
 		return static_cast<int>(shse::CollectionManager::Instance().TotalItems(groupName, collectionName));
 	}
 
-	int CollectionObtained(RE::StaticFunctionTag* base, const std::string groupName, const std::string collectionName)
+	int CollectionObtained(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
 		return static_cast<int>(shse::CollectionManager::Instance().ItemsObtained(groupName, collectionName));
 	}
 
-	int AdventureTypeCount(RE::StaticFunctionTag* base)
+	int AdventureTypeCount(RE::StaticFunctionTag*)
 	{
 		return static_cast<int>(shse::AdventureTargets::Instance().AvailableAdventureTypes());
 	}
 
-	std::string AdventureTypeName(RE::StaticFunctionTag* base, const int adventureType)
+	std::string AdventureTypeName(RE::StaticFunctionTag*, const int adventureType)
 	{
 		return shse::AdventureTargets::Instance().AdventureTypeName(size_t(adventureType));
 	}
 
-	int ViableWorldsByType(RE::StaticFunctionTag* base, const int adventureType)
+	int ViableWorldsByType(RE::StaticFunctionTag*, const int adventureType)
 	{
 		return static_cast<int>(shse::AdventureTargets::Instance().ViableWorldCount(size_t(adventureType)));
 	}
 
-	std::string WorldNameByIndex(RE::StaticFunctionTag* base, const int worldIndex)
+	std::string WorldNameByIndex(RE::StaticFunctionTag*, const int worldIndex)
 	{
 		return shse::AdventureTargets::Instance().ViableWorldNameByIndexInView(size_t(worldIndex));
 	}
 
-	void SetAdventureTarget(RE::StaticFunctionTag* base, const int worldIndex)
+	void SetAdventureTarget(RE::StaticFunctionTag*, const int worldIndex)
 	{
 		return shse::AdventureTargets::Instance().SelectCurrentDestination(size_t(worldIndex));
 	}
 
-	void ClearAdventureTarget(RE::StaticFunctionTag* base)
+	void ClearAdventureTarget(RE::StaticFunctionTag*)
 	{
 		return shse::AdventureTargets::Instance().AbandonCurrentDestination();
 	}
 
-	bool HasAdventureTarget(RE::StaticFunctionTag* base)
+	bool HasAdventureTarget(RE::StaticFunctionTag*)
 	{
 		return shse::AdventureTargets::Instance().HasActiveTarget();
 	}
 
-	void ToggleCalibration(RE::StaticFunctionTag* base, const bool shaderTest)
+	void ToggleCalibration(RE::StaticFunctionTag*, const bool shaderTest)
 	{
 		shse::ScanGovernor::Instance().ToggleCalibration(shaderTest);
 	}
 
-	void ShowLocation(RE::StaticFunctionTag* base)
+	void ShowLocation(RE::StaticFunctionTag*)
 	{
 		shse::LocationTracker::Instance().DisplayPlayerLocation();
 	}
 
-	void GlowNearbyLoot(RE::StaticFunctionTag* base)
+	void GlowNearbyLoot(RE::StaticFunctionTag*)
 	{
 		shse::ScanGovernor::Instance().InvokeLootSense();
 	}
 
-	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag* base, const int actorIndex, const bool dryRun)
+	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag*, const int actorIndex, const bool dryRun)
 	{
 		if (dryRun)
 		{
-			return shse::ScanGovernor::Instance().ActorByIndex(actorIndex);
+			return shse::ScanGovernor::Instance().ActorByIndex(static_cast<size_t>(actorIndex));
 		}
 		else
 		{
-			return shse::TheftCoordinator::Instance().ActorByIndex(actorIndex);
+			return shse::TheftCoordinator::Instance().ActorByIndex(static_cast<size_t>(actorIndex));
 		}
 	}
 
-	void ReportPlayerDetectionState(RE::StaticFunctionTag* base, const bool detected)
+	void ReportPlayerDetectionState(RE::StaticFunctionTag*, const bool detected)
 	{
 		shse::TheftCoordinator::Instance().StealOrForgetItems(detected);
 	}
 
-	void CheckLootable(RE::StaticFunctionTag* base, RE::TESObjectREFR* refr)
+	void CheckLootable(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
 		shse::ScanGovernor::Instance().DisplayLootability(refr);
 	}
 
-	int StartTimer(RE::StaticFunctionTag* base, const std::string timerContext)
+	int StartTimer(RE::StaticFunctionTag*, const std::string timerContext)
 	{
 		return WindowsUtils::ScopedTimerFactory::Instance().StartTimer(timerContext);
 	}
 
-	void StopTimer(RE::StaticFunctionTag* base, const int timerHandle)
+	void StopTimer(RE::StaticFunctionTag*, const int timerHandle)
 	{
 		WindowsUtils::ScopedTimerFactory::Instance().StopTimer(timerHandle);
 	}
 
-	int GetTimelineDays(RE::StaticFunctionTag* base)
+	int GetTimelineDays(RE::StaticFunctionTag*)
 	{
 		return static_cast<int>(shse::Saga::Instance().DaysWithEvents());
 	}
 
-	std::string TimelineDayName(RE::StaticFunctionTag* base, const int timelineDay)
+	std::string TimelineDayName(RE::StaticFunctionTag*, const int timelineDay)
 	{
-		return shse::Saga::Instance().DateStringByIndex(timelineDay);
+		return shse::Saga::Instance().DateStringByIndex(static_cast<unsigned int>(timelineDay));
 	}
 
-	int PageCountForDay(RE::StaticFunctionTag* base)
+	int PageCountForDay(RE::StaticFunctionTag*)
 	{
 		return static_cast<int>(shse::Saga::Instance().CurrentDayPageCount());
 	}
 
-	std::string GetSagaDayPage(RE::StaticFunctionTag* base, const int pageNumber)
+	std::string GetSagaDayPage(RE::StaticFunctionTag*, const int pageNumber)
 	{
-		return shse::Saga::Instance().PageByNumber(pageNumber);
+		return shse::Saga::Instance().PageByNumber(static_cast<unsigned int>(pageNumber));
 	}
 
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm)

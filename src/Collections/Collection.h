@@ -71,7 +71,6 @@ private:
 
 class Collection {
 protected:
-	size_t PlacedMembers(void) const;
 	bool AddMemberID(const RE::TESForm* form) const;
 
 	// inputs

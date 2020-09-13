@@ -37,7 +37,7 @@ public:
 	inline RE::TESBoundObject* BoundObject() const { return m_entry->GetObject(); }
 	inline ObjectType LootObjectType() const { return m_objectType; }
 	inline std::ptrdiff_t Count() const { return m_count; }
-	void MakeCopies(RE::TESObjectREFR* target, ptrdiff_t count);
+	void MakeCopies(RE::TESObjectREFR* target, size_t count);
 
 private:
 	void Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList,

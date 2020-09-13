@@ -60,9 +60,9 @@ ScanGovernor& ScanGovernor::Instance()
 	return *m_instance;
 }
 
-ScanGovernor::ScanGovernor() : m_searchAllowed(false), m_pendingNotifies(0), m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
-	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget),
-	m_targetType(INIFile::SecondaryType::NONE2), m_spergInProgress(0)
+ScanGovernor::ScanGovernor() : m_pendingNotifies(0), m_searchAllowed(false),m_targetType(INIFile::SecondaryType::NONE2),
+	m_spergInProgress(0), m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
+	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget)
 {
 }
 
@@ -173,7 +173,7 @@ bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) con
 		{
 			// if item count has changed, remove from locked container list: manually looted, we assume
 			size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
-				[=](RE::TESBoundObject* item) -> bool { return true; }));
+				[=](RE::TESBoundObject*) -> bool { return true; }));
 			if (items != locked->second)
 			{
 				DBG_VMESSAGE("Forget REFR 0x{:08x} to locked container {}/0x{:08x} with {} items, was {}", refr->GetFormID(),
@@ -195,7 +195,7 @@ bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) con
 	else if (!m_lockedContainers.contains(refr))
 	{
 		size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
-			[=](RE::TESBoundObject* item) -> bool { return true; }));
+			[=](RE::TESBoundObject*) -> bool { return true; }));
 		DBG_VMESSAGE("Remember REFR 0x{:08x} to locked container {}/0x{:08x} with {} items", refr->GetFormID(),
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items);
 		m_lockedContainers.insert({ refr, items });
@@ -406,7 +406,9 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				return Lootability::DeadBodyDelayedLooting;
 			}
 			// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
+#if _DEBUG || _FULL_LOGGING
 			RE::TESObjectREFR* original(refr);
+#endif
 			refr = GetAshPile(refr);
 			if (!refr)
 			{
@@ -504,7 +506,7 @@ void ScanGovernor::TrackActors()
 	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindActors();
 }
 
-const RE::Actor* ScanGovernor::ActorByIndex(const int actorIndex) const
+const RE::Actor* ScanGovernor::ActorByIndex(const size_t actorIndex) const
 {
 	RecursiveLockGuard guard(m_searchLock);
 	if (actorIndex < m_detectiveWannabes.size())
@@ -514,7 +516,6 @@ const RE::Actor* ScanGovernor::ActorByIndex(const int actorIndex) const
 
 void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 {
-	bool sneaking(false);
 	if (scanType == ReferenceScanType::Calibration)
 	{
 		ProgressGlowDemo();
@@ -629,7 +630,6 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	{
 		m_detectiveWannabes = ActorTracker::Instance().GetDetectives();
 		DBG_VMESSAGE("Detection check to steal under the nose of {} Actors", m_detectiveWannabes.size());
-		static const bool dryRun(true);
 		EventPublisher::Instance().TriggerStealIfUndetected(m_detectiveWannabes.size(), dryRun);
 	}
 

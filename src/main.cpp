@@ -45,7 +45,6 @@ void SaveCallback(SKSE::SerializationInterface* a_intfc)
 	if (!shse::CosaveData::Instance().Serialize(a_intfc))
 	{
 		REL_ERROR("Cosave data write failed");
-		shse::CosaveData::Instance().Clear();
 	}
 }
 
@@ -83,7 +82,7 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 		const bool onGameReload(msg->type == SKSE::MessagingInterface::kPostLoadGame);
 		REL_MESSAGE("Game ready: new game = {}", onGameReload ? "false" : "true");
 		// if checks fail, abort scanning
-		if (!shse::PluginFacade::Instance().Init(onGameReload))
+		if (!shse::PluginFacade::Instance().Init())
 		{
 			REL_FATALERROR("SearchTask initialization failed - no looting");
 			return;
@@ -96,7 +95,7 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 extern "C"
 {
 #if _DEBUG
-	int MyCrtReportHook(int reportType, char* message, int* returnValue)
+	int MyCrtReportHook(int, char*, int*)
 	{
 		__try {
 			RaiseException(EXCEPTION_NONCONTINUABLE_EXCEPTION, EXCEPTION_NONCONTINUABLE, 0, NULL);

@@ -30,7 +30,7 @@ public:
 	static ManagedList& WhiteList();
 	ManagedList() {}
 
-	void Reset(const bool reloadGame);
+	void Reset();
 	void Add(const RE::TESForm* entry);
 	void Drop(const RE::TESForm* entry);
 	bool Contains(const RE::TESForm* entry) const;

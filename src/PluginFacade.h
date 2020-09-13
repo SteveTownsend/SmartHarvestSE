@@ -27,7 +27,7 @@ public:
 	static PluginFacade& Instance();
 	PluginFacade();
 
-	bool Init(const bool onGameReload);
+	bool Init();
 	void PrepareForReload();
 	void ResetTransientState(const bool gameReload);
 	void AfterReload();

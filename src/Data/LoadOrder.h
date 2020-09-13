@@ -58,7 +58,6 @@ public:
 	}
 	inline RE::FormID AsRaw(const RE::FormID formID) const
 	{
-		constexpr RE::FormID ESPFERawMask = 0x00000FFF;
 		if ((formID & ESPFETypeMask) == ESPFETypeMask)
 			return formID & ESPFERawMask;
 		return formID & FullRawMask;

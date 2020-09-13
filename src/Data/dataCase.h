@@ -79,7 +79,7 @@ public:
 		return objectType;
 	}
 
-	ResourceType DataCase::OreVeinResourceType(const RE::TESObjectACTI* mineable) const;
+	ResourceType OreVeinResourceType(const RE::TESObjectACTI* mineable) const;
 
 	const char* GetTranslation(const char* key) const;
 
@@ -283,7 +283,7 @@ private:
 	template <> ObjectType  DefaultObjectType<RE::TESObjectWEAP>();
 
 	template <typename T>
-	ObjectType OverrideIfBadChoice(const RE::TESForm* form, const ObjectType objectType)
+	ObjectType OverrideIfBadChoice(const RE::TESForm*, const ObjectType objectType)
 	{
 		return objectType;
 	}

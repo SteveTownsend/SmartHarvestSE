@@ -26,7 +26,6 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/Exception.h"
 #include "Utilities/utils.h"
 #include "WorldState/LocationTracker.h"
-#include "WorldState/PlacedObjects.h"
 #include "VM/EventPublisher.h"
 #include "VM/papyrus.h"
 #include "Collections/CollectionManager.h"
@@ -51,7 +50,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false)
+CollectionManager::CollectionManager() : m_notifications(0), m_ready(false), m_mcmEnabled(false)
 {
 }
 
@@ -272,16 +271,15 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 	for (const auto& candidate : lister.GetLootableItems())
 	{
 		const auto item(candidate.BoundObject());
-		RE::FormID formID(item->GetFormID());
 		newInventoryCollectibles.insert(item);
 		if (!m_lastInventoryCollectibles.contains(item))
 		{
-			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), formID);
+			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), item->GetFormID());
 			additions.insert(item);
 		}
 		else
 		{
-			DBG_VMESSAGE("Skip {}/0x{:08x} unchanged in inventory", item->GetName(), formID);
+			DBG_VMESSAGE("Skip {}/0x{:08x} unchanged in inventory", item->GetName(), item->GetFormID());
 		}
 	}
 	m_lastInventoryCollectibles.swap(newInventoryCollectibles);
@@ -397,7 +395,7 @@ int CollectionManager::NumberOfFiles(void) const
 std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	size_t index(0);
+	int index(0);
 	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
@@ -410,7 +408,7 @@ std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	size_t index(0);
+	int index(0);
 	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
@@ -430,7 +428,7 @@ std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, 
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matches(m_activeCollectionsByGroupName.equal_range(groupName));
-	size_t index(0);
+	int index(0);
 	for (auto group = matches.first; group != matches.second; ++group)
 	{
 		if (index == collectionIndex)
@@ -643,16 +641,11 @@ void CollectionManager::BuildDecisionTrees(const std::shared_ptr<CollectionGroup
 	}
 }
 
-void CollectionManager::RecordCollectibleForm(
-	const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
-	std::unordered_set<const RE::TESForm*>& uniquePlaced, std::unordered_set<const RE::TESForm*>& uniqueMembers)
+void CollectionManager::RecordCollectibleForm(const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
+	std::unordered_set<const RE::TESForm*>& uniqueMembers)
 {
 	DBG_VMESSAGE("Record {}/0x{:08x} as collectible", form->GetName(), form->GetFormID());
 	m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection));
-	if (PlacedObjects::Instance().IsPlacedObject(form))
-	{
-		uniquePlaced.insert(form);
-	}
 	uniqueMembers.insert(form);
 }
 
@@ -661,14 +654,13 @@ void CollectionManager::ResolveMembership(void)
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Resolve Collection Membership");
 #endif
-	std::unordered_set<const RE::TESForm*> uniquePlaced;
 	std::unordered_set<const RE::TESForm*> uniqueMembers;
 	// record static members before resolving
 	for (const auto& collection : m_allCollectionsByLabel)
 	{
 		for (const auto member : collection.second->Members())
 		{
-			RecordCollectibleForm(collection.second, member, uniquePlaced, uniqueMembers);
+			RecordCollectibleForm(collection.second, member, uniqueMembers);
 		}
 	}
 
@@ -687,12 +679,12 @@ void CollectionManager::ResolveMembership(void)
 				{
 					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
 					collection.second->SetScopes(matcher.ScopesSeen());
-					RecordCollectibleForm(collection.second, form, uniquePlaced, uniqueMembers);
+					RecordCollectibleForm(collection.second, form, uniqueMembers);
 				}
 			}
 		}
 	}
-	REL_MESSAGE("Collections contain {} unique objects, {} of which are placed in the world", uniqueMembers.size(), uniquePlaced.size());
+	REL_MESSAGE("Collections contain {} unique objects", uniqueMembers.size());
 }
 
 // clear state before game reload
@@ -703,6 +695,8 @@ void CollectionManager::Clear()
 	{
 		collection.second->Reset();
 	}
+	m_collectionsByFormID.clear();
+	m_nonCollectionForms.clear();
 }
 
 // for game reload, we reset the checked items

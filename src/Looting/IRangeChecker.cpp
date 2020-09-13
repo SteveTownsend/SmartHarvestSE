@@ -20,7 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "IRangeChecker.h"
 
-bool AlwaysInRange::IsValid(const RE::TESObjectREFR* refr) const 
+bool AlwaysInRange::IsValid(const RE::TESObjectREFR*) const 
 { 
 	return true;
 }
@@ -34,14 +34,13 @@ double AlwaysInRange::Distance() const
 }
 
 AbsoluteRange::AbsoluteRange(const RE::TESObjectREFR* source, const double radius, const double zFactor) :
-	m_sourceX(source->GetPositionX()), m_sourceY(source->GetPositionY()), m_sourceZ(source->GetPositionZ()),
-	m_radius(radius), m_zLimit(radius * zFactor)
+	m_radius(radius), m_sourceX(source->GetPositionX()), m_sourceY(source->GetPositionY()),
+	m_sourceZ(source->GetPositionZ()), m_zLimit(radius * zFactor)
 {
 }
 
 bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr) const
 {
-	RE::FormID formID(refr->formID);
 	double dx = fabs(refr->GetPositionX() - m_sourceX);
 	double dy = fabs(refr->GetPositionY() - m_sourceY);
 	double dz = fabs(refr->GetPositionZ() - m_sourceZ);
@@ -51,13 +50,13 @@ bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr) const
 	{
 		// very verbose
 		DBG_DMESSAGE("REFR 0x{:08x} {{:0.2f},{:0.2f},{:0.2f}} trivially too far from player {{:0.2f},{:0.2f},{:0.2f}}",
-			formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
+			refr->formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
 			m_sourceX, m_sourceY, m_sourceZ);
 		m_distance = std::max({ dx, dy, dz });
 		return false;
 	}
 	m_distance = sqrt((dx * dx) + (dy * dy) + (dz * dz));
-	DBG_VMESSAGE("REFR 0x{:08x} is {:0.2f} units away, loot range {:0.2f} XY-units, {:0.2f} Z-units", formID, m_distance, m_radius, m_zLimit);
+	DBG_VMESSAGE("REFR 0x{:08x} is {:0.2f} units away, loot range {:0.2f} XY-units, {:0.2f} Z-units", refr->formID, m_distance, m_radius, m_zLimit);
 	return m_distance <= m_radius;
 }
 

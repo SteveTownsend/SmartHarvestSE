@@ -55,7 +55,7 @@ size_t Saga::DaysWithEvents() const
 	m_daysWithEvents.clear();
 	m_daysWithEvents.reserve(m_eventsByDay.size());
 	unsigned int index(0);
-	size_t count(std::count_if(m_eventsByDay.cbegin(), m_eventsByDay.cend(),
+	ptrdiff_t count(std::count_if(m_eventsByDay.cbegin(), m_eventsByDay.cend(),
 		[&](const std::vector<SagaEvent>& events) -> bool {
 		if (!events.empty())
 		{
@@ -75,7 +75,7 @@ size_t Saga::DaysWithEvents() const
 		}
 	}));
 	DBG_MESSAGE("Days with events {}", count);
-	return count;
+	return static_cast<size_t>(count);
 }
 
 void Saga::AddPaginatedText(std::ostringstream& page, const std::string& text, const bool skipIfNewPage) const

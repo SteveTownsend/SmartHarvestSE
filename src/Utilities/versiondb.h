@@ -123,14 +123,12 @@ public:
 		GetModuleFileName(NULL, szVersionFile, MAX_PATH);
 
 		DWORD verHandle = 0;
-		UINT size = 0;
-		LPBYTE lpBuffer = NULL;
 		DWORD verSize = GetFileVersionInfoSize(szVersionFile, &verHandle);
 
 		if (verSize != NULL)
 		{
 			LPSTR verData = new char[verSize];
-
+			verHandle = 0;
 			if (GetFileVersionInfo(szVersionFile, verHandle, verSize, verData))
 			{
 				{
@@ -225,7 +223,7 @@ public:
 
 		if(tnLen > 0)
 		{
-			char* tnbuf = (char*)malloc(tnLen + 1);
+			char* tnbuf = (char*)malloc(static_cast<size_t>(tnLen) + 1);
 			file.read(tnbuf, tnLen);
 			tnbuf[tnLen] = '\0';
 			_moduleName = tnbuf;
