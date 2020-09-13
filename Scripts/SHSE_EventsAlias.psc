@@ -101,7 +101,7 @@ EndFunction
 ; merge FormList with plugin data
 Function SyncList(bool reload, int listNum, FormList forms)
     ; plugin resets to fixed baseline
-    ResetList(reload, listNum)
+    ResetList(listNum)
     ; ensure BlackList/WhiteList members are present in the plugin's list
     int index = forms.GetSize()
     int current = 0

@@ -34,7 +34,7 @@ std::string IHasValueWeight::GetTypeName() const
 
 constexpr const char* VW_Default = "valueWeightDefault";
 
-int32_t IHasValueWeight::GetWorth(void) const
+uint32_t IHasValueWeight::GetWorth(void) const
 {
 	if (!m_worthSetup)
 	{
@@ -46,7 +46,7 @@ int32_t IHasValueWeight::GetWorth(void) const
 
 bool IHasValueWeight::ValueWeightTooLowToLoot() const
 {
-	int32_t worth(GetWorth());
+	uint32_t worth(GetWorth());
 	DBG_VMESSAGE("Checking value: {}", worth);
 
 	// valuable objects overrides V/W checks
@@ -104,7 +104,7 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 
 bool IHasValueWeight::IsValuable() const
 {
-	int32_t worth(GetWorth());
+	uint32_t worth(GetWorth());
 	if (worth > 0)
 	{
 		double minValue(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemThreshold"));

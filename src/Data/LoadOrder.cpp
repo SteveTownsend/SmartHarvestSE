@@ -37,7 +37,7 @@ LoadOrder& LoadOrder::Instance()
 	return *m_instance;
 }
 
-LoadOrder::LoadOrder() : m_shsePriority(-1), m_coSaveLoadOrderDiffers(false)
+LoadOrder::LoadOrder() : m_shsePriority(-1), m_cosaveShsePriority(0), m_coSaveLoadOrderDiffers(false)
 {
 }
 

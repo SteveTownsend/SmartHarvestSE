@@ -46,7 +46,7 @@ public:
 	template <typename EVENTTYPE>
 	void AddEvent(const EVENTTYPE& event)
 	{
-		unsigned int elapsedDays(static_cast<unsigned int>(std::floor(event.GameTime())));
+		size_t elapsedDays(static_cast<size_t>(std::floor(event.GameTime())));
 		if (elapsedDays+1 > m_eventsByDay.size())
 		{
 			m_eventsByDay.resize(elapsedDays+1);

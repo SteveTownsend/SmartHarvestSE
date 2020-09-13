@@ -44,7 +44,7 @@ public:
 protected:
 	virtual const char* GetName() const override;
 	virtual uint32_t GetFormID() const override;
-	virtual int32_t CalculateWorth(void) const override;
+	virtual uint32_t CalculateWorth(void) const override;
 
 private:
 	const RE::TESObjectREFR* m_ref;

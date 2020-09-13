@@ -30,7 +30,7 @@ public:
 	TheftCoordinator() : m_stealInProgress(false), m_stealTimer(-1) {}
 	void DelayStealableItem(RE::TESObjectREFR * target, INIFile::SecondaryType targetType);
 	void StealIfUndetected(void);
-	const RE::Actor* ActorByIndex(const int actorIndex) const;
+	const RE::Actor* ActorByIndex(const size_t actorIndex) const;
 	void StealOrForgetItems(const bool detected);
 	bool StealingItems() const;
 

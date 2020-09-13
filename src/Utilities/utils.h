@@ -32,8 +32,8 @@ constexpr double DistanceUnitInMiles = DistanceUnitInFeet / FeetPerMile;
 namespace FileUtils
 {
 	std::string GetGamePath(void);
-	std::string GetPluginFileName(void);
-	std::string GetPluginPath(void);
+	std::string GetPluginFileName(void) noexcept;
+	std::string GetPluginPath(void) noexcept;
 	inline bool CanOpenFile(const char* fileName)
 	{
 		std::ifstream ifs(fileName);
@@ -48,7 +48,7 @@ namespace utils
 
 namespace WindowsUtils
 {
-	long long microsecondsNow();
+	unsigned long long microsecondsNow();
 	void LogProcessWorkingSet();
 	void TakeNap(const double delaySeconds);
 
@@ -62,7 +62,7 @@ namespace WindowsUtils
 		ScopedTimer(const ScopedTimer&);
 		ScopedTimer& operator=(ScopedTimer&);
 
-		long long m_startTime;
+		unsigned long long m_startTime;
 		std::string m_context;
 	};
 
@@ -102,6 +102,7 @@ namespace FormUtils
 namespace StringUtils
 {
 	void ToLower(std::string &str);
+	void ToUpper(std::string& str);
 	bool Replace(std::string &str, const std::string target, const std::string replacement);
 	std::string FromUnicode(const std::wstring& input);
 	inline RE::FormID ToFormID(const std::string& formStr)

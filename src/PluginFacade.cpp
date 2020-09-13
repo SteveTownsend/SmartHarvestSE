@@ -54,7 +54,7 @@ PluginFacade::PluginFacade() : m_pluginOK(false), m_threadStarted(false), m_plug
 {
 }
 
-bool PluginFacade::Init(const bool onGameReload)
+bool PluginFacade::Init()
 {
 	if (!m_pluginOK)
 	{

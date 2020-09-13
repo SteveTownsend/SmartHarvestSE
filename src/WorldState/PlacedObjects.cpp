@@ -136,10 +136,11 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 
 	if (DataCase::GetInstance()->IsOffLimitsLocation(cell))
 		return;
-
-	size_t actors(std::count_if(cell->references.cbegin(), cell->references.cend(),
+#if _DEBUG
+	ptrdiff_t actors(std::count_if(cell->references.cbegin(), cell->references.cend(),
 		[&](const auto refr) -> bool { return refr->GetFormType() == RE::FormType::ActorCharacter; }));
 	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->references.size(), actors, FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+#endif
 	for (const RE::TESObjectREFRPtr& refptr : cell->references)
 	{
 		const RE::TESObjectREFR* refr(refptr.get());

@@ -33,7 +33,7 @@ uint32_t TESObjectARMOHelper::GetGoldValue() const
 	RE::EnchantmentItem* ench = TESFormHelper(m_armor, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (!ench)
 	{
-		return m_armor->value;
+		return static_cast<uint32_t>(m_armor->value);
 	}
 
 	double costPP = 0.0;

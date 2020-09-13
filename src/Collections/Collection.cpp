@@ -56,8 +56,8 @@ std::string ItemCollected::AsString() const
 
 Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
 	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
-	m_owningGroup(owningGroup), m_name(name), m_description(description), m_effectivePolicy(policy),
-	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter))
+	m_name(name), m_description(description), m_effectivePolicy(policy),
+	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter)), m_owningGroup(owningGroup)
 {
 	// if this collection has concrete static members, add them now to seed the list
 	const auto statics(m_rootFilter->StaticMembers());

@@ -217,14 +217,13 @@ Function PutSettingGlowArray(int section_first, int section_second, int listLeng
     endWhile
 EndFunction
 
-function ApplySettingsFromFile()
+function LoadSettingsFromNative()
     enableHarvest = GetSetting(type_Common, type_Config, "EnableHarvest") as bool
     enableLootContainer = GetSetting(type_Common, type_Config, "EnableLootContainer") as bool
     enableLootDeadbody = GetSetting(type_Common, type_Config, "EnableLootDeadbody") as int
     unencumberedInCombat = GetSetting(type_Common, type_Config, "UnencumberedInCombat") as bool
     unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "UnencumberedInPlayerHome") as bool
     unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "UnencumberedIfWeaponDrawn") as bool
-    ;DebugTrace("ApplySettingsFromFile - unencumberedIfWeaponDrawn " + unencumberedIfWeaponDrawn)
     pauseHotkeyCode = GetSetting(type_Common, type_Config, "PauseHotkeyCode") as int
     whiteListHotkeyCode = GetSetting(type_Common, type_Config, "WhiteListHotkeyCode") as int
     blackListHotkeyCode = GetSetting(type_Common, type_Config, "BlackListHotkeyCode") as int
@@ -232,9 +231,9 @@ function ApplySettingsFromFile()
     notifyLocationChange = GetSetting(type_Common, type_Config, "NotifyLocationChange") as bool
 
     radius = GetSetting(type_Harvest, type_Config, "RadiusFeet") as int
-    interval = GetSetting(type_Harvest, type_Config, "IntervalSeconds") as float
+    interval = GetSetting(type_Harvest, type_Config, "IntervalSeconds")
     radiusIndoors = GetSetting(type_Harvest, type_Config, "IndoorsRadiusFeet") as int
-    intervalIndoors = GetSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds") as float
+    intervalIndoors = GetSetting(type_Harvest, type_Config, "IndoorsIntervalSeconds")
 
     disableDuringCombat = GetSetting(type_Harvest, type_Config, "DisableDuringCombat") as bool
     disableWhileWeaponIsDrawn = GetSetting(type_Harvest, type_Config, "DisableWhileWeaponIsDrawn") as bool
@@ -256,7 +255,7 @@ function ApplySettingsFromFile()
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
 
-    verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor") as float
+    verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor")
     doorsPreventLooting = GetSetting(type_Harvest, type_Config, "DoorsPreventLooting") as int
     lootAllowedItemsInSettlement = GetSetting(type_Harvest, type_Config, "LootAllowedItemsInSettlement") as bool
 
@@ -282,7 +281,7 @@ function CheckFirstTimeEver()
         AllocateItemCategoryArrays()
 
         LoadIniFile(True)
-        ApplySettingsFromFile()
+        LoadSettingsFromNative()
 
         g_InitComplete.SetValue(1)
     endif
@@ -293,11 +292,7 @@ bool Function ManagesCarryWeight()
     return unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn
 endFunction
 
-; push current settings to plugin and event handler script
-Function ApplySetting(bool reload)
-
-    ;DebugTrace("  MCM ApplySetting start")
-
+Function SaveSettingsToNative()
     PutSetting(type_Common, type_Config, "EnableHarvest", enableHarvest as float)
     PutSetting(type_Common, type_Config, "EnableLootContainer", enableLootContainer as float)
     PutSetting(type_Common, type_Config, "EnableLootDeadbody", enableLootDeadbody as float)
@@ -333,7 +328,7 @@ Function ApplySetting(bool reload)
     PutSetting(type_Harvest, type_Config, "DisableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
     PutSetting(type_Harvest, type_Config, "DisableWhileConcealed", disableWhileConcealed as float)
 
-    PutSetting(type_Harvest, type_Config, "VerticalRadiusFactor", verticalRadiusFactor as float)
+    PutSetting(type_Harvest, type_Config, "VerticalRadiusFactor", verticalRadiusFactor)
     PutSetting(type_Harvest, type_Config, "DoorsPreventLooting", doorsPreventLooting as float)
     PutSetting(type_Harvest, type_Config, "LootAllowedItemsInSettlement", lootAllowedItemsInSettlement as float)
 
@@ -348,7 +343,13 @@ Function ApplySetting(bool reload)
     PutSetting(type_Common, type_Config, "FortuneHuntingEnabled", fortuneHuntingEnabled as float)
     PutSetting(type_Common, type_Config, "UnlockGlowColours", unlockGlowColours as float)
     PutSettingGlowArray(type_Common, type_Glow, 8, glowReasonSettingArray)
+endFunction
 
+; push current settings to plugin and event handler script
+Function ApplySetting(bool reload)
+
+    ;DebugTrace("  MCM ApplySetting start")
+    SaveSettingsToNative()
     ; seed looting scan enabled according to configured settings
     bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn || collectionsEnabled || adventuresEnabled
     ;DebugTrace("isEnabled? " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
@@ -1297,7 +1298,6 @@ event OnOptionSliderAccept(int a_option, float a_value)
         string keyName = GetObjectTypeNameByType(index)
         if (keyName != "unknown")
             valueWeightSettingArray[index] = a_value
-;           PutSetting(type_Harvest, type_ValueWeight, keyName, valueWeightSettingArray[index])
             if index == objtype_ammo
                 SetSliderOptionValue(a_option, a_value, "$SHSE_DAMAGE")
             else
@@ -1767,12 +1767,13 @@ state iniSaveLoad
             iniSaveLoad = index
             if (iniSaveLoad == 1) ; load from My Custom Settings file
                 LoadIniFile(False)
-                ApplySettingsFromFile()
-            elseif (iniSaveLoad == 2) ; save to My Custom Settings Files
+                LoadSettingsFromNative()
+            elseif (iniSaveLoad == 2) ; save to My Custom Settings Files after pushing current values
+                SaveSettingsToNative()
                 SaveIniFile()
             elseif (iniSaveLoad == 3) ; load from Default Settings file
                 LoadIniFile(True)
-                ApplySettingsFromFile()
+                LoadSettingsFromNative()
             endif
         endif
     endEvent

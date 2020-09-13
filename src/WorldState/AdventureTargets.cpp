@@ -531,7 +531,7 @@ void AdventureTargets::Categorize()
 			const auto matched(targetByKeyword.find(keywordName));
 			if (matched == targetByKeyword.cend())
 				continue;
-			m_locationsByType[int(matched->second)].insert(location);
+			m_locationsByType[size_t(matched->second)].insert(location);
 		}
 		// save all location markers, even if not a valid Adventure Target
 		m_locationCoordinates.insert({ location, position });
@@ -648,7 +648,7 @@ size_t AdventureTargets::ViableWorldCount(const size_t adventureType) const
 	if (adventureType >= m_validAdventureTypes.size())
 		return 0;
 	// map from MCM index for list of adventure types with valid worlds back to enumeration
-	for (const RE::BGSLocation* location : m_locationsByType[int(m_validAdventureTypes[adventureType])])
+	for (const RE::BGSLocation* location : m_locationsByType[size_t(m_validAdventureTypes[adventureType])])
 	{
 		if (VisitedPlaces::Instance().IsKnown(location))
 			continue;
@@ -824,12 +824,12 @@ void AdventureTargets::UpdateFrom(const nlohmann::json& j)
 	{
 		const float gameTime(adventureEvent["time"].get<float>());
 		const AdventureEventType eventType(static_cast<AdventureEventType>(adventureEvent["event"].get<int>()));
-		const auto worldspace(adventureEvent.find("world"));
-		const RE::TESWorldSpace* worldspaceForm(worldspace != adventureEvent.cend() ?
-			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(worldspace->get<std::string>())) : nullptr);
-		const auto location(adventureEvent.find("location"));
-		const RE::BGSLocation* locationForm(location != adventureEvent.cend() ?
-			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr);
+		const auto eventWorldspace(adventureEvent.find("world"));
+		const RE::TESWorldSpace* worldspaceForm(eventWorldspace != adventureEvent.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(eventWorldspace->get<std::string>())) : nullptr);
+		const auto eventLocation(adventureEvent.find("location"));
+		const RE::BGSLocation* locationForm(eventLocation != adventureEvent.cend() ?
+			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(eventLocation->get<std::string>())) : nullptr);
 		// the list was already normalized before saving, no need to call RecordNew
 		// player position recorded
 		switch(eventType)

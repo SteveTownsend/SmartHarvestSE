@@ -29,6 +29,7 @@ http://www.fsf.org/licensing/licenses
 #include <iostream>
 #include <algorithm> //Trim
 #include <math.h>	// pow
+#include <locale>
 
 #include <brotli/decode.h>
 #include <brotli/encode.h>
@@ -54,7 +55,7 @@ namespace FileUtils
 		return s_runtimeDirectory;
 	}
 
-	std::string GetPluginFileName()
+	std::string GetPluginFileName() noexcept
 	{
 		static std::string s_pluginFileName;
 		if (s_pluginFileName.empty())
@@ -65,13 +66,11 @@ namespace FileUtils
 				GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
 				(LPCSTR)&GetPluginPath, &hm) == 0)
 			{
-				int ret = GetLastError();
-				REL_ERROR("GetModuleHandle failed, error = {}\n", ret);
+				REL_ERROR("GetModuleHandle failed, error = {}\n", GetLastError());
 			}
 			else if (GetModuleFileName(hm, path, sizeof(path)) == 0)
 			{
-				int ret = GetLastError();
-				REL_ERROR("GetModuleFileName failed, error = {}\n", ret);
+				REL_ERROR("GetModuleFileName failed, error = {}\n", GetLastError());
 			}
 			else
 			{
@@ -81,7 +80,7 @@ namespace FileUtils
 		return s_pluginFileName;
 	}
 
-	std::string GetPluginPath()
+	std::string GetPluginPath() noexcept
 	{
 		static std::string s_skseDirectory;
 		if (s_skseDirectory.empty())
@@ -131,7 +130,7 @@ namespace utils
 
 namespace WindowsUtils
 {
-	long long microsecondsNow() {
+	unsigned long long microsecondsNow() {
 		static LARGE_INTEGER s_frequency;
 		static BOOL s_use_qpc = QueryPerformanceFrequency(&s_frequency);
 		if (s_use_qpc) {
@@ -139,10 +138,10 @@ namespace WindowsUtils
 			QueryPerformanceCounter(&now);
 			// To guard against loss-of-precision, we convert
 			// to microseconds *before* dividing by ticks-per-second.
-			return (1000000LL * now.QuadPart) / s_frequency.QuadPart;
+			return static_cast<unsigned long long>((1000000LL * now.QuadPart) / s_frequency.QuadPart);
 		}
 		else {
-			return GetTickCount64() * 1000UL;
+			return GetTickCount64() * 1000ULL;
 		}
 	}
 
@@ -177,7 +176,7 @@ namespace WindowsUtils
 
 	ScopedTimer::~ScopedTimer()
 	{
-		long long endTime(microsecondsNow());
+		unsigned long long endTime(microsecondsNow());
 		REL_MESSAGE("TIME({})={} micros", m_context.c_str(), endTime - m_startTime);
 	}
 
@@ -216,10 +215,16 @@ namespace WindowsUtils
 
 namespace StringUtils
 {
+	std::locale DefaultLocale;
 	void ToLower(std::string &str)
 	{
 		for (auto &c : str)
-			c = tolower(c);
+			c = std::tolower(c, DefaultLocale);
+	}
+	void ToUpper(std::string& str)
+	{
+		for (auto& c : str)
+			c = std::toupper(c, DefaultLocale);
 	}
 
 	bool Replace(std::string &str, const std::string target, const std::string replacement)
@@ -246,7 +251,7 @@ namespace StringUtils
 		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, NULL, NULL);
 		if (size_needed == 0) return std::string();
 
-		std::string output(size_needed, 0);
+		std::string output(static_cast<size_t>(size_needed), 0);
 		int result(WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, NULL, NULL));
 		if (result == 0) return std::string();
 

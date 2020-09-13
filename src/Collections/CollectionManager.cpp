@@ -50,7 +50,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_ready(false), m_mcmEnabled(false)
+CollectionManager::CollectionManager() : m_notifications(0), m_ready(false), m_mcmEnabled(false)
 {
 }
 
@@ -271,16 +271,15 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 	for (const auto& candidate : lister.GetLootableItems())
 	{
 		const auto item(candidate.BoundObject());
-		RE::FormID formID(item->GetFormID());
 		newInventoryCollectibles.insert(item);
 		if (!m_lastInventoryCollectibles.contains(item))
 		{
-			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), formID);
+			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), item->GetFormID());
 			additions.insert(item);
 		}
 		else
 		{
-			DBG_VMESSAGE("Skip {}/0x{:08x} unchanged in inventory", item->GetName(), formID);
+			DBG_VMESSAGE("Skip {}/0x{:08x} unchanged in inventory", item->GetName(), item->GetFormID());
 		}
 	}
 	m_lastInventoryCollectibles.swap(newInventoryCollectibles);
@@ -396,7 +395,7 @@ int CollectionManager::NumberOfFiles(void) const
 std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	size_t index(0);
+	int index(0);
 	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
@@ -409,7 +408,7 @@ std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	size_t index(0);
+	int index(0);
 	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
@@ -429,7 +428,7 @@ std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, 
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	const auto matches(m_activeCollectionsByGroupName.equal_range(groupName));
-	size_t index(0);
+	int index(0);
 	for (auto group = matches.first; group != matches.second; ++group)
 	{
 		if (index == collectionIndex)

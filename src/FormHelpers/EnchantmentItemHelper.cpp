@@ -31,5 +31,5 @@ uint32_t EnchantmentItemHelper::GetGoldValue()
 		return 0;
 
 	DBG_VMESSAGE("EnchantmentItemHelper::GetGoldValue()  {}", pValue->value);
-	return pValue->value;
+	return static_cast<uint32_t>(pValue->value);
 }
