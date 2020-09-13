@@ -68,7 +68,7 @@ public:
 	void Disallow();
 	bool IsAllowed() const;
 	void DoPeriodicSearch(const ReferenceScanType scanType);
-	const RE::Actor* ActorByIndex(const int actorIndex) const;
+	const RE::Actor* ActorByIndex(const size_t actorIndex) const;
 	inline bool Calibrating() const {
 		RecursiveLockGuard guard(m_searchLock);
 		return m_calibrating;
@@ -105,7 +105,7 @@ private:
 	static std::unique_ptr<ScanGovernor> m_instance;
 
 	std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
-	int m_pendingNotifies;
+	size_t m_pendingNotifies;
 
 	bool m_searchAllowed;
 	INIFile::SecondaryType m_targetType;

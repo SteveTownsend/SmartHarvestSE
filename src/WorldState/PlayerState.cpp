@@ -78,7 +78,7 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	if (onGameReload || onMCMPush)
 	{
 		// reset carry weight state
-		ResetCarryWeight(onGameReload);
+		ResetCarryWeight();
 	}
 	else
 	{
@@ -249,7 +249,7 @@ float PlayerState::PerkIngredientMultiplier() const
 }
 
 // reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
-void PlayerState::ResetCarryWeight(const bool reloaded)
+void PlayerState::ResetCarryWeight()
 {
 	INIFile* settings(INIFile::GetInstance());
 	bool managePlayerHome(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInPlayerHome") != 0.0);

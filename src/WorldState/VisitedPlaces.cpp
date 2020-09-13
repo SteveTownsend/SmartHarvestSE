@@ -119,7 +119,6 @@ std::string VisitedPlace::AsString() const
 	{
 		return "";
 	}
-	m_lastPlace = *this;
 }
 
 void VisitedPlace::AsJSON(nlohmann::json& j) const

@@ -46,7 +46,7 @@ ManagedList& ManagedList::WhiteList()
 	return *m_whiteList;
 }
 
-void ManagedList::Reset(const bool reloadGame)
+void ManagedList::Reset()
 {
 	// No baseline for whitelist. Blacklist has a list of known no-loot places.
 	RecursiveLockGuard guard(m_listLock);

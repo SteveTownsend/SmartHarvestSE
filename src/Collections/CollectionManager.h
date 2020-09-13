@@ -74,9 +74,8 @@ private:
 	bool LoadCollectionGroup(
 		const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator);
 	void BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup);
-	void RecordCollectibleForm(
-		const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
-		std::unordered_set<const RE::TESForm*>& uniquePlaced, std::unordered_set<const RE::TESForm*>& uniqueMembers);
+	void RecordCollectibleForm(const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
+		std::unordered_set<const RE::TESForm*>& uniqueMembers);
 	void ResolveMembership(void);
 	void AddToRelevantCollections(const RE::TESForm* item, const float gameTime);
 	void ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions);

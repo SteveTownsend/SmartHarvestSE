@@ -61,7 +61,7 @@ void DumpKeyword(const RE::TESForm* pForm, const INIFile::SecondaryType scope)
 void DumpExtraData(const RE::ExtraDataList* extraList)
 {
 #if _DEBUG
-	if (extraList)
+	if (!extraList)
 		return;
 
 	int index(0);
@@ -82,8 +82,8 @@ void DumpExtraData(const RE::ExtraDataList* extraList)
 			//DumpClass(extraData, sizeof(ExtraLocationRefType)/8);
 		}
 		else if (extraData.GetType() == RE::ExtraDataType::kOwnership)
-			DBG_MESSAGE("kOwnership {} {}/0x{:08x}", reinterpret_cast<const RE::ExtraOwnership&>(const_cast<RE::BSExtraData&>(extraData)).owner->GetName(),
-				reinterpret_cast<RE::ExtraOwnership*>(const_cast<RE::BSExtraData*>(&extraData))->owner->GetFormID());
+			DBG_MESSAGE("kOwnership {} {}/0x{:08x}", static_cast<const RE::ExtraOwnership&>(const_cast<RE::BSExtraData&>(extraData)).owner->GetName(),
+				static_cast<RE::ExtraOwnership*>(const_cast<RE::BSExtraData*>(&extraData))->owner->GetFormID());
 		else if (extraData.GetType() == RE::ExtraDataType::kAshPileRef)
 		{
 			/* TODO fix this up

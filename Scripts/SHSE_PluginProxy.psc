@@ -34,7 +34,7 @@ Function DisallowSearch(bool onMCMClose) global native
 bool Function IsSearchAllowed() global native
 Function ReportOKToScan(bool delayed, int nonce) global native
 
-Function ResetList(bool reload, int listNum) global native
+Function ResetList(int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
 Function SyncDone(bool reload) global native
 String Function PrintFormID(int formID) global native

@@ -119,7 +119,7 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 	}
 }
 
-void InventoryItem::MakeCopies(RE::TESObjectREFR* target, ptrdiff_t count)
+void InventoryItem::MakeCopies(RE::TESObjectREFR* target, size_t count)
 {
 	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<int32_t>(count), nullptr);
 }

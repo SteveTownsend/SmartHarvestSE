@@ -30,7 +30,7 @@ namespace shse
 {
 
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
-	m_targetType(targetType), m_refr(refr),	m_collectibleAction(CollectibleHandling::Leave)
+	m_refr(refr),	m_targetType(targetType), m_collectibleAction(CollectibleHandling::Leave)
 {
 }
 
@@ -42,16 +42,16 @@ void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*
 		auto& [count, entry] = item.second;
 		if (count <= 0)
 			continue;
-		RE::TESBoundObject* item = entry->GetObject();
-		if (!FormUtils::IsConcrete(item))
+		RE::TESBoundObject* itemObject = entry->GetObject();
+		if (!FormUtils::IsConcrete(itemObject))
 			continue;
 
-		if (item->formType == RE::FormType::LeveledItem)
+		if (itemObject->formType == RE::FormType::LeveledItem)
 			continue;
 
-		if (predicate(item))
+		if (predicate(itemObject))
 		{
-			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", item->GetName(), item->GetFormID(), count);
+			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
 			m_lootableItems.emplace_back(std::move(entry), count);
 		}
 	}
@@ -66,16 +66,16 @@ size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject
 		auto& [count, entry] = item.second;
 		if (count <= 0)
 			continue;
-		RE::TESBoundObject* item = entry->GetObject();
-		if (!FormUtils::IsConcrete(item))
+		RE::TESBoundObject* itemObject = entry->GetObject();
+		if (!FormUtils::IsConcrete(itemObject))
 			continue;
 
-		if (item->formType == RE::FormType::LeveledItem)
+		if (itemObject->formType == RE::FormType::LeveledItem)
 			continue;
 
-		if (predicate(item))
+		if (predicate(itemObject))
 		{
-			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", item->GetName(), item->GetFormID(), count);
+			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
 			++items;
 		}
 	}
@@ -91,7 +91,7 @@ size_t ContainerLister::AnalyzeLootableItems()
 	if (!container)
 		return 0;
 
-	FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return true; });
+	FilterLootableItems([=](RE::TESBoundObject*) -> bool { return true; });
 	if (m_lootableItems.empty())
 		return m_lootableItems.size();
 

@@ -21,7 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 namespace papyrus
 {
-	RE::BSFixedString GetTranslation(RE::StaticFunctionTag* base, RE::BSFixedString key);
+	RE::BSFixedString GetTranslation(RE::StaticFunctionTag*, RE::BSFixedString key);
 	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm);
 }
 

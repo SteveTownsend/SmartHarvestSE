@@ -50,8 +50,8 @@ LocationTracker& LocationTracker::Instance()
 }
 
 LocationTracker::LocationTracker() : 
-	m_playerCellID(InvalidForm), m_playerIndoors(false), m_playerCellX(0), m_playerCellY(0), m_playerLocation(nullptr),
-	m_playerParentWorld(nullptr), m_tellPlayerIfCanLootAfterLoad(false)
+	m_playerCellID(InvalidForm), m_playerCellX(0), m_playerCellY(0), m_playerIndoors(false),
+	m_tellPlayerIfCanLootAfterLoad(false), m_playerLocation(nullptr), m_playerParentWorld(nullptr)
 {
 }
 
@@ -82,12 +82,12 @@ void LocationTracker::RecordMarkedPlaces()
 	});
 
 	alglib::real_2d_array coordinates;
-	coordinates.setcontent(numPlaces, 3, &pointData[0]);
+	coordinates.setcontent(static_cast<alglib::ae_int_t>(numPlaces), 3, &pointData[0]);
 	alglib::integer_1d_array tags;
-	tags.setcontent(numPlaces, &tagList[0]);
+	tags.setcontent(static_cast<alglib::ae_int_t>(numPlaces), &tagList[0]);
 
 	// use Euclidean norm 2 for 3D space
-	alglib::kdtreebuildtagged(coordinates, tags, numPlaces, 3, 0, 2, m_markers);
+	alglib::kdtreebuildtagged(coordinates, tags, static_cast<alglib::ae_int_t>(numPlaces), 3, 0, 2, m_markers);
 }
 
 CompassDirection LocationTracker::DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const
@@ -109,7 +109,7 @@ CompassDirection LocationTracker::DirectionToDestinationFromStart(const AlglibPo
 		{157.5, CompassDirection::SouthEast},
 		{-180., CompassDirection::South}
 	};
-	auto& direction = directions.cbegin();
+	auto direction = directions.cbegin();
 	while (direction != directions.cend() && degrees > direction->first)
 	{
 		++direction;
@@ -373,7 +373,7 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 	}
 
 	RecursiveLockGuard guard(m_locationLock);
-	if (!m_playerCellID == InvalidForm)
+	if (m_playerCellID == InvalidForm)
 	{
 		// setup in progress
 		return nullptr;
@@ -450,8 +450,8 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 	{
 		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
 		{
-			DBG_VMESSAGE("GetCellOwner Hit {:08x}", reinterpret_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
-			return reinterpret_cast<const RE::ExtraOwnership&>(extraData).owner;
+			DBG_VMESSAGE("GetCellOwner Hit {:08x}", static_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
+			return static_cast<const RE::ExtraOwnership&>(extraData).owner;
 		}
 	}
 	return nullptr;

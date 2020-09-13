@@ -27,7 +27,7 @@ uint32_t AlchemyItemHelper::GetGoldValue() const
 		return 0;
 
 	if ((m_alchemyItem->data.flags & RE::AlchemyItem::AlchemyFlag::kCostOverride) == RE::AlchemyItem::AlchemyFlag::kCostOverride)
-		return m_alchemyItem->data.costOverride;
+		return static_cast<uint32_t>(m_alchemyItem->data.costOverride);
 
 	double costPP(0.0);
 	for (RE::Effect* effect : m_alchemyItem->effects)

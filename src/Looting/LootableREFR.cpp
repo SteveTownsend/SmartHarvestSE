@@ -29,7 +29,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_lootable(nullptr), m_scope(scope)
+LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_scope(scope), m_lootable(nullptr)
 {
 	m_objectType = GetREFRObjectType(m_ref);
 	m_typeName = GetObjectTypeName(m_objectType);
@@ -81,7 +81,7 @@ void LootableREFR::SetLootable(RE::TESForm* lootable)
 	m_lootable = lootable;
 }
 
-int32_t LootableREFR::CalculateWorth(void) const
+uint32_t LootableREFR::CalculateWorth(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
 	return itemEx.GetWorth();
