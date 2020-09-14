@@ -360,7 +360,6 @@ bool CollectionManager::LoadData(void)
 			FileUtils::GetPluginPath(), e.what());
 		return false;
 	}
-	ResolveMembership();
 	return true;
 }
 
@@ -687,36 +686,39 @@ void CollectionManager::ResolveMembership(void)
 	REL_MESSAGE("Collections contain {} unique objects", uniqueMembers.size());
 }
 
-// clear state before game reload
-void CollectionManager::Clear()
+// clear state before game reload, including reset of item state
+void CollectionManager::Clear(void)
 {
+	REL_MESSAGE("Reset Collections");
 	// Flush membership state to allow testing
+	m_collectionsByFormID.clear();
+	m_nonCollectionForms.clear();
 	for (auto collection : m_allCollectionsByLabel)
 	{
 		collection.second->Reset();
 	}
-	m_collectionsByFormID.clear();
-	m_nonCollectionForms.clear();
-}
 
-// for game reload, we reset the checked items
-void CollectionManager::OnGameReload()
-{
-	RecursiveLockGuard guard(m_collectionLock);
 	// reset player inventory last-known-good
 	m_lastInventoryCollectibles.clear();
 	m_lastInventoryCheck = decltype(m_lastInventoryCheck)();
 	m_addedItemQueue.clear();
+}
 
-	// logic depends on prior and new state
+// if this is a game reload, we must resolve membership after cosave data is applied
+void CollectionManager::OnGameReload(void)
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	// resolve and print effective membership - no members for new game, cosave state may include members so print reconciled version
+	ResolveMembership();
+	PrintMembership();
+}
+
+// recache relevant settings
+void CollectionManager::RefreshSettings(void)
+{
+	RecursiveLockGuard guard(m_collectionLock);
 	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
 	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
-
-	// seed state using cosave data
-	CosaveData::Instance().SeedState();
-
-	// print effective membership - no members for new game, cosave state may include members so print reconciled version
-	shse::CollectionManager::Instance().PrintMembership();
 }
 
 void CollectionManager::AsJSON(nlohmann::json& j) const

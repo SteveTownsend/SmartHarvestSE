@@ -73,10 +73,14 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 
 	case SKSE::MessagingInterface::kPreLoadGame:
 		REL_MESSAGE("Game load starting");
-		shse::PluginFacade::Instance().PrepareForReload();
+		shse::PluginFacade::Instance().PrepareForReloadOrNewGame();
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:
+		REL_MESSAGE("New game starting");
+		shse::PluginFacade::Instance().PrepareForReloadOrNewGame();
+		// fall through to rest of required logic
+
 	case SKSE::MessagingInterface::kPostLoadGame:
 		// at this point CosaveData contains any saved data, if this was a saved-game load
 		const bool onGameReload(msg->type == SKSE::MessagingInterface::kPostLoadGame);

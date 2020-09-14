@@ -343,11 +343,11 @@ Function SaveSettingsToNative()
     PutSetting(type_Common, type_Config, "FortuneHuntingEnabled", fortuneHuntingEnabled as float)
     PutSetting(type_Common, type_Config, "UnlockGlowColours", unlockGlowColours as float)
     PutSettingGlowArray(type_Common, type_Glow, 8, glowReasonSettingArray)
+    SyncNativeSettings()
 endFunction
 
 ; push current settings to plugin and event handler script
-Function ApplySetting(bool reload)
-
+Function ApplySetting()
     ;DebugTrace("  MCM ApplySetting start")
     SaveSettingsToNative()
     ; seed looting scan enabled according to configured settings
@@ -370,7 +370,7 @@ Function ApplySetting(bool reload)
     if ManagesCarryWeight()
         eventScript.RemoveCarryWeightDelta()
     endIf
-    eventScript.ApplySetting(reload)
+    eventScript.ApplySetting()
     eventScript.SyncShaders(glowReasonSettingArray)
 
     ; do this last so plugin state is in sync   
@@ -803,8 +803,9 @@ endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
 Event OnGameReload()
+    AlwaysTrace("SHSE_MCM.OnGameReload")
     parent.OnGameReload()
-    ApplySetting(true)
+    ApplySetting()
 endEvent
 
 Event OnConfigOpen()
@@ -993,7 +994,7 @@ Event OnConfigClose()
     TidyListUp(eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
 
     iniSaveLoad = 0
-    ApplySetting(false)
+    ApplySetting()
 endEvent
 
 event OnPageReset(string currentPage)

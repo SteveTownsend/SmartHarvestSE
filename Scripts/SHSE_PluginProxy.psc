@@ -19,6 +19,7 @@ int Function GetSettingGlowArrayEntry(int m_section_first, int m_section_second,
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native
 Function PutSettingObjectArrayEntry(int section_first, int section_second, int index, float value) global native
 Function PutSettingGlowArrayEntry(int section_first, int section_second, int index, int value) global native
+Function SyncNativeSettings() global native
 
 bool Function Reconfigure() global native
 Function LoadIniFile(bool useDefaults) global native

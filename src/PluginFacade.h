@@ -28,9 +28,9 @@ public:
 	PluginFacade();
 
 	bool Init();
-	void PrepareForReload();
+	void PrepareForReloadOrNewGame();
 	void ResetTransientState(const bool gameReload);
-	void AfterReload();
+	void OnVMSync();
 	void OnSettingsPushed(void);
 
 	// give the debug message time to catch up during calibration

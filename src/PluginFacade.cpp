@@ -74,6 +74,13 @@ bool PluginFacade::Init()
 		}
 	}
 
+	while (!EventPublisher::Instance().GoodToGo())
+	{
+		REL_MESSAGE("Event publisher not ready yet");
+		WindowsUtils::TakeNap(0.1);
+	}
+	EventPublisher::Instance().TriggerGameReady();
+
 	if (!m_threadStarted)
 	{
 		// Start the thread once data is loaded
@@ -172,12 +179,6 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		if (!EventPublisher::Instance().GoodToGo())
-		{
-			REL_MESSAGE("Event publisher not ready yet");
-			continue;
-		}
-
 		// block until UI is good to go
 		UIState::Instance().WaitUntilVMGoodToGo();
 
@@ -231,7 +232,7 @@ void PluginFacade::ScanThread()
 	}
 }
 
-void PluginFacade::PrepareForReload()
+void PluginFacade::PrepareForReloadOrNewGame()
 {
 	UIState::Instance().Reset();
 	CosaveData::Instance().Clear();
@@ -252,9 +253,9 @@ void PluginFacade::ResetTransientState(const bool gameReload)
 	ScanGovernor::Instance().Clear();
 }
 
-void PluginFacade::AfterReload()
+void PluginFacade::OnVMSync()
 {
-	REL_MESSAGE("Plugin called after reload");
+	REL_MESSAGE("Plugin sync, VM ready");
 	ResetTransientState(true);
 	// reset player state
 	static const bool onMCMPush(false);
@@ -266,7 +267,9 @@ void PluginFacade::AfterReload()
 	PlayerHouses::Instance().Clear();
 	// reset Actor data
 	ActorTracker::Instance().Reset();
-	// Reset Collections State and reapply the saved-game data
+	// seed state using cosave data
+	CosaveData::Instance().SeedState();
+	// Update Collections State, including saved-game data if present
 	CollectionManager::Instance().OnGameReload();
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;

@@ -46,6 +46,7 @@ public:
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void TriggerCheckOKToScan(const int nonce);
 	void TriggerStealIfUndetected(const size_t actorCount, const bool dryRun);
+	void TriggerGameReady(void);
 
 private:
 	RE::BGSRefAlias* GetScriptTarget(const char* espName, RE::FormID questID);
@@ -64,6 +65,7 @@ private:
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;
 	SKSE::RegistrationSet<int, bool> m_onStealIfUndetected;
+	SKSE::RegistrationSet<> m_onGameReady;
 };
 
 }
