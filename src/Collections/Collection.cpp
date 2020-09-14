@@ -54,14 +54,19 @@ std::string ItemCollected::AsString() const
 	return stream.str();
 }
 
+void Collection::AddStaticMembers()
+{
+	// if this collection has concrete static members, add them now to seed the list
+	const auto statics(m_rootFilter->StaticMembers());
+	std::copy_if(statics.cbegin(), statics.cend(), std::inserter(m_members, m_members.end()), FormUtils::IsConcrete);
+}
+
 Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
 	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
 	m_name(name), m_description(description), m_effectivePolicy(policy),
 	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter)), m_owningGroup(owningGroup)
 {
-	// if this collection has concrete static members, add them now to seed the list
-	const auto statics(m_rootFilter->StaticMembers());
-	std::copy_if(statics.cbegin(), statics.cend(), std::inserter(m_members, m_members.end()), FormUtils::IsConcrete);
+	AddStaticMembers();
 }
 
 bool Collection::AddMemberID(const RE::TESForm* form)const 
@@ -121,8 +126,7 @@ bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
 {
 	if (matcher.Form() && m_rootFilter->operator()(matcher))
 	{
-		AddMemberID(matcher.Form());
-		return true;
+		return AddMemberID(matcher.Form());
 	}
 	return false;
 }
@@ -166,6 +170,7 @@ void Collection::Reset()
 {
 	m_observed.clear();
 	m_members.clear();
+	AddStaticMembers();
 	m_scopes.clear();
 }
 

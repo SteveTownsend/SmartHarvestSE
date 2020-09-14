@@ -60,7 +60,8 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
 	m_onCheckOKToScan("OnCheckOKToScan"),
-	m_onStealIfUndetected("OnStealIfUndetected")
+	m_onStealIfUndetected("OnStealIfUndetected"),
+	m_onGameReady("OnGameReady")
 {
 }
 
@@ -107,6 +108,7 @@ bool EventPublisher::GoodToGo()
 		// register the events
 		if (m_eventTarget)
 		{
+		// register the events
 			HookUp();
 		}
 	}
@@ -125,6 +127,7 @@ void EventPublisher::HookUp()
 	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
 	m_onStealIfUndetected.Register(m_eventTarget);
+	m_onGameReady.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
@@ -178,6 +181,11 @@ void EventPublisher::TriggerCheckOKToScan(const int nonce)
 void EventPublisher::TriggerStealIfUndetected(const size_t actorCount, const bool dryRun)
 {
 	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount), dryRun);
+}
+
+void EventPublisher::TriggerGameReady()
+{
+	m_onGameReady.SendEvent();
 }
 
 }

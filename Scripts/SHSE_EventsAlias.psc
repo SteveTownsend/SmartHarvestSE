@@ -281,7 +281,7 @@ Function ResetCollections()
     currentAddedItem = 0
 EndFunction
 
-Function ApplySetting(bool reload)
+Function ApplySetting()
     ;DebugTrace("eventScript ApplySetting start")
     UnregisterForAllKeys()
     UnregisterForMenu("Loading Menu")
@@ -304,41 +304,6 @@ Function ApplySetting(bool reload)
             RegisterForKey(s_blackListKey)
         endif
     endif
-
-    ;update CACO index in load order, to handle custom ore mining
-    CACOModIndex = Game.GetModByName("Complete Alchemy & Cooking Overhaul.esp")
-    if CACOModIndex != 255
-        ;DebugTrace("CACO mod index: " + CACOModIndex)
-        StrikesBeforeCollection = Game.GetFormFromFile(0xCC0503,"Update.esm") as GlobalVariable
-    endif
-
-    ;update Fossil Mining index in load order, to handle fossil handout after mining
-    FossilMiningModIndex = Game.GetModByName("Fossilsyum.esp")
-    if FossilMiningModIndex != 255
-        ;DebugTrace("Fossil Mining mod index: " + FossilMiningModIndex)
-        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
-    endif
-
-    ;update Hearthfire Extended index in load order, to handle Apiary ACTI
-    HearthfireExtendedModIndex = Game.GetModByName("hearthfireextended.esp")
-    if HearthfireExtendedModIndex != 255
-        ;DebugTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
-    endif
-
-    if reload
-        ; only need to check Collections requisite data structure on reload, not MCM close
-        ResetCollections()
-        PushGameTime(Utility.GetCurrentGameTime())
-    endIf
-    SyncLists(reload)
-    if reload
-        ; kick off scan thread release checking after game reload, use sentinel value for this case
-        StartCheckReportUIState(-1)
-    endIf
 
     utility.waitMenumode(0.1)
     RegisterForMenu("Loading Menu")
@@ -981,4 +946,39 @@ Event OnStealIfUndetected(int actorCount, bool dryRun)
     else
         ReportPlayerDetectionState(detected)
     endIf
+EndEvent
+
+; Reset state related to new game/load game
+Event OnGameReady()
+    ;DebugTrace("SHSE_EventsAlias.OnGameReady")
+    ;update CACO index in load order, to handle custom ore mining
+    CACOModIndex = Game.GetModByName("Complete Alchemy & Cooking Overhaul.esp")
+    if CACOModIndex != 255
+        AlwaysTrace("CACO mod index: " + CACOModIndex)
+        StrikesBeforeCollection = Game.GetFormFromFile(0xCC0503,"Update.esm") as GlobalVariable
+    endif
+
+    ;update Fossil Mining index in load order, to handle fossil handout after mining
+    FossilMiningModIndex = Game.GetModByName("Fossilsyum.esp")
+    if FossilMiningModIndex != 255
+        AlwaysTrace("Fossil Mining mod index: " + FossilMiningModIndex)
+        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
+        FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
+        FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
+        FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem
+        FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
+    endif
+
+    ;update Hearthfire Extended index in load order, to handle Apiary ACTI
+    HearthfireExtendedModIndex = Game.GetModByName("hearthfireextended.esp")
+    if HearthfireExtendedModIndex != 255
+        AlwaysTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
+    endif
+
+    ; only need to check Collections requisite data structure on reload, not MCM close
+    ResetCollections()
+    PushGameTime(Utility.GetCurrentGameTime())
+    SyncLists(True)
+    ; kick off scan thread release checking once game is ready. Use sentinel value for this case.
+    StartCheckReportUIState(-1)
 EndEvent
