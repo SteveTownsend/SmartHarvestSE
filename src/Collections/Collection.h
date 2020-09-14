@@ -71,6 +71,7 @@ private:
 
 class Collection {
 protected:
+	void AddStaticMembers();
 	bool AddMemberID(const RE::TESForm* form) const;
 
 	// inputs

@@ -484,13 +484,13 @@ void ScanGovernor::LootAllEligible()
 		else
 		{
 			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
-			if (refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
+			if (refr && refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
 			{
 				// different Actors and Chests have different loot
 				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
 			}
 		}
-		if (lootability	!= Lootability::Lootable)
+		if (!refr || lootability != Lootability::Lootable)
 		{
 			continue;
 		}
@@ -588,13 +588,13 @@ void ScanGovernor::InvokeLootSense(void)
 		else
 		{
 			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
-			if (refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
+			if (refr && refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
 			{
 				// different Actors and Chests have different loot
 				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
 			}
 		}
-		if (lootability != Lootability::Lootable)
+		if (!refr || lootability != Lootability::Lootable)
 		{
 			continue;
 		}
@@ -617,7 +617,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 		std::vector<RE::TESObjectREFR*> possibleDupes;
 		result = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
 	}
-	if (result == Lootability::Lootable)
+	if (refr && result == Lootability::Lootable)
 	{
 		// flag to prevent mutation of state when just checking the rules
 		TryLootREFR runner(refr, m_targetType, false, glowOnly);

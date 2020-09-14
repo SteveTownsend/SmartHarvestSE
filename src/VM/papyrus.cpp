@@ -220,6 +220,7 @@ namespace papyrus
 		std::string str = key.c_str();
 		StringUtils::ToLower(str);
 
+		DBG_VMESSAGE("Config setting (put) {}/{}/{} = {}", first, second, str, value);
 		ini->PutSetting(first, second, str.c_str(), static_cast<double>(value));
 	}
 
@@ -251,6 +252,11 @@ namespace papyrus
 		StringUtils::ToLower(key);
 		DBG_VMESSAGE("Put config setting (glow array) {}/{}/{} = {}", first, second, key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
+	}
+
+	void SyncNativeSettings(RE::StaticFunctionTag*)
+	{
+		shse::CollectionManager::Instance().RefreshSettings();
 	}
 
 	bool Reconfigure(RE::StaticFunctionTag*)
@@ -356,7 +362,7 @@ namespace papyrus
 	{
 		if (reload)
 		{
-			shse::PluginFacade::Instance().AfterReload();
+			shse::PluginFacade::Instance().OnVMSync();
 		}
 		else
 		{
@@ -658,6 +664,7 @@ namespace papyrus
 		a_vm->RegisterFunction("PutSetting", SHSE_PROXY, papyrus::PutSetting);
 		a_vm->RegisterFunction("PutSettingObjectArrayEntry", SHSE_PROXY, papyrus::PutSettingObjectArrayEntry);
 		a_vm->RegisterFunction("PutSettingGlowArrayEntry", SHSE_PROXY, papyrus::PutSettingGlowArrayEntry);
+		a_vm->RegisterFunction("SyncNativeSettings", SHSE_PROXY, papyrus::SyncNativeSettings);
 
 		a_vm->RegisterFunction("GetObjectTypeNameByType", SHSE_PROXY, papyrus::GetObjectTypeNameByType);
 		a_vm->RegisterFunction("GetObjectTypeByName", SHSE_PROXY, papyrus::GetObjectTypeByName);

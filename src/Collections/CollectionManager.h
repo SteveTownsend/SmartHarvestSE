@@ -38,6 +38,7 @@ public:
 	inline bool IsAvailable() const { return m_ready; }
 	void Clear(void);
 	void OnGameReload(void);
+	void RefreshSettings(void);
 	void PrintMembership(void) const;
 	// these functions only apply to MCM-visible Collection Groups
 	int NumberOfFiles(void) const;
