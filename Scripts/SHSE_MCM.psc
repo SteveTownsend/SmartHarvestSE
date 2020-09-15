@@ -354,13 +354,12 @@ Function ApplySetting()
     bool isEnabled = enableHarvest || enableLootContainer || enableLootDeadbody > 0 || unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn || collectionsEnabled || adventuresEnabled
     ;DebugTrace("isEnabled? " + isEnabled + "from flags:" + enableHarvest + " " + enableLootContainer + " " + enableLootDeadbody + " " + unencumberedInCombat + " " + unencumberedInPlayerHome + " " + unencumberedIfWeaponDrawn)
     ;DebugTrace("Collections enabled? " + " collectionsEnabled + ", Adventures enabled? " + " adventuresEnabled)
-    if (isEnabled)
+    if isEnabled
         g_LootingEnabled.SetValue(1)
-        eventScript.SetScanActive()
     else
         g_LootingEnabled.SetValue(0)
-        eventScript.SetScanInactive()
     endif
+    eventScript.PushScanActive()
 
     ; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
     ; Do this before plugin becomes aware of player home list
@@ -376,10 +375,10 @@ Function ApplySetting()
     ; do this last so plugin state is in sync   
     if (isEnabled)
         Debug.Notification(Replace(GetTranslation("$SHSE_ENABLE"), "{VERSION}", GetPluginVersion()))
-        AllowSearch(True)
+        AllowSearch()
     Else
         Debug.Notification(Replace(GetTranslation("$SHSE_DISABLE"), "{VERSION}", GetPluginVersion()))
-        DisallowSearch(True)
+        DisallowSearch()
     EndIf
 
     ;DebugTrace("  MCM ApplySetting finished")

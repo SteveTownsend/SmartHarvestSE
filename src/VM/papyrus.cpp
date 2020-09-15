@@ -299,31 +299,26 @@ namespace papyrus
 		shse::ScanGovernor::Instance().SPERGMiningEnd();
 	}
 
-	void AllowSearch(RE::StaticFunctionTag*, const bool onMCMClose)
+	void AllowSearch(RE::StaticFunctionTag*)
 	{
 		REL_MESSAGE("Reference Search enabled");
-		// clean lists if MCM has just been active, then enable scan
-		if (onMCMClose)
-		{
-			shse::PluginFacade::Instance().OnSettingsPushed();
-		}
+		// clean lists since load game or MCM has just been active, then enable scan
+		shse::PluginFacade::Instance().OnSettingsPushed();
 		shse::ScanGovernor::Instance().Allow();
 	}
 
-	void DisallowSearch(RE::StaticFunctionTag*, const bool onMCMClose)
+	void DisallowSearch(RE::StaticFunctionTag*)
 	{
 		REL_MESSAGE("Reference Search disabled");
-		// clean lists if MCM has just been active, then enable scan
-		if (onMCMClose)
-		{
-			shse::PluginFacade::Instance().OnSettingsPushed();
-		}
+		// clean lists since load game or MCM has just been active, then enable scan
+		shse::PluginFacade::Instance().OnSettingsPushed();
 		shse::ScanGovernor::Instance().Disallow();
 	}
 
-	bool IsSearchAllowed(RE::StaticFunctionTag*)
+	void SyncScanActive(RE::StaticFunctionTag*, const bool isActive)
 	{
-		return shse::ScanGovernor::Instance().IsAllowed();
+		REL_MESSAGE("Reference Search {}", isActive ? "unpaused" : "paused");
+		shse::ScanGovernor::Instance().SetScanActive(isActive);
 	}
 
 	void ReportOKToScan(RE::StaticFunctionTag*, const bool delayed, const int nonce)
@@ -685,7 +680,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("AllowSearch", SHSE_PROXY, papyrus::AllowSearch);
 		a_vm->RegisterFunction("DisallowSearch", SHSE_PROXY, papyrus::DisallowSearch);
-		a_vm->RegisterFunction("IsSearchAllowed", SHSE_PROXY, papyrus::IsSearchAllowed);
+		a_vm->RegisterFunction("SyncScanActive", SHSE_PROXY, papyrus::SyncScanActive);
 		a_vm->RegisterFunction("ReportOKToScan", SHSE_PROXY, papyrus::ReportOKToScan);
 		a_vm->RegisterFunction("GetPlayerPlace", SHSE_PROXY, papyrus::GetPlayerPlace);
 

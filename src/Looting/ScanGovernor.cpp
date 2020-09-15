@@ -60,9 +60,10 @@ ScanGovernor& ScanGovernor::Instance()
 	return *m_instance;
 }
 
-ScanGovernor::ScanGovernor() : m_pendingNotifies(0), m_searchAllowed(false),m_targetType(INIFile::SecondaryType::NONE2),
-	m_spergInProgress(0), m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
-	m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget)
+ScanGovernor::ScanGovernor() : m_pendingNotifies(0), m_searchAllowed(false), m_searchNotPaused(false),
+	m_targetType(INIFile::SecondaryType::NONE2), m_spergInProgress(0), m_calibrating(false),
+	m_calibrateRadius(CalibrationRangeDelta), m_calibrateDelta(ScanGovernor::CalibrationRangeDelta),
+	m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget)
 {
 }
 
@@ -666,10 +667,16 @@ void ScanGovernor::Disallow()
 	RecursiveLockGuard guard(m_searchLock);
 	m_searchAllowed = false;
 }
-bool ScanGovernor::IsAllowed() const
+bool ScanGovernor::CanSearch() const
 {
 	RecursiveLockGuard guard(m_searchLock);
-	return m_searchAllowed;
+	return m_searchAllowed && m_searchNotPaused;
+}
+
+void ScanGovernor::SetScanActive(const bool isActive)
+{
+	RecursiveLockGuard guard(m_searchLock);
+	m_searchNotPaused = isActive;
 }
 
 bool ScanGovernor::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)

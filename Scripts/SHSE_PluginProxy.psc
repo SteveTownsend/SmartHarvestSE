@@ -30,9 +30,9 @@ Function SetLootableForProducer(Form producer, Form lootable) global native
 Function PrepareSPERGMining() global native
 Function PostprocessSPERGMining() global native
 
-Function AllowSearch(bool onMCMClose) global native
-Function DisallowSearch(bool onMCMClose) global native
-bool Function IsSearchAllowed() global native
+Function AllowSearch() global native
+Function DisallowSearch() global native
+Function SyncScanActive(bool isActive) global native
 Function ReportOKToScan(bool delayed, int nonce) global native
 
 Function ResetList(int listNum) global native
