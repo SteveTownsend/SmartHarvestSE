@@ -320,31 +320,21 @@ string Function sif (bool cc, string aa, string bb) global
     return result
 endFunction
 
-Function SetScanActive()
-    scanActive = true
-EndFunction
-
-Function SetScanInactive()
-    scanActive = false
+Function PushScanActive()
+    SyncScanActive(scanActive)
+    if scanActive
+        Debug.Notification(Replace(GetTranslation("$SHSE_UNPAUSED"), "{VERSION}", GetPluginVersion()))
+    else
+        Debug.Notification(Replace(GetTranslation("$SHSE_PAUSED"), "{VERSION}", GetPluginVersion()))
+    endif
 EndFunction
 
 ; hotkey changes sense of looting. Use of MCM/new character/game reload resets this to whatever's
 ; implied by current settings
 function Pause()
     string s_enableStr = none
-    bool priorState = scanActive
-    if (priorState)
-        DisallowSearch(False)
-    else
-        AllowSearch(False)
-    endif
     scanActive = !scanActive
-        
-    ;DebugTrace("Pause, looting-enabled toggled to = " + scanActive)
-    string str = sif(scanActive, "$SHSE_ENABLE", "$SHSE_DISABLE")
-    str = Replace(GetTranslation(str), "{VERSION}", GetPluginVersion())
-    ;DebugTrace("looting-enabled output = " + str)
-    Debug.Notification(str)
+    PushScanActive()
 endFunction
 
 Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey, Float holdTime)

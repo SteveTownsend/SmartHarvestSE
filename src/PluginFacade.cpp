@@ -217,9 +217,9 @@ void PluginFacade::ScanThread()
 			{
 				DBG_MESSAGE("Player State prevents looting");
 			}
-			else if (!ScanGovernor::Instance().IsAllowed())
+			else if (!ScanGovernor::Instance().CanSearch())
 			{
-				DBG_MESSAGE("search disallowed");
+				DBG_MESSAGE("search disallowed or paused");
 			}
 			else
 			{
