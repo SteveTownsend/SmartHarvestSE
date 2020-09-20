@@ -225,8 +225,11 @@ function LoadSettingsFromNative()
     unencumberedInPlayerHome = GetSetting(type_Common, type_Config, "UnencumberedInPlayerHome") as bool
     unencumberedIfWeaponDrawn = GetSetting(type_Common, type_Config, "UnencumberedIfWeaponDrawn") as bool
     pauseHotkeyCode = GetSetting(type_Common, type_Config, "PauseHotkeyCode") as int
+    eventScript.SyncPauseKey(pauseHotkeyCode)
     whiteListHotkeyCode = GetSetting(type_Common, type_Config, "WhiteListHotkeyCode") as int
+    eventScript.SyncWhiteListKey(whiteListHotkeyCode)
     blackListHotkeyCode = GetSetting(type_Common, type_Config, "BlackListHotkeyCode") as int
+    eventScript.SyncBlackListKey(blackListHotkeyCode)
     preventPopulationCenterLooting = GetSetting(type_Common, type_Config, "PreventPopulationCenterLooting") as int
     notifyLocationChange = GetSetting(type_Common, type_Config, "NotifyLocationChange") as bool
 
@@ -701,7 +704,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 44
+    return 45
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -798,6 +801,18 @@ Event OnVersionUpdate(int a_version)
         enchantedItemLoot = 1
         lootAllowedItemsInSettlement = true
     endIf
+    if a_version >= 45 && CurrentVersion < 45
+        ; sync to Event script and remove any reuse of a key
+        eventScript.SyncPauseKey(pauseHotkeyCode)
+        if whiteListHotkeyCode == pauseHotkeyCode
+            whiteListHotkeyCode = 0
+        endIf
+        eventScript.SyncWhiteListKey(whiteListHotkeyCode)
+        if blackListHotkeyCode == pauseHotkeyCode || blackListHotkeyCode == whiteListHotkeyCode
+            blackListHotkeyCode = 0
+        endIf
+        eventScript.SyncBlackListKey(blackListHotkeyCode)
+    endIf
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -857,10 +872,12 @@ bool Function TidyListUp(Formlist m_list, form[] m_forms, bool[] m_flags, string
         return false
     endif
     
+    bool updated = false
     while (index > 0)
         index -= 1
         if (!m_flags[index])
             m_list.RemoveAddedForm(m_forms[index])
+            updated = true
             string translation = GetTranslation(trans)
             if (translation)
                 translation = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_forms[index]))
@@ -870,7 +887,7 @@ bool Function TidyListUp(Formlist m_list, form[] m_forms, bool[] m_flags, string
             endif
         endif
     endWhile
-    return true
+    return updated
 endFunction
 
 Function PopulateCollectionGroups()
@@ -989,11 +1006,17 @@ EndFunction
 Event OnConfigClose()
     ;DebugTrace("OnConfigClose")
 
-    TidyListUp(eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
-    TidyListUp(eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
-
     iniSaveLoad = 0
     ApplySetting()
+
+    bool updated = false
+    if TidyListUp(eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
+        updated = true
+    endIf
+    if TidyListUp(eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
+        updated = true
+    endIf
+    eventScript.SyncLists(False, updated)
 endEvent
 
 event OnPageReset(string currentPage)
@@ -1693,15 +1716,40 @@ state MaxMiningItems
     endEvent
 endState
 
+; hotkey conflict detection
+string Function GetCustomControl(int keyCode)
+    if keyCode == pauseHotkeyCode
+        return "SmartHarvest Pause"
+    elseif keyCode == whiteListHotkeyCode
+        return "SmartHarvest WhiteList"
+    elseif keyCode == blackListHotkeyCode
+        return "SmartHarvest BlackList"
+    else
+        return ""
+    endIf
+endFunction
+
+bool Function AllowMapping(string conflictControl, string conflictName)
+    if (conflictControl != "")
+        string msg = GetTranslation("$SHSE_KEY_CONFLICT")
+        msg = Replace(msg, "{CONFLICT}", "\"" + conflictControl + "\"")
+        ShowMessage(msg, false)
+        return False
+    endIf
+    return True
+endFunction
+
 state pauseHotkeyCode
     event OnKeyMapChangeST(int newKeyCode, string conflictControl, string conflictName)
-        pauseHotkeyCode = newKeyCode
-        SetKeyMapOptionValueST(pauseHotkeyCode)
+        if conflictControl == "SmartHarvest Pause" || AllowMapping(conflictControl, conflictName)
+            pauseHotkeyCode = newKeyCode
+            SetKeyMapOptionValueST(pauseHotkeyCode)
+            eventScript.SyncPauseKey(pauseHotkeyCode)
+        endIf
     endEvent
 
     event OnDefaultST()
-        pauseHotkeyCode = 34
-        SetKeyMapOptionValueST(pauseHotkeyCode)
+        OnKeyMapChangeST(34, "SmartHarvest Pause", "")
     endEvent
 
     event OnHighlightST()
@@ -1711,13 +1759,15 @@ endState
 
 state whiteListHotkeyCode
     event OnKeyMapChangeST(int newKeyCode, string conflictControl, string conflictName)
-        whiteListHotkeyCode = newKeyCode
-        SetKeyMapOptionValueST(whiteListHotkeyCode)
+        if conflictControl == "SmartHarvest WhiteList" || AllowMapping(conflictControl, conflictName)
+            whiteListHotkeyCode = newKeyCode
+            SetKeyMapOptionValueST(whiteListHotkeyCode)
+            eventScript.SyncWhiteListKey(whiteListHotkeyCode)
+        endIf
     endEvent
 
     event OnDefaultST()
-        whiteListHotkeyCode = 22
-        SetKeyMapOptionValueST(whiteListHotkeyCode)
+        OnKeyMapChangeST(22, "SmartHarvest WhiteList", "")
     endEvent
 
     event OnHighlightST()
@@ -1727,13 +1777,15 @@ endState
 
 state blackListHotkeyCode
     event OnKeyMapChangeST(int newKeyCode, string conflictControl, string conflictName)
-        blackListHotkeyCode = newKeyCode
-        SetKeyMapOptionValueST(blackListHotkeyCode)
+        if conflictControl == "SmartHarvest BlackList" || AllowMapping(conflictControl, conflictName)
+            blackListHotkeyCode = newKeyCode
+            SetKeyMapOptionValueST(blackListHotkeyCode)
+            eventScript.SyncBlackListKey(blackListHotkeyCode)
+        endIf
     endEvent
 
     event OnDefaultST()
-        blackListHotkeyCode = 37
-        SetKeyMapOptionValueST(blackListHotkeyCode)
+        OnKeyMapChangeST(37, "SmartHarvest BlackList", "")
     endEvent
 
     event OnHighlightST()

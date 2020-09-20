@@ -95,30 +95,6 @@ string Function TimelineDayName(int whichDay) global native
 int Function PageCountForDay() global native
 string Function GetSagaDayPage(int pageNumber) global native
 
-int location_type_whitelist = 1
-int location_type_blacklist = 2
-
-Formlist whitelist_form
-Formlist blacklist_form
-
-int Function GetConfig_Pausekey() global
-    int type1_Common = 1
-    int type2_Config = 1
-    return GetSetting(type1_Common, type2_Config, "pauseHotkeycode") as int
-endFunction
-
-int Function GetConfig_WhiteListKey() global
-    int type1_Common = 1
-    int type2_Config = 1
-    return GetSetting(type1_Common, type2_Config, "whiteListHotkeycode") as int
-endFunction
-
-int Function GetConfig_BlackListKey() global
-    int type1_Common = 1
-    int type2_Config = 1
-    return GetSetting(type1_Common, type2_Config, "blackListHotkeycode") as int
-endFunction
-
 string Function GetNameForListForm(Form listMember) global
     string name = listMember.GetName()
     if (StringUtil.GetLength(name) == 0)
