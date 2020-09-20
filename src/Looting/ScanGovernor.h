@@ -66,7 +66,8 @@ public:
 
 	void Allow();
 	void Disallow();
-	bool IsAllowed() const;
+	bool CanSearch() const;
+	void SetScanActive(const bool isActive);
 	void DoPeriodicSearch(const ReferenceScanType scanType);
 	const RE::Actor* ActorByIndex(const size_t actorIndex) const;
 	inline bool Calibrating() const {
@@ -108,6 +109,7 @@ private:
 	size_t m_pendingNotifies;
 
 	bool m_searchAllowed;
+	bool m_searchNotPaused;
 	INIFile::SecondaryType m_targetType;
 
 	// for dry run - ordered by proximity to player at time of recording
