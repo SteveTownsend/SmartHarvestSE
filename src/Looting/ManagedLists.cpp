@@ -52,13 +52,12 @@ void ManagedList::Reset()
 	RecursiveLockGuard guard(m_listLock);
 	if (this == m_blackList.get())
 	{
-		REL_MESSAGE("Reset BlackList");
+		DBG_MESSAGE("Reset list of locations excluded from looting");
 		// seed with the always-forbidden
 		m_members = DataCase::GetInstance()->OffLimitsLocations();
 	}
 	else
 	{
-		REL_MESSAGE("Reset WhiteList");
 		// whitelist is rebuilt from scratch
 		m_members.clear();
 	}
@@ -66,10 +65,18 @@ void ManagedList::Reset()
 
 void ManagedList::Add(const RE::TESForm* entry)
 {
-	REL_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} added to {}", entry->GetName(), entry->GetFormID(),
-		this == m_blackList.get() ? "BlackList" : "WhiteList");
+	DBG_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} {} for looting", entry->GetName(), entry->GetFormID(),
+		this == m_blackList.get() ? "blacklisted" : "whitelisted");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert({ entry->GetFormID(), entry->GetName() });
+}
+
+void ManagedList::Drop(const RE::TESForm* entry)
+{
+	DBG_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} no longer {} for looting", entry->GetName(), entry->GetFormID(),
+		this == m_blackList.get() ? "blacklisted" : "whitelisted");
+	RecursiveLockGuard guard(m_listLock);
+	m_members.erase(entry->GetFormID());
 }
 
 bool ManagedList::Contains(const RE::TESForm* entry) const

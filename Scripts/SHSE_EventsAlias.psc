@@ -65,9 +65,6 @@ Formlist Property whitelist_form auto
 Formlist Property blacklist_form auto
 int location_type_whitelist
 int location_type_blacklist
-int pauseKeyCode
-int whiteListKeyCode
-int blackListKeyCode
 
 int maxMiningItems
 int infiniteWeight
@@ -102,7 +99,7 @@ Function SetPlayer(Actor playerref)
 EndFunction
 
 ; merge FormList with plugin data
-Function SyncList(int listNum, FormList forms)
+Function SyncList(bool reload, int listNum, FormList forms)
     ; plugin resets to fixed baseline
     ResetList(listNum)
     ; ensure BlackList/WhiteList members are present in the plugin's list
@@ -118,11 +115,9 @@ Function SyncList(int listNum, FormList forms)
 endFunction
 
 ;push updated lists to plugin
-Function SyncLists(bool reload, bool updateLists)
-    if updateLists
-        SyncList(location_type_whitelist, whitelist_form)
-        SyncList(location_type_blacklist, blacklist_form)
-    endIf
+Function SyncLists(bool reload)
+    SyncList(reload, location_type_whitelist, whitelist_form)
+    SyncList(reload, location_type_blacklist, blacklist_form)
     SyncDone(reload)
 endFunction
 
@@ -291,14 +286,23 @@ Function ApplySetting()
     UnregisterForAllKeys()
     UnregisterForMenu("Loading Menu")
 
-    if pauseKeyCode != 0
-         RegisterForKey(pauseKeyCode)
+    int s_pauseKey = GetConfig_Pausekey()
+    if (s_pauseKey != 0)
+         RegisterForKey(s_pauseKey)
     endif
-    if whiteListKeyCode != 0
-        RegisterForKey(whiteListKeyCode)
+    
+    int s_whiteListKey = GetConfig_WhiteListKey()
+    if (s_whiteListKey != 0)
+        if (s_whiteListKey != s_pauseKey)
+            RegisterForKey(s_whiteListKey)
+        endif
     endif
-    if blackListKeyCode != 0
-        RegisterForKey(blackListKeyCode)
+
+    int s_blackListKey = GetConfig_BlackListKey()
+    if (s_blackListKey != 0)
+        if (s_blackListKey != s_whiteListKey && s_blackListKey != s_pauseKey)
+            RegisterForKey(s_blackListKey)
+        endif
     endif
 
     utility.waitMenumode(0.1)
@@ -325,18 +329,6 @@ Function PushScanActive()
     endif
 EndFunction
 
-Function SyncWhiteListKey(int keyCode)
-    whiteListKeyCode = keyCode
-EndFunction
-
-Function SyncBlackListKey(int keyCode)
-    blackListKeyCode = keyCode
-EndFunction
-
-Function SyncPauseKey(int keyCode)
-    pauseKeyCode = keyCode
-EndFunction
-
 ; hotkey changes sense of looting. Use of MCM/new character/game reload resets this to whatever's
 ; implied by current settings
 function Pause()
@@ -359,23 +351,18 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             CheckLootable(targetedRefr)
         endIf
     else
-        ; regular press. Does nothing unless this is a non-generated Dead Body or Container
-        bool valid = False
-        if Math.LogicalAnd(0xff000000, targetedRefr.GetFormID()) != 0xff000000
-            Actor refrActor = targetedRefr as Actor
-            Container refrContainer = targetedRefr.GetBaseObject() as Container
-            if (refrActor && refrActor.IsDead()) || refrContainer
-                ; blacklist or un-blacklist the REFR, not the Base, to avoid blocking other REFRs with same Base
-                if isWhiteKey
-                    RemoveFromBlackList(targetedRefr)
-                else ; BlackList Key
-                    AddToBlackList(targetedRefr)
-                EndIf
-                SyncLists(false, true)    ; not a reload
-                valid = True
-            endIf
-        endIf
-        if !valid
+        ; regular press. Does nothing unless this is a Dead Body or Container
+        Actor refrActor = targetedRefr as Actor
+        Container refrContainer = targetedRefr.GetBaseObject() as Container
+        if (refrActor && refrActor.IsDead()) || refrContainer
+            ; blacklist or un-blacklist the REFR, not the Base, to avoid blocking other REFRs with same Base
+            if isWhiteKey
+                RemoveFromBlackList(targetedRefr)
+            else ; BlackList Key
+                AddToBlackList(targetedRefr)
+            EndIf
+            SyncLists(false)    ; not a reload
+        else
             Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER_OR_NPC")
         endIf
     endIf
@@ -386,19 +373,23 @@ Event OnKeyUp(Int keyCode, Float holdTime)
         return
     endif
 
+    int blackKey = GetConfig_BlackListKey()
+    int whiteKey = GetConfig_WhiteListKey()
+    bool sameHotKey = whiteKey == blackKey
+
     if (!Utility.IsInMenumode())
-        if keyCode == pauseKeyCode
+        if (keyCode == GetConfig_Pausekey())
             if holdTime > 3.0
                 ; trigger shader test on really long press
                 ToggleCalibration(holdTime > 10.0)
             else
                 Pause()
             endif
-        elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode
+        elseif keyCode == whiteKey || keyCode == blackKey
             ; handle hotkey actions for crosshair in reference
             ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
             if targetedRefr
-                HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteListKeyCode, holdTime)
+                HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteKey, holdTime)
                 return
             endIf
 
@@ -410,7 +401,9 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 return
             endif
             int result = -1
-            if keyCode == whiteListKeyCode
+            if sameHotKey
+                result = ShowMessage(whitelist_message, "$SHSE_REGISTER_LIST", "{ITEMNAME}", GetNameForListForm(place))
+            elseif keyCode == whiteKey
                 result = 0
             else ; blacklist key
                 result = 1
@@ -421,10 +414,10 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             elseIf (result == 1)
                 MoveFromWhiteToBlackList(place, false)
             EndIf
-            SyncLists(false, true)    ; not a reload
+            SyncLists(false)    ; not a reload
         endif
     ; menu open - only actionable on our blacklist/whitelist keys
-    elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode
+    elseif keyCode == whiteKey || keyCode == blackKey
         string s_menuName = none
         if (UI.IsMenuOpen("InventoryMenu"))
             s_menuName = "InventoryMenu"
@@ -442,7 +435,9 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             endif
 
             int result = -1
-            if keyCode == whiteListKeyCode
+            if sameHotKey
+                result = ShowMessage(whitelist_message, "$SHSE_REGISTER_LIST", "{ITEMNAME}", GetNameForListForm(itemForm))
+            elseif keyCode == whiteKey
                 result = 0
             else ; blacklist key
                 result = 1
@@ -453,7 +448,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             elseIf (result == 1)
                 MoveFromWhiteToBlackList(itemForm, false)
             EndIf
-            SyncLists(false, true)    ; not a reload
+            SyncLists(false)    ; not a reload
         endif
     endif
 endEvent
@@ -973,7 +968,7 @@ Event OnGameReady()
     ; only need to check Collections requisite data structure on reload, not MCM close
     ResetCollections()
     PushGameTime(Utility.GetCurrentGameTime())
-    SyncLists(True, True)
+    SyncLists(True)
     ; kick off scan thread release checking once game is ready. Use sentinel value for this case.
     StartCheckReportUIState(-1)
 EndEvent

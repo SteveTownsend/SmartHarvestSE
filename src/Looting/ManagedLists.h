@@ -32,6 +32,7 @@ public:
 
 	void Reset();
 	void Add(const RE::TESForm* entry);
+	void Drop(const RE::TESForm* entry);
 	bool Contains(const RE::TESForm* entry) const;
 	bool ContainsID(const RE::FormID entryID) const;
 
