@@ -1378,7 +1378,36 @@ void DataCase::CategorizeStatics()
 	// WACCF makes this a Scroll. It's not a Scroll.
 	SetObjectTypeForFormID(RollOfPaper, ObjectType::clutter);
 
-	// record firehose BYOH materials
+	// record CACO items that are marked Potion but are not Potions
+	static std::string cacoName("Complete Alchemy & Cooking Overhaul.esp");
+	static std::vector<std::pair<RE::FormID, ObjectType>> nonPotions({
+		{0x1cc0642,	ObjectType::ingredient},	// Beeswax
+		{0x1cc0645,	ObjectType::ingredient},	// Distilled Alcohol
+		{0x1cc0650,	ObjectType::clutter},		// Bandages
+		{0x1cc0651,	ObjectType::clutter},		// Clean Bandages
+		{0x1cca200,	ObjectType::clutter},		// Mortar and Pestle, Common
+		{0x1cca201,	ObjectType::clutter},		// Alchemist's Retort
+		{0x3db5a,	ObjectType::clutter},		// Mortar and Pestle, Bronze
+		{0x27ee0d,	ObjectType::clutter},		// Mortar and Pestle, Silver
+		{0x37203f,	ObjectType::clutter},		// Mortar and Pestle, Expert
+		{0x372040,	ObjectType::clutter},		// Mortar and Pestle, Master
+		{0x609cef,	ObjectType::clutter}		// Alchemist's Crucible
+		});
+	for (const auto nonPotion : nonPotions)
+	{
+		// using modname does not always work because formids with 0x1cc prefix are hard-coded to not follow the pattern
+		RE::TESForm* nonPotionForm(RE::TESForm::LookupByID(nonPotion.first));
+		if (!nonPotionForm)
+		{
+			nonPotionForm = RE::TESDataHandler::GetSingleton()->LookupForm(nonPotion.first, cacoName);
+		}
+		if (nonPotionForm)
+		{
+			SetObjectTypeForForm(nonPotionForm, nonPotion.second);
+		}
+	}
+
+	// record CACO non-potions which are tagged as VendorItemPotion
 	static std::string hearthFiresName("HearthFires.esm");
 	static std::vector<RE::FormID> clayOrStone({ 0x9f2, 0x9f3, 0xA14, 0x306b, 0x310b, 0xa511 });
 	for (const auto clayOrStoneFormID : clayOrStone)
