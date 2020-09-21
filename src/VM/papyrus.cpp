@@ -36,6 +36,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
 #include "WorldState/PlayerState.h"
+#include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
 
 namespace
@@ -385,6 +386,22 @@ namespace papyrus
 		shse::ProcessManualLootREFR(refr);
 	}
 
+	bool IsQuestTarget(RE::StaticFunctionTag*, RE::TESForm* item)
+	{
+		bool cannotLoot(shse::QuestTargets::Instance().UserCannotPermission(item));
+		REL_MESSAGE("Item {}/{:08x} is {}a Quest Target", item ? item->GetName() : "invalid", item ? item->GetFormID() : InvalidForm,
+			cannotLoot ? "" : "not ");
+		return cannotLoot;
+	}
+
+	bool HasDynamicData(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		// Do not allow processing of bad REFR
+		if (!refr)
+			return true;
+		return shse::ScanGovernor::Instance().HasDynamicData(refr);
+	}
+
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
 	{
 		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
@@ -651,6 +668,8 @@ namespace papyrus
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
+		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
+		a_vm->RegisterFunction("HasDynamicData", SHSE_PROXY, papyrus::HasDynamicData);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);

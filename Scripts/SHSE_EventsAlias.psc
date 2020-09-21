@@ -361,7 +361,7 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
     else
         ; regular press. Does nothing unless this is a non-generated Dead Body or Container
         bool valid = False
-        if Math.LogicalAnd(0xff000000, targetedRefr.GetFormID()) != 0xff000000
+        if !HasDynamicData(targetedRefr)
             Actor refrActor = targetedRefr as Actor
             Container refrContainer = targetedRefr.GetBaseObject() as Container
             if (refrActor && refrActor.IsDead()) || refrContainer
@@ -435,8 +435,23 @@ Event OnKeyUp(Int keyCode, Float holdTime)
         if (s_menuName == "ContainerMenu" || s_menuName == "InventoryMenu")
 
             Form itemForm = GetSelectedItemForm(s_menuName)
-            if (!itemForm)
-                string msg = "$SHSE_whitelist_form_ERROR"
+            if !itemForm
+                string msg
+                if keyCode == whiteListKeyCode
+                    msg = "$SHSE_WHITELIST_FORM_ERROR"
+                else
+                    msg = "$SHSE_BLACKLIST_FORM_ERROR"
+                endIf
+                Debug.Notification(msg)
+                return
+            endif
+            if IsQuestTarget(itemForm)
+                string msg
+                if keyCode == whiteListKeyCode
+                    msg = "$SHSE_WHITELIST_QUEST_TARGET"
+                else
+                    msg = "$SHSE_BLACKLIST_QUEST_TARGET"
+                endIf
                 Debug.Notification(msg)
                 return
             endif
