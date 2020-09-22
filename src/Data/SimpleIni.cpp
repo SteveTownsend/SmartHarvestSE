@@ -294,7 +294,7 @@ void SimpleIni::ParasitCar(std::string& str)
 std::string SimpleIni::Normalize(const std::string& str)
 {
 	std::string result;
-	std::transform(str.cbegin(), str.cend(), std::back_inserter(result), tolower);
+	std::transform(str.cbegin(), str.cend(), std::back_inserter(result), [](const char& c) { return static_cast<char>(std::tolower(c)); });
 	return result;
 }
 

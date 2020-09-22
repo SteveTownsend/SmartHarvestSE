@@ -107,13 +107,14 @@ Function SyncList(int listNum, FormList forms)
     ResetList(listNum)
     ; ensure BlackList/WhiteList members are present in the plugin's list
     int index = forms.GetSize()
-    int current = 0
-    while (current < index)
-        Form nextEntry = forms.GetAt(current)
-        if (nextEntry)
+    while index > 0
+        index -= 1
+        Form nextEntry = forms.GetAt(index)
+        if nextEntry && StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0
             AddEntryToList(listNum, nextEntry)
+        else
+            forms.RemoveAddedForm(nextEntry)
         endif
-        current += 1
     endwhile
 endFunction
 
@@ -127,8 +128,8 @@ Function SyncLists(bool reload, bool updateLists)
 endFunction
 
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
-function ManageList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
-    if (!m_list || !m_item)
+function ToggleStatusInList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
+    if !m_item
         return
     endif
 
@@ -142,6 +143,10 @@ function ManageList(Formlist m_list, Form m_item, int location_type, string tran
         endif
         m_list.RemoveAddedForm(m_item)
     else
+        ; do not add if no name
+        if StringUtil.GetLength(GetNameForListForm(m_item)) == 0
+            return
+        endIf
         string translation = GetTranslation(trans_add)
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_item))
@@ -153,52 +158,76 @@ function ManageList(Formlist m_list, Form m_item, int location_type, string tran
     endif
 endFunction
 
-function MoveFromBlackToWhiteList(Form target, bool confirm)
-    if (blacklist_form.find(target) != -1)
-        int result = 0
-        if confirm
-            result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_WHITELIST", "{ITEMNAME}", GetNameForListForm(target))
+function HandleWhiteListKeyPress(Form target)
+    ; first remove from whitelist if present
+    RemoveFromBlackList(target)
+    ToggleStatusInList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
+endFunction
+
+function RemoveFromWhiteList(Form target)
+    if whitelist_form.find(target) != -1
+        string translation = GetTranslation("$SHSE_WHITELIST_REMOVED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
-        if (result == 0)
-            blacklist_form.removeAddedForm(target)
-        else
-            return
+        whitelist_form.removeAddedForm(target)
+    endIf
+endFunction
+
+function AddToWhiteList(Form target)
+    ; do not add if empty or no name
+    if !target || StringUtil.GetLength(GetNameForListForm(target)) == 0
+        return
+    endIf
+    if whitelist_form.find(target) == -1
+        string translation = GetTranslation("$SHSE_WHITELIST_ADDED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
+        whitelist_form.AddForm(target)
     endif
-    ManageWhiteList(target)
+endFunction
+
+function HandleBlackListKeyPress(Form target)
+    ; first remove from whitelist if present
+    RemoveFromWhiteList(target)
+    ToggleStatusInList(blacklist_form, target, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
 endFunction
 
 function RemoveFromBlackList(Form target)
     if (blacklist_form.find(target) != -1)
+        string translation = GetTranslation("$SHSE_BLACKLIST_REMOVED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
+        endif
         blacklist_form.removeAddedForm(target)
     endif
 endFunction
 
-function ManageWhiteList(Form target)
-    ManageList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
-endFunction
-
 function AddToBlackList(Form target)
-    ManageBlackList(target)
-endFunction
-
-function MoveFromWhiteToBlackList(Form target, bool confirm)
-    if (whitelist_form.find(target) != -1)
-        int result = 0
-        if confirm
-            result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_BLACKLIST", "{ITEMNAME}", GetNameForListForm(target))
+    ; do not add if empty or no name
+    if !target || StringUtil.GetLength(GetNameForListForm(target)) == 0
+        return
+    endIf
+    if blacklist_form.find(target) == -1
+        string translation = GetTranslation("$SHSE_BLACKLIST_ADDED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
-        if (result == 0)
-            whitelist_form.removeAddedForm(target)
-        else
-            return
-        endif
+        blacklist_form.AddForm(target)
     endif
-    ManageBlackList(target)
-endFunction
-
-function ManageBlackList(Form target)
-    ManageList(blacklist_form, target, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
 endFunction
 
 Function SetDefaultShaders()
@@ -409,18 +438,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 Debug.Notification(msg)
                 return
             endif
-            int result = -1
             if keyCode == whiteListKeyCode
-                result = 0
+                HandleWhiteListKeyPress(place)
             else ; blacklist key
-                result = 1
+                HandleBlackListKeyPress(place)
             endif
-
-            if (result == 0)
-                MoveFromBlackToWhiteList(place, false)
-            elseIf (result == 1)
-                MoveFromWhiteToBlackList(place, false)
-            EndIf
             SyncLists(false, true)    ; not a reload
         endif
     ; menu open - only actionable on our blacklist/whitelist keys
@@ -456,18 +478,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 return
             endif
 
-            int result = -1
             if keyCode == whiteListKeyCode
-                result = 0
+                HandleWhiteListKeyPress(itemForm)
             else ; blacklist key
-                result = 1
+                HandleBlackListKeyPress(itemForm)
             endif
-            
-            if (result == 0)
-                MoveFromBlackToWhiteList(itemForm, false)
-            elseIf (result == 1)
-                MoveFromWhiteToBlackList(itemForm, false)
-            EndIf
             SyncLists(false, true)    ; not a reload
         endif
     endif

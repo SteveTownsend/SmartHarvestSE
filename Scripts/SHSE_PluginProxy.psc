@@ -98,8 +98,11 @@ int Function PageCountForDay() global native
 string Function GetSagaDayPage(int pageNumber) global native
 
 string Function GetNameForListForm(Form listMember) global
+    if !listMember
+        return ""
+    endIf
     string name = listMember.GetName()
-    if (StringUtil.GetLength(name) == 0)
+    if StringUtil.GetLength(name) == 0
         ObjectReference refr = listMember as ObjectReference
         if refr
             name  = refr.GetBaseObject().GetName()
