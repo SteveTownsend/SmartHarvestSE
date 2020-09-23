@@ -839,6 +839,9 @@ Event OnConfigOpen()
             string name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
+            else
+                AlwaysTrace("Remove bad entry for Form (" + nextEntry + ") from Whitelist")
+                eventScript.whitelist_form.removeAddedForm(nextEntry)
             endIf
         endWhile
         ; copy in only the valid forms
@@ -879,6 +882,9 @@ Event OnConfigOpen()
             string name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
+            else
+                AlwaysTrace("Remove bad entry for Form (" + nextEntry + ") from Blacklist")
+                eventScript.blacklist_form.removeAddedForm(nextEntry)
             endIf
         endWhile
         ; copy in only the valid forms
