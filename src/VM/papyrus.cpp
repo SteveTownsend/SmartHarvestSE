@@ -394,12 +394,12 @@ namespace papyrus
 		return cannotLoot;
 	}
 
-	bool HasDynamicData(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	bool IsDynamic(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
-		// Do not allow processing of bad REFR
-		if (!refr)
+		// Do not allow processing of bad REFR or Base
+		if (!refr || !refr->GetBaseObject())
 			return true;
-		return shse::ScanGovernor::Instance().HasDynamicData(refr);
+		return refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm();
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
@@ -669,7 +669,7 @@ namespace papyrus
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
-		a_vm->RegisterFunction("HasDynamicData", SHSE_PROXY, papyrus::HasDynamicData);
+		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);

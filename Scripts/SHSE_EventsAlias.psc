@@ -390,7 +390,7 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
     else
         ; regular press. Does nothing unless this is a non-generated Dead Body or Container
         bool valid = False
-        if !HasDynamicData(targetedRefr)
+        if !IsDynamic(targetedRefr)
             Actor refrActor = targetedRefr as Actor
             Container refrContainer = targetedRefr.GetBaseObject() as Container
             if (refrActor && refrActor.IsDead()) || refrContainer

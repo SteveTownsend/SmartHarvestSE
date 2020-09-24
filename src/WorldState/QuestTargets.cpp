@@ -208,9 +208,6 @@ bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (item->IsDynamicForm())
-		return false;
 	if (m_questTargetItems.insert(item).second)
 	{
 		m_userCannotPermission.insert(item);
@@ -225,9 +222,6 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* 
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (item->IsDynamicForm())
-		return false;
 	return m_questTargetReferenced[item].insert(refr).second;
 }
 
@@ -235,9 +229,6 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* 
 bool QuestTargets::BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr)
 {
 	if (!refr->GetBaseObject() || !FormUtils::IsConcrete(refr->GetBaseObject()))
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
 		return false;
 	// record the base object
 	if (m_questTargetREFRs.insert(refr).second)
@@ -252,9 +243,6 @@ bool QuestTargets::BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr)
 bool QuestTargets::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
 {
 	if (!npc)
-		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since this is startup logic
-	if (npc->IsDynamicForm())
 		return false;
 	std::string name(npc->GetName());
 	if (name.empty())

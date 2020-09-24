@@ -915,18 +915,19 @@ Event OnConfigOpen()
     endif
 endEvent
 
-bool Function TidyListUp(int validEntries, Formlist m_list, form[] m_forms, bool[] m_flags, string trans)
+Function PushListEntries(int validEntries, Formlist m_list, form[] m_forms, bool[] m_flags, string trans)
+    ; replace existing entries with valid Forms from MCM
+    m_list.Revert()
     int forms = validEntries
     if forms <= 0
-        return false
+        return
     endif
     
-    bool updated = false
     while forms > 0
         forms -= 1
-        if (!m_flags[forms])
-            m_list.RemoveAddedForm(m_forms[forms])
-            updated = true
+        if (m_flags[forms])
+            m_list.AddForm(m_forms[forms])
+        else
             string translation = GetTranslation(trans)
             if (translation)
                 translation = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_forms[forms]))
@@ -936,7 +937,6 @@ bool Function TidyListUp(int validEntries, Formlist m_list, form[] m_forms, bool
             endif
         endif
     endWhile
-    return updated
 endFunction
 
 Function PopulateCollectionGroups()
@@ -1058,14 +1058,9 @@ Event OnConfigClose()
     iniSaveLoad = 0
     ApplySetting()
 
-    bool updated = false
-    if TidyListUp(whiteListEntries, eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
-        updated = true
-    endIf
-    if TidyListUp(blackListEntries, eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
-        updated = true
-    endIf
-    eventScript.SyncLists(False, updated)
+    PushListEntries(whiteListEntries, eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
+    PushListEntries(blackListEntries, eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
+    eventScript.SyncLists(False, True)
 endEvent
 
 event OnPageReset(string currentPage)
