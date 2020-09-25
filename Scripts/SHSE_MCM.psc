@@ -506,6 +506,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallFlexibleShaders()
     InstallQuestObjectHandling()
     InstallSagaRendering()
+    MigrateFromFormLists()
 EndFunction
 
 Function InstallCollections()
@@ -650,6 +651,10 @@ Function InitSettingsFileOptions()
     s_iniSaveLoadArray[3] = "$SHSE_PRESET_RESET"
 EndFunction
 
+Function MigrateFromFormLists()
+    eventScript.CreateArraysFromFormLists()
+EndFunction
+
 ; called when new game started or mod installed mid-playthrough
 Event OnConfigInit()
     ;DebugTrace("** OnConfigInit start **")
@@ -706,7 +711,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 45
+    return 46
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -815,6 +820,9 @@ Event OnVersionUpdate(int a_version)
         endIf
         eventScript.SyncBlackListKey(blackListHotkeyCode)
     endIf
+    if a_version >= 46 && CurrentVersion < 46
+        MigrateFromFormLists()
+    endIf
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -828,20 +836,20 @@ Event OnConfigOpen()
     ;DebugTrace("OnConfigOpen")
     InitPages()
     
-    int max_size = eventScript.whitelist_form.GetSize()
-    if (max_size > 0)
+    int max_size = eventScript.GetWhiteListSize()
+    if max_size > 0
+        Form[] currentList = eventScript.GetWhiteList()
         ; assume max size initially, resize if bad entries are found
         int validSize = 0
         int index = max_size
         while index > 0
             index -= 1
-            Form nextEntry = eventScript.whitelist_form.GetAt(index)
+            Form nextEntry = currentList[index]
             string name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
             else
-                AlwaysTrace("Remove bad entry for Form (" + nextEntry + ") from Whitelist")
-                eventScript.whitelist_form.removeAddedForm(nextEntry)
+                AlwaysTrace("Skip bad WhiteList Form (" + nextEntry + ")")
             endIf
         endWhile
         ; copy in only the valid forms
@@ -854,7 +862,7 @@ Event OnConfigOpen()
             int entry = 0
             while index > 0
                 index -= 1
-                Form nextEntry = eventScript.whitelist_form.GetAt(index)
+                Form nextEntry = currentList[index]
                 string name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     whiteList_form_array[entry] = nextEntry
@@ -864,27 +872,27 @@ Event OnConfigOpen()
                 endIf
             endWhile
         endIf
-        AlwaysTrace("Whitelist has " + validSize + " valid entries, " + max_size + " in FormList")
+        AlwaysTrace("Whitelist has " + validSize + " valid entries, " + max_size + " in Form[]")
         whiteListEntries = validSize
     else
         AlwaysTrace("Whitelist is empty")
         whiteListEntries = 0
     endIf
 
-    max_size = eventScript.blacklist_form.GetSize()
-    if (max_size > 0)
+    max_size = eventScript.GetBlackListSize()
+    if max_size > 0
         ; assume max size initially, resize if bad entries are found
+        Form[] currentList = eventScript.GetBlackList()
         int validSize = 0
         int index = max_size
         while index > 0
             index -= 1
-            Form nextEntry = eventScript.blacklist_form.GetAt(index)
+            Form nextEntry = currentList[index]
             string name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
             else
-                AlwaysTrace("Remove bad entry for Form (" + nextEntry + ") from Blacklist")
-                eventScript.blacklist_form.removeAddedForm(nextEntry)
+                AlwaysTrace("Skip bad BlackList Form (" + nextEntry + ")")
             endIf
         endWhile
         ; copy in only the valid forms
@@ -897,7 +905,7 @@ Event OnConfigOpen()
             int entry = 0
             while index > 0
                 index -= 1
-                Form nextEntry = eventScript.blacklist_form.GetAt(index)
+                Form nextEntry = currentList[index]
                 string name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     blackList_form_array[entry] = nextEntry
@@ -907,37 +915,13 @@ Event OnConfigOpen()
                 endIf
             endWhile
         endIf
-        AlwaysTrace("BlackList has " + validSize + " entries, " + max_size + " in FormList")
+        AlwaysTrace("BlackList has " + validSize + " valid entries, " + max_size + " in Form[]")
         blackListEntries = validSize
     else
         AlwaysTrace("BlackList is empty")
         blackListEntries = 0
     endif
 endEvent
-
-Function PushListEntries(int validEntries, Formlist m_list, form[] m_forms, bool[] m_flags, string trans)
-    ; replace existing entries with valid Forms from MCM
-    m_list.Revert()
-    int forms = validEntries
-    if forms <= 0
-        return
-    endif
-    
-    while forms > 0
-        forms -= 1
-        if (m_flags[forms])
-            m_list.AddForm(m_forms[forms])
-        else
-            string translation = GetTranslation(trans)
-            if (translation)
-                translation = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_forms[forms]))
-                if (translation)
-                    Debug.Notification(translation)
-                endif
-            endif
-        endif
-    endWhile
-endFunction
 
 Function PopulateCollectionGroups()
     collectionGroupCount = CollectionGroups()
@@ -1058,8 +1042,8 @@ Event OnConfigClose()
     iniSaveLoad = 0
     ApplySetting()
 
-    PushListEntries(whiteListEntries, eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
-    PushListEntries(blackListEntries, eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
+    eventScript.UpdateWhiteList(whiteListEntries, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
+    eventScript.UpdateBlackList(blackListEntries, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
     eventScript.SyncLists(False, True)
 endEvent
 
