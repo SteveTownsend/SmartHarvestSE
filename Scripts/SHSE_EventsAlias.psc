@@ -16,8 +16,13 @@ Message property whitelist_message auto
 Message property to_list_message auto
 Container Property list_nametag auto
 
+; INIFile::PrimaryType
 int type_Common = 1
 int type_Harvest = 2
+
+; INIFile::SecondaryType
+int itemSourceLoose = 2
+int itemSourceNPC = 4
 
 ; object types must be in sync with the native DLL
 int objType_Flora
@@ -30,6 +35,8 @@ int objType_skillBookRead
 
 Actor player
 Form[] addedItems
+int[] addedItemScope
+int[] addedItemType
 int maxAddedItems
 
 int currentAddedItem
@@ -437,9 +444,11 @@ Function ResetCollections()
         return
     endIf
     ;DebugTrace("eventScript.ResetCollections")
-    addedItems = New Form[128]
+    addedItems = Utility.CreateFormArray(128)
     maxAddedItems = 128
     currentAddedItem = 0
+    addedItemScope = Utility.CreateIntArray(128)
+    addedItemType = Utility.CreateIntArray(128)
 EndFunction
 
 Function ApplySetting()
@@ -638,7 +647,7 @@ bool Function IsBookObject(int type)
     return type >= objType_Book && type <= objType_skillBookRead
 endFunction
 
-Function RecordItem(Form akBaseItem)
+Function RecordItem(Form akBaseItem, int scope, int objectType)
     ;register item received in the 'collection pending' list
     ;DebugTrace("RecordItem " + akBaseItem)
     if !collectionsInUse
@@ -646,10 +655,12 @@ Function RecordItem(Form akBaseItem)
     endIf
     if currentAddedItem == maxAddedItems
         ; list is full, flush to the plugin
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, currentAddedItem)
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, addedItemScope, addedItemType, currentAddedItem)
         currentAddedItem = 0
     endif
     addedItems[currentAddedItem] = akBaseItem
+    addedItemScope[currentAddedItem] = scope
+    addedItemType[currentAddedItem] = objectType
     currentAddedItem += 1
 EndFunction
 
@@ -823,7 +834,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)
         if collectible
-            RecordItem(baseForm)
+            RecordItem(baseForm, itemSourceLoose, itemType)
         endIf
 
         notify = !silent
@@ -862,7 +873,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
             endIf
         endif
         if collectible
-            RecordItem(baseForm)
+            RecordItem(baseForm, itemSourceLoose, itemType)
         endIf
         ;DebugTrace("OnHarvest:Activated:" + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
     endif
@@ -903,7 +914,7 @@ Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int 
 
     akContainerRef.RemoveItem(akForm, count, true, player)
     if collectible
-        RecordItem(akForm)
+        RecordItem(akForm, itemSourceNPC, itemType)
     endIf
 endEvent
 
@@ -1015,7 +1026,7 @@ Event OnFlushAddedItems()
     ;DebugTrace("Request to flush added items")
     ; always respond to poll so plugin DLL keeps in sync with game-time
     if currentAddedItem > 0
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, currentAddedItem)
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, addedItemScope, addedItemType, currentAddedItem)
         currentAddedItem = 0
     else
         PushGameTime(Utility.GetCurrentGameTime())
