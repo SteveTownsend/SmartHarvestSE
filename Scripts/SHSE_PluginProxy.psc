@@ -48,7 +48,7 @@ String Function ReplaceArray(String str, String[] targets, String[] replacements
 
 ;Collection Management
 bool Function CollectionsInUse() global native
-Function FlushAddedItems(float gameTime, Form[] forms, int itemCount) global native
+Function FlushAddedItems(float gameTime, Form[] forms, int[] scopes, int[] types, int itemCount) global native
 Function PushGameTime(float gameTime) global native
 int Function CollectionGroups() global native
 String Function CollectionGroupName(int fileIndex) global native
@@ -70,6 +70,7 @@ Function PutCollectionGroupNotifies(String groupName, bool notifies) global nati
 Function PutCollectionGroupAction(String groupName, int action) global native
 int Function CollectionTotal(String groupName, String collectionName) global native
 int Function CollectionObtained(String groupName, String collectionName) global native
+string Function CollectionStatus(String groupName, String collectionName) global native
 
 int Function AdventureTypeCount() global native
 string Function AdventureTypeName(int adventureType) global native

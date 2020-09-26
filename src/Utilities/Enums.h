@@ -155,7 +155,7 @@ inline bool CollectibleHistoryNeeded(const CollectibleHandling collectibleHandli
 	return collectibleHandling == CollectibleHandling::Take || collectibleHandling == CollectibleHandling::Glow;
 }
 
-inline std::string CollectibleHandlingJSON(const CollectibleHandling collectibleHandling)
+inline std::string CollectibleHandlingString(const CollectibleHandling collectibleHandling)
 {
 	switch (collectibleHandling) {
 	case CollectibleHandling::Take:

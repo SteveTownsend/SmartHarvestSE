@@ -67,17 +67,7 @@ public:
 	void ForceObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType);
 	ObjectType GetObjectTypeForFormType(const RE::FormType formType) const;
 	bool SetObjectTypeForFormType(const RE::FormType formType, const ObjectType objectType);
-
-	template <typename T>
-	ObjectType GetObjectTypeForForm(T* form) const
-	{
-		ObjectType objectType(GetObjectTypeForFormType(form->GetFormType()));
-		if (objectType == ObjectType::unknown)
-		{
-			objectType = GetFormObjectType(form->formID);
-		}
-		return objectType;
-	}
+	ObjectType GetObjectTypeForForm(const RE::TESForm* form) const;
 
 	ResourceType OreVeinResourceType(const RE::TESObjectACTI* mineable) const;
 
@@ -109,6 +99,23 @@ public:
 	inline bool IsOffLimitsContainer(const RE::TESObjectREFR* containerRef) const
 	{
 		return m_offLimitsContainers.contains(containerRef->GetFormID());
+	}
+
+	template <typename T>
+	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
+	{
+		if (defaultESP == "Skyrim.esm")
+			return RE::TESForm::LookupByID<T>(maskedFormID);
+		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
+		if (typedForm)
+		{
+			DBG_MESSAGE("Found exact match 0x{:08x} for {}:0x{:06x}", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
+		}
+		else
+		{
+			DBG_MESSAGE("No exact match for {}:0x{:06x}", defaultESP.c_str(), maskedFormID);
+		}
+		return typedForm;
 	}
 
 private:
@@ -156,6 +163,7 @@ private:
 	{
 	public:
 		LeveledItemCategorizer(const RE::TESLevItem* rootItem, const std::string& targetName);
+		virtual ~LeveledItemCategorizer();
 		void CategorizeContents();
 
 	private:
@@ -416,23 +424,6 @@ private:
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();
 	void ExcludeBuildYourNobleHouseIncomeChest();
-
-	template <typename T>
-	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
-	{
-		if (defaultESP == "Skyrim.esm")
-			return RE::TESForm::LookupByID<T>(maskedFormID);
-		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
-		if (typedForm)
-		{
-			DBG_MESSAGE("Found exact match 0x{:08x} for {}:0x{:06x}", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
-		}
-		else
-		{
-			DBG_MESSAGE("No exact match for {}:0x{:06x}", defaultESP.c_str(), maskedFormID);
-		}
-		return typedForm;
-	}
 
 	template <typename T>
 	T* FindBestMatch(const std::string& defaultESP, const RE::FormID maskedFormID, const std::string& name)

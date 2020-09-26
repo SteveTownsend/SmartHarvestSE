@@ -93,18 +93,18 @@ CollectionPolicy CollectionFactory::ParsePolicy(const nlohmann::json& policy) co
 		policy["notify"].get<bool>(), policy["repeat"].get<bool>());
 }
 
-std::unique_ptr<ConditionTree> CollectionFactory::ParseFilter(const nlohmann::json& filter, const unsigned int depth) const
+std::unique_ptr<FilterTree> CollectionFactory::ParseFilter(const nlohmann::json& filter, const unsigned int depth) const
 {
-	ConditionTree::Operator op;
+	FilterTree::Operator op;
 	if (filter["operator"].get<std::string>() == "AND")
 	{
-		op = ConditionTree::Operator::And;
+		op = FilterTree::Operator::And;
 	}
 	else
 	{
-		op = ConditionTree::Operator::Or;
+		op = FilterTree::Operator::Or;
 	}
-	std::unique_ptr<ConditionTree> root(std::make_unique<ConditionTree>(op, depth));
+	std::unique_ptr<FilterTree> root(std::make_unique<FilterTree>(op, depth));
 	for (const auto& condition : filter["condition"].items())
 	{
 		if (condition.key() == "subFilter")
@@ -143,6 +143,17 @@ std::unique_ptr<ConditionTree> CollectionFactory::ParseFilter(const nlohmann::js
 	return root;
 }
 
+std::unique_ptr<CategoryRule> CollectionFactory::ParseCategory(const nlohmann::json& categoryRule) const
+{
+	std::unique_ptr<CategoryRule> rule(std::make_unique<CategoryRule>());
+	std::vector<std::string> categories;
+	categories.reserve(categoryRule.size());
+	std::transform(categoryRule.cbegin(), categoryRule.cend(), std::back_inserter(categories),
+		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+	rule->SetCondition(std::make_unique<CategoryCondition>(categories));
+	return rule;
+}
+
 std::shared_ptr<Collection> CollectionFactory::ParseCollection(
 	const CollectionGroup* owningGroup, const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const
 {
@@ -150,9 +161,17 @@ std::shared_ptr<Collection> CollectionFactory::ParseCollection(
 	const std::string name(collection["name"].get<std::string>());
 	bool overridesPolicy(policy != collection.cend());
 	DBG_VMESSAGE("Collection {}, overrides Policy = {}", name.c_str(), overridesPolicy ? "true" : "false");
-
-	return std::make_shared<Collection>(owningGroup, name, collection["description"].get<std::string>(),
-		policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, overridesPolicy, ParseFilter(collection["rootFilter"], 0));
+	if (collection.find("rootFilter") != collection.cend())
+	{
+		return std::make_shared<ConditionCollection>(owningGroup, name, collection["description"].get<std::string>(),
+			policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, overridesPolicy, ParseFilter(collection["rootFilter"], 0));
+	}
+	else if (collection.find("category") != collection.cend())
+	{
+		return std::make_shared<CategoryCollection>(owningGroup, name, collection["description"].get<std::string>(),
+			policy != collection.cend() ? ParsePolicy(collection["policy"]) : defaultPolicy, overridesPolicy, ParseCategory(collection["category"]));
+	}
+	return std::shared_ptr<Collection>();
 }
 
 std::shared_ptr<CollectionGroup> CollectionFactory::ParseGroup(const nlohmann::json& group, const std::string& groupName) const

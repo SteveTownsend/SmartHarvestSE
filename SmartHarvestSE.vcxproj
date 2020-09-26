@@ -149,10 +149,8 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
-      <Message>
-      </Message>
+      <Command>del $(TargetPath)</Command>
+      <Message>Force relink and artifact build</Message>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>$(ProjectDir)Batch\build-artifacts-rar.bat</Command>

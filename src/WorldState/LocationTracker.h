@@ -51,7 +51,7 @@ private:
 	bool IsPlacePlayerHome(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted);
 	bool IsPlaceWhitelisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
-	bool IsPlaceRestrictedLootSettlement(const RE::BGSLocation* location) const;
+	bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const;
 
 	static std::unique_ptr<LocationTracker> m_instance;
 	std::vector<RE::TESObjectCELL*> m_adjacentCells;

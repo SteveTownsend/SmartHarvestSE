@@ -116,6 +116,7 @@ bool collectionAddNotify
 bool collectDuplicates
 int collectionTotal
 int collectionObtained
+string collectionStatus
 
 ; Current Collection Group state
 int groupCollectibleAction
@@ -947,7 +948,7 @@ Function SyncCollectionPolicyUI()
         SetToggleOptionValueST(collectDuplicates, false, "collectDuplicates")
         SetTextOptionValueST(s_collectibleActions[collectibleAction], false, "collectibleAction")
         SetToggleOptionValueST(collectionAddNotify, false, "collectionAddNotify")
-        string displayCollected = Replace(Replace(GetTranslation("$SHSE_COLLECTION_PROGRESS"), "{TOTAL}", collectionTotal), "{OBTAINED}", collectionObtained)
+        string displayCollected = Replace(Replace(GetTranslation(collectionStatus), "{TOTAL}", collectionTotal), "{OBTAINED}", collectionObtained)
         SetTextOptionValueST(displayCollected, false, "itemsCollected")
 EndFunction
 
@@ -958,6 +959,7 @@ Function GetCollectionPolicy(String collectionName)
         collectionAddNotify = CollectionNotifies(collectionGroupNames[collectionGroup], collectionName)
         collectionTotal = CollectionTotal(collectionGroupNames[collectionGroup], collectionName)
         collectionObtained = CollectionObtained(collectionGroupNames[collectionGroup], collectionName)
+        collectionStatus = CollectionStatus(collectionGroupNames[collectionGroup], collectionName)
         lastKnownPolicy = collectionName
         SyncCollectionPolicyUI()
     endIf
