@@ -721,7 +721,7 @@ bool LocationTracker::IsPlaceLootable(
 		DBG_DMESSAGE("Player location is on BlackList");
 		return false;
 	}
-	if (!lootableIfRestricted && IsPlaceRestrictedLootSettlement(location))
+	if (!lootableIfRestricted && IsPlaceRestrictedLootSettlement(cellID, location))
 	{
 		DBG_DMESSAGE("Player location is restricted as population center");
 		return false;
@@ -824,16 +824,16 @@ bool LocationTracker::IsPlayerInRestrictedLootSettlement() const
 {
 	RecursiveLockGuard guard(m_locationLock);
 	// whitelist check done before we get called
-	return IsPlaceRestrictedLootSettlement(m_playerLocation);
+	return IsPlaceRestrictedLootSettlement(m_playerCellID, m_playerLocation);
 }
 
-bool LocationTracker::IsPlaceRestrictedLootSettlement(const RE::BGSLocation* location) const
+bool LocationTracker::IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const
 {
 	if (!location)
 		return false;
 	RecursiveLockGuard guard(m_locationLock);
 	// whitelist check done before we get called
-	return PopulationCenters::Instance().CannotLoot(location);
+	return PopulationCenters::Instance().CannotLoot(cellID, location);
 }
 
 bool LocationTracker::IsPlayerInFriendlyCell() const

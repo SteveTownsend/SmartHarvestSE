@@ -18,6 +18,8 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
+namespace shse
+{
 
 // Population Center Looting Size, overloaded to check Looting Permissions
 enum class PopulationCenterSize {
@@ -48,16 +50,22 @@ class PopulationCenters
 {
 public:
 	static PopulationCenters& Instance();
-	PopulationCenters() {}
+	PopulationCenters() : m_excludedCenterSize(PopulationCenterSize::None) {}
 
-	void Categorize();
-	bool CannotLoot(const RE::BGSLocation* location) const;
+	void Categorize(void);
+	void RefreshConfig(void);
+	bool CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const;
 
 private:
 	PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniSetting) const;
+	void AddOtherPlaces(void);
 
 	static std::unique_ptr<PopulationCenters> m_instance;
 
+	PopulationCenterSize m_excludedCenterSize;
 	std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> m_centers;
+	std::unordered_map<RE::FormID, PopulationCenterSize> m_cells;
 	mutable RecursiveLock m_centersLock;
 };
+
+}

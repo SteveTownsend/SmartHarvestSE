@@ -80,7 +80,7 @@ public:
 	void MarkContainerLooted(const RE::TESObjectREFR* refr);
 	bool IsLootedContainer(const RE::TESObjectREFR* refr) const;
 	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const;
-	bool HasDynamicData(RE::TESObjectREFR* refr) const;
+	bool HandleAsDynamicData(RE::TESObjectREFR* refr) const;
 	void ResetLootedDynamicREFRs();
 	void ResetLootedContainers();
 	void ForgetLockedContainers();

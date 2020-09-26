@@ -69,7 +69,7 @@ ScanGovernor::ScanGovernor() : m_pendingNotifies(0), m_searchAllowed(false), m_s
 
 // Dynamic REFR looting is not delayed - the visuals may be less appealing, but delaying risks CTD as REFRs can
 // be recycled very quickly.
-bool ScanGovernor::HasDynamicData(RE::TESObjectREFR* refr) const
+bool ScanGovernor::HandleAsDynamicData(RE::TESObjectREFR* refr) const
 {
 	// do not reregister known REFR
 	if (LootedDynamicREFRFormID(refr) != InvalidForm)
@@ -353,7 +353,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			m_targetType = INIFile::SecondaryType::deadbodies;
 			// Delay looting exactly once. We only return here after required time since death has expired.
 			// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
-			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HasDynamicData(refr) &&
+			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HandleAsDynamicData(refr) &&
 				DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
 				if (!dryRun && !glowOnly)
@@ -397,7 +397,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			}
 			m_targetType = INIFile::SecondaryType::deadbodies;
 			// Delay looting exactly once. We only return here after required time since death has expired.
-			if (!HasDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
+			if (!HandleAsDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
 				if (!dryRun && !glowOnly)
 				{

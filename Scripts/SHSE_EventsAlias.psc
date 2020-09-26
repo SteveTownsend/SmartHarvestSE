@@ -16,8 +16,13 @@ Message property whitelist_message auto
 Message property to_list_message auto
 Container Property list_nametag auto
 
+; INIFile::PrimaryType
 int type_Common = 1
 int type_Harvest = 2
+
+; INIFile::SecondaryType
+int itemSourceLoose = 2
+int itemSourceNPC = 4
 
 ; object types must be in sync with the native DLL
 int objType_Flora
@@ -30,6 +35,8 @@ int objType_skillBookRead
 
 Actor player
 Form[] addedItems
+int[] addedItemScope
+int[] addedItemType
 int maxAddedItems
 
 int currentAddedItem
@@ -61,8 +68,15 @@ EffectShader[] categoryShaders
 int getType_kTree = 38
 int getType_kFlora = 39
 
+; legacy, unreliable
 Formlist Property whitelist_form auto
 Formlist Property blacklist_form auto
+; replacement, easier to handle, stable
+Form[] whiteListedForms
+int whiteListSize
+Form[] blackListedForms
+int blackListSize
+
 int location_type_whitelist
 int location_type_blacklist
 int pauseKeyCode
@@ -101,104 +115,253 @@ Function SetPlayer(Actor playerref)
     RegisterForCrosshairRef()
 EndFunction
 
+; migration logic for BlackList and WhiteList
+Function CreateArraysFromFormLists()
+    whiteListSize = whitelist_form.GetSize()
+    whiteListedForms = CreateArrayFromFormList(whitelist_form, whiteListSize)
+    blackListSize = blacklist_form.GetSize()
+    blackListedForms = CreateArrayFromFormList(blacklist_form, blackListSize)
+EndFunction
+
+Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
+    AlwaysTrace("Migrate FormList size(" + oldSize + ") to Form[]")
+    Form[] newList = Utility.CreateFormArray(128)
+    if oldSize > 0
+        ; assume max size initially, resize if bad entries are found
+        int validSize = 0
+        int index = 0
+        while index < oldSize
+            newList[index] = oldList.GetAt(index)
+            index += 1
+        endWhile
+    endIf
+    return newList
+EndFunction
+
+int Function GetWhiteListSize()
+    return whiteListSize
+EndFunction
+
+int Function GetBlackListSize()
+    return blackListSize
+EndFunction
+
+Form[] Function GetWhiteList()
+    return whiteListedForms
+EndFunction
+
+Form[] Function GetBlackList()
+    return blackListedForms
+EndFunction
+
 ; merge FormList with plugin data
-Function SyncList(int listNum, FormList forms)
+Function SyncList(int listNum, Form[] forms, int formCount)
     ; plugin resets to fixed baseline
     ResetList(listNum)
     ; ensure BlackList/WhiteList members are present in the plugin's list
-    int index = forms.GetSize()
-    int current = 0
-    while (current < index)
-        Form nextEntry = forms.GetAt(current)
-        if (nextEntry)
+    int index = 0
+    while index < formCount
+        Form nextEntry = forms[index]
+        ; do not push junk to C++
+        if nextEntry && StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0
             AddEntryToList(listNum, nextEntry)
         endif
-        current += 1
+        index += 1
     endwhile
 endFunction
+
+int Function UpdateListedForms(int totalEntries, Form[] myList, form[] updateList, bool[] flags, string trans)
+    ; replace existing entries with valid Forms from MCM
+    int index = 0
+    int valid = 0
+    while index < totalEntries
+        if flags[index]
+            myList[valid] = updateList[index]
+            valid += 1
+        else
+            string translation = GetTranslation(trans)
+            if (translation)
+                translation = Replace(translation, "{ITEMNAME}", GetNameForListForm(updateList[index]))
+                if (translation)
+                    Debug.Notification(translation)
+                endif
+            endif
+        endIf
+        index += 1
+    endWhile
+    ;clear any removed entries
+    index = valid
+    while index < totalEntries
+    	myList[index] = None
+    	index += 1
+    endWhile
+    if valid != totalEntries
+        AlwaysTrace("Updated Form[] size from (" + totalEntries + ") to (" + valid + ")")
+    endIf
+    return valid
+endFunction
+
+Function UpdateWhiteList(int totalEntries, Form[] updateList, bool[] flags, string trans)
+    whiteListSize = UpdateListedForms(totalEntries, whiteListedForms, updateList, flags, trans)
+EndFunction
+
+Function UpdateBlackList(int totalEntries, Form[] updateList, bool[] flags, string trans)
+    blackListSize = UpdateListedForms(totalEntries, blackListedForms, updateList, flags, trans)
+EndFunction
 
 ;push updated lists to plugin
 Function SyncLists(bool reload, bool updateLists)
     if updateLists
-        SyncList(location_type_whitelist, whitelist_form)
-        SyncList(location_type_blacklist, blacklist_form)
+        SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
+        SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
     SyncDone(reload)
 endFunction
 
+bool Function ContainsForm(Form[] forms, int entries, Form target)
+    int index = 0
+    while index < entries
+        if forms[index] == target
+            return True
+        endIf
+        index += 1
+    endWhile
+    return False
+endFunction
+
+int Function RemoveForm(Form[] forms, int entries, Form target)
+    int index = 0
+    while index < entries
+        if forms[index] == target
+            ; shuffle down entries above this one
+            while index < entries - 1
+                forms[index] = forms[index+1]
+            endWhile
+            ; clear prior final entry
+            forms[entries - 1] = None
+            return entries - 1
+        endIf
+        index += 1
+    endWhile
+    return entries
+endFunction
+
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
-function ManageList(Formlist m_list, Form m_item, int location_type, string trans_add, string trans_remove) global
-    if (!m_list || !m_item)
+function ToggleStatusInBlackList(Form item)
+    if !item
         return
     endif
 
-    if(m_list.Find(m_item) != -1)
-        string translation = GetTranslation(trans_remove)
+    if !RemoveFromBlackList(item)
+        AddToBlackList(item)
+    endif
+endFunction
+
+function ToggleStatusInWhiteList(Form item)
+    if !item
+        return
+    endif
+    if !RemoveFromWhiteList(item)
+        AddToWhiteList(item)
+    endif
+endFunction
+
+function HandleWhiteListKeyPress(Form target)
+    ; first remove from whitelist if present
+    RemoveFromBlackList(target)
+    ToggleStatusInWhiteList(target)
+endFunction
+
+bool function RemoveFromWhiteList(Form target)
+    if ContainsForm(whiteListedForms, whiteListSize, target)
+        string translation = GetTranslation("$SHSE_WHITELIST_REMOVED")
         if (translation)
-            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_item))
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
             if (msg)
                 Debug.Notification(msg)
             endif
         endif
-        m_list.RemoveAddedForm(m_item)
-    else
-        string translation = GetTranslation(trans_add)
+        whiteListSize = RemoveForm(whiteListedForms, whiteListSize, target)
+        return True
+    endIf
+    return False
+endFunction
+
+function AddToWhiteList(Form target)
+    ; do not add if empty or no name
+    if !target || StringUtil.GetLength(GetNameForListForm(target)) == 0
+        return
+    endIf
+    if whiteListSize == 128
+        string translation = GetTranslation("$SHSE_WHITELIST_FULL")
         if (translation)
-            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_item))
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
             if (msg)
                 Debug.Notification(msg)
             endif
         endif
-        m_list.AddForm(m_item)
-    endif
-endFunction
-
-function MoveFromBlackToWhiteList(Form target, bool confirm)
-    if (blacklist_form.find(target) != -1)
-        int result = 0
-        if confirm
-            result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_WHITELIST", "{ITEMNAME}", GetNameForListForm(target))
+        return
+    endIf
+    if whiteListedForms.find(target) == -1
+        string translation = GetTranslation("$SHSE_WHITELIST_ADDED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
-        if (result == 0)
-            blacklist_form.removeAddedForm(target)
-        else
-            return
+        whiteListedForms[whiteListSize] = target
+        whiteListSize += 1
+    endif
+endFunction
+
+function HandleBlackListKeyPress(Form target)
+    ; first remove from whitelist if present
+    RemoveFromWhiteList(target)
+    ToggleStatusInBlackList(target)
+endFunction
+
+bool function RemoveFromBlackList(Form target)
+    if ContainsForm(blackListedForms, blackListSize, target)
+        string translation = GetTranslation("$SHSE_BLACKLIST_REMOVED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
-    endif
-    ManageWhiteList(target)
-endFunction
-
-function RemoveFromBlackList(Form target)
-    if (blacklist_form.find(target) != -1)
-        blacklist_form.removeAddedForm(target)
-    endif
-endFunction
-
-function ManageWhiteList(Form target)
-    ManageList(whitelist_form, target, location_type_whitelist, "$SHSE_WHITELIST_ADDED", "$SHSE_WHITELIST_REMOVED")
+        blackListSize = RemoveForm(blackListedForms, blackListSize, target)
+        return True
+    endIf
+    return False
 endFunction
 
 function AddToBlackList(Form target)
-    ManageBlackList(target)
-endFunction
-
-function MoveFromWhiteToBlackList(Form target, bool confirm)
-    if (whitelist_form.find(target) != -1)
-        int result = 0
-        if confirm
-            result = ShowMessage(to_list_message, "$SHSE_MOVE_TO_BLACKLIST", "{ITEMNAME}", GetNameForListForm(target))
+    ; do not add if empty or no name
+    if !target || StringUtil.GetLength(GetNameForListForm(target)) == 0
+        return
+    endIf
+    if blackListSize == 128
+        string translation = GetTranslation("$SHSE_BLACKLIST_FULL")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
-        if (result == 0)
-            whitelist_form.removeAddedForm(target)
-        else
-            return
+        return
+    endIf
+    if blackListedForms.find(target) == -1
+        string translation = GetTranslation("$SHSE_BLACKLIST_ADDED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
         endif
+        blackListedForms[blackListSize] = target
+        blackListSize += 1
     endif
-    ManageBlackList(target)
-endFunction
-
-function ManageBlackList(Form target)
-    ManageList(blacklist_form, target, location_type_blacklist, "$SHSE_BLACKLIST_ADDED", "$SHSE_BLACKLIST_REMOVED")
 endFunction
 
 Function SetDefaultShaders()
@@ -281,9 +444,11 @@ Function ResetCollections()
         return
     endIf
     ;DebugTrace("eventScript.ResetCollections")
-    addedItems = New Form[128]
+    addedItems = Utility.CreateFormArray(128)
     maxAddedItems = 128
     currentAddedItem = 0
+    addedItemScope = Utility.CreateIntArray(128)
+    addedItemType = Utility.CreateIntArray(128)
 EndFunction
 
 Function ApplySetting()
@@ -361,7 +526,7 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
     else
         ; regular press. Does nothing unless this is a non-generated Dead Body or Container
         bool valid = False
-        if Math.LogicalAnd(0xff000000, targetedRefr.GetFormID()) != 0xff000000
+        if !IsDynamic(targetedRefr)
             Actor refrActor = targetedRefr as Actor
             Container refrContainer = targetedRefr.GetBaseObject() as Container
             if (refrActor && refrActor.IsDead()) || refrContainer
@@ -409,18 +574,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 Debug.Notification(msg)
                 return
             endif
-            int result = -1
             if keyCode == whiteListKeyCode
-                result = 0
+                HandleWhiteListKeyPress(place)
             else ; blacklist key
-                result = 1
+                HandleBlackListKeyPress(place)
             endif
-
-            if (result == 0)
-                MoveFromBlackToWhiteList(place, false)
-            elseIf (result == 1)
-                MoveFromWhiteToBlackList(place, false)
-            EndIf
             SyncLists(false, true)    ; not a reload
         endif
     ; menu open - only actionable on our blacklist/whitelist keys
@@ -435,24 +593,32 @@ Event OnKeyUp(Int keyCode, Float holdTime)
         if (s_menuName == "ContainerMenu" || s_menuName == "InventoryMenu")
 
             Form itemForm = GetSelectedItemForm(s_menuName)
-            if (!itemForm)
-                string msg = "$SHSE_whitelist_form_ERROR"
+            if !itemForm
+                string msg
+                if keyCode == whiteListKeyCode
+                    msg = "$SHSE_WHITELIST_FORM_ERROR"
+                else
+                    msg = "$SHSE_BLACKLIST_FORM_ERROR"
+                endIf
+                Debug.Notification(msg)
+                return
+            endif
+            if IsQuestTarget(itemForm)
+                string msg
+                if keyCode == whiteListKeyCode
+                    msg = "$SHSE_WHITELIST_QUEST_TARGET"
+                else
+                    msg = "$SHSE_BLACKLIST_QUEST_TARGET"
+                endIf
                 Debug.Notification(msg)
                 return
             endif
 
-            int result = -1
             if keyCode == whiteListKeyCode
-                result = 0
+                HandleWhiteListKeyPress(itemForm)
             else ; blacklist key
-                result = 1
+                HandleBlackListKeyPress(itemForm)
             endif
-            
-            if (result == 0)
-                MoveFromBlackToWhiteList(itemForm, false)
-            elseIf (result == 1)
-                MoveFromWhiteToBlackList(itemForm, false)
-            EndIf
             SyncLists(false, true)    ; not a reload
         endif
     endif
@@ -481,7 +647,7 @@ bool Function IsBookObject(int type)
     return type >= objType_Book && type <= objType_skillBookRead
 endFunction
 
-Function RecordItem(Form akBaseItem)
+Function RecordItem(Form akBaseItem, int scope, int objectType)
     ;register item received in the 'collection pending' list
     ;DebugTrace("RecordItem " + akBaseItem)
     if !collectionsInUse
@@ -489,10 +655,12 @@ Function RecordItem(Form akBaseItem)
     endIf
     if currentAddedItem == maxAddedItems
         ; list is full, flush to the plugin
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, currentAddedItem)
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, addedItemScope, addedItemType, currentAddedItem)
         currentAddedItem = 0
     endif
     addedItems[currentAddedItem] = akBaseItem
+    addedItemScope[currentAddedItem] = scope
+    addedItemType[currentAddedItem] = objectType
     currentAddedItem += 1
 EndFunction
 
@@ -666,7 +834,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)
         if collectible
-            RecordItem(baseForm)
+            RecordItem(baseForm, itemSourceLoose, itemType)
         endIf
 
         notify = !silent
@@ -705,7 +873,7 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
             endIf
         endif
         if collectible
-            RecordItem(baseForm)
+            RecordItem(baseForm, itemSourceLoose, itemType)
         endIf
         ;DebugTrace("OnHarvest:Activated:" + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
     endif
@@ -746,7 +914,7 @@ Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int 
 
     akContainerRef.RemoveItem(akForm, count, true, player)
     if collectible
-        RecordItem(akForm)
+        RecordItem(akForm, itemSourceNPC, itemType)
     endIf
 endEvent
 
@@ -858,7 +1026,7 @@ Event OnFlushAddedItems()
     ;DebugTrace("Request to flush added items")
     ; always respond to poll so plugin DLL keeps in sync with game-time
     if currentAddedItem > 0
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, currentAddedItem)
+        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, addedItemScope, addedItemType, currentAddedItem)
         currentAddedItem = 0
     else
         PushGameTime(Utility.GetCurrentGameTime())

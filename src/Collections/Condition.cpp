@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/LoadOrder.h"
 #include "Collections/Condition.h"
+#include "Looting/objects.h"
 #include "Utilities/Exception.h"
 #include "Utilities/utils.h"
 
@@ -30,10 +31,15 @@ namespace shse
 Condition::Condition() {}
 Condition::~Condition() {}
 
-// default - no static members
+// no static members
 std::unordered_set<const RE::TESForm*> Condition::StaticMembers() const
 {
 	return std::unordered_set<const RE::TESForm*>();
+}
+
+nlohmann::json Condition::MakeJSON() const
+{
+	return nlohmann::json(*this);
 }
 
 bool CanBeCollected(RE::TESForm* form)
@@ -72,11 +78,6 @@ bool PluginCondition::operator()(const ConditionMatcher& matcher) const
 			return true;
 	}
 	return false;
-}
-
-nlohmann::json PluginCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
 }
 
 void PluginCondition::AsJSON(nlohmann::json& j) const
@@ -129,11 +130,6 @@ bool FormListCondition::operator()(const ConditionMatcher& matcher) const
 	return m_listMembers.contains(matcher.Form());
 }
 
-nlohmann::json FormListCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
-}
-
 void FormListCondition::AsJSON(nlohmann::json& j) const
 {
 	j["formList"] = nlohmann::json::array();
@@ -178,11 +174,6 @@ std::unordered_set<const RE::TESForm*> FormsCondition::StaticMembers() const
 bool FormsCondition::operator()(const ConditionMatcher& matcher) const
 {
 	return m_allForms.contains(matcher.Form());
-}
-
-nlohmann::json FormsCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
 }
 
 void FormsCondition::AsJSON(nlohmann::json& j) const
@@ -246,17 +237,41 @@ bool KeywordCondition::operator()(const ConditionMatcher& matcher) const
 		[=](const RE::BGSKeyword* keyword) -> bool { return keywordHolder->HasKeyword(keyword); }) != m_keywords.cend();
 }
 
-nlohmann::json KeywordCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
-}
-
 void KeywordCondition::AsJSON(nlohmann::json& j) const
 {
 	j["keyword"] = nlohmann::json::array();
 	for (const auto keyword : m_keywords)
 	{
 		j["keyword"].push_back(FormUtils::SafeGetFormEditorID(keyword));
+	}
+}
+
+// This condition relies on objectType at scan time - it cannot be reliably determined at startup, so Collection
+// Members are not resolved then.
+CategoryCondition::CategoryCondition(const std::vector<std::string>& categories)
+{
+	for (const auto& category : categories)
+	{
+		ObjectType objectType(GetObjectTypeByTypeName(category));
+		if (objectType != ObjectType::unknown)
+		{
+			m_objectTypes.push_back(objectType);
+			DBG_VMESSAGE("Category {} mapped to ObjectType {}", category.c_str(), static_cast<int>(objectType));
+		}
+	}
+}
+bool CategoryCondition::operator()(const ConditionMatcher& matcher) const
+{
+	// short linear scan
+	return std::find(m_objectTypes.cbegin(), m_objectTypes.cend(), matcher.GetObjectType()) != m_objectTypes.cend();
+}
+
+void CategoryCondition::AsJSON(nlohmann::json& j) const
+{
+	j["category"] = nlohmann::json::array();
+	for (const auto objectType : m_objectTypes)
+	{
+		j["category"].push_back(GetObjectTypeName(objectType));
 	}
 }
 
@@ -323,11 +338,6 @@ bool SignatureCondition::IsValidFormType(const RE::FormType formType)
 	return std::find(m_validFormTypes.cbegin(), m_validFormTypes.cend(), formType) != m_validFormTypes.cend();
 }
 
-nlohmann::json SignatureCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
-}
-
 void SignatureCondition::AsJSON(nlohmann::json& j) const
 {
 	j["signature"] = nlohmann::json::array();
@@ -381,11 +391,6 @@ std::string ScopeCondition::SecondaryTypeAsScope(const INIFile::SecondaryType sc
 	return "";
 }
 
-nlohmann::json ScopeCondition::MakeJSON() const
-{
-	return nlohmann::json(*this);
-}
-
 void ScopeCondition::AsJSON(nlohmann::json& j) const
 {
 	j["scope"] = nlohmann::json::array();
@@ -395,11 +400,16 @@ void ScopeCondition::AsJSON(nlohmann::json& j) const
 	}
 }
 
-ConditionTree::ConditionTree(const Operator op, const unsigned int depth) : m_operator(op), m_depth(depth)
+FilterTree::FilterTree(const Operator op, const unsigned int depth) : m_operator(op), m_depth(depth)
 {
 }
 
-bool ConditionTree::operator()(const ConditionMatcher& matcher) const
+void FilterTree::AddCondition(std::unique_ptr<Condition> condition)
+{
+	m_conditions.push_back(std::move(condition));
+}
+
+bool FilterTree::operator()(const ConditionMatcher& matcher) const
 {
 	for (const auto& condition : m_conditions)
 	{
@@ -420,27 +430,7 @@ bool ConditionTree::operator()(const ConditionMatcher& matcher) const
 	return m_operator == Operator::And;
 }
 
-void ConditionTree::AddCondition(std::unique_ptr<Condition> condition)
-{
-	m_conditions.push_back(std::move(condition));
-}
-
-nlohmann::json ConditionTree::MakeJSON() const
-{
-	return nlohmann::json(*this);
-}
-
-void ConditionTree::AsJSON(nlohmann::json& j) const
-{
-	j["operator"] = std::string(m_operator == shse::ConditionTree::Operator::And ? "AND" : "OR");
-	j["condition"] = nlohmann::json::array();
-	for (const auto& condition : m_conditions)
-	{
-		j["condition"].push_back(condition->MakeJSON());
-	}
-}
-
-std::unordered_set<const RE::TESForm*> ConditionTree::StaticMembers() const
+std::unordered_set<const RE::TESForm*> FilterTree::StaticMembers() const
 {
 	std::unordered_set<const RE::TESForm*> aggregated;
 	for (const auto& condition : m_conditions)
@@ -451,50 +441,52 @@ std::unordered_set<const RE::TESForm*> ConditionTree::StaticMembers() const
 	return aggregated;
 }
 
-void to_json(nlohmann::json& j, const PluginCondition& condition)
+void FilterTree::AsJSON(nlohmann::json& j) const
+{
+	j["operator"] = std::string(m_operator == Operator::And ? "AND" : "OR");
+	j["condition"] = nlohmann::json::array();
+	for (const auto& condition : m_conditions)
+	{
+		j["condition"].push_back(condition->MakeJSON());
+	}
+}
+
+void CategoryRule::SetCondition(std::unique_ptr<CategoryCondition> condition)
+{
+	m_condition = std::move(condition);
+}
+
+bool CategoryRule::operator()(const ConditionMatcher& matcher) const
+{
+	 return m_condition->operator()(matcher);
+}
+
+void CategoryRule::AsJSON(nlohmann::json& j) const
+{
+	m_condition->AsJSON(j);
+}
+
+void to_json(nlohmann::json& j, const Condition& condition)
 {
 	condition.AsJSON(j);
 }
 
-void to_json(nlohmann::json& j, const FormListCondition& condition)
+void to_json(nlohmann::json& j, const CategoryRule& categoryRule)
 {
-	condition.AsJSON(j);
+	categoryRule.AsJSON(j);
 }
 
-void to_json(nlohmann::json& j, const FormsCondition& condition)
-{
-	condition.AsJSON(j);
-}
-
-void to_json(nlohmann::json& j, const KeywordCondition& condition)
-{
-	condition.AsJSON(j);
-}
-
-void to_json(nlohmann::json& j, const SignatureCondition& condition)
-{
-	condition.AsJSON(j);
-}
-
-void to_json(nlohmann::json& j, const ScopeCondition& condition)
-{
-	condition.AsJSON(j);
-}
-
-void to_json(nlohmann::json& j, const ConditionTree& condition)
-{
-	condition.AsJSON(j);
-}
-
-ConditionMatcher::ConditionMatcher(const RE::TESForm* form) : m_form(form), m_scope(INIFile::SecondaryType::NONE2)
+ConditionMatcher::ConditionMatcher(const RE::TESForm* form) :
+	m_form(form), m_scope(INIFile::SecondaryType::NONE2), m_objectType(ObjectType::unknown)
 {
 }
 
-ConditionMatcher::ConditionMatcher(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_scope(scope)
+ConditionMatcher::ConditionMatcher(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType) :
+	m_form(form), m_scope(scope), m_objectType(objectType)
 {
 }
 
-// accumulates scopes seen in ConditionTree during game-data load, to optimize collectible check during periodic REFR scan
+// accumulates scopes seen in FilterTree during game-data load, to optimize collectible check during periodic REFR scan
 void ConditionMatcher::AddScope(const INIFile::SecondaryType scope) const
 {
 	if (std::find(m_scopesSeen.cbegin(), m_scopesSeen.cend(), scope) == m_scopesSeen.cend())

@@ -35,6 +35,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/iniSettings.h"
 #include "Data/LoadOrder.h"
 #include "Looting/ManagedLists.h"
+#include "Looting/objects.h"
 
 namespace shse
 {
@@ -79,6 +80,12 @@ void CollectionManager::Refresh() const
 	EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
+bool CollectionManager::ItemIsCollectionCandidate(const RE::TESForm* item) const
+{
+	RecursiveLockGuard guard(m_collectionLock);
+	return m_collectionsByFormID.contains(item->GetFormID()) || m_collectionsByObjectType.contains(GetBaseFormObjectType(item));
+}
+
 void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 {
 	// Container trait was checked in the script that invokes this via SHSE_PluginProxy but we must make sure here
@@ -89,11 +96,12 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 		refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 	ContainerLister lister(INIFile::SecondaryType::deadbodies, refr);
 	// filter to include only collectibles
-	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return m_collectionsByFormID.contains(item->GetFormID()); });
+	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return ItemIsCollectionCandidate(item); });
 	decltype(m_lastInventoryCollectibles) newInventoryCollectibles;
 	for (const auto& candidate : lister.GetLootableItems())
 	{
-		EnqueueAddedItem(candidate.BoundObject());
+		// assume loose item, we don't know the original source
+		EnqueueAddedItem(candidate.BoundObject(), INIFile::SecondaryType::itemObjects, GetBaseFormObjectType(candidate.BoundObject()));
 		DBG_VMESSAGE("Enqueue Collectible {}/0x{:08x} from Container", candidate.BoundObject()->GetName(), candidate.BoundObject()->GetFormID());
 	}
 	static RE::BSFixedString extraItemsText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOTKEY_ADD_CONTENTS_TO_COLLECTIONS")));
@@ -104,21 +112,21 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 	}
 }
 
-void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form)
+void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType)
 {
 	if (!IsAvailable())
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
 	// only pass this along if it is in >= 1 collection
-	if (m_collectionsByFormID.contains(form->GetFormID()))
+	if (ItemIsCollectionCandidate(form))
 	{
-		EnqueueAddedItem(form);
+		EnqueueAddedItem(form, scope, objectType);
 	}
 }
 
-void CollectionManager::EnqueueAddedItem(const RE::TESForm* form)
+void CollectionManager::EnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType)
 {
-	m_addedItemQueue.push_back(form);
+	m_addedItemQueue.emplace_back(std::make_tuple(form, scope, objectType));
 }
 
 void CollectionManager::ProcessAddedItems()
@@ -130,10 +138,10 @@ void CollectionManager::ProcessAddedItems()
 	WindowsUtils::ScopedTimer elapsed("Collection checks");
 #endif
 	RecursiveLockGuard guard(m_collectionLock);
-	constexpr std::chrono::milliseconds InventoryReconciliationIntervalMillis(3000LL);
+	constexpr std::chrono::milliseconds InventoryReconciliationIntervalMillis(5000LL);
 	const auto nowTime(std::chrono::high_resolution_clock::now());
-	std::unordered_set<const RE::TESForm*> queuedItems(m_addedItemQueue.cbegin(), m_addedItemQueue.cend());
-	m_addedItemQueue.clear();
+	std::vector<OwnedItem> queuedItems;
+	queuedItems.swap(m_addedItemQueue);
 	if (nowTime - m_lastInventoryCheck >= InventoryReconciliationIntervalMillis)
 	{
 		DBG_MESSAGE("Inventory reconciliation required");
@@ -143,17 +151,14 @@ void CollectionManager::ProcessAddedItems()
 
 	const float gameTime(PlayerState::Instance().CurrentGameTime());
 	m_notifications = 0;
-	for (const auto form : queuedItems)
+	for (const auto ownedItem : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
-		if (m_collectionsByFormID.contains(form->GetFormID()))
+		const RE::TESForm* form(std::get<0>(ownedItem));
+		if (ItemIsCollectionCandidate(form))
 		{
 			DBG_VMESSAGE("Check collectability of added item 0x{:08x}", form->GetFormID());
-			AddToRelevantCollections(form, gameTime);
-		}
-		else if (m_nonCollectionForms.insert(form->GetFormID()).second)
-		{
-			DBG_VMESSAGE("Recorded 0x{:08x} as non-collectible", form->GetFormID());
+			AddToRelevantCollections(ConditionMatcher(form, std::get<1>(ownedItem), std::get<2>(ownedItem)), gameTime);
 		}
 	}
 
@@ -172,35 +177,45 @@ void CollectionManager::ProcessAddedItems()
 			}
 		}
 	}
+	// reset list of collected items prior to next scan
+	m_collectedOnThisScan.clear();
 }
 
 // bucket newly-received items in any matching collections
-void CollectionManager::AddToRelevantCollections(const RE::TESForm* item, const float gameTime)
+void CollectionManager::AddToRelevantCollections(const ConditionMatcher& matcher, const float gameTime)
 {
 	// resolve ID to Form
-	if (!item)
+	if (!matcher.Form())
 		return;
 	RecursiveLockGuard guard(m_collectionLock);
-	const auto targets(m_collectionsByFormID.equal_range(item->GetFormID()));
+	const auto staticTargets(m_collectionsByFormID.equal_range(matcher.Form()->GetFormID()));
 	bool atLeastOne(false);
-	for (auto collection = targets.first; collection != targets.second; ++collection)
-	{
+	auto checkCollection = [&](decltype(staticTargets.first->second) nextCollection) {
 		// skip disabled collections
-		if (!collection->second->IsActive())
-			continue;
+		if (!nextCollection->IsActive())
+			return;
 		// Do not record if the policy indicates per-item history not required, or not a member, or if observed and not repeatable
-		if (CollectibleHistoryNeeded(collection->second->Policy().Action()) &&
-			collection->second->IsMemberOf(item) &&
-			(collection->second->Policy().Repeat() || !collection->second->HaveObserved(item)))
+		if (CollectibleHistoryNeeded(nextCollection->Policy().Action()) &&
+			(nextCollection->Policy().Repeat() || !nextCollection->HaveObserved(matcher.Form())) &&
+			nextCollection->IsMemberOf(matcher))
 		{
 			// record membership - suppress notifications if there are too many
-			if (collection->second->RecordItem(item, gameTime, m_notifications >= CollectedSpamLimit))
+			if (nextCollection->RecordItem(matcher.Form(), gameTime, m_notifications >= CollectedSpamLimit))
 			{
 				// another notification required
 				++m_notifications;
 			}
 			atLeastOne = true;
 		}
+	};
+	for (auto formCollection = staticTargets.first; formCollection != staticTargets.second; ++formCollection)
+	{
+		checkCollection(formCollection->second);
+	}
+	const auto dynamicTargets(m_collectionsByObjectType.equal_range(matcher.GetObjectType()));
+	for (auto formCollection = dynamicTargets.first; formCollection != dynamicTargets.second; ++formCollection)
+	{
+		checkCollection(formCollection->second);
 	}
 	if (atLeastOne)
 	{
@@ -214,50 +229,62 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 	if (!IsAvailable() || !matcher.Form())
 		return NotCollectible;
 	RecursiveLockGuard guard(m_collectionLock);
-	if (m_nonCollectionForms.contains(matcher.Form()->GetFormID()))
-		return NotCollectible;
-
-	// find Collections that match this Form
-	const auto targets(m_collectionsByFormID.equal_range(matcher.Form()->GetFormID()));
-	if (targets.first == m_collectionsByFormID.cend())
-	{
-		DBG_VMESSAGE("Record {}/0x{:08x} as non-collectible", matcher.Form()->GetName(), matcher.Form()->GetFormID());
-		m_nonCollectionForms.insert(matcher.Form()->GetFormID());
-		return NotCollectible;
-	}
-
-	// It is in at least one collection. Find the most aggressive action for any where we are in scope and a usable member.
+	// Filter for Static and Dynamic Collections that match this Form
+	// Find the most aggressive action for any where we are in scope and a usable member.
 	CollectibleHandling action(CollectibleHandling::Leave);
 	bool actionable(false);
 	bool defer(false);
-	for (auto collection = targets.first; collection != targets.second; ++collection)
-	{
+	RE::FormID formID(matcher.Form()->GetFormID());
+	const auto staticTargets(m_collectionsByFormID.equal_range(formID));
+	auto checkCollection = [&](decltype(staticTargets.first->second) nextCollection) {
 		// skip disabled collections
-		if (!collection->second->IsActive())
-			continue;
-		const auto results(collection->second->InScopeAndCollectibleFor(matcher));
-		if (results.first)
+		if (!nextCollection->IsActive())
+			return;
+		bool repeat;
+		bool observed;
+		std::tie(repeat, observed) = nextCollection->InScopeAndCollectibleFor(matcher);
+		// If we already saw this item on this scan, this is a repeat observation. m_observed is not updated
+		// until Collection add, which happens later on after item is in inventory.
+		observed = observed || m_collectedOnThisScan.contains(formID);
+		if (repeat || !observed)
 		{
 			// The Collection definitively treats this observation of the item as a member
 			actionable = true;
-			action = UpdateCollectibleHandling(collection->second->Policy().Action(), action);
+			action = UpdateCollectibleHandling(nextCollection->Policy().Action(), action);
+			DBG_VMESSAGE("Item {}/0x{:08x} in Collection {} with action {}",
+				matcher.Form()->GetName(), matcher.Form()->GetFormID(), nextCollection->Name(), CollectibleHandlingString(action));
 		}
-		else if (results.second)
+		else if (!repeat && !actionable)
 		{
 			// The Collection decision is qualified: it's a member, but not collected because repeats are not allowed
+			DBG_VMESSAGE("Item 0x{:08x} in Collection {} with action deferred",
+				matcher.Form()->GetName(), matcher.Form()->GetFormID(), nextCollection->Name());
 			defer = true;
 		}
+	};
+	for (auto formCollection = staticTargets.first; formCollection != staticTargets.second; ++formCollection)
+	{
+		checkCollection(formCollection->second);
+	}
+	const auto dynamicTargets(m_collectionsByObjectType.equal_range(matcher.GetObjectType()));
+	for (auto formCollection = dynamicTargets.first; formCollection != dynamicTargets.second; ++formCollection)
+	{
+		checkCollection(formCollection->second);
 	}
 	if (defer && !actionable)
 	{
 		return NotCollectible;
+	}
+	if (actionable)
+	{
+		m_collectedOnThisScan.insert(formID);
 	}
 	return std::make_pair(actionable, action);
 }
 
 // Player inventory can get objects from Loot menus and other sources than our harvesting, we need to account for them
 // We don't do this on every pass as it's a decent amount of work. Filter on Collectible item trait to reduce work.
-void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions)
+void CollectionManager::ReconcileInventory(std::vector<OwnedItem>& additions)
 {
 	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
 	if (!player)
@@ -266,7 +293,7 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 	// use delta vs last pass to speed this up (resets on game reload)
 	ContainerLister lister(INIFile::SecondaryType::deadbodies, player);
 	// filter to include only collectibles
-	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return m_collectionsByFormID.contains(item->GetFormID()); });
+	lister.FilterLootableItems([=](RE::TESBoundObject* item) -> bool { return ItemIsCollectionCandidate(item); });
 	decltype(m_lastInventoryCollectibles) newInventoryCollectibles;
 	for (const auto& candidate : lister.GetLootableItems())
 	{
@@ -275,7 +302,8 @@ void CollectionManager::ReconcileInventory(std::unordered_set<const RE::TESForm*
 		if (!m_lastInventoryCollectibles.contains(item))
 		{
 			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), item->GetFormID());
-			additions.insert(item);
+			// Assumes loose item since we apparently did not autoloot it
+			additions.emplace_back(std::make_tuple(item, INIFile::SecondaryType::itemObjects, GetBaseFormObjectType(item)));
 		}
 		else
 		{
@@ -624,6 +652,18 @@ size_t CollectionManager::ItemsObtained(const std::string& groupName, const std:
 	return 0;
 }
 
+std::string CollectionManager::StatusMessage(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second->GetStatusMessage();
+	}
+	return 0;
+}
+
 void CollectionManager::BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup)
 {
 	for (const auto collection : collectionGroup->Collections())
@@ -646,6 +686,15 @@ void CollectionManager::RecordCollectibleForm(const std::shared_ptr<Collection>&
 	DBG_VMESSAGE("Record {}/0x{:08x} as collectible", form->GetName(), form->GetFormID());
 	m_collectionsByFormID.insert(std::make_pair(form->GetFormID(), collection));
 	uniqueMembers.insert(form);
+}
+
+void CollectionManager::RecordCollectibleObjectTypes(const std::shared_ptr<Collection>& collection)
+{
+	for (const auto objectType : collection->ObjectTypes())
+	{
+		m_collectionsByObjectType.insert(std::make_pair(objectType, collection));
+		DBG_VMESSAGE("Recorded {} as collectible ObjectType", GetObjectTypeName(objectType));
+	}
 }
 
 void CollectionManager::ResolveMembership(void)
@@ -672,9 +721,11 @@ void CollectionManager::ResolveMembership(void)
 
 			for (const auto& collection : m_allCollectionsByLabel)
 			{
-				// record collection membership for any that match this object - ignore whitelist
+				// Record collection membership for any that match this object - ignore whitelist
+				// This resolution step does not incorporate Collections with CategoryRule as the
+				// Form's ObjectType cannot be reliably determined during startup
 				ConditionMatcher matcher(form);
-				if (collection.second->MatchesFilter(matcher))
+				if (collection.second->IsStaticMatch(matcher))
 				{
 					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
 					collection.second->SetScopes(matcher.ScopesSeen());
@@ -692,7 +743,7 @@ void CollectionManager::Clear(void)
 	REL_MESSAGE("Reset Collections");
 	// Flush membership state to allow testing
 	m_collectionsByFormID.clear();
-	m_nonCollectionForms.clear();
+	// m_collectionsByObjectType is not cleared - it is based on one-time load of JSON files and therefore invariant
 	for (auto collection : m_allCollectionsByLabel)
 	{
 		collection.second->Reset();

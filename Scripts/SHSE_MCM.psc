@@ -116,6 +116,7 @@ bool collectionAddNotify
 bool collectDuplicates
 int collectionTotal
 int collectionObtained
+string collectionStatus
 
 ; Current Collection Group state
 int groupCollectibleAction
@@ -144,11 +145,13 @@ String[] s_objectTypeNameArray
 
 int[] id_whiteList_array
 Form[] whitelist_form_array
+int whiteListEntries
 String[] whiteList_name_array
 bool[] whiteList_flag_array
 
 int[] id_blackList_array
 Form[] blacklist_form_array
+int blackListEntries
 String[] blackList_name_array
 bool[] blackList_flag_array
 
@@ -504,6 +507,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallFlexibleShaders()
     InstallQuestObjectHandling()
     InstallSagaRendering()
+    MigrateFromFormLists()
 EndFunction
 
 Function InstallCollections()
@@ -648,6 +652,10 @@ Function InitSettingsFileOptions()
     s_iniSaveLoadArray[3] = "$SHSE_PRESET_RESET"
 EndFunction
 
+Function MigrateFromFormLists()
+    eventScript.CreateArraysFromFormLists()
+EndFunction
+
 ; called when new game started or mod installed mid-playthrough
 Event OnConfigInit()
     ;DebugTrace("** OnConfigInit start **")
@@ -704,7 +712,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 45
+    return 46
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -813,6 +821,9 @@ Event OnVersionUpdate(int a_version)
         endIf
         eventScript.SyncBlackListKey(blackListHotkeyCode)
     endIf
+    if a_version >= 46 && CurrentVersion < 46
+        MigrateFromFormLists()
+    endIf
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -826,69 +837,92 @@ Event OnConfigOpen()
     ;DebugTrace("OnConfigOpen")
     InitPages()
     
-    int index = 0
-    int max_size = 0
-    
-    max_size = eventScript.whitelist_form.GetSize()
-    if (max_size > 0)
-        id_whiteList_array = Utility.CreateIntArray(max_size)
-        whitelist_form_array = eventScript.whitelist_form.toArray()
-        whiteList_name_array = Utility.CreateStringArray(max_size, "")
-        whiteList_flag_array = Utility.CreateBoolArray(max_size, false)
-        
-        index = 0
-        while(index < max_size)
-            if (whitelist_form_array[index])
-                whiteList_name_array[index] = GetNameForListForm(whitelist_form_array[index])
-                whiteList_flag_array[index] = true
-            endif
-            index += 1
+    int max_size = eventScript.GetWhiteListSize()
+    if max_size > 0
+        Form[] currentList = eventScript.GetWhiteList()
+        ; assume max size initially, resize if bad entries are found
+        int validSize = 0
+        int index = max_size
+        while index > 0
+            index -= 1
+            Form nextEntry = currentList[index]
+            string name = GetNameForListForm(nextEntry)
+            if nextEntry && StringUtil.GetLength(name) > 0
+                validSize += 1
+            else
+                AlwaysTrace("Skip bad WhiteList Form (" + nextEntry + ")")
+            endIf
         endWhile
-    endif
+        ; copy in only the valid forms
+        if validSize > 0
+            whitelist_form_array = Utility.CreateFormArray(validSize)
+            id_whiteList_array = Utility.CreateIntArray(validSize)
+            whiteList_name_array = Utility.CreateStringArray(validSize)
+            whiteList_flag_array = Utility.CreateBoolArray(validSize)
+            index = max_size
+            int entry = 0
+            while index > 0
+                index -= 1
+                Form nextEntry = currentList[index]
+                string name = GetNameForListForm(nextEntry)
+                if nextEntry && StringUtil.GetLength(name) > 0
+                    whiteList_form_array[entry] = nextEntry
+                    whiteList_name_array[entry] = name
+                    whiteList_flag_array[entry] = true
+                    entry += 1
+                endIf
+            endWhile
+        endIf
+        AlwaysTrace("Whitelist has " + validSize + " valid entries, " + max_size + " in Form[]")
+        whiteListEntries = validSize
+    else
+        AlwaysTrace("Whitelist is empty")
+        whiteListEntries = 0
+    endIf
 
-    max_size = eventScript.blacklist_form.GetSize()
-    if (max_size > 0)
-        id_blackList_array = Utility.CreateIntArray(max_size)
-        blacklist_form_array = Utility.CreateFormArray(max_size)
-        blackList_name_array = Utility.CreateStringArray(max_size)
-        blackList_flag_array = Utility.CreateBoolArray(max_size)
-        
-        index = 0
-        while(index < max_size)
-            blacklist_form_array[index] = eventScript.blacklist_form.GetAt(index)
-            blackList_name_array[index] = GetNameForListForm(blacklist_form_array[index])
-            blackList_flag_array[index] = true
-            index += 1
+    max_size = eventScript.GetBlackListSize()
+    if max_size > 0
+        ; assume max size initially, resize if bad entries are found
+        Form[] currentList = eventScript.GetBlackList()
+        int validSize = 0
+        int index = max_size
+        while index > 0
+            index -= 1
+            Form nextEntry = currentList[index]
+            string name = GetNameForListForm(nextEntry)
+            if nextEntry && StringUtil.GetLength(name) > 0
+                validSize += 1
+            else
+                AlwaysTrace("Skip bad BlackList Form (" + nextEntry + ")")
+            endIf
         endWhile
+        ; copy in only the valid forms
+        if validSize > 0
+            blacklist_form_array = Utility.CreateFormArray(validSize)
+            id_blackList_array = Utility.CreateIntArray(validSize)
+            blackList_name_array = Utility.CreateStringArray(validSize)
+            blackList_flag_array = Utility.CreateBoolArray(validSize)
+            index = max_size
+            int entry = 0
+            while index > 0
+                index -= 1
+                Form nextEntry = currentList[index]
+                string name = GetNameForListForm(nextEntry)
+                if nextEntry && StringUtil.GetLength(name) > 0
+                    blackList_form_array[entry] = nextEntry
+                    blackList_name_array[entry] = name
+                    blackList_flag_array[entry] = true
+                    entry += 1
+                endIf
+            endWhile
+        endIf
+        AlwaysTrace("BlackList has " + validSize + " valid entries, " + max_size + " in Form[]")
+        blackListEntries = validSize
+    else
+        AlwaysTrace("BlackList is empty")
+        blackListEntries = 0
     endif
 endEvent
-
-bool Function TidyListUp(Formlist m_list, form[] m_forms, bool[] m_flags, string trans)
-    if (!m_list)
-        return false
-    endif
-    int index = m_list.GetSize()
-    if (index <= 0)
-        return false
-    endif
-    
-    bool updated = false
-    while (index > 0)
-        index -= 1
-        if (!m_flags[index])
-            m_list.RemoveAddedForm(m_forms[index])
-            updated = true
-            string translation = GetTranslation(trans)
-            if (translation)
-                translation = Replace(translation, "{ITEMNAME}", GetNameForListForm(m_forms[index]))
-                if (translation)
-                    Debug.Notification(translation)
-                endif
-            endif
-        endif
-    endWhile
-    return updated
-endFunction
 
 Function PopulateCollectionGroups()
     collectionGroupCount = CollectionGroups()
@@ -914,7 +948,7 @@ Function SyncCollectionPolicyUI()
         SetToggleOptionValueST(collectDuplicates, false, "collectDuplicates")
         SetTextOptionValueST(s_collectibleActions[collectibleAction], false, "collectibleAction")
         SetToggleOptionValueST(collectionAddNotify, false, "collectionAddNotify")
-        string displayCollected = Replace(Replace(GetTranslation("$SHSE_COLLECTION_PROGRESS"), "{TOTAL}", collectionTotal), "{OBTAINED}", collectionObtained)
+        string displayCollected = Replace(Replace(GetTranslation(collectionStatus), "{TOTAL}", collectionTotal), "{OBTAINED}", collectionObtained)
         SetTextOptionValueST(displayCollected, false, "itemsCollected")
 EndFunction
 
@@ -925,6 +959,7 @@ Function GetCollectionPolicy(String collectionName)
         collectionAddNotify = CollectionNotifies(collectionGroupNames[collectionGroup], collectionName)
         collectionTotal = CollectionTotal(collectionGroupNames[collectionGroup], collectionName)
         collectionObtained = CollectionObtained(collectionGroupNames[collectionGroup], collectionName)
+        collectionStatus = CollectionStatus(collectionGroupNames[collectionGroup], collectionName)
         lastKnownPolicy = collectionName
         SyncCollectionPolicyUI()
     endIf
@@ -1009,14 +1044,9 @@ Event OnConfigClose()
     iniSaveLoad = 0
     ApplySetting()
 
-    bool updated = false
-    if TidyListUp(eventScript.whitelist_form, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
-        updated = true
-    endIf
-    if TidyListUp(eventScript.blacklist_form, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
-        updated = true
-    endIf
-    eventScript.SyncLists(False, updated)
+    eventScript.UpdateWhiteList(whiteListEntries, whitelist_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
+    eventScript.UpdateBlackList(blackListEntries, blacklist_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
+    eventScript.SyncLists(False, True)
 endEvent
 
 event OnPageReset(string currentPage)
@@ -1210,40 +1240,26 @@ event OnPageReset(string currentPage)
     elseif (currentPage == Pages[6]) ; whiteList
         AddKeyMapOptionST("whiteListHotkeyCode", "$SHSE_WHITELIST_KEY", whiteListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
-        int size = eventScript.whitelist_form.GetSize()
-        if (size == 0)
+        if whiteListEntries == 0
             return
         endif
 
         int index = 0
-        while (index < size)
-            if (!whitelist_form_array[index])
-                id_whiteList_array[index] = AddToggleOption("$SHSE_UNKNOWN", whiteList_flag_array[index], OPTION_FLAG_DISABLED)
-            elseif (!whiteList_name_array[index])
-                id_whiteList_array[index] = AddToggleOption("$SHSE_UNKNOWN", whiteList_flag_array[index])
-            else
-                id_whiteList_array[index] = AddToggleOption(whiteList_name_array[index], whiteList_flag_array[index])
-            endif
+        while index < whiteListEntries
+            id_whiteList_array[index] = AddToggleOption(whiteList_name_array[index], whiteList_flag_array[index])
             index += 1
         endWhile
 
     elseif (currentPage == Pages[7]) ; blacklist
         AddKeyMapOptionST("blackListHotkeyCode", "$SHSE_BLACKLIST_KEY", blackListHotkeyCode, OPTION_FLAG_WITH_UNMAP)
 
-        int size = eventScript.blacklist_form.GetSize()
-        if (size == 0)
+        if blackListEntries == 0
             return
         endif
 
         int index = 0
-        while (index < size)
-            if (!blacklist_form_array[index])
-                id_blackList_array[index] = AddToggleOption("$SHSE_UNKNOWN", blackList_flag_array[index], OPTION_FLAG_DISABLED)
-            elseif (!blackList_name_array[index])
-                id_blackList_array[index] = AddToggleOption("$SHSE_UNKNOWN", blackList_flag_array[index])
-            else
-                id_blackList_array[index] = AddToggleOption(blackList_name_array[index], blackList_flag_array[index])
-            endif
+        while index < blackListEntries
+            id_blackList_array[index] = AddToggleOption(blackList_name_array[index], blackList_flag_array[index])
             index += 1
         endWhile
     endif

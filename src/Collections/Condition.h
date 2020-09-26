@@ -31,10 +31,10 @@ namespace shse {
 	public:
 		virtual ~Condition();
 
-		virtual bool operator()(const ConditionMatcher& matcher) const = 0;
-		virtual nlohmann::json MakeJSON() const = 0;
-		virtual void AsJSON(nlohmann::json& j) const = 0;
 		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const;
+		virtual bool operator()(const ConditionMatcher& matcher) const = 0;
+		nlohmann::json MakeJSON() const;
+		virtual void AsJSON(nlohmann::json& j) const = 0;
 	protected:
 		Condition();
 	};
@@ -43,7 +43,6 @@ namespace shse {
 	public:
 		PluginCondition(const std::vector<std::string>& plugins);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 
 	private:
@@ -54,7 +53,6 @@ namespace shse {
 	public:
 		FormListCondition(const std::vector<std::pair<std::string, std::string>>& pluginFormList);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 
 	private:
@@ -68,7 +66,6 @@ namespace shse {
 		FormsCondition(const std::vector<std::pair<std::string, std::vector<std::string>>>& pluginForms);
 		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const override;
 		virtual bool operator()(const ConditionMatcher& matcher) const;
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 
 	private:
@@ -80,11 +77,24 @@ namespace shse {
 	public:
 		KeywordCondition(const std::vector<std::string>& keywords);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 
 	private:
 		std::unordered_set<const RE::BGSKeyword*> m_keywords;
+	};
+
+	class CategoryCondition : public Condition {
+	private:
+		std::vector<ObjectType> m_objectTypes;
+
+	public:
+		// Store Form Types to match for this collection. Schema enforces uniqueness and validity in input list.
+		// The list below must match the JSON schema and CommonLibSSE RE::FormType.
+
+		CategoryCondition(const std::vector<std::string>& categories);
+		virtual bool operator()(const ConditionMatcher& matcher) const;
+		virtual void AsJSON(nlohmann::json& j) const override;
+		inline std::vector<ObjectType> Types() const { return m_objectTypes; }
 	};
 
 	class SignatureCondition : public Condition {
@@ -101,7 +111,6 @@ namespace shse {
 		virtual bool operator()(const ConditionMatcher& matcher) const;
 		static const decltype(m_validSignatures) ValidSignatures();
 		static bool IsValidFormType(const RE::FormType formType);
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 		static std::string FormTypeAsSignature(const RE::FormType formType);
 	};
@@ -110,7 +119,6 @@ namespace shse {
 	public:
 		ScopeCondition(const std::vector<std::string>& scopes);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
 		static std::string SecondaryTypeAsScope(const INIFile::SecondaryType scope);
 
@@ -119,45 +127,56 @@ namespace shse {
 		static const std::unordered_map<std::string, INIFile::SecondaryType> m_validScopes;
 	};
 
-	class ConditionTree : public Condition {
+	class ItemRule : public Condition {
+	public:
+		virtual std::vector<ObjectType> GetObjectTypes(void) const = 0;
+	};
+
+	class FilterTree : public ItemRule {
 	public:
 		enum class Operator {
 			And,
 			Or
 		};
 
-		ConditionTree(const Operator op, const unsigned int depth);
+		FilterTree(const Operator op, const unsigned int depth);
 		virtual bool operator()(const ConditionMatcher& matcher) const;
-		void AddCondition(std::unique_ptr<Condition> condition);
-		virtual nlohmann::json MakeJSON() const;
 		virtual void AsJSON(nlohmann::json& j) const override;
-		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const;
+		void AddCondition(std::unique_ptr<Condition> condition);
+		virtual std::unordered_set<const RE::TESForm*> StaticMembers() const override;
+		virtual std::vector<ObjectType> GetObjectTypes(void) const override { return std::vector<ObjectType>(); }
 
 	private:
-		std::vector<std::unique_ptr<Condition>> m_conditions;
 		Operator m_operator;
 		unsigned int m_depth;
+		std::vector<std::unique_ptr<Condition>> m_conditions;
 	};
 
-	void to_json(nlohmann::json& j, const PluginCondition& p);
-	void to_json(nlohmann::json& j, const FormListCondition& p);
-	void to_json(nlohmann::json& j, const FormsCondition& p);
-	void to_json(nlohmann::json& j, const KeywordCondition& p);
-	void to_json(nlohmann::json& j, const SignatureCondition& p);
-	void to_json(nlohmann::json& j, const ScopeCondition& p);
-	void to_json(nlohmann::json& j, const ConditionTree& p);
+	class CategoryRule : public ItemRule {
+	public:
+		virtual bool operator()(const ConditionMatcher& matcher) const;
+		virtual void AsJSON(nlohmann::json& j) const override;
+		void SetCondition(std::unique_ptr<CategoryCondition> condition);
+		virtual std::vector<ObjectType> GetObjectTypes(void) const override { return m_condition->Types(); }
+	private:
+		std::unique_ptr<CategoryCondition> m_condition;
+	};
+
+	void to_json(nlohmann::json& j, const Condition& p);
 
 	class ConditionMatcher {
 	public:
 		ConditionMatcher(const RE::TESForm* form);
-		ConditionMatcher(const RE::TESForm* form, const INIFile::SecondaryType scope);
+		ConditionMatcher(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType);
 		inline const RE::TESForm* Form() const { return m_form; }
+		inline const ObjectType GetObjectType() const { return m_objectType; }
 		inline INIFile::SecondaryType Scope() const { return m_scope; }
 		void AddScope(const INIFile::SecondaryType scope) const;
 		inline const std::vector<INIFile::SecondaryType>& ScopesSeen() const { return m_scopesSeen; }
 
 	private:
 		const RE::TESForm* m_form;
+		const ObjectType m_objectType;
 		// INIFile::SecondaryType::NONE2 is a sentinel to indicate no filtering on scope, during game-data load
 		const INIFile::SecondaryType m_scope;
 		mutable std::vector<INIFile::SecondaryType> m_scopesSeen;

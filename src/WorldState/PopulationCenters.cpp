@@ -19,8 +19,12 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "WorldState/PopulationCenters.h"
+#include "Data/dataCase.h"
 #include "Data/iniSettings.h"
 #include "Utilities/utils.h"
+
+namespace shse
+{
 
 std::unique_ptr<PopulationCenters> PopulationCenters::m_instance;
 
@@ -33,18 +37,32 @@ PopulationCenters& PopulationCenters::Instance()
 	return *m_instance;
 }
 
-bool PopulationCenters::CannotLoot(const RE::BGSLocation* location) const
+void PopulationCenters::RefreshConfig(void)
 {
-	PopulationCenterSize excludedCenterSize(PopulationCenterSizeFromIniSetting(
-		INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "PreventPopulationCenterLooting")));
-	if (excludedCenterSize == PopulationCenterSize::None)
+	RecursiveLockGuard guard(m_centersLock);
+	m_excludedCenterSize = PopulationCenterSizeFromIniSetting(
+		INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "PreventPopulationCenterLooting"));
+}
+
+bool PopulationCenters::CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const
+{
+	RecursiveLockGuard guard(m_centersLock);
+	if (m_excludedCenterSize == PopulationCenterSize::None)
 		return false;
 
-	RecursiveLockGuard guard(m_centersLock);
 	const auto locationRecord(m_centers.find(location));
 	// if small locations are excluded we automatically exclude any larger, so use >= here, assuming this is
 	// a population center
-	return locationRecord != m_centers.cend() && locationRecord->second >= excludedCenterSize;
+	if (locationRecord != m_centers.cend())
+	{
+		return locationRecord->second >= m_excludedCenterSize;
+	}
+	const auto cellRecord(m_cells.find(cellID));
+	if (cellRecord != m_cells.cend())
+	{
+		return cellRecord->second >= m_excludedCenterSize;
+	}
+	return false;
 }
 
 PopulationCenterSize PopulationCenters::PopulationCenterSizeFromIniSetting(const double iniSetting) const
@@ -58,7 +76,7 @@ PopulationCenterSize PopulationCenters::PopulationCenterSizeFromIniSetting(const
 }
 
 // Classify items by their keywords
-void PopulationCenters::Categorize()
+void PopulationCenters::Categorize(void)
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
 	if (!dhnd)
@@ -183,4 +201,39 @@ void PopulationCenters::Categorize()
 		DBG_MESSAGE("Population center child keyword: {}", keyword.c_str());
 	}
 #endif
+	AddOtherPlaces();
+}
+
+void PopulationCenters::AddOtherPlaces(void)
+{
+	// Helgen Reborn vendor CELLs
+	const std::string espName("Helgen Reborn.esp");
+	std::vector<RE::FormID> helgenRebornVendors = {
+		0x31f4c,			// aaaBalokHouse04
+		0x31eac,			// aaaBalokHouse05
+		0x7fd96,			// aaaBalokHouseHill03
+		0x320dd,			// aaaBalokHouse01
+		0x31d3b,			// aaaBalokHelgenInn
+		0x1226d7,			// aaaBalokHamingsHouse
+		0x7fe11,			// aaaBalokHouseHill04
+		0x7f1d8,			// aaaBalokHouseHill01
+		0x31731,			// aaaBalokBrothel
+		0x7fe8c,			// aaaBalokHouseHill05
+		0x60154,			// aaaBalokReinhardtInterior
+		0x7fd1b,			// aaaBalokHouseHill02
+		0x31f41,			// aaaBalokHouse03
+		0x32059				// aaaBalokHouse02
+	};
+	for (const RE::FormID formID : helgenRebornVendors)
+	{
+		const RE::TESObjectCELL* cell(DataCase::GetInstance()->FindExactMatch<RE::TESObjectCELL>(espName, formID));
+		if (cell)
+		{
+			REL_MESSAGE("Cell {}/0x{:08x} treated as Town", cell->GetName(), cell->GetFormID());
+			m_cells.insert(std::make_pair(cell->GetFormID(), PopulationCenterSize::Towns));
+		}
+	}
+	DBG_VMESSAGE("Added {} CELLs as Town, expected {}", m_cells.size(), helgenRebornVendors.size());
+}
+
 }

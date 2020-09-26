@@ -8,6 +8,8 @@ string Function GetTextObjectType(Form thisForm) global native
 
 bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
+bool Function IsQuestTarget(Form item) global native
+bool Function IsDynamic(ObjectReference refr) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
@@ -46,7 +48,7 @@ String Function ReplaceArray(String str, String[] targets, String[] replacements
 
 ;Collection Management
 bool Function CollectionsInUse() global native
-Function FlushAddedItems(float gameTime, Form[] forms, int itemCount) global native
+Function FlushAddedItems(float gameTime, Form[] forms, int[] scopes, int[] types, int itemCount) global native
 Function PushGameTime(float gameTime) global native
 int Function CollectionGroups() global native
 String Function CollectionGroupName(int fileIndex) global native
@@ -68,6 +70,7 @@ Function PutCollectionGroupNotifies(String groupName, bool notifies) global nati
 Function PutCollectionGroupAction(String groupName, int action) global native
 int Function CollectionTotal(String groupName, String collectionName) global native
 int Function CollectionObtained(String groupName, String collectionName) global native
+string Function CollectionStatus(String groupName, String collectionName) global native
 
 int Function AdventureTypeCount() global native
 string Function AdventureTypeName(int adventureType) global native
@@ -96,8 +99,11 @@ int Function PageCountForDay() global native
 string Function GetSagaDayPage(int pageNumber) global native
 
 string Function GetNameForListForm(Form listMember) global
+    if !listMember
+        return ""
+    endIf
     string name = listMember.GetName()
-    if (StringUtil.GetLength(name) == 0)
+    if StringUtil.GetLength(name) == 0
         ObjectReference refr = listMember as ObjectReference
         if refr
             name  = refr.GetBaseObject().GetName()
