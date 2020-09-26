@@ -71,8 +71,11 @@ private:
 
 class Collection {
 protected:
-	void AddStaticMembers();
-	bool AddMemberID(const RE::TESForm* form) const;
+	virtual void InitFromStaticMembers() = 0;
+	virtual void SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form) = 0;
+	virtual void ItemRuleAsJSON(nlohmann::json& j) const = 0;
+	virtual nlohmann::json MembersAsJSON() const = 0;
+	virtual std::ostream& PrintMemberDetails(std::ostream& os) const = 0;
 
 	// inputs
 	std::string m_name;
@@ -80,28 +83,30 @@ protected:
 	// may inherit Policy from Group or override
 	CollectionPolicy m_effectivePolicy;
 	bool m_overridesGroup;
-	std::unique_ptr<ConditionTree> m_rootFilter;
+	std::unique_ptr<ItemRule> m_itemRule;
 	// derived
 	std::unordered_map<const RE::TESForm*, float> m_observed;
-	mutable std::unordered_set<const RE::TESForm*> m_members;
 	std::vector<INIFile::SecondaryType> m_scopes;
 	const CollectionGroup* m_owningGroup;
 
 public:
 	Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
-		const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter);
+		const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ItemRule> filter);
+	virtual ~Collection();
 	bool IsActive() const;
-	bool HasMembers() const;
-	bool MatchesFilter(const ConditionMatcher& matcher) const;
-	virtual bool IsMemberOf(const RE::TESForm* form) const;
-	std::pair<bool, bool> InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
+	virtual bool HasMembers() const = 0;
+	virtual bool IsStaticMatch(const ConditionMatcher& matcher) const = 0;
+	virtual bool IsMemberOf(const ConditionMatcher& matcher) const = 0;
+	virtual std::vector<ObjectType> ObjectTypes(void) const = 0;
+	std::tuple<bool, bool> InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
 	inline const CollectionPolicy& Policy() const { return m_effectivePolicy; }
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
 	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
 	inline bool OverridesGroup() const { return m_overridesGroup; }
 	inline void SetOverridesGroup(const bool overridesGroup) { m_overridesGroup = overridesGroup; }
-	inline size_t Count() { return m_members.size(); }
-	inline size_t Observed() { return m_observed.size(); }
+	virtual size_t Count() const = 0;
+	inline size_t Observed() const { return m_observed.size(); }
+	virtual std::string GetStatusMessage() const = 0;
 	bool HaveObserved(const RE::TESForm* form) const;
 	bool RecordItem(const RE::TESForm* form, const float gameTime, const bool suppressSpam);
 	void Reset();
@@ -117,7 +122,46 @@ public:
 	std::string PrintDefinition(void) const;
 	std::string PrintMembers(void) const;
 	inline void SetScopes(const std::vector<INIFile::SecondaryType>& scopes) { m_scopes = scopes; }
-	inline decltype(m_members) Members() const { return m_members; }
+	virtual std::unordered_set<const RE::TESForm*> Members() const = 0;
+};
+
+class ConditionCollection : public Collection {
+	using Collection::Collection;
+public:
+	virtual bool HasMembers() const override;
+	virtual bool IsStaticMatch(const ConditionMatcher& matcher) const override;
+	virtual inline std::vector<ObjectType> ObjectTypes(void) const override { return std::vector<ObjectType>(); }
+	virtual inline size_t Count() const override { return m_members.size(); }
+	virtual inline std::string GetStatusMessage() const override { return "$SHSE_CONDITION_COLLECTION_PROGRESS"; }
+	virtual inline std::unordered_set<const RE::TESForm*> Members() const override { return m_members; }
+protected:
+	virtual void InitFromStaticMembers() override;
+	bool AddMemberID(const RE::TESForm* form) const;
+	virtual void SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form) override;
+	virtual void ItemRuleAsJSON(nlohmann::json& j) const;
+	virtual nlohmann::json MembersAsJSON() const override;
+	virtual std::ostream& PrintMemberDetails(std::ostream& os) const override;
+	virtual bool IsMemberOf(const ConditionMatcher& matcher) const override;
+private:
+	mutable std::unordered_set<const RE::TESForm*> m_members;
+};
+
+class CategoryCollection : public Collection {
+	using Collection::Collection;
+public:
+	virtual bool HasMembers() const override;
+	virtual bool IsStaticMatch(const ConditionMatcher&) const override;
+	virtual inline std::vector<ObjectType> ObjectTypes(void) const override { return m_itemRule->GetObjectTypes(); }
+	inline size_t Count() const { return Observed(); }
+	virtual inline std::string GetStatusMessage() const override { return "$SHSE_CATEGORY_COLLECTION_PROGRESS"; }
+	virtual inline std::unordered_set<const RE::TESForm*> Members() const override { return std::unordered_set<const RE::TESForm*>(); }
+protected:
+	virtual void InitFromStaticMembers() override;
+	virtual void ItemRuleAsJSON(nlohmann::json& j) const;
+	virtual void SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form) override;
+	virtual nlohmann::json MembersAsJSON() const override;
+	virtual std::ostream& PrintMemberDetails(std::ostream& os) const override;
+	virtual bool IsMemberOf(const ConditionMatcher& matcher) const override;
 };
 
 void to_json(nlohmann::json& j, const Collection& collection);

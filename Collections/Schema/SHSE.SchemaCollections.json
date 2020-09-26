@@ -59,6 +59,11 @@
       }
     },
 
+    "categoryType": {
+      "type": "string",
+      "enum": [ "book", "skillbook", "spellbook", "bookRead", "spellbookRead", "skillbookRead", "weapon", "enchantedWeapon", "armor", "enchantedArmor", "jewelry", "enchantedJewelry" ]
+    },
+
     "signatureType": {
       "type": "string",
       "enum": [ "ALCH", "ARMO", "BOOK", "INGR", "KEYM", "MISC", "SLGM", "WEAP" ]
@@ -192,7 +197,21 @@
 
     "collectionType": {
       "type": "object",
-      "required": [ "name", "description", "rootFilter" ],
+      "allOf": [
+        {
+          "required": [ "name", "description" ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": [ "rootFilter" ]
+            },
+            {
+              "required": [ "category" ]
+            }
+          ]
+        }
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -203,7 +222,15 @@
           "description": "Descriptive test for in-game display"
         },
         "policy": { "$ref": "#/definitions/policyType" },
-        "rootFilter": { "$ref": "#/definitions/filterType" }
+        "rootFilter": { "$ref": "#/definitions/filterType" },
+        "category": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/categoryType" },
+          "description": "Loot Category specific to Smart Harvest, strings match a subset of INI file values"
+        }
       }
     }
   }

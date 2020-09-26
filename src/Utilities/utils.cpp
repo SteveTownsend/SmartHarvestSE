@@ -232,16 +232,13 @@ namespace StringUtils
 		if (str.empty() || target.empty())
 			return false;
 
-		bool result = false;
 		std::string::size_type pos = 0;
 		while ((pos = str.find(target, pos)) != std::string::npos)
 		{
-			if (!result)
-				result = true;
 			str.replace(pos, target.length(), replacement);
 			pos += replacement.length();
 		}
-		return result;
+		return true;
 	}
 
 	// see https://stackoverflow.com/questions/215963/how-do-you-properly-use-widechartomultibyte

@@ -51,7 +51,7 @@ void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*
 
 		if (predicate(itemObject))
 		{
-			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
+			DBG_DMESSAGE("Matched filter predicate for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
 			m_lootableItems.emplace_back(std::move(entry), count);
 		}
 	}
@@ -75,7 +75,7 @@ size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject
 
 		if (predicate(itemObject))
 		{
-			DBG_DMESSAGE("Matched filter for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
+			DBG_DMESSAGE("Matched count predicate for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
 			++items;
 		}
 	}

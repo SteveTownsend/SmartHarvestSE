@@ -36,6 +36,8 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
 #include "WorldState/PlayerState.h"
+#include "WorldState/PopulationCenters.h"
+#include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
 
 namespace
@@ -257,6 +259,7 @@ namespace papyrus
 	void SyncNativeSettings(RE::StaticFunctionTag*)
 	{
 		shse::CollectionManager::Instance().RefreshSettings();
+		shse::PopulationCenters::Instance().RefreshConfig();
 	}
 
 	bool Reconfigure(RE::StaticFunctionTag*)
@@ -385,6 +388,22 @@ namespace papyrus
 		shse::ProcessManualLootREFR(refr);
 	}
 
+	bool IsQuestTarget(RE::StaticFunctionTag*, RE::TESForm* item)
+	{
+		bool cannotLoot(shse::QuestTargets::Instance().UserCannotPermission(item));
+		REL_MESSAGE("Item {}/{:08x} is {}a Quest Target", item ? item->GetName() : "invalid", item ? item->GetFormID() : InvalidForm,
+			cannotLoot ? "" : "not ");
+		return cannotLoot;
+	}
+
+	bool IsDynamic(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		// Do not allow processing of bad REFR or Base
+		if (!refr || !refr->GetBaseObject())
+			return true;
+		return refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm();
+	}
+
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
 	{
 		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
@@ -399,9 +418,7 @@ namespace papyrus
 	RE::BSFixedString Replace(RE::StaticFunctionTag*, RE::BSFixedString str, RE::BSFixedString target, RE::BSFixedString replacement)
 	{
 		std::string s_str(str.c_str());
-		std::string s_target(target.c_str());
-		std::string s_replacement(replacement.c_str());
-		return (StringUtils::Replace(s_str, s_target, s_replacement)) ? s_str.c_str() : nullptr;
+		return (StringUtils::Replace(s_str, target.c_str(), replacement.c_str())) ? s_str.c_str() : nullptr;
 	}
 
 	RE::BSFixedString ReplaceArray(RE::StaticFunctionTag*, RE::BSFixedString str, std::vector<RE::BSFixedString> targets, std::vector<RE::BSFixedString> replacements)
@@ -429,18 +446,23 @@ namespace papyrus
 		return shse::CollectionManager::Instance().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<const RE::TESForm*> forms, const int itemCount)
+	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<const RE::TESForm*> forms,
+		const std::vector<int> scopes, const std::vector<int> objectTypes, const int itemCount)
 	{
 		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
 		auto form(forms.cbegin());
+		auto scope(scopes.cbegin());
+		auto objectType(objectTypes.cbegin());
 		int current(0);
 		shse::PlayerState::Instance().UpdateGameTime(gameTime);
 		while (current < itemCount)
 		{
 			// checked API
-			shse::CollectionManager::Instance().CheckEnqueueAddedItem(*form);
+			shse::CollectionManager::Instance().CheckEnqueueAddedItem(*form, INIFile::SecondaryType(*scope), ObjectType(*objectType));
 			++current;
 			++form;
+			++scope;
+			++objectType;
 		}
 	}
 
@@ -532,6 +554,11 @@ namespace papyrus
 	int CollectionTotal(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
 		return static_cast<int>(shse::CollectionManager::Instance().TotalItems(groupName, collectionName));
+	}
+
+	std::string CollectionStatus(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
+	{
+		return shse::CollectionManager::Instance().StatusMessage(groupName, collectionName);
 	}
 
 	int CollectionObtained(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
@@ -651,6 +678,8 @@ namespace papyrus
 
 		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
+		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
+		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
@@ -701,6 +730,7 @@ namespace papyrus
 		a_vm->RegisterFunction("CollectionNotifies", SHSE_PROXY, papyrus::CollectionNotifies);
 		a_vm->RegisterFunction("CollectionAction", SHSE_PROXY, papyrus::CollectionAction);
 		a_vm->RegisterFunction("CollectionTotal", SHSE_PROXY, papyrus::CollectionTotal);
+		a_vm->RegisterFunction("CollectionStatus", SHSE_PROXY, papyrus::CollectionStatus);
 		a_vm->RegisterFunction("CollectionObtained", SHSE_PROXY, papyrus::CollectionObtained);
 		a_vm->RegisterFunction("PutCollectionAllowsRepeats", SHSE_PROXY, papyrus::PutCollectionAllowsRepeats);
 		a_vm->RegisterFunction("PutCollectionNotifies", SHSE_PROXY, papyrus::PutCollectionNotifies);

@@ -30,6 +30,7 @@ public:
 
 protected:
 	IRangeChecker() : m_distance(0.) {}
+	virtual ~IRangeChecker() {}
 	mutable double m_distance;
 };
 

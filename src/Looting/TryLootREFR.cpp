@@ -642,31 +642,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				continue;
 			}
 
-			if (objType == ObjectType::weapon || objType == ObjectType::armor || objType == ObjectType::jewelry)
-			{
-				bool hasEnchantment = GetEnchantmentFromExtraLists(targetItemInfo.GetExtraDataLists()) != nullptr;
-				if (hasEnchantment) {
-					DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment", target->GetName(), target->GetFormID());
-					switch (objType)
-					{
-					case ObjectType::weapon:
-						objType = ObjectType::enchantedWeapon;
-						break;
-					case ObjectType::armor:
-						objType = ObjectType::enchantedArmor;
-						break;
-					case ObjectType::jewelry:
-						objType = ObjectType::enchantedJewelry;
-						break;
-					default:
-						break;
-					}
-				}
-			}
-
 			LootingType lootingType(LootingType::LeaveBehind);
 			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-				ConditionMatcher(target, m_targetType)));
+				ConditionMatcher(target, m_targetType, objType)));
 			if (collectible.first)
 			{
 				CollectibleHandling collectibleAction(collectible.second);
@@ -782,7 +760,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				m_candidate->GetName(), m_candidate->formID);
 			CopyLootFromContainer(targets);
 			// Main Blacklist does not work for dynamic forms - block those separately. e.g. Hawk shot down outside Solitude
-			if (!ScanGovernor::Instance().HasDynamicData(m_candidate))
+			if (!ScanGovernor::Instance().HandleAsDynamicData(m_candidate))
 			{
 				ScanGovernor::Instance().MarkContainerLootedRepeatGlow(m_candidate, glowDuration);
 			}
