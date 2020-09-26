@@ -31,11 +31,11 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope)
+TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetBaseFormObjectType(form))
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
-	m_objectType = GetBaseFormObjectType(form);
+	m_objectType = m_matcher.GetObjectType();
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 

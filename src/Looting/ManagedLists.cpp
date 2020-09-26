@@ -66,10 +66,20 @@ void ManagedList::Reset()
 
 void ManagedList::Add(const RE::TESForm* entry)
 {
-	REL_MESSAGE("Location/cell/item/container/NPC {}/0x{:08x} added to {}", entry->GetName(), entry->GetFormID(),
+	std::string name;
+	const RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
+	if (refr)
+	{
+		name = refr->GetName();
+	}
+	if (name.empty())
+	{
+		name = entry->GetName();
+	}
+	REL_MESSAGE("{}/0x{:08x} added to {}", name, entry->GetFormID(),
 		this == m_blackList.get() ? "BlackList" : "WhiteList");
 	RecursiveLockGuard guard(m_listLock);
-	m_members.insert({ entry->GetFormID(), entry->GetName() });
+	m_members.insert({ entry->GetFormID(), name });
 }
 
 bool ManagedList::Contains(const RE::TESForm* entry) const

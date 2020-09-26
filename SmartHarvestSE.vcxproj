@@ -78,7 +78,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -118,10 +118,10 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)install_dll.bat" "$(TargetPath)"</Command>
+      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Installing DLL...</Message>
+      <Message>Create artifacts RAR file</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,16 +149,14 @@
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
-      <Message>
-      </Message>
+      <Command>del $(TargetPath)</Command>
+      <Message>Force relink and artifact build</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>"$(ProjectDir)install_dll.bat" "$(TargetPath)"</Command>
+      <Command>$(ProjectDir)Batch\build-artifacts-rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Installing DLL...</Message>
+      <Message>Create artifacts RAR file</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">
@@ -192,10 +190,10 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>"$(ProjectDir)install_dll.bat" "$(TargetPath)"</Command>
+      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Installing DLL...</Message>
+      <Message>Create artifacts RAR file</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
@@ -229,10 +227,10 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>"$(SolutionDir)install_dll.bat" "$(TargetPath)"</Command>
+      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Installing DLL...</Message>
+      <Message>Create artifacts RAR file</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -383,6 +381,7 @@
     <ClInclude Include="src\WorldState\PopulationCenters.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Batch\build-artifacts-rar.bat" />
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="Collections\Examples\SHSE.Collections.BlackList.json" />
     <None Include="Collections\Examples\SHSE.Collections.Errors.json" />

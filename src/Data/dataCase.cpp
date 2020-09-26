@@ -924,6 +924,16 @@ bool DataCase::SetObjectTypeForFormType(const RE::FormType formType, const Objec
 	return inserted.second;
 }
 
+ObjectType DataCase::GetObjectTypeForForm(const RE::TESForm* form) const
+{
+	ObjectType objectType(GetObjectTypeForFormType(form->GetFormType()));
+	if (objectType == ObjectType::unknown)
+	{
+		objectType = GetFormObjectType(form->formID);
+	}
+	return objectType;
+}
+
 ResourceType DataCase::OreVeinResourceType(const RE::TESObjectACTI* mineable) const
 {
 	const auto matched(m_resourceTypeByOreVein.find(mineable));
@@ -1442,6 +1452,10 @@ DataCase::LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* r
 {
 }
 
+DataCase::LeveledItemCategorizer::~LeveledItemCategorizer()
+{
+}
+
 void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
 {
 	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
@@ -1476,7 +1490,7 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 	{
 		REL_VMESSAGE("Target {}/0x{:08x} has contents type {} in form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
 			GetObjectTypeName(itemType), itemForm->GetName(), itemForm->GetFormID());
-		if (!DataCase::GetInstance()->m_produceFormContents.insert(std::make_pair(m_produceForm, itemForm)).second)
+		if (!DataCase::GetInstance()->m_produceFormContents.insert({ m_produceForm, itemForm }).second)
 		{
 			REL_WARNING("Leveled Item {}/0x{:08x} contents already present", m_targetName, m_rootItem->GetFormID());
 		}

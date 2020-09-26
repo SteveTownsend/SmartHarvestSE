@@ -413,6 +413,9 @@
     <Filter Include="Filters">
       <UniqueIdentifier>{f7416c91-6f98-40bb-b2c3-33bff5426b58}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Batch">
+      <UniqueIdentifier>{c3f9f145-be00-43d2-9254-10c5523d47ae}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="exports.def">
@@ -468,6 +471,9 @@
     </None>
     <None Include="Filters\SHSE.Filter.DeadBody.json">
       <Filter>Filters</Filter>
+    </None>
+    <None Include="Batch\build-artifacts-rar.bat">
+      <Filter>Batch</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

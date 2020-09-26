@@ -32,7 +32,7 @@ namespace shse
 
 void CollectionPolicy::AsJSON(nlohmann::json& j) const
 {
-	j["action"] = CollectibleHandlingJSON(m_action);
+	j["action"] = CollectibleHandlingString(m_action);
 	j["notify"] = m_notify;
 	j["repeat"] = m_repeat;
 }
@@ -54,59 +54,42 @@ std::string ItemCollected::AsString() const
 	return stream.str();
 }
 
-void Collection::AddStaticMembers()
-{
-	// if this collection has concrete static members, add them now to seed the list
-	const auto statics(m_rootFilter->StaticMembers());
-	std::copy_if(statics.cbegin(), statics.cend(), std::inserter(m_members, m_members.end()), FormUtils::IsConcrete);
-}
-
 Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
-	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ConditionTree> filter) :
+	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ItemRule> itemRule) :
 	m_name(name), m_description(description), m_effectivePolicy(policy),
-	m_overridesGroup(overridesGroup), m_rootFilter(std::move(filter)), m_owningGroup(owningGroup)
+	m_overridesGroup(overridesGroup), m_itemRule(std::move(itemRule)), m_owningGroup(owningGroup)
 {
-	AddStaticMembers();
 }
 
-bool Collection::AddMemberID(const RE::TESForm* form)const 
+Collection::~Collection()
 {
-	if (form && m_members.insert(form).second)
-	{
-		return true;
-	}
-	return false;
-}
-
-bool Collection::IsMemberOf(const RE::TESForm* form) const
-{
-	// Check static list of IDs
-	return form && m_members.contains(form);
 }
 
 // first element - does Collection determine disposition?
 // second element - true for one-time Collectible, already processed: defer decision to other rules
-std::pair<bool, bool> Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
+std::tuple<bool, bool> Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 {
+	bool repeat(false);
+	bool observed(false);
 	if (!matcher.Form())
-		return { false, false };
+		return { repeat, observed };
 
 	// check Scope - if Collection is scoped, scope for this autoloot check must be valid
 	if (!m_scopes.empty() && std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) == m_scopes.cend())
 	{
 		DBG_VMESSAGE("{}/0x{:08x} has invalid scope {}", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
-		return { false, false };
+		return { repeat, observed };
 	}
 
-	if (IsMemberOf(matcher.Form()))
+	if (IsMemberOf(matcher))
 	{
-		// 1. Collection member always handled if repeats allowed, or as-yet unobserved
-		// 2. Defer to other rules if repeats are not allowed and the Collection is not dispositive for the item
-		// If repeats are disallowed, the item is no longer a Collection member after first observation
-		return { m_effectivePolicy.Repeat() || !m_observed.contains(matcher.Form()), !m_effectivePolicy.Repeat() };
+		// Collection member always handled if repeats allowed, or as-yet unobserved
+		// If repeats are disallowed, the item is no longer Collectible after first observation
+		// Defer to other rules if repeats are not allowed and this Collection is not dispositive for the item
+		return { m_effectivePolicy.Repeat(), m_observed.contains(matcher.Form()) };
 	}
 	// absolutely not a member of the collection
-	return { false, false };
+	return { repeat, observed };
 }
 
 bool Collection::IsActive() const
@@ -114,21 +97,6 @@ bool Collection::IsActive() const
 	// Collections with no Members are not considered active.
 	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
 	return HasMembers() && (!m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled());
-}
-
-bool Collection::HasMembers() const
-{
-	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
-	return !m_members.empty();
-}
-
-bool Collection::MatchesFilter(const ConditionMatcher& matcher) const
-{
-	if (matcher.Form() && m_rootFilter->operator()(matcher))
-	{
-		return AddMemberID(matcher.Form());
-	}
-	return false;
 }
 
 bool Collection::HaveObserved(const RE::TESForm* form) const
@@ -169,9 +137,8 @@ bool Collection::RecordItem(const RE::TESForm* form, const float gameTime, const
 void Collection::Reset()
 {
 	m_observed.clear();
-	m_members.clear();
-	AddStaticMembers();
 	m_scopes.clear();
+	InitFromStaticMembers();
 }
 
 std::string Collection::Name(void) const
@@ -194,7 +161,7 @@ std::string Collection::PrintDefinition() const
 std::string Collection::PrintMembers(void) const
 {
 	std::ostringstream collectionStr;
-	collectionStr << m_members.size() << " members\n";
+	collectionStr << Count() << " members\n";
 	if (!m_scopes.empty())
 	{
 		collectionStr << "Scope: ";
@@ -212,11 +179,7 @@ std::string Collection::PrintMembers(void) const
 			}
 		}
 	}
-	for (const auto member : m_members)
-	{
-		collectionStr << "  0x" << StringUtils::FromFormID(member->GetFormID());
-		collectionStr << ", Collected? " << (m_observed.contains(member) ? 'Y' : 'N') << ", (" << member->GetName() << ")\n";
-	}
+	PrintMemberDetails(collectionStr);
 	return collectionStr.str();
 }
 
@@ -233,7 +196,7 @@ void Collection::AsJSON(nlohmann::json& j) const
 	{
 		j["policy"] = nlohmann::json(m_effectivePolicy);
 	}
-	j["rootFilter"] = nlohmann::json(*m_rootFilter);
+	ItemRuleAsJSON(j);
 	if (!m_scopes.empty())
 	{
 		nlohmann::json scopes(nlohmann::json::array());
@@ -243,20 +206,7 @@ void Collection::AsJSON(nlohmann::json& j) const
 		}
 		j["scopes"] = scopes;
 	}
-	nlohmann::json members(nlohmann::json::array());
-	for (const auto form : m_members)
-	{
-		nlohmann::json memberObj(nlohmann::json::object());
-		memberObj["form"] = StringUtils::FromFormID(form->GetFormID());
-		const auto observed(m_observed.find(form));
-		if (observed != m_observed.cend())
-		{
-			// optional, observed member only
-			memberObj["time"] = observed->second;
-		}
-		members.push_back(memberObj);
-	}
-	j["members"] = members;
+	j["members"] = MembersAsJSON();
 }
 
 // rehydrate collection state from cosave data
@@ -307,16 +257,156 @@ void Collection::SetMembersFrom(const nlohmann::json & members)
 			// sanitize malformed members - must exist, have name and be playable
 			continue;
 		}
-		m_members.insert(form);
-		const auto observed(member.find("time"));
-		if (observed != member.cend())
+		SetMemberFrom(member, form);
+	}
+}
+
+void ConditionCollection::InitFromStaticMembers()
+{
+	// if this collection has concrete static members, add them now to seed the list
+	m_members.clear();
+	const auto statics(m_itemRule->StaticMembers());
+	std::copy_if(statics.cbegin(), statics.cend(), std::inserter(m_members, m_members.end()), FormUtils::IsConcrete);
+}
+
+bool ConditionCollection::AddMemberID(const RE::TESForm* form)const
+{
+	if (form && m_members.insert(form).second)
+	{
+		return true;
+	}
+	return false;
+}
+
+void ConditionCollection::SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form)
+{
+	m_members.insert(form);
+	const auto observed(member.find("time"));
+	if (observed != member.cend())
+	{
+		// optional, observed member only
+		const float gameTime(observed->get<float>());
+		m_observed.insert({ form, gameTime });
+		Saga::Instance().AddEvent(ItemCollected(form, this, gameTime));
+	}
+}
+
+void ConditionCollection::ItemRuleAsJSON(nlohmann::json& j) const
+{
+	j["rootFilter"] = nlohmann::json(*m_itemRule);
+}
+
+nlohmann::json ConditionCollection::MembersAsJSON() const
+{
+	nlohmann::json members(nlohmann::json::array());
+	for (const auto form : m_members)
+	{
+		nlohmann::json memberObj(nlohmann::json::object());
+		memberObj["form"] = StringUtils::FromFormID(form->GetFormID());
+		const auto observed(m_observed.find(form));
+		if (observed != m_observed.cend())
 		{
 			// optional, observed member only
-			const float gameTime(observed->get<float>());
-			m_observed.insert({ form, gameTime });
-			Saga::Instance().AddEvent(ItemCollected(form, this, gameTime));
+			memberObj["time"] = observed->second;
 		}
+		members.push_back(memberObj);
 	}
+	return members;
+}
+
+std::ostream& ConditionCollection::PrintMemberDetails(std::ostream& os) const
+{
+	// static members with observation status
+	for (const auto member : m_members)
+	{
+		os << "  0x" << StringUtils::FromFormID(member->GetFormID());
+		os << ", Collected? " << (m_observed.contains(member) ? 'Y' : 'N') << ", (" << member->GetName() << ")\n";
+	}
+	return os;
+}
+
+bool ConditionCollection::HasMembers() const
+{
+	// Static membership
+	return !m_members.empty();
+}
+
+bool ConditionCollection::IsStaticMatch(const ConditionMatcher& matcher) const
+{
+	if (matcher.Form() && m_itemRule->operator()(matcher))
+	{
+		return AddMemberID(matcher.Form());
+	}
+	return false;
+}
+
+bool ConditionCollection::IsMemberOf(const ConditionMatcher& matcher) const
+{
+	// Check static list of IDs
+	return matcher.Form() && m_members.contains(matcher.Form());
+}
+
+void CategoryCollection::InitFromStaticMembers()
+{
+	// no static members
+}
+
+void CategoryCollection::SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form)
+{
+	const auto observed(member.find("time"));
+	if (observed != member.cend())
+	{
+		// optional, observed member only
+		const float gameTime(observed->get<float>());
+		m_observed.insert({ form, gameTime });
+		Saga::Instance().AddEvent(ItemCollected(form, this, gameTime));
+	}
+}
+
+void CategoryCollection::ItemRuleAsJSON(nlohmann::json& j) const
+{
+	m_itemRule->AsJSON(j);
+}
+
+nlohmann::json CategoryCollection::MembersAsJSON() const
+{
+	nlohmann::json members(nlohmann::json::array());
+	for (const auto observed : m_observed)
+	{
+		nlohmann::json memberObj(nlohmann::json::object());
+		memberObj["form"] = StringUtils::FromFormID(observed.first->GetFormID());
+		memberObj["time"] = observed.second;
+		members.push_back(memberObj);
+	}
+	return members;
+}
+
+std::ostream& CategoryCollection::PrintMemberDetails(std::ostream& os) const
+{
+	// no static members, only those observed
+	for (const auto member : m_observed)
+	{
+		os << "  0x" << StringUtils::FromFormID(member.first->GetFormID());
+		os << ", Collected? Y, (" << member.first->GetName() << ")\n";
+	}
+	return os;
+}
+
+bool CategoryCollection::HasMembers() const
+{
+	// it is assumed that any ObjectType has at least one match
+	return true;
+}
+
+bool CategoryCollection::IsStaticMatch(const ConditionMatcher&) const
+{
+	return false;
+}
+
+bool CategoryCollection::IsMemberOf(const ConditionMatcher& matcher) const
+{
+	// Base Object ObjectType changes based on game state, so cannot store member Form IDs
+	return matcher.Form() && m_itemRule->operator()(matcher);
 }
 
 void to_json(nlohmann::json& j, const Collection& collection)
@@ -333,7 +423,10 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 	{
 		try {
 			// Group Policy is the default for Group Member Collection
-			m_collections.push_back(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
+			auto newCollection(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
+			newCollection->Reset();
+			CollectionManager::Instance().RecordCollectibleObjectTypes(newCollection);
+			m_collections.push_back(newCollection);
 		}
 		catch (const std::exception& exc) {
 			REL_ERROR("Error {} parsing Collection\n{}", exc.what(), collection.dump());

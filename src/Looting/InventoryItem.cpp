@@ -29,7 +29,31 @@ namespace shse
 
 InventoryItem::InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
 	m_inlineTransfer(false), m_entry(std::move(a_entry)), m_count(a_count),
-	m_objectType(GetBaseFormObjectType(m_entry->GetObject())) {}
+	m_objectType(GetBaseFormObjectType(m_entry->GetObject()))
+{
+	// Decorate obvjectType for player-created enchantments
+	if (m_objectType == ObjectType::weapon || m_objectType == ObjectType::armor || m_objectType == ObjectType::jewelry)
+	{
+		bool hasEnchantment = GetEnchantmentFromExtraLists(m_entry->extraLists) != nullptr;
+		if (hasEnchantment) {
+			DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID());
+			switch (m_objectType)
+			{
+			case ObjectType::weapon:
+				m_objectType = ObjectType::enchantedWeapon;
+				break;
+			case ObjectType::armor:
+				m_objectType = ObjectType::enchantedArmor;
+				break;
+			case ObjectType::jewelry:
+				m_objectType = ObjectType::enchantedJewelry;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+}
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
 	m_inlineTransfer(rhs.m_inlineTransfer), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
@@ -104,12 +128,13 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 	return static_cast<size_t>(toRemove + queued.size());
 }
 
-void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count, const bool collectible)
+void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList,
+	ptrdiff_t count, const bool collectible)
 {
 	if (m_inlineTransfer)
 	{
 		// safe to handle here - record the item for Collection correlation before moving
-		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject());
+		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject(), INIFile::SecondaryType::containers, m_objectType);
 		container->RemoveItem(BoundObject(), static_cast<int32_t>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else

@@ -39,8 +39,8 @@
       }
     },
     {
-      "name": "LoTD Excavation Sites",
-      "description": "LoTD Excavation Sites",
+      "name": "LoTD Excavation Sites and Icy Shards",
+      "description": "LoTD Excavation Sites and Icy Shards",
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -48,6 +48,10 @@
             {
               "plugin": "LegacyoftheDragonborn.esm",
               "form": [ "00284A06", "0051FCCB", "0051FCD1", "0051FCD2" ]
+            },
+            {
+              "plugin": "LegacyoftheDragonborn.esm",
+              "form": [ "004f05e5" ]
             }
           ]
         }

@@ -20,8 +20,11 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "Collections/Collection.h"
+#include <tuple>
 
 namespace shse {
+
+typedef std::tuple<const RE::TESForm*, const INIFile::SecondaryType, const ObjectType> OwnedItem;
 
 class CollectionManager {
 public:
@@ -32,7 +35,8 @@ public:
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	void Refresh() const;
 	void CollectFromContainer(const RE::TESObjectREFR* refr);
-	void CheckEnqueueAddedItem(const RE::TESForm* form);
+	bool ItemIsCollectionCandidate(const RE::TESForm* item) const;
+	void CheckEnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType);
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
@@ -40,6 +44,7 @@ public:
 	void OnGameReload(void);
 	void RefreshSettings(void);
 	void PrintMembership(void) const;
+	void RecordCollectibleObjectTypes(const std::shared_ptr<Collection>& collection);
 	// these functions only apply to MCM-visible Collection Groups
 	int NumberOfFiles(void) const;
 	std::string GroupNameByIndex(const int fileIndex) const;
@@ -66,6 +71,7 @@ public:
 
 	size_t TotalItems(const std::string& groupName, const std::string& collectionName) const;
 	size_t ItemsObtained(const std::string& groupName, const std::string& collectionName) const;
+	std::string StatusMessage(const std::string& groupName, const std::string& collectionName) const;
 
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& j);
@@ -78,9 +84,9 @@ private:
 	void RecordCollectibleForm(const std::shared_ptr<Collection>& collection, const RE::TESForm* form,
 		std::unordered_set<const RE::TESForm*>& uniqueMembers);
 	void ResolveMembership(void);
-	void AddToRelevantCollections(const RE::TESForm* item, const float gameTime);
-	void ReconcileInventory(std::unordered_set<const RE::TESForm*>& additions);
-	void EnqueueAddedItem(const RE::TESForm* form);
+	void AddToRelevantCollections(const ConditionMatcher& matcher, const float gameTime);
+	void ReconcileInventory(std::vector<OwnedItem>& additions);
+	void EnqueueAddedItem(const RE::TESForm*, const INIFile::SecondaryType scope, const ObjectType objectType);
 
 	static constexpr size_t CollectedSpamLimit = 10;
 	size_t m_notifications;
@@ -98,11 +104,12 @@ private:
 	std::unordered_map<std::string, std::shared_ptr<CollectionGroup>> m_allGroupsByName;
 	// Link each Form to the Collections in which it belongs
 	std::unordered_multimap<RE::FormID, std::shared_ptr<Collection>> m_collectionsByFormID;
-	std::unordered_set<RE::FormID> m_nonCollectionForms;
+	std::unordered_multimap<ObjectType, std::shared_ptr<Collection>> m_collectionsByObjectType;
 
-	std::vector<const RE::TESForm*> m_addedItemQueue;
+	std::vector<OwnedItem> m_addedItemQueue;
 	std::unordered_set<const RE::TESForm*> m_lastInventoryCollectibles;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
+	std::unordered_set<RE::FormID> m_collectedOnThisScan;
 };
 
 void to_json(nlohmann::json& j, const CollectionManager& collectionManager);

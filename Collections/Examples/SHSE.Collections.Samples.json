@@ -55,20 +55,36 @@
     },
 
     {
-      "name": "Base Game Weapons",
+      "name": "Regular Weapons",
       "policy": {
         "action": "take",
-        "notify": true,
+        "notify": false,
         "repeat": false
       },
-      "description": "Demonstrates Skyrim.esm usable",
-      "rootFilter": {
-        "operator": "AND",
-        "condition": {
-          "plugin": [ "Skyrim.esm" ],
-          "signature": [ "WEAP" ]
-        }
-      }
+      "description": "Unenchanted weapons looted once for curiosity",
+      "category": [ "weapon" ]
+    },
+
+    {
+      "name": "Enchanted Weapons",
+      "policy": {
+        "action": "take",
+        "notify": false,
+        "repeat": true
+      },
+      "description": "Enchanted weapons looted always",
+      "category": [ "enchantedWeapon" ]
+    },
+
+    {
+      "name": "Glow All Unread Books",
+      "policy": {
+        "action": "glow",
+        "notify": false,
+        "repeat": true
+      },
+      "description": "Glow unread books of all stripes",
+      "category": [ "book", "skillbook", "spellbook" ]
     },
 
     {

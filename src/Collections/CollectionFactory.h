@@ -39,7 +39,8 @@ private:
 	std::unique_ptr<KeywordCondition> ParseKeyword(const nlohmann::json& keywordRule) const;
 	std::unique_ptr<SignatureCondition> ParseSignature(const nlohmann::json& signatureRule) const;
 	std::unique_ptr<ScopeCondition> ParseScope(const nlohmann::json& scopeRule) const;
-	std::unique_ptr<ConditionTree> ParseFilter(const nlohmann::json& tree, const unsigned int depth) const;
+	std::unique_ptr<FilterTree> ParseFilter(const nlohmann::json& tree, const unsigned int depth) const;
+	std::unique_ptr<CategoryRule> ParseCategory(const nlohmann::json& categoryRule) const;
 
 	std::unique_ptr<CollectionFactory> m_factory;
 };
