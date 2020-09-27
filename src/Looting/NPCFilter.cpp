@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "Looting/NPCFilter.h"
+#include "Looting/objects.h"
 #include "Utilities/Exception.h"
 #include "WorldState/PlayerState.h"
 
@@ -274,16 +275,7 @@ void NPCFilter::Load()
 
 bool NPCFilter::IsLeveled(const RE::TESNPC* npc) const
 {
-	const RE::TESForm* tplt(npc->baseTemplateForm);
-	while (tplt)
-	{
-		if (tplt->As<RE::TESLevCharacter>())
-			return true;
-		if (!tplt->As<RE::TESNPC>())
-			return true;
-		tplt = tplt->As<RE::TESNPC>()->baseTemplateForm;
-	}
-	return false;
+	return NPCIsLeveled(npc);
 }
 
 bool NPCFilter::IsLootable(const RE::TESNPC* npc) const

@@ -79,4 +79,8 @@ inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectT
 	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
 }
 
+bool FormTypeIsLootableObject(const RE::FormType formType);
+bool NPCIsLeveled(const RE::TESNPC* npc);
+bool FormIsLeveledNPC(const RE::TESForm* form);
+
 }

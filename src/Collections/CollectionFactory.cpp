@@ -87,6 +87,15 @@ std::unique_ptr<ScopeCondition> CollectionFactory::ParseScope(const nlohmann::js
 	return std::make_unique<ScopeCondition>(scopes);
 }
 
+std::unique_ptr<NameMatchCondition> CollectionFactory::ParseNameMatch(const nlohmann::json& nameMatchRule) const
+{
+	std::vector<std::string> names;
+	names.reserve(nameMatchRule["names"].size());
+	std::transform(std::cbegin(nameMatchRule["names"]), std::cend(nameMatchRule["names"]), std::back_inserter(names),
+		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+	return std::make_unique<NameMatchCondition>(nameMatchRule["isNPC"].get<bool>(), nameMatchRule["matchIf"].get<std::string>(), names);
+}
+
 CollectionPolicy CollectionFactory::ParsePolicy(const nlohmann::json& policy) const
 {
 	return CollectionPolicy(ParseCollectibleHandling(policy["action"].get<std::string>()),
@@ -137,6 +146,10 @@ std::unique_ptr<FilterTree> CollectionFactory::ParseFilter(const nlohmann::json&
 		else if (condition.key() == std::string("scope"))
 		{
 			root->AddCondition(ParseScope(condition.value()));
+		}
+		else if (condition.key() == std::string("nameMatch"))
+		{
+			root->AddCondition(ParseNameMatch(condition.value()));
 		}
 	}
 

@@ -84,6 +84,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerBlacklistedByUser: return "ContainerBlacklistedByUser";
 	case Lootability::DeadBodyBlacklistedByUser: return "DeadBodyBlacklistedByUser";
 	case Lootability::NPCExcludedByDeadBodyFilter: return "NPCExcludedByDeadBodyFilter";
+	case Lootability::NPCIsInBlacklistCollection: return "NPCIsInBlacklistCollection";
 	default: return "";
 	}
 }

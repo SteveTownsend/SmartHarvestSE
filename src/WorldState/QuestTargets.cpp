@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "WorldState/QuestTargets.h"
+#include "Looting/objects.h"
 #include "WorldState/PlacedObjects.h"
 #include "Utilities/utils.h"
 
@@ -41,27 +42,11 @@ QuestTargets::QuestTargets()
 {
 }
 
-bool QuestTargets::ReferenceIsLootable(const RE::TESObjectREFR* refr) const
+bool QuestTargets::IsLootableInanimateReference(const RE::TESObjectREFR* refr) const
 {
 	if (refr->As<RE::Actor>())
 		return false;
-	const auto formType(refr->GetBaseObject()->GetFormType());
-	return
-		formType == RE::FormType::AlchemyItem ||
-		formType == RE::FormType::Ammo ||
-		formType == RE::FormType::Armor ||
-		formType == RE::FormType::Book ||
-		formType == RE::FormType::Container ||
-		formType == RE::FormType::Flora ||
-		formType == RE::FormType::Ingredient ||
-		formType == RE::FormType::KeyMaster ||
-		formType == RE::FormType::Misc ||
-		formType == RE::FormType::Note ||
-		formType == RE::FormType::Projectile ||
-		formType == RE::FormType::Scroll ||
-		formType == RE::FormType::SoulGem ||
-		formType == RE::FormType::Tree ||
-		formType == RE::FormType::Weapon;
+	return FormTypeIsLootableObject(refr->GetBaseObject()->GetFormType());
 }
 
 void QuestTargets::Analyze()
@@ -162,7 +147,7 @@ void QuestTargets::Analyze()
 						{
 							size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refr->GetBaseObject()));
 							// record this specific REFR as the QUST target
-							if ((isQuest || (ReferenceIsLootable(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
+							if ((isQuest || (IsLootableInanimateReference(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
 							{
 								REL_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
 									refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), itemCount);

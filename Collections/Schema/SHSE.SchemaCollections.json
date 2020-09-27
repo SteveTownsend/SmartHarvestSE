@@ -79,6 +79,30 @@
       "enum": [ "deadBody", "container", "looseItem" ]
     },
 
+    "matchType": {
+      "type": "string",
+      "enum": [ "equals", "startsWith", "contains", "omits", "notEquals" ]
+    },
+
+    "nameMatchType": {
+      "type": "object",
+      "required": [ "isNPC", "matchIf", "names" ],
+      "properties": {
+        "isNPC": {
+          "type": "boolean",
+          "description": "Filter NPCs or inanimate objects"
+        },
+        "matchIf": { "$ref": "#/definitions/matchType" },
+        "names": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+
     "conditionType": {
       "type": "object",
       "$comment": "we need highly restrictive fields in a leaf node, or 'subFilter' which defers the decision",
@@ -86,12 +110,16 @@
         {
           "allOf": [
             {
-              "required": [ "forms" ]
+              "required": [ "forms" ],
+              "not": { "required": [ "nameMatch" ] }
             }
           ]
         },
         {
           "anyOf": [
+            {
+              "required": [ "nameMatch" ]
+            },
             {
               "required": [ "plugin" ]
             },
@@ -110,8 +138,7 @@
           ]
         }
       ],
-      "properties":
-      {
+      "properties": {
         "plugin": {
           "type": "array",
           "minItems": 1,
@@ -144,6 +171,7 @@
           "items": { "$ref": "#/definitions/signatureType" },
           "description": "TESV Object must have RecordHeader.Signature in this list"
         },
+        "nameMatch": { "$ref": "#/definitions/nameMatchType" },
         "forms": {
           "type": "array",
           "minItems": 1,

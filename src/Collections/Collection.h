@@ -73,7 +73,6 @@ class Collection {
 protected:
 	virtual void InitFromStaticMembers() = 0;
 	virtual void SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form) = 0;
-	virtual void ItemRuleAsJSON(nlohmann::json& j) const = 0;
 	virtual nlohmann::json MembersAsJSON() const = 0;
 	virtual std::ostream& PrintMemberDetails(std::ostream& os) const = 0;
 
@@ -138,7 +137,6 @@ protected:
 	virtual void InitFromStaticMembers() override;
 	bool AddMemberID(const RE::TESForm* form) const;
 	virtual void SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form) override;
-	virtual void ItemRuleAsJSON(nlohmann::json& j) const;
 	virtual nlohmann::json MembersAsJSON() const override;
 	virtual std::ostream& PrintMemberDetails(std::ostream& os) const override;
 	virtual bool IsMemberOf(const ConditionMatcher& matcher) const override;
@@ -157,7 +155,6 @@ public:
 	virtual inline std::unordered_set<const RE::TESForm*> Members() const override { return std::unordered_set<const RE::TESForm*>(); }
 protected:
 	virtual void InitFromStaticMembers() override;
-	virtual void ItemRuleAsJSON(nlohmann::json& j) const;
 	virtual void SetMemberFrom(const nlohmann::json& member, const RE::TESForm* form) override;
 	virtual nlohmann::json MembersAsJSON() const override;
 	virtual std::ostream& PrintMemberDetails(std::ostream& os) const override;

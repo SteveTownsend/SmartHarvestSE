@@ -57,19 +57,30 @@ void ParseSignature(const nlohmann::json& signatureRule)
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 }
 
+void ParseNameMatch(const nlohmann::json& nameMatchRule)
+{
+	bool isNPC(nameMatchRule["isNPC"].get<bool>());
+	std::string matchIf(nameMatchRule["matchIf"].get<std::string>());
+
+	std::vector<std::string> names;
+	names.reserve(nameMatchRule["names"].size());
+	std::transform(nameMatchRule["names"].begin(), nameMatchRule["names"].end(), std::back_inserter(names),
+		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+}
+
+void ParseCategory(const nlohmann::json& categoryRule)
+{
+	std::vector<std::string> categories;
+	categories.reserve(categoryRule.size());
+	std::transform(categoryRule.begin(), categoryRule.end(), std::back_inserter(categories),
+		[&](const nlohmann::json& next) { return next.get<std::string>(); });
+}
+
 void ParseScope(const nlohmann::json& scopeRule)
 {
 	std::vector<std::string> scopes;
 	scopes.reserve(scopeRule.size());
 	std::transform(scopeRule.begin(), scopeRule.end(), std::back_inserter(scopes),
-		[&](const nlohmann::json& next) { return next.get<std::string>(); });
-}
-
-void ParseLootCategory(const nlohmann::json& lootCategoryRule)
-{
-	std::vector<std::string> lootCategories;
-	lootCategories.reserve(lootCategoryRule.size());
-	std::transform(lootCategoryRule.begin(), lootCategoryRule.end(), std::back_inserter(lootCategories),
 		[&](const nlohmann::json& next) { return next.get<std::string>(); });
 }
 
@@ -116,6 +127,10 @@ void ParseFilter(const nlohmann::json& filter)
 		{
 			ParseScope(condition.value());
 		}
+		else if (condition.key() == "nameMatch")
+		{
+			ParseNameMatch(condition.value());
+		}
 	}
 }
 
@@ -123,7 +138,10 @@ void ParseCollection(const nlohmann::json& collection)
 {
 	if (collection.find("policy") != collection.cend())
  		ParsePolicy(collection["policy"]);
-	ParseFilter(collection["rootFilter"]);
+	if (collection.find("rootFilter") != collection.cend())
+		ParseFilter(collection["rootFilter"]);
+	else if (collection.find("category") != collection.cend())
+		ParseCategory(collection["category"]);
 }
 
 void ParseCollectionGroup(const nlohmann::json& collectionGroup)
