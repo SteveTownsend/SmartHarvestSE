@@ -127,6 +127,65 @@ namespace shse {
 		static const std::unordered_map<std::string, INIFile::SecondaryType> m_validScopes;
 	};
 
+	// order favours the most permissive, and they are evaluated in this order
+	enum class NameMatchType : int8_t {
+		Invalid = -1,
+		Contains,
+		StartsWith,
+		Equals,
+		NotEquals,
+		Omits
+	};
+
+	inline NameMatchType NameMatchTypeByName(const std::string& nameMatch)
+	{
+		if (nameMatch == "contains")
+			return NameMatchType::Contains;
+		if (nameMatch == "startsWith")
+			return NameMatchType::StartsWith;
+		if (nameMatch == "equals")
+			return NameMatchType::Equals;
+		if (nameMatch == "notEquals")
+			return NameMatchType::NotEquals;
+		if (nameMatch == "omits")
+			return NameMatchType::Omits;
+		return NameMatchType::Invalid;
+	}
+
+	inline std::string NameMatchTypeName(const NameMatchType nameMatchType)
+	{
+		switch (nameMatchType) {
+		case NameMatchType::Contains:
+			return "contains";
+		case NameMatchType::StartsWith:
+			return "startsWith";
+		case NameMatchType::Equals:
+			return "equals";
+		case NameMatchType::NotEquals:
+			return "notEquals";
+		case NameMatchType::Omits:
+			return "omits";
+		default:
+			return "";
+		}
+	}
+
+	class NameMatchCondition : public Condition {
+	public:
+		NameMatchCondition(const bool isNPC, const std::string& matches, const std::vector<std::string>& names);
+		virtual bool operator()(const ConditionMatcher& matcher) const;
+		virtual void AsJSON(nlohmann::json& j) const override;
+
+	private:
+		inline bool ResultIfAllNamesFail() const {
+			return m_matchIf == NameMatchType::NotEquals || m_matchIf == NameMatchType::Omits;
+		}
+
+		NameMatchType m_matchIf;
+		std::vector<std::string> m_names;
+		const bool m_isNPC;
+	};
+
 	class ItemRule : public Condition {
 	public:
 		virtual std::vector<ObjectType> GetObjectTypes(void) const = 0;

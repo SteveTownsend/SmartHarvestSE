@@ -196,7 +196,7 @@ void Collection::AsJSON(nlohmann::json& j) const
 	{
 		j["policy"] = nlohmann::json(m_effectivePolicy);
 	}
-	ItemRuleAsJSON(j);
+	m_itemRule->AsJSON(j);
 	if (!m_scopes.empty())
 	{
 		nlohmann::json scopes(nlohmann::json::array());
@@ -291,11 +291,6 @@ void ConditionCollection::SetMemberFrom(const nlohmann::json& member, const RE::
 	}
 }
 
-void ConditionCollection::ItemRuleAsJSON(nlohmann::json& j) const
-{
-	j["rootFilter"] = nlohmann::json(*m_itemRule);
-}
-
 nlohmann::json ConditionCollection::MembersAsJSON() const
 {
 	nlohmann::json members(nlohmann::json::array());
@@ -361,11 +356,6 @@ void CategoryCollection::SetMemberFrom(const nlohmann::json& member, const RE::T
 		m_observed.insert({ form, gameTime });
 		Saga::Instance().AddEvent(ItemCollected(form, this, gameTime));
 	}
-}
-
-void CategoryCollection::ItemRuleAsJSON(nlohmann::json& j) const
-{
-	m_itemRule->AsJSON(j);
 }
 
 nlohmann::json CategoryCollection::MembersAsJSON() const

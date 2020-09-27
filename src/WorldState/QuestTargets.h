@@ -40,7 +40,7 @@ private:
 	// treat as Quest Target even if flag not set, if there are very few instances (one for QUST, one for display maybe)
 	static constexpr size_t RareQuestTargetThreshold = 2;
 
-	bool ReferenceIsLootable(const RE::TESObjectREFR* refr) const;
+	bool IsLootableInanimateReference(const RE::TESObjectREFR* refr) const;
 	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
 	bool BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* item, const RE::TESObjectREFR* refr);
 	bool BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr);

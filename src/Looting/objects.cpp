@@ -352,4 +352,49 @@ RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraData
 	return nullptr;
 }
 
+bool FormTypeIsLootableObject(const RE::FormType formType) {
+	static const std::vector<RE::FormType> lootableObjectFormTypes =
+	{
+		RE::FormType::AlchemyItem,
+		RE::FormType::Ammo,
+		RE::FormType::Armor,
+		RE::FormType::Book,
+		RE::FormType::Container,
+		RE::FormType::Flora,
+		RE::FormType::Ingredient,
+		RE::FormType::KeyMaster,
+		RE::FormType::Misc,
+		RE::FormType::Note,
+		RE::FormType::Projectile,
+		RE::FormType::Scroll,
+		RE::FormType::SoulGem,
+		RE::FormType::Tree,
+		RE::FormType::Weapon
+	};
+
+	return std::find(std::cbegin(lootableObjectFormTypes), std::cend(lootableObjectFormTypes), formType) != std::cend(lootableObjectFormTypes);
+}
+
+bool NPCIsLeveled(const RE::TESNPC* npc)
+{
+	const RE::TESForm* tplt(npc->baseTemplateForm);
+	while (tplt)
+	{
+		if (tplt->As<RE::TESLevCharacter>())
+			return true;
+		if (!tplt->As<RE::TESNPC>())
+			return true;
+		tplt = tplt->As<RE::TESNPC>()->baseTemplateForm;
+	}
+	return false;
+}
+
+bool FormIsLeveledNPC(const RE::TESForm* form)
+{
+	const RE::TESNPC* npc(form->As<RE::TESNPC>());
+	if (!npc)
+		return false;
+	return NPCIsLeveled(npc);
+}
+
 }
