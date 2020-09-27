@@ -109,6 +109,53 @@
     },
 
     {
+      "name": "Dwemer Boat Anchors (Named)",
+      "description": "Misc Dwemer Clutter by name",
+      "policy": {
+        "action": "leave",
+        "notify": false,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "subFilter": [
+            {
+              "operator": "AND",
+              "condition": {
+                "nameMatch": {
+                  "isNPC": false,
+                  "matchIf": "startsWith",
+                  "names": [ "Dwemer" ]
+                }
+              }
+            },
+            {
+              "operator": "AND",
+              "condition": {
+                "nameMatch": {
+                  "isNPC": false,
+                  "matchIf": "contains",
+                  "names": [ "Metal", "Strut", "Lever", "Cog", "Gear", "Gyro" ]
+                }
+              }
+            },
+            {
+              "operator": "AND",
+              "condition": {
+                "nameMatch": {
+                  "isNPC": false,
+                  "matchIf": "omits",
+                  "names": [ "Handle" ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
       "name": "Dragon It Out",
       "description": "Grab Dragon Bones and Scales",
       "policy": {
@@ -125,6 +172,104 @@
               "form": [ "0003ada4", "000d0756", "0003ada3" ]
             }
           ]
+        }
+      }
+    },
+    {
+      "$comment": "Exclude harvestable Salmon",
+      "name": "Raw Salmon, Eww",
+      "description": "Do not loot Raw Salmon",
+      "policy": {
+        "action": "leave",
+        "notify": false,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "nameMatch": {
+            "isNPC": false,
+            "matchIf": "equals",
+            "names": [ "Salmon", "Raw Salmon Fillet" ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Allow loot of processed Salmon (inverts Raw Salmon, Eww)",
+      "name": "Cooked Salmon, Yum",
+      "description": "Allow loot of processed Salmon",
+      "policy": {
+        "action": "take",
+        "notify": false,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "subFilter": [
+            {
+              "operator": "AND",
+              "condition": {
+                "nameMatch": {
+                  "isNPC": false,
+                  "matchIf": "contains",
+                  "names": [ "Salmon" ]
+                }
+              }
+            },
+            {
+              "operator": "AND",
+              "condition": {
+                "nameMatch": {
+                  "isNPC": false,
+                  "matchIf": "notEquals",
+                  "names": [ "Raw Salmon Fillet", "Salmon" ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "$comment": "Prohibit loot of Staves",
+      "name": "Wood Allergy, But Only Magic Wood",
+      "description": "Do not loot Staves, they give me a rash",
+      "policy": {
+        "action": "leave",
+        "notify": false,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "signature": [ "WEAP" ],
+          "nameMatch": {
+            "isNPC": false,
+            "matchIf": "contains",
+            "names": [ "Staff " ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "Test named NPC loot prevention",
+      "name": "Arachnophobia",
+      "description": "Do not loot spiders, they are too creepy to touch",
+      "policy": {
+        "action": "leave",
+        "notify": false,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "nameMatch": {
+            "isNPC": true,
+            "matchIf": "contains",
+            "names": [ "Spider" ]
+          }
         }
       }
     }

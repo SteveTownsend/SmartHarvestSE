@@ -661,7 +661,7 @@ std::string CollectionManager::StatusMessage(const std::string& groupName, const
 	{
 		return matched->second->GetStatusMessage();
 	}
-	return 0;
+	return "";
 }
 
 void CollectionManager::BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup)
@@ -712,11 +712,12 @@ void CollectionManager::ResolveMembership(void)
 		}
 	}
 
-	for (const auto& signature : SignatureCondition::ValidSignatures())
-	{
-		for (const auto form : RE::TESDataHandler::GetSingleton()->GetFormArray(signature.second))
+	auto processFormType = [&](const RE::FormType formType) {
+		for (const auto form : RE::TESDataHandler::GetSingleton()->GetFormArray(formType))
 		{
 			if (!FormUtils::IsConcrete(form))
+				continue;
+			if (FormIsLeveledNPC(form))
 				continue;
 
 			for (const auto& collection : m_allCollectionsByLabel)
@@ -733,6 +734,25 @@ void CollectionManager::ResolveMembership(void)
 				}
 			}
 		}
+	};
+	for (const auto& signature : SignatureCondition::ValidSignatures())
+	{
+		processFormType(signature.second);
+	}
+	// named objects processed in DataCase::CategorizeLootables or otherwise Lootable, but not valid in SignatureCondition
+	std::vector<RE::FormType> extraFormTypes = {
+		RE::FormType::Activator,
+		RE::FormType::Ammo,
+		RE::FormType::Flora,
+		RE::FormType::Light,
+		RE::FormType::NPC,
+		RE::FormType::Projectile,
+		RE::FormType::Scroll,
+		RE::FormType::Tree,
+	};
+	for (const auto& extraFormType : extraFormTypes)
+	{
+		processFormType(extraFormType);
 	}
 	REL_MESSAGE("Collections contain {} unique objects", uniqueMembers.size());
 }

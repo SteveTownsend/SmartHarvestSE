@@ -245,11 +245,11 @@ namespace StringUtils
 	std::string FromUnicode(const std::wstring& input) {
 		if (input.empty()) return std::string();
 
-		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, NULL, NULL);
+		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
 		if (size_needed == 0) return std::string();
 
 		std::string output(static_cast<size_t>(size_needed), 0);
-		int result(WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, NULL, NULL));
+		int result(WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
 		if (result == 0) return std::string();
 
 		return output;

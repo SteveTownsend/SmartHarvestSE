@@ -400,6 +400,68 @@ void ScopeCondition::AsJSON(nlohmann::json& j) const
 	}
 }
 
+NameMatchCondition::NameMatchCondition(const bool isNPC, const std::string& matchIf, const std::vector<std::string>& names) : m_isNPC(isNPC)
+{
+	m_matchIf = NameMatchTypeByName(matchIf);
+	if (m_matchIf != NameMatchType::Invalid)
+	{
+		DBG_VMESSAGE("Match {} mapped to NameMatchType {}", match.c_str(), static_cast<int>(m_matchIf));
+	}
+	// skip empty values
+	std::copy_if(std::cbegin(names), std::cend(names), std::back_inserter(m_names),
+		[](const std::string& name) -> bool { return !name.empty(); });
+}
+
+bool NameMatchCondition::operator()(const ConditionMatcher& matcher) const
+{
+	std::string formName(matcher.Form()->GetName());
+	if (formName.empty())
+		return false;
+	if (m_isNPC && matcher.Form()->GetFormType() != RE::FormType::NPC)
+		return false;
+	if (!m_isNPC && matcher.Form()->GetFormType() == RE::FormType::NPC)
+		return false;
+
+	for (const auto& name : m_names)
+	{
+		switch (m_matchIf) {
+		case NameMatchType::Contains:
+			// any substring, could be StartsWith or Equals
+			if (formName.find(name) != std::string::npos)
+				return true;
+			break;
+		case NameMatchType::StartsWith:
+			if (formName.starts_with(name))
+				return true;
+			break;
+		case NameMatchType::Equals:
+			if (name == formName)
+				return true;
+			break;
+		case NameMatchType::NotEquals:
+			if (name == formName)
+				return false;
+			break;
+		case NameMatchType::Omits:
+			// any substring, could be StartsWith or Equals
+			if (formName.find(name) != std::string::npos)
+				return false;
+			break;
+		default:
+			break;
+		}
+	}
+	return ResultIfAllNamesFail();
+}
+
+void NameMatchCondition::AsJSON(nlohmann::json& j) const
+{
+	nlohmann::json nameMatch(nlohmann::json::object());
+	nameMatch["matchIf"] = NameMatchTypeName(m_matchIf);
+	nameMatch["names"] = m_names;
+	j["nameMatch"] = nameMatch;
+}
+
 FilterTree::FilterTree(const Operator op, const unsigned int depth) : m_operator(op), m_depth(depth)
 {
 }
@@ -443,11 +505,20 @@ std::unordered_set<const RE::TESForm*> FilterTree::StaticMembers() const
 
 void FilterTree::AsJSON(nlohmann::json& j) const
 {
-	j["operator"] = std::string(m_operator == Operator::And ? "AND" : "OR");
-	j["condition"] = nlohmann::json::array();
+	nlohmann::json tree(nlohmann::json::object());
+	tree["operator"] = std::string(m_operator == Operator::And ? "AND" : "OR");
+	tree["condition"] = nlohmann::json::array();
 	for (const auto& condition : m_conditions)
 	{
-		j["condition"].push_back(condition->MakeJSON());
+		tree["condition"].push_back(nlohmann::json(*condition));
+	}
+	if (m_depth == 0)
+	{
+		j["rootFilter"] = tree;
+	}
+	else
+	{
+		j["subFilter"] = tree;
 	}
 }
 

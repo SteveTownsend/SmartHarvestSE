@@ -256,6 +256,7 @@ void PluginFacade::ResetTransientState(const bool gameReload)
 void PluginFacade::OnVMSync()
 {
 	REL_MESSAGE("Plugin sync, VM ready");
+	WindowsUtils::LogProcessWorkingSet();
 	ResetTransientState(true);
 	// reset player state
 	static const bool onMCMPush(false);
