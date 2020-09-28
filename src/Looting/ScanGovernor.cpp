@@ -339,10 +339,18 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				{
 					exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
 				}
-				else if (!CollectionManager::Instance().TreatAsCollectible(
-					ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor)).first)
+				else
 				{
-					exclusionType = Lootability::NPCIsInBlacklistCollection;
+					const auto collectible(CollectionManager::Instance().TreatAsCollectible(
+						ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor)));
+					if (collectible.first)
+					{
+						CollectibleHandling collectibleAction(collectible.second);
+						if (!CanLootCollectible(collectibleAction))
+						{
+							exclusionType = Lootability::NPCIsInBlacklistCollection;
+						}
+					}
 				}
 				if (exclusionType != Lootability::Lootable)
 				{
