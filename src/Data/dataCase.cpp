@@ -601,9 +601,11 @@ void DataCase::RecordOffLimitsLocations()
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
 		{"Skyrim.esm", 0x32ae7},					// QASmoke
+		{"Skyrim.esm", 0x6c3b6},					// AAADeleteWhenDoneTestJeremy
+		{"LC_BuildYourNobleHouse.esp", 0x20c0b},	// LCBYNPCplanter00xx
 		{"CerwidenCompanion.esp", 0x4a4bb},			// kcfAssetsCell01
 		{"konahrik_accoutrements.esp", 0x625d3},	// KAxTestCell
-		{"Helgen Reborn.esp", 0xA886CD}				// aaaBalokDummyCell
+		{"Helgen Reborn.esp", 0xa886cd}				// aaaBalokDummyCell
 	};
 	for (const auto& pluginForm : illegalCells)
 	{
