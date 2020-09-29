@@ -6,7 +6,7 @@ GlobalVariable Property g_LootingEnabled Auto
 int CACOModIndex
 int FossilMiningModIndex
 int HearthfireExtendedModIndex
-bool scanActive
+bool scanActive = True
 int pluginNonce
 bool pluginDelayed
 
