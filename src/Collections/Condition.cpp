@@ -405,7 +405,7 @@ NameMatchCondition::NameMatchCondition(const bool isNPC, const std::string& matc
 	m_matchIf = NameMatchTypeByName(matchIf);
 	if (m_matchIf != NameMatchType::Invalid)
 	{
-		DBG_VMESSAGE("Match {} mapped to NameMatchType {}", match.c_str(), static_cast<int>(m_matchIf));
+		DBG_VMESSAGE("Match {} mapped to NameMatchType {}", matchIf, static_cast<int>(m_matchIf));
 	}
 	// skip empty values
 	std::copy_if(std::cbegin(names), std::cend(names), std::back_inserter(m_names),
