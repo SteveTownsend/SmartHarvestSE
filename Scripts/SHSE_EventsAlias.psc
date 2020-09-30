@@ -115,12 +115,16 @@ Function SetPlayer(Actor playerref)
     RegisterForCrosshairRef()
 EndFunction
 
-; migration logic for BlackList and WhiteList
+; one-time migration logic for BlackList and WhiteList
 Function CreateArraysFromFormLists()
-    whiteListSize = whitelist_form.GetSize()
-    whiteListedForms = CreateArrayFromFormList(whitelist_form, whiteListSize)
-    blackListSize = blacklist_form.GetSize()
-    blackListedForms = CreateArrayFromFormList(blacklist_form, blackListSize)
+    if !whiteListedForms
+        whiteListSize = whitelist_form.GetSize()
+        whiteListedForms = CreateArrayFromFormList(whitelist_form, whiteListSize)
+    endIf
+    if !blackListedForms
+        blackListSize = blacklist_form.GetSize()
+        blackListedForms = CreateArrayFromFormList(blacklist_form, blackListSize)
+    endIf
 EndFunction
 
 Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)

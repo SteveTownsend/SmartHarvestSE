@@ -37,17 +37,24 @@ public:
 	static constexpr double CalibrationThreadDelaySeconds = 5.0;
 
 private:
+	bool OneTimeLoad(void);
 	bool Load();
 	void Start();
 	bool IsSynced() const;
 	static void ScanThread(void);
+	inline bool Loaded() const { return m_loadProgress == LoadProgress::Complete; }
 
 	// Worker thread loop smallest possible delay
 	static constexpr double MinThreadDelaySeconds = 0.1;
 
 	static std::unique_ptr<PluginFacade> m_instance;
 	mutable RecursiveLock m_pluginLock;
-	bool m_pluginOK;
+	enum class LoadProgress : uint8_t {
+		NotStarted,
+		Started,
+		Complete
+	};
+	LoadProgress m_loadProgress;
 	bool m_threadStarted;
 	bool m_pluginSynced;
 };
