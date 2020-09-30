@@ -32,7 +32,7 @@ public:
 
 	CollectionManager();
 	void ProcessDefinitions(void);
-	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups);
 	void Refresh() const;
 	void CollectFromContainer(const RE::TESObjectREFR* refr);
 	bool ItemIsCollectionCandidate(const RE::TESForm* item) const;

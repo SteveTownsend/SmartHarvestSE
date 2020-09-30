@@ -62,7 +62,8 @@ bool LootableREFR::IsQuestItem() const
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.TreatAsCollectible();
+	static const bool recordDups(true);		// final decision to loot the item happens here
+	return itemEx.TreatAsCollectible(recordDups);
 }
 
 bool LootableREFR::IsValuable() const
