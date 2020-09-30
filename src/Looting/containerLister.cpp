@@ -142,7 +142,9 @@ size_t ContainerLister::AnalyzeLootableItems()
 						DBG_DMESSAGE("Valuable Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_valuableItems.insert(item);
 					}
-					const auto collectible(itemEx.TreatAsCollectible());
+					// Collectible item precheck - do not record as a possible dup, as we check them all again before looting
+					static const bool recordDups(false);
+					const auto collectible(itemEx.TreatAsCollectible(recordDups));
 					if (collectible.first)
 					{
 						DBG_DMESSAGE("Collectible Item {}/0x{:08x}", item->GetName(), item->GetFormID());

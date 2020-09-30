@@ -643,8 +643,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			LootingType lootingType(LootingType::LeaveBehind);
+			static const bool recordDups(true);		// final decision to loot the item happens here
 			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-				ConditionMatcher(target, m_targetType, objType)));
+				ConditionMatcher(target, m_targetType, objType), recordDups));
 			if (collectible.first)
 			{
 				CollectibleHandling collectibleAction(collectible.second);

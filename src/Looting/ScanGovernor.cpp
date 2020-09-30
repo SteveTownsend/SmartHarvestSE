@@ -341,8 +341,9 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				}
 				else
 				{
+					static const bool recordDups(false);
 					const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-						ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor)));
+						ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor), recordDups));
 					if (collectible.first)
 					{
 						CollectibleHandling collectibleAction(collectible.second);

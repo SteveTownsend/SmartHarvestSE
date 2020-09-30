@@ -90,10 +90,10 @@ uint32_t TESFormHelper::GetGoldValue() const
 	return static_cast<uint32_t>(pValue->value);
 }
 
-std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(void) const
+std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const bool recordDups) const
 {
 	// ignore whitelist - we need the underlying object type
-	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher);
+	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher, recordDups);
 }
 
 double TESFormHelper::GetWeight() const
