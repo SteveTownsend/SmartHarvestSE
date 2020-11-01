@@ -82,6 +82,7 @@ int location_type_blacklist
 int pauseKeyCode
 int whiteListKeyCode
 int blackListKeyCode
+bool keyHandlingActive
 
 int maxMiningItems
 int infiniteWeight
@@ -554,7 +555,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
     if (UI.IsTextInputEnabled())
         return
     endif
-
+    ; only handle one at a time, if player spams the keyboard results will be confusing
+    if keyHandlingActive
+        return
+    endif
+    keyHandlingActive = true
     if (!Utility.IsInMenumode())
         if keyCode == pauseKeyCode
             if holdTime > 3.0
@@ -568,6 +573,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
             if targetedRefr
                 HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteListKeyCode, holdTime)
+                keyHandlingActive = false
                 return
             endIf
 
@@ -576,6 +582,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             if (!place)
                 string msg = "$SHSE_whitelist_form_ERROR"
                 Debug.Notification(msg)
+                keyHandlingActive = false
                 return
             endif
             if keyCode == whiteListKeyCode
@@ -605,6 +612,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     msg = "$SHSE_BLACKLIST_FORM_ERROR"
                 endIf
                 Debug.Notification(msg)
+                keyHandlingActive = false
                 return
             endif
             if IsQuestTarget(itemForm)
@@ -615,6 +623,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     msg = "$SHSE_BLACKLIST_QUEST_TARGET"
                 endIf
                 Debug.Notification(msg)
+                keyHandlingActive = false
                 return
             endif
 
@@ -626,6 +635,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             SyncLists(false, true)    ; not a reload
         endif
     endif
+    keyHandlingActive = false
 endEvent
 
 int Function ShowMessage(Message msg, string trans, string target_text = "", string replace_text = "")
