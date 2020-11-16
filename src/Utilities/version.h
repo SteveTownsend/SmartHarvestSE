@@ -19,11 +19,11 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-constexpr char* SHSE_NAME = "SmartHarvestSE";
-constexpr char* SHSE_PROXY = "SHSE_PluginProxy";
-constexpr wchar_t* L_SHSE_NAME = L"SmartHarvestSE";
-constexpr char* MODNAME = "SmartHarvestSE.esp";
-constexpr char* PRIORNAME = "AutoHarvestSE.esp";
+constexpr const char* SHSE_NAME = "SmartHarvestSE";
+constexpr const char* SHSE_PROXY = "SHSE_PluginProxy";
+constexpr const wchar_t* L_SHSE_NAME = L"SmartHarvestSE";
+constexpr const char* MODNAME = "SmartHarvestSE.esp";
+constexpr const char* PRIORNAME = "AutoHarvestSE.esp";
 
 class VersionInfo
 {

@@ -132,6 +132,8 @@ namespace CompressionUtils
 
 namespace JSONUtils
 {
+	std::vector<std::pair<std::string, std::vector<std::string>>> ParseFormsType(const nlohmann::json& formsType);
+
 	template <typename FORMTYPE> std::unordered_set<const FORMTYPE*> ToForms(const nlohmann::json& formsType)
 	{
 		std::unordered_set<const FORMTYPE*> forms;

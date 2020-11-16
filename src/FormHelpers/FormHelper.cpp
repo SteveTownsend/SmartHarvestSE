@@ -47,7 +47,7 @@ RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
 RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 {
 	if (!m_form)
-		return false;
+		return nullptr;
 
 	if (m_form->formType == RE::FormType::Weapon || m_form->formType == RE::FormType::Armor)
 	{
@@ -55,7 +55,7 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 		if (enchanted)
    		    return enchanted->formEnchanting;
 	}
-	return false;
+	return nullptr;
 }
 
 uint32_t TESFormHelper::GetGoldValue() const
