@@ -23,6 +23,7 @@ http://www.fsf.org/licensing/licenses
 #include <chrono>
 
 #include "Looting/ProducerLootables.h"
+#include "Looting/objects.h"
 
 namespace shse
 {

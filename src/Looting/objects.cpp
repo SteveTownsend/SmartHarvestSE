@@ -42,7 +42,7 @@ bool IsBossContainer(const RE::TESObjectREFR* refr)
 	const RE::ExtraDataList* extraList = &refr->extraList;
 
 	if (!extraList)
-		return nullptr;
+		return false;
 
 	const RE::ExtraLocationRefType* exLocRefType = extraList->GetByType<RE::ExtraLocationRefType>();
 	return exLocRefType && exLocRefType->locRefType->formID == BossContainerLCRT;
