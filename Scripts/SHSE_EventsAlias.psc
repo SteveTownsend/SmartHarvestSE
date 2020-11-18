@@ -241,6 +241,7 @@ int Function RemoveForm(Form[] forms, int entries, Form target)
             ; shuffle down entries above this one
             while index < entries - 1
                 forms[index] = forms[index+1]
+                index += 1
             endWhile
             ; clear prior final entry
             forms[entries - 1] = None
@@ -853,8 +854,14 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 
         notify = !silent
     elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
-        ; no-op but must still unlock
-
+        ; harvest trapped SoulGem only after deactivation - no-op otherwise
+        TrapSoulGemController myTrap = akTarget as TrapSoulGemController
+        if myTrap
+            DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + akTarget.GetLinkedRef(None).getState()) 
+            if myTrap.getState() == "disarmed" && akTarget.GetLinkedRef(None).getState() == "disarmed" && ActivateEx(akTarget, player, true, 1)
+                notify = !silent
+            endIf
+        endIf
     elseif (!akTarget.IsActivationBlocked())
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
             ActivateEx(akTarget, player, silent, 1)
