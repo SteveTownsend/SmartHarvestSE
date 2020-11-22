@@ -223,32 +223,19 @@ Function SyncLists(bool reload, bool updateLists)
     SyncDone(reload)
 endFunction
 
-bool Function ContainsForm(Form[] forms, int entries, Form target)
-    int index = 0
-    while index < entries
-        if forms[index] == target
-            return True
-        endIf
-        index += 1
-    endWhile
-    return False
-endFunction
-
-int Function RemoveForm(Form[] forms, int entries, Form target)
-    int index = 0
-    while index < entries
-        if forms[index] == target
-            ; shuffle down entries above this one
-            while index < entries - 1
-                forms[index] = forms[index+1]
-                index += 1
-            endWhile
-            ; clear prior final entry
-            forms[entries - 1] = None
-            return entries - 1
-        endIf
-        index += 1
-    endWhile
+int Function RemoveFormAtIndex(Form[] forms, int entries, int index)
+    if index < entries
+        AlwaysTrace("Removing " + forms[index] + ", entry " + (index+1) + " of " + entries)
+        ; shuffle down entries above this one
+        while index < entries - 1
+            forms[index] = forms[index+1]
+            index += 1
+        endWhile
+        ; clear prior final entry
+        forms[entries - 1] = None
+        return entries - 1
+    endIf
+    AlwaysTrace(index + " not valid for Form[]")
     return entries
 endFunction
 
@@ -279,7 +266,8 @@ function HandleWhiteListKeyPress(Form target)
 endFunction
 
 bool function RemoveFromWhiteList(Form target)
-    if ContainsForm(whiteListedForms, whiteListSize, target)
+    int match = whiteListedForms.find(target)
+    if match != -1
         string translation = GetTranslation("$SHSE_WHITELIST_REMOVED")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
@@ -287,9 +275,11 @@ bool function RemoveFromWhiteList(Form target)
                 Debug.Notification(msg)
             endif
         endif
-        whiteListSize = RemoveForm(whiteListedForms, whiteListSize, target)
+        whiteListSize = RemoveFormAtIndex(whiteListedForms, whiteListSize, match)
+        AlwaysTrace(whiteListSize + " entries on WhiteList")
         return True
     endIf
+    AlwaysTrace(target + " not found in WhiteList")
     return False
 endFunction
 
@@ -318,6 +308,9 @@ function AddToWhiteList(Form target)
         endif
         whiteListedForms[whiteListSize] = target
         whiteListSize += 1
+        AlwaysTrace(target + " added to WhiteList, size now " + whiteListSize)
+    else
+        AlwaysTrace(target + " already on WhiteList")
     endif
 endFunction
 
@@ -328,7 +321,8 @@ function HandleBlackListKeyPress(Form target)
 endFunction
 
 bool function RemoveFromBlackList(Form target)
-    if ContainsForm(blackListedForms, blackListSize, target)
+    int match = blackListedForms.find(target)
+    if match != -1
         string translation = GetTranslation("$SHSE_BLACKLIST_REMOVED")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
@@ -336,9 +330,11 @@ bool function RemoveFromBlackList(Form target)
                 Debug.Notification(msg)
             endif
         endif
-        blackListSize = RemoveForm(blackListedForms, blackListSize, target)
+        blackListSize = RemoveFormAtIndex(blackListedForms, blackListSize, match)
+        AlwaysTrace(blackListSize + " entries on BlackList")
         return True
     endIf
+    AlwaysTrace(target + " not found in BlackList")
     return False
 endFunction
 
@@ -367,6 +363,9 @@ function AddToBlackList(Form target)
         endif
         blackListedForms[blackListSize] = target
         blackListSize += 1
+        AlwaysTrace(target + " added to BlackList, size now " + blackListSize)
+    else
+        AlwaysTrace(target + " already on BlackList")
     endif
 endFunction
 
