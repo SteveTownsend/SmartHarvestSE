@@ -781,6 +781,8 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	if (!m_candidate)
 		return;
 
+	REL_MESSAGE("Loot {} items from {}/0x{:08x}", targets.size(), m_candidate->GetName(), m_candidate->formID);
+
 	// visual notification, if requested
 	if (animationType == 1)
 	{
