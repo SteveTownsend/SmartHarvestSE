@@ -123,20 +123,6 @@ uint32_t TESFormHelper::CalculateWorth(void) const
 		}
 		return 0;
 	}
-	else if (m_form->formType == RE::FormType::Projectile)
-	{
-		const RE::BGSProjectile* proj(m_form->As<RE::BGSProjectile>());
-		if (proj)
-		{
-			const RE::TESAmmo* ammo(DataCase::GetInstance()->ProjToAmmo(proj));
-			if (ammo)
-			{
-				DBG_VMESSAGE("Projectile has ammo {}({:08x}) damage {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
-				return static_cast<uint32_t>(ammo->data.damage);
-			}
-			return 0;
-		}
-	}
 	else
 	{
 		uint32_t result(0);

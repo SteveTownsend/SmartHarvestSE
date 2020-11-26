@@ -74,7 +74,6 @@ public:
 
 	const char* GetTranslation(const char* key) const;
 
-	const RE::TESAmmo* ProjToAmmo(const RE::BGSProjectile* proj);
 	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
@@ -123,7 +122,6 @@ private:
 	std::unordered_map<std::string, std::string> m_translations;
 
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
-	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
 	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
@@ -149,7 +147,6 @@ private:
 	void RecordOffLimitsLocations(void);
 	void RecordPlayerHouseCells(void);
 	void BlockOffLimitsContainers(void);
-	void GetAmmoData(void);
 
 	template <typename T>
 	ObjectType DefaultIngredientObjectType(const T* form)
