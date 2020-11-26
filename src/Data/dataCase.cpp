@@ -651,31 +651,6 @@ void DataCase::BlockOffLimitsContainers()
 	}
 }
 
-void DataCase::GetAmmoData()
-{
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	if (!dhnd)
-		return;
-
-	DBG_MESSAGE("Loading AmmoData");
-	for (RE::TESAmmo* ammo : dhnd->GetFormArray<RE::TESAmmo>())
-	{
-		if (!FormUtils::IsConcrete(ammo))
-		{
-			DBG_VMESSAGE("Ammo 0x{:08x} not usable", ammo ? ammo->GetFormID() : InvalidForm);
-			continue;
-		}
-		RE::BGSProjectile* proj = ammo->data.projectile;
-		if (!FormUtils::IsConcrete(proj))
-		{
-			DBG_VMESSAGE("Projectile 0x{:08x} not usable", proj ? proj->GetFormID() : InvalidForm);
-			continue;
-		}
-		REL_VMESSAGE("Projectile 0x{:08x}/{} has Ammo 0x{:08x}/{}", proj->GetFormID(), proj->GetFullName(), ammo->GetFormID(), ammo->GetFullName());
-		m_ammoList[proj] = ammo;
-	}
-}
-
 void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
 {
 	RecursiveLockGuard guard(m_blockListLock);
@@ -952,11 +927,6 @@ const char* DataCase::GetTranslation(const char* key) const
 	return translation->second.c_str();
 }
 
-const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
-{
-	return (proj && m_ammoList.find(proj) != m_ammoList.end()) ? m_ammoList[proj] : nullptr;
-}
-
 const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 {
 	const RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
@@ -1038,9 +1008,6 @@ void DataCase::CategorizeLootables()
 
 	REL_MESSAGE("*** LOAD *** Store Activation Verbs");
 	StoreActivationVerbs();
-
-	REL_MESSAGE("*** LOAD *** Get Ammo Data");
-	GetAmmoData();
 
 	REL_MESSAGE("*** LOAD *** Categorize Statics");
 	CategorizeStatics();
