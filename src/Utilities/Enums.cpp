@@ -69,6 +69,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::LawAbidingSoNoWhitelistItemLooting : return "CrimeCheckPreventsWhitelistItemLooting";
 	case Lootability::ItemIsBlacklisted : return "ItemIsBlacklisted";
 	case Lootability::ItemTypeIsSetToPreventLooting : return "ItemTypeIsSetToPreventLooting";
+	case Lootability::HarvestDisallowedForBaseObjectType: return "HarvestDisallowedForBaseObjectType";
 	case Lootability::ValueWeightPreventsLooting : return "ValueWeightPreventsLooting";
 	case Lootability::ItemTheftTriggered : return "ItemTheftTriggered";
 	case Lootability::HarvestOperationPending : return "HarvestOperationPending";

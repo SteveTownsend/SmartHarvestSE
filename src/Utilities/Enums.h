@@ -372,6 +372,7 @@ enum class Lootability {
 	LawAbidingSoNoWhitelistItemLooting,
 	ItemIsBlacklisted,
 	ItemTypeIsSetToPreventLooting,
+	HarvestDisallowedForBaseObjectType,
 	ValueWeightPreventsLooting,
 	ItemTheftTriggered,
 	HarvestOperationPending,

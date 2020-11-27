@@ -298,6 +298,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 		else if (!skipLooting)
 		{
+			// check if final output of harvest is lootable
 			lootingType = LootingTypeFromIniSetting(
 				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, m_typeName.c_str()));
 			if (lootingType == LootingType::LeaveBehind)
@@ -309,6 +310,18 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				}
 				skipLooting = true;
 				result = Lootability::ItemTypeIsSetToPreventLooting;
+			}
+			else if (HarvestForbiddenForForm(m_candidate->GetBaseObject()))
+			{
+				// check if harvest is forbidden for Base Object, irrespective of final harvested item
+				if (!dryRun)
+				{
+					DBG_VMESSAGE("REFR 0x{:08x} with type {} has unharvestable Base Object {}/0x{:08x}", m_candidate->GetFormID(), m_typeName,
+						m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID());
+					data->BlockReference(m_candidate, Lootability::HarvestDisallowedForBaseObjectType);
+				}
+				skipLooting = true;
+				result = Lootability::HarvestDisallowedForBaseObjectType;
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
@@ -923,6 +936,17 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 		}
 	}
 	return legality;
+}
+
+bool TryLootREFR::HarvestForbiddenForForm(const RE::TESForm* form) const
+{
+	// flora
+	if (form->As<RE::TESObjectTREE>() || form->As<RE::TESFlora>())
+	{
+		return LootingTypeFromIniSetting(INIFile::GetInstance()->GetSetting(
+			INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, ObjTypeName::Flora)) == LootingType::LeaveBehind;
+	}
+	return false;
 }
 
 bool TryLootREFR::IsBookGlowable() const
