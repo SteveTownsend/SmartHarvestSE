@@ -853,14 +853,15 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 
         notify = !silent
     elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
-        ; WIP - harvest trapped SoulGem only after deactivation - no-op otherwise
-        ;TrapSoulGemController myTrap = akTarget as TrapSoulGemController
-        ;if myTrap
-        ;    DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + akTarget.GetLinkedRef(None).getState()) 
-        ;    if myTrap.getState() == "disarmed" && akTarget.GetLinkedRef(None).getState() == "disarmed" && ActivateEx(akTarget, player, true, 1)
-        ;        notify = !silent
-        ;    endIf
-        ;endIf
+        ; Harvest trapped SoulGem only after deactivation - no-op otherwise
+        TrapSoulGemController myTrap = akTarget as TrapSoulGemController
+        if myTrap
+            string baseState = akTarget.GetLinkedRef(None).getState()
+            ;DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
+            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && ActivateEx(akTarget, player, true, 1)
+                notify = !silent
+            endIf
+        endIf
     elseif (!akTarget.IsActivationBlocked())
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
             ActivateEx(akTarget, player, silent, 1)
