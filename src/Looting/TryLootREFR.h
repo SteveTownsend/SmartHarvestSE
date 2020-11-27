@@ -43,6 +43,7 @@ private:
 	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets,
 		const int animationType, const bool directTransfer);
 	void CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets);
+	bool HarvestForbiddenForForm(const RE::TESForm* form) const;
 
 	// special object glow - not too long, in case we loot or move away. Used for Loot Sense too.
 	static constexpr int ObjectGlowDurationSpecialSeconds = 10;

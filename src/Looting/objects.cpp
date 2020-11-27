@@ -260,8 +260,8 @@ std::string GetFormTypeName(const RE::FormType formType)
 
 const std::unordered_map<ObjectType, std::string> nameByObjectType({
 	{ObjectType::unknown, "unknown"},
-	{ObjectType::flora, "flora"},
-	{ObjectType::critter, "critter"},
+	{ObjectType::flora, ObjTypeName::Flora},
+	{ObjectType::critter, ObjTypeName::Critter},
 	{ObjectType::ingredient, "ingredient"},
 	{ObjectType::septims, "septims"},
 	{ObjectType::gem, "gem"},
