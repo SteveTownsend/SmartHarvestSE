@@ -29,10 +29,10 @@ namespace shse
 class LocationTracker
 {
 private:
-	void RecordAdjacentCells();
+	void RecordAdjacentCells(const RE::TESObjectCELL* current);
 	void RecordMarkedPlaces();
 
-	bool IsAdjacent(RE::TESObjectCELL* cell) const;
+	float DistanceTo(RE::TESObjectCELL* cell) const;
 	bool IsPlaceBlacklisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	void PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const;
 	const RE::BGSLocation* PlayerLocationRelativeToAdventureTarget(void) const;
@@ -54,10 +54,11 @@ private:
 	bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const;
 
 	static std::unique_ptr<LocationTracker> m_instance;
-	std::vector<RE::TESObjectCELL*> m_adjacentCells;
+	// 3x3 CELL adjacency check - 8 nearest CELLs are treated as adjacent to player's CELL, if exterior
+	std::array<std::pair<float,RE::TESObjectCELL*>, 8> m_adjacentCells;
 	RE::FormID m_playerCellID;
-	int32_t m_playerCellX;
-	int32_t m_playerCellY;
+	float m_playerCellX;
+	float m_playerCellY;
 	bool m_playerIndoors;
 	std::string m_playerPlaceName;
 	bool m_tellPlayerIfCanLootAfterLoad;
