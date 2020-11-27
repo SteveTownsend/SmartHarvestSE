@@ -406,13 +406,13 @@ void ReferenceFilter::FilterNearbyReferences()
 		for (const auto& adjacentCell : LocationTracker::Instance().AdjacentCells())
 		{
 			// sanity checks
-			if (!adjacentCell || !adjacentCell->IsAttached())
+			if (!adjacentCell.second || !adjacentCell.second->IsAttached())
 			{
 				DBG_VMESSAGE("Adjacent cell null or unattached");
 				continue;
 			}
-			DBG_VMESSAGE("Check adjacent cell 0x{:08x}", adjacentCell->GetFormID());
-			RecordCellReferences(adjacentCell);
+			DBG_VMESSAGE("Check adjacent cell 0x{:08x}", adjacentCell.second->GetFormID());
+			RecordCellReferences(adjacentCell.second);
 		}
 	}
 
