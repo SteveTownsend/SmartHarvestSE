@@ -1476,8 +1476,22 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 	}
 	else
 	{
-		REL_WARNING("Target {}/0x{:08x} contents type {} already stored under different form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
-			GetObjectTypeName(itemType), m_contents->GetName(), m_contents->GetFormID());
+		// 'ingredient' supersedes 'food' as object type - currently this is the only clash, and 'ingredient' is subjectively assumed more likely to be
+		// wanted by the average user than 'food'
+		ObjectType existingType(DataCase::GetInstance()->GetObjectTypeForForm(m_contents));
+		if (itemType == ObjectType::ingredient && existingType == ObjectType::food)
+		{
+			REL_WARNING("Target {}/0x{:08x} contents type {} overwriting type {} for form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
+				GetObjectTypeName(itemType), GetObjectTypeName(existingType), m_contents->GetName(), m_contents->GetFormID());
+			DataCase::GetInstance()->ForceObjectTypeForForm(m_contents, itemType);
+		}
+		else
+		{
+			REL_WARNING("Target {}/0x{:08x} contents type {} already stored under different form {}/0x{:08x} as type {}", m_targetName, m_rootItem->GetFormID(),
+				GetObjectTypeName(itemType), m_contents->GetName(), m_contents->GetFormID(),
+				GetObjectTypeName(existingType));
+		}
+
 	}
 }
 
