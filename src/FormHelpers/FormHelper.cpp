@@ -144,7 +144,6 @@ uint32_t TESFormHelper::CalculateWorth(void) const
 		}
 		return result == 0 ? GetGoldValue() : result;
 	}
-	return 0;
 }
 
 const char* TESFormHelper::GetName() const
