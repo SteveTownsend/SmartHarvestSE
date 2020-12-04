@@ -1411,21 +1411,22 @@ ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE*)
 	return ObjectType::food;
 }
 
-void DataCase::LeveledItemCategorizer::CategorizeContents()
+void LeveledItemCategorizer::CategorizeContents()
 {
 	ProcessContentsAtLevel(m_rootItem);
 }
 
-DataCase::LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem, const std::string& targetName) : 
-	m_rootItem(rootItem), m_targetName(targetName)
+LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem) :
+	m_rootItem(rootItem)
+{
+	m_lvliSeen.insert(m_rootItem);
+}
+
+LeveledItemCategorizer::~LeveledItemCategorizer()
 {
 }
 
-DataCase::LeveledItemCategorizer::~LeveledItemCategorizer()
-{
-}
-
-void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
+void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
 {
 	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
 	{
@@ -1436,7 +1437,11 @@ void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevIt
 		RE::TESLevItem* leveledItemForm(itemForm->As<RE::TESLevItem>());
 		if (leveledItemForm)
 		{
-			ProcessContentsAtLevel(leveledItemForm);
+			// only process LVLI if not already seen
+			if (m_lvliSeen.insert(leveledItemForm).second)
+			{
+				ProcessContentsAtLevel(leveledItemForm);
+			}
 			continue;
 		}
 		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
@@ -1449,7 +1454,7 @@ void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevIt
 
 DataCase::ProduceFormCategorizer::ProduceFormCategorizer(
 	RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName) :
-	LeveledItemCategorizer(rootItem, targetName), m_produceForm(produceForm), m_contents(nullptr)
+	LeveledItemCategorizer(rootItem), m_targetName(targetName), m_produceForm(produceForm), m_contents(nullptr)
 {
 }
 
