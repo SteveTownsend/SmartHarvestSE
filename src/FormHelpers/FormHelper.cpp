@@ -47,7 +47,7 @@ RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
 RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 {
 	if (!m_form)
-		return false;
+		return nullptr;
 
 	if (m_form->formType == RE::FormType::Weapon || m_form->formType == RE::FormType::Armor)
 	{
@@ -55,7 +55,7 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
 		if (enchanted)
    		    return enchanted->formEnchanting;
 	}
-	return false;
+	return nullptr;
 }
 
 uint32_t TESFormHelper::GetGoldValue() const
@@ -90,10 +90,10 @@ uint32_t TESFormHelper::GetGoldValue() const
 	return static_cast<uint32_t>(pValue->value);
 }
 
-std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(void) const
+std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const bool recordDups) const
 {
 	// ignore whitelist - we need the underlying object type
-	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher);
+	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher, recordDups);
 }
 
 double TESFormHelper::GetWeight() const
@@ -123,20 +123,6 @@ uint32_t TESFormHelper::CalculateWorth(void) const
 		}
 		return 0;
 	}
-	else if (m_form->formType == RE::FormType::Projectile)
-	{
-		const RE::BGSProjectile* proj(m_form->As<RE::BGSProjectile>());
-		if (proj)
-		{
-			const RE::TESAmmo* ammo(DataCase::GetInstance()->ProjToAmmo(proj));
-			if (ammo)
-			{
-				DBG_VMESSAGE("Projectile has ammo {}({:08x}) damage {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
-				return static_cast<uint32_t>(ammo->data.damage);
-			}
-			return 0;
-		}
-	}
 	else
 	{
 		uint32_t result(0);
@@ -158,7 +144,6 @@ uint32_t TESFormHelper::CalculateWorth(void) const
 		}
 		return result == 0 ? GetGoldValue() : result;
 	}
-	return 0;
 }
 
 const char* TESFormHelper::GetName() const

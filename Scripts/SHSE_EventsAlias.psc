@@ -6,7 +6,7 @@ GlobalVariable Property g_LootingEnabled Auto
 int CACOModIndex
 int FossilMiningModIndex
 int HearthfireExtendedModIndex
-bool scanActive
+bool scanActive = True
 int pluginNonce
 bool pluginDelayed
 
@@ -82,6 +82,7 @@ int location_type_blacklist
 int pauseKeyCode
 int whiteListKeyCode
 int blackListKeyCode
+bool keyHandlingActive
 
 int maxMiningItems
 int infiniteWeight
@@ -115,12 +116,16 @@ Function SetPlayer(Actor playerref)
     RegisterForCrosshairRef()
 EndFunction
 
-; migration logic for BlackList and WhiteList
+; one-time migration logic for BlackList and WhiteList
 Function CreateArraysFromFormLists()
-    whiteListSize = whitelist_form.GetSize()
-    whiteListedForms = CreateArrayFromFormList(whitelist_form, whiteListSize)
-    blackListSize = blacklist_form.GetSize()
-    blackListedForms = CreateArrayFromFormList(blacklist_form, blackListSize)
+    if !whiteListedForms
+        whiteListSize = whitelist_form.GetSize()
+        whiteListedForms = CreateArrayFromFormList(whitelist_form, whiteListSize)
+    endIf
+    if !blackListedForms
+        blackListSize = blacklist_form.GetSize()
+        blackListedForms = CreateArrayFromFormList(blacklist_form, blackListSize)
+    endIf
 EndFunction
 
 Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
@@ -218,31 +223,19 @@ Function SyncLists(bool reload, bool updateLists)
     SyncDone(reload)
 endFunction
 
-bool Function ContainsForm(Form[] forms, int entries, Form target)
-    int index = 0
-    while index < entries
-        if forms[index] == target
-            return True
-        endIf
-        index += 1
-    endWhile
-    return False
-endFunction
-
-int Function RemoveForm(Form[] forms, int entries, Form target)
-    int index = 0
-    while index < entries
-        if forms[index] == target
-            ; shuffle down entries above this one
-            while index < entries - 1
-                forms[index] = forms[index+1]
-            endWhile
-            ; clear prior final entry
-            forms[entries - 1] = None
-            return entries - 1
-        endIf
-        index += 1
-    endWhile
+int Function RemoveFormAtIndex(Form[] forms, int entries, int index)
+    if index < entries
+        AlwaysTrace("Removing " + forms[index] + ", entry " + (index+1) + " of " + entries)
+        ; shuffle down entries above this one
+        while index < entries - 1
+            forms[index] = forms[index+1]
+            index += 1
+        endWhile
+        ; clear prior final entry
+        forms[entries - 1] = None
+        return entries - 1
+    endIf
+    AlwaysTrace(index + " not valid for Form[]")
     return entries
 endFunction
 
@@ -273,7 +266,8 @@ function HandleWhiteListKeyPress(Form target)
 endFunction
 
 bool function RemoveFromWhiteList(Form target)
-    if ContainsForm(whiteListedForms, whiteListSize, target)
+    int match = whiteListedForms.find(target)
+    if match != -1
         string translation = GetTranslation("$SHSE_WHITELIST_REMOVED")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
@@ -281,9 +275,11 @@ bool function RemoveFromWhiteList(Form target)
                 Debug.Notification(msg)
             endif
         endif
-        whiteListSize = RemoveForm(whiteListedForms, whiteListSize, target)
+        whiteListSize = RemoveFormAtIndex(whiteListedForms, whiteListSize, match)
+        AlwaysTrace(whiteListSize + " entries on WhiteList")
         return True
     endIf
+    AlwaysTrace(target + " not found in WhiteList")
     return False
 endFunction
 
@@ -312,6 +308,9 @@ function AddToWhiteList(Form target)
         endif
         whiteListedForms[whiteListSize] = target
         whiteListSize += 1
+        AlwaysTrace(target + " added to WhiteList, size now " + whiteListSize)
+    else
+        AlwaysTrace(target + " already on WhiteList")
     endif
 endFunction
 
@@ -322,7 +321,8 @@ function HandleBlackListKeyPress(Form target)
 endFunction
 
 bool function RemoveFromBlackList(Form target)
-    if ContainsForm(blackListedForms, blackListSize, target)
+    int match = blackListedForms.find(target)
+    if match != -1
         string translation = GetTranslation("$SHSE_BLACKLIST_REMOVED")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", GetNameForListForm(target))
@@ -330,9 +330,11 @@ bool function RemoveFromBlackList(Form target)
                 Debug.Notification(msg)
             endif
         endif
-        blackListSize = RemoveForm(blackListedForms, blackListSize, target)
+        blackListSize = RemoveFormAtIndex(blackListedForms, blackListSize, match)
+        AlwaysTrace(blackListSize + " entries on BlackList")
         return True
     endIf
+    AlwaysTrace(target + " not found in BlackList")
     return False
 endFunction
 
@@ -361,6 +363,9 @@ function AddToBlackList(Form target)
         endif
         blackListedForms[blackListSize] = target
         blackListSize += 1
+        AlwaysTrace(target + " added to BlackList, size now " + blackListSize)
+    else
+        AlwaysTrace(target + " already on BlackList")
     endif
 endFunction
 
@@ -550,7 +555,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
     if (UI.IsTextInputEnabled())
         return
     endif
-
+    ; only handle one at a time, if player spams the keyboard results will be confusing
+    if keyHandlingActive
+        return
+    endif
+    keyHandlingActive = true
     if (!Utility.IsInMenumode())
         if keyCode == pauseKeyCode
             if holdTime > 3.0
@@ -564,6 +573,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
             if targetedRefr
                 HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteListKeyCode, holdTime)
+                keyHandlingActive = false
                 return
             endIf
 
@@ -572,6 +582,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             if (!place)
                 string msg = "$SHSE_whitelist_form_ERROR"
                 Debug.Notification(msg)
+                keyHandlingActive = false
                 return
             endif
             if keyCode == whiteListKeyCode
@@ -601,6 +612,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     msg = "$SHSE_BLACKLIST_FORM_ERROR"
                 endIf
                 Debug.Notification(msg)
+                keyHandlingActive = false
                 return
             endif
             if IsQuestTarget(itemForm)
@@ -611,6 +623,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     msg = "$SHSE_BLACKLIST_QUEST_TARGET"
                 endIf
                 Debug.Notification(msg)
+                keyHandlingActive = false
                 return
             endif
 
@@ -622,6 +635,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             SyncLists(false, true)    ; not a reload
         endif
     endif
+    keyHandlingActive = false
 endEvent
 
 int Function ShowMessage(Message msg, string trans, string target_text = "", string replace_text = "")
@@ -839,8 +853,15 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
 
         notify = !silent
     elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
-        ; no-op but must still unlock
-
+        ; Harvest trapped SoulGem only after deactivation - no-op otherwise
+        TrapSoulGemController myTrap = akTarget as TrapSoulGemController
+        if myTrap
+            string baseState = akTarget.GetLinkedRef(None).getState()
+            ;DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
+            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && ActivateEx(akTarget, player, true, 1)
+                notify = !silent
+            endIf
+        endIf
     elseif (!akTarget.IsActivationBlocked())
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
             ActivateEx(akTarget, player, silent, 1)

@@ -19,6 +19,12 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+namespace ObjTypeName
+{
+	constexpr const char* Critter = "critter";
+	constexpr const char* Flora = "flora";
+}
+
 enum class ObjectType : uint8_t
 {
 	unknown = 0,

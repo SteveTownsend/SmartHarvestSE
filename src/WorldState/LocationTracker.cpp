@@ -50,7 +50,7 @@ LocationTracker& LocationTracker::Instance()
 }
 
 LocationTracker::LocationTracker() : 
-	m_playerCellID(InvalidForm), m_playerCellX(0), m_playerCellY(0), m_playerIndoors(false),
+	m_playerCellID(InvalidForm), m_playerCellX(0.), m_playerCellY(0.), m_playerIndoors(false),
 	m_tellPlayerIfCanLootAfterLoad(false), m_playerLocation(nullptr), m_playerParentWorld(nullptr)
 {
 }
@@ -465,9 +465,9 @@ void LocationTracker::Reset()
 	m_playerCellID = InvalidForm;
 	m_playerIndoors = false;
 	m_playerPlaceName.clear();
-    m_playerCellX = 0;
-    m_playerCellY = 0;
-	m_adjacentCells.clear();
+    m_playerCellX = 0.;
+    m_playerCellY = 0.;
+	m_adjacentCells.fill({ std::numeric_limits<float>::max(), nullptr });
 	m_playerLocation = nullptr;
 	m_playerParentWorld = nullptr;
 	m_markedPlaces.clear();
@@ -544,17 +544,18 @@ bool LocationTracker::Refresh()
 		m_playerIndoors = indoorsNow;
 		if (playerCell)
 		{
-			DBG_MESSAGE("Player cell updated to 0x{:08x}", m_playerCellID);
 			if (m_playerIndoors)
 			{
+				DBG_MESSAGE("Player cell updated to 0x{:08x} indoors", m_playerCellID);
 				m_playerCellX = 0;
 				m_playerCellY = 0;
 			}
 			else
 			{
 				const auto playerCoordinates(const_cast<RE::TESObjectCELL*>(playerCell)->GetCoordinates());
-				m_playerCellX = playerCoordinates->cellX;
-				m_playerCellY = playerCoordinates->cellY;
+				m_playerCellX = playerCoordinates->worldX;
+				m_playerCellY = playerCoordinates->worldY;
+				DBG_MESSAGE("Player cell updated to 0x{:08x} outdoors at ({:0.3f},{:0.3f})", m_playerCellID, m_playerCellX, m_playerCellY);
 			}
 
 			// player cell is valid - check for worldspace update
@@ -567,7 +568,7 @@ bool LocationTracker::Refresh()
 				RecordMarkedPlaces();
 			}
 
-			RecordAdjacentCells();
+			RecordAdjacentCells(playerCell);
 		}
 		else
 		{
@@ -735,27 +736,29 @@ decltype(LocationTracker::m_adjacentCells) LocationTracker::AdjacentCells() cons
 	return m_adjacentCells;
 }
 
-bool LocationTracker::IsAdjacent(RE::TESObjectCELL* cell) const
+float LocationTracker::DistanceTo(RE::TESObjectCELL* cell) const
 {
 	// XCLC data available since both are exterior cells, by construction
 	const auto checkCoordinates(cell->GetCoordinates());
-	return std::abs(m_playerCellX - checkCoordinates->cellX) <= 1 &&
-		std::abs(m_playerCellY - checkCoordinates->cellY) <= 1;
+	const float dx(fabs(m_playerCellX - checkCoordinates->worldX));
+	const float dy(fabs(m_playerCellY - checkCoordinates->worldY));
+	return std::sqrt((dx*dx) + (dy*dy));
 }
 
 // this is only called when we updated player-cell with a valid value
-void LocationTracker::RecordAdjacentCells()
+void LocationTracker::RecordAdjacentCells(const RE::TESObjectCELL* current)
 {
-	m_adjacentCells.clear();
+	m_adjacentCells.fill({ std::numeric_limits<float>::max(), nullptr });
 
-	// for exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
+	// For exterior cells, also check directly adjacent cells for lootable goodies.
+	// Restrict to cells in the same worldspace, without walking parents.
 	if (!m_playerIndoors)
 	{
 		DBG_VMESSAGE("Check for adjacent cells to 0x{:08x}", m_playerCellID);
-		if (m_playerParentWorld)
+		if (current->worldSpace)
 		{
-			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", m_playerParentWorld->GetName(), m_playerParentWorld->GetFormID());
-			for (const auto& worldCell : m_playerParentWorld->cellMap)
+			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", current->worldSpace->GetName(), current->worldSpace->GetFormID());
+			for (const auto& worldCell : current->worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
 				// skip player cell, handled above
@@ -770,14 +773,18 @@ void LocationTracker::RecordAdjacentCells()
 					DBG_VMESSAGE("Candidate cell 0x{:08x} flagged as interior", candidateCell->GetFormID());
 					continue;
 				}
-				// check for adjacency on the cell grid
-				if (!IsAdjacent(candidateCell))
+				// check for proximity to player CELL - do not record if more distant than all current possibles
+				const float distance(DistanceTo(candidateCell));
+				for (auto& comparand : m_adjacentCells)
 				{
-					DBG_DMESSAGE("Skip non-adjacent cell 0x{:08x}", candidateCell->GetFormID());
-					continue;
+					if (comparand.first > distance)
+					{
+						DBG_VMESSAGE("Record adjacent cell 0x{:08x} at distance {:0.3f}", candidateCell->GetFormID(), distance);
+						comparand.first = distance;
+						comparand.second = candidateCell;
+						break;
+					}
 				}
-				m_adjacentCells.push_back(candidateCell);
-				DBG_VMESSAGE("Record adjacent cell 0x{:08x}", candidateCell->GetFormID());
 			}
 		}
 	}
