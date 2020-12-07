@@ -601,9 +601,11 @@ void DataCase::RecordOffLimitsLocations()
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
 	std::vector<std::tuple<std::string, RE::FormID>> illegalCells = {
 		{"Skyrim.esm", 0x32ae7},					// QASmoke
+		{"Skyrim.esm", 0x6c3b6},					// AAADeleteWhenDoneTestJeremy
+		{"LC_BuildYourNobleHouse.esp", 0x20c0b},	// LCBYNPCplanter00xx
 		{"CerwidenCompanion.esp", 0x4a4bb},			// kcfAssetsCell01
 		{"konahrik_accoutrements.esp", 0x625d3},	// KAxTestCell
-		{"Helgen Reborn.esp", 0xA886CD}				// aaaBalokDummyCell
+		{"Helgen Reborn.esp", 0xa886cd}				// aaaBalokDummyCell
 	};
 	for (const auto& pluginForm : illegalCells)
 	{
@@ -646,31 +648,6 @@ void DataCase::BlockOffLimitsContainers()
 	for (const auto refrID : m_offLimitsContainers)
 	{
 		BlockReferenceByID(refrID, Lootability::ContainerPermanentlyOffLimits);
-	}
-}
-
-void DataCase::GetAmmoData()
-{
-	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-	if (!dhnd)
-		return;
-
-	DBG_MESSAGE("Loading AmmoData");
-	for (RE::TESAmmo* ammo : dhnd->GetFormArray<RE::TESAmmo>())
-	{
-		if (!FormUtils::IsConcrete(ammo))
-		{
-			DBG_VMESSAGE("Ammo 0x{:08x} not usable", ammo ? ammo->GetFormID() : InvalidForm);
-			continue;
-		}
-		RE::BGSProjectile* proj = ammo->data.projectile;
-		if (!FormUtils::IsConcrete(proj))
-		{
-			DBG_VMESSAGE("Projectile 0x{:08x} not usable", proj ? proj->GetFormID() : InvalidForm);
-			continue;
-		}
-		REL_VMESSAGE("Projectile 0x{:08x}/{} has Ammo 0x{:08x}/{}", proj->GetFormID(), proj->GetFullName(), ammo->GetFormID(), ammo->GetFullName());
-		m_ammoList[proj] = ammo;
 	}
 }
 
@@ -950,11 +927,6 @@ const char* DataCase::GetTranslation(const char* key) const
 	return translation->second.c_str();
 }
 
-const RE::TESAmmo* DataCase::ProjToAmmo(const RE::BGSProjectile* proj)
-{
-	return (proj && m_ammoList.find(proj) != m_ammoList.end()) ? m_ammoList[proj] : nullptr;
-}
-
 const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
 {
 	const RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
@@ -1036,9 +1008,6 @@ void DataCase::CategorizeLootables()
 
 	REL_MESSAGE("*** LOAD *** Store Activation Verbs");
 	StoreActivationVerbs();
-
-	REL_MESSAGE("*** LOAD *** Get Ammo Data");
-	GetAmmoData();
 
 	REL_MESSAGE("*** LOAD *** Categorize Statics");
 	CategorizeStatics();
@@ -1442,21 +1411,22 @@ ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE*)
 	return ObjectType::food;
 }
 
-void DataCase::LeveledItemCategorizer::CategorizeContents()
+void LeveledItemCategorizer::CategorizeContents()
 {
 	ProcessContentsAtLevel(m_rootItem);
 }
 
-DataCase::LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem, const std::string& targetName) : 
-	m_rootItem(rootItem), m_targetName(targetName)
+LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem) :
+	m_rootItem(rootItem)
+{
+	m_lvliSeen.insert(m_rootItem);
+}
+
+LeveledItemCategorizer::~LeveledItemCategorizer()
 {
 }
 
-DataCase::LeveledItemCategorizer::~LeveledItemCategorizer()
-{
-}
-
-void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
+void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
 {
 	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
 	{
@@ -1467,7 +1437,11 @@ void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevIt
 		RE::TESLevItem* leveledItemForm(itemForm->As<RE::TESLevItem>());
 		if (leveledItemForm)
 		{
-			ProcessContentsAtLevel(leveledItemForm);
+			// only process LVLI if not already seen
+			if (m_lvliSeen.insert(leveledItemForm).second)
+			{
+				ProcessContentsAtLevel(leveledItemForm);
+			}
 			continue;
 		}
 		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
@@ -1480,7 +1454,7 @@ void DataCase::LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevIt
 
 DataCase::ProduceFormCategorizer::ProduceFormCategorizer(
 	RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName) :
-	LeveledItemCategorizer(rootItem, targetName), m_produceForm(produceForm), m_contents(nullptr)
+	LeveledItemCategorizer(rootItem), m_targetName(targetName), m_produceForm(produceForm), m_contents(nullptr)
 {
 }
 
@@ -1507,8 +1481,22 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 	}
 	else
 	{
-		REL_WARNING("Target {}/0x{:08x} contents type {} already stored under different form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
-			GetObjectTypeName(itemType), m_contents->GetName(), m_contents->GetFormID());
+		// 'ingredient' supersedes 'food' as object type - currently this is the only clash, and 'ingredient' is subjectively assumed more likely to be
+		// wanted by the average user than 'food'
+		ObjectType existingType(DataCase::GetInstance()->GetObjectTypeForForm(m_contents));
+		if (itemType == ObjectType::ingredient && existingType == ObjectType::food)
+		{
+			REL_WARNING("Target {}/0x{:08x} contents type {} overwriting type {} for form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
+				GetObjectTypeName(itemType), GetObjectTypeName(existingType), m_contents->GetName(), m_contents->GetFormID());
+			DataCase::GetInstance()->ForceObjectTypeForForm(m_contents, itemType);
+		}
+		else
+		{
+			REL_WARNING("Target {}/0x{:08x} contents type {} already stored under different form {}/0x{:08x} as type {}", m_targetName, m_rootItem->GetFormID(),
+				GetObjectTypeName(itemType), m_contents->GetName(), m_contents->GetFormID(),
+				GetObjectTypeName(existingType));
+		}
+
 	}
 }
 

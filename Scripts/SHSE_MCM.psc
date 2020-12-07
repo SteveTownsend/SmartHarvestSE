@@ -1745,7 +1745,11 @@ string Function GetCustomControl(int keyCode)
     endIf
 endFunction
 
-bool Function AllowMapping(string conflictControl, string conflictName)
+bool Function AllowMapping(int newKeyCode, string conflictControl, string conflictName)
+    ; unmap always allowed
+    if newKeyCode == -1
+        return True
+    endIf
     if (conflictControl != "")
         string msg = GetTranslation("$SHSE_KEY_CONFLICT")
         msg = Replace(msg, "{CONFLICT}", "\"" + conflictControl + "\"")
@@ -1757,7 +1761,7 @@ endFunction
 
 state pauseHotkeyCode
     event OnKeyMapChangeST(int newKeyCode, string conflictControl, string conflictName)
-        if conflictControl == "SmartHarvest Pause" || AllowMapping(conflictControl, conflictName)
+        if conflictControl == "SmartHarvest Pause" || AllowMapping(newKeyCode, conflictControl, conflictName)
             pauseHotkeyCode = newKeyCode
             SetKeyMapOptionValueST(pauseHotkeyCode)
             eventScript.SyncPauseKey(pauseHotkeyCode)
@@ -1775,7 +1779,7 @@ endState
 
 state whiteListHotkeyCode
     event OnKeyMapChangeST(int newKeyCode, string conflictControl, string conflictName)
-        if conflictControl == "SmartHarvest WhiteList" || AllowMapping(conflictControl, conflictName)
+        if conflictControl == "SmartHarvest WhiteList" || AllowMapping(newKeyCode, conflictControl, conflictName)
             whiteListHotkeyCode = newKeyCode
             SetKeyMapOptionValueST(whiteListHotkeyCode)
             eventScript.SyncWhiteListKey(whiteListHotkeyCode)
@@ -1793,7 +1797,7 @@ endState
 
 state blackListHotkeyCode
     event OnKeyMapChangeST(int newKeyCode, string conflictControl, string conflictName)
-        if conflictControl == "SmartHarvest BlackList" || AllowMapping(conflictControl, conflictName)
+        if conflictControl == "SmartHarvest BlackList" || AllowMapping(newKeyCode, conflictControl, conflictName)
             blackListHotkeyCode = newKeyCode
             SetKeyMapOptionValueST(blackListHotkeyCode)
             eventScript.SyncBlackListKey(blackListHotkeyCode)

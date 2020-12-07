@@ -23,9 +23,28 @@ http://www.fsf.org/licensing/licenses
 #include <chrono>
 
 #include "Looting/ProducerLootables.h"
+#include "Looting/objects.h"
 
 namespace shse
 {
+
+class LeveledItemCategorizer
+{
+public:
+	LeveledItemCategorizer(const RE::TESLevItem* rootItem);
+	virtual ~LeveledItemCategorizer();
+	void CategorizeContents();
+
+private:
+	void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
+
+protected:
+	virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) = 0;
+
+	const RE::TESLevItem* m_rootItem;
+	// prevent infinite recursion
+	std::unordered_set<const RE::TESLevItem*> m_lvliSeen;
+};
 
 class DataCase
 {
@@ -73,7 +92,6 @@ public:
 
 	const char* GetTranslation(const char* key) const;
 
-	const RE::TESAmmo* ProjToAmmo(const RE::BGSProjectile* proj);
 	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
 
 	void CategorizeLootables(void);
@@ -122,7 +140,6 @@ private:
 	std::unordered_map<std::string, std::string> m_translations;
 
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
-	std::unordered_map<const RE::BGSProjectile*, RE::TESAmmo*> m_ammoList;
 
 	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
@@ -148,7 +165,6 @@ private:
 	void RecordOffLimitsLocations(void);
 	void RecordPlayerHouseCells(void);
 	void BlockOffLimitsContainers(void);
-	void GetAmmoData(void);
 
 	template <typename T>
 	ObjectType DefaultIngredientObjectType(const T* form)
@@ -159,23 +175,6 @@ private:
 	template <>	ObjectType DefaultIngredientObjectType(const RE::TESFlora* form);
 	template <>	ObjectType DefaultIngredientObjectType(const RE::TESObjectTREE* form);
 
-	class LeveledItemCategorizer
-	{
-	public:
-		LeveledItemCategorizer(const RE::TESLevItem* rootItem, const std::string& targetName);
-		virtual ~LeveledItemCategorizer();
-		void CategorizeContents();
-
-	private:
-		void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
-
-	protected:
-		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) = 0;
-
-		const RE::TESLevItem* m_rootItem;
-		const std::string m_targetName;
-	};
-
 	class ProduceFormCategorizer : public LeveledItemCategorizer
 	{
 	public:
@@ -185,6 +184,7 @@ private:
 		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
 
 	private:
+		const std::string m_targetName;
 		RE::TESProduceForm* m_produceForm;
 		RE::TESForm* m_contents;
 	};

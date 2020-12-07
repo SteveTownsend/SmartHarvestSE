@@ -224,7 +224,7 @@ void CollectionManager::AddToRelevantCollections(const ConditionMatcher& matcher
 	}
 }
 
-std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
+std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups)
 {
 	if (!IsAvailable() || !matcher.Form())
 		return NotCollectible;
@@ -275,7 +275,8 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 	{
 		return NotCollectible;
 	}
-	if (actionable)
+	// prevent dups - if this is an item Collectibility precheck don't trigger this logic, or we won't actually loot the item
+	if (recordDups && actionable)
 	{
 		m_collectedOnThisScan.insert(formID);
 	}

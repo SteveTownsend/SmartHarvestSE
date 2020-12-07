@@ -31,7 +31,20 @@ namespace shse
 
 LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_scope(scope), m_lootable(nullptr)
 {
-	m_objectType = GetREFRObjectType(m_ref);
+	// Projectile REFRs need to be mapped to lootable Ammo
+	const RE::Projectile* projectile(ref->As<RE::Projectile>());
+	if (projectile && projectile->ammoSource)
+	{
+		m_lootable = projectile->ammoSource;
+		m_objectType = ObjectType::ammo;
+		DBG_MESSAGE("Projectile REFR 0x{:08x} with Base {}/0x{:08x} mapped to Ammo {}/0x{:08x}",
+			m_ref->GetFormID(), m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID(),
+			m_lootable->GetName(), m_lootable->GetFormID());
+	}
+	else
+	{
+		m_objectType = GetREFRObjectType(m_ref);
+	}
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
@@ -62,7 +75,8 @@ bool LootableREFR::IsQuestItem() const
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
 {
 	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
-	return itemEx.TreatAsCollectible();
+	static const bool recordDups(true);		// final decision to loot the item happens here
+	return itemEx.TreatAsCollectible(recordDups);
 }
 
 bool LootableREFR::IsValuable() const

@@ -19,8 +19,24 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include "Data/dataCase.h"
+
 namespace shse
 {
+
+class LeveledListMembers : public LeveledItemCategorizer
+{
+public:
+	LeveledListMembers(const RE::TESLevItem* rootItem, std::unordered_set<RE::FormID>& members);
+	static void SetupExclusions();
+
+protected:
+	virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType) override;
+
+private:
+	std::unordered_set<RE::FormID>& m_members;
+	static std::unordered_set<RE::FormID> m_exclusions;
+};
 
 class QuestTargets
 {

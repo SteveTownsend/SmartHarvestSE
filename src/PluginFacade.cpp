@@ -50,28 +50,53 @@ PluginFacade& PluginFacade::Instance()
 	return *m_instance;
 }
 
-PluginFacade::PluginFacade() : m_pluginOK(false), m_threadStarted(false), m_pluginSynced(false)
+PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted), m_threadStarted(false), m_pluginSynced(false)
 {
+}
+
+bool PluginFacade::OneTimeLoad(void)
+{
+	__try
+	{
+		// Use structured exception handling during game data load
+		REL_MESSAGE("Plugin not initialized - Game Data load executing");
+		WindowsUtils::LogProcessWorkingSet();
+		if (!Load())
+			return false;
+		m_loadProgress = LoadProgress::Complete;
+		WindowsUtils::LogProcessWorkingSet();
+	}
+	__except (LogStackWalker::LogStack(GetExceptionInformation()))
+	{
+		REL_FATALERROR("Fatal Exception during Game Data load");
+		return false;
+	}
+	return true;
 }
 
 bool PluginFacade::Init()
 {
-	if (!m_pluginOK)
+	// Thread safety is vital to ensure Load() only fires once.
+	// cf. https://github.com/SteveTownsend/SmartHarvestSE/issues/230
+	// SKSE::MessagingInterface::kPostLoadGame fired twice
+	bool loadRequired(false);
 	{
-		__try
+		RecursiveLockGuard guard(m_pluginLock);
+		if (m_loadProgress == LoadProgress::NotStarted)
 		{
-			// Use structured exception handling during game data load
-			REL_MESSAGE("Plugin not initialized - Game Data load executing");
-			WindowsUtils::LogProcessWorkingSet();
-			if (!Load())
-				return false;
-			WindowsUtils::LogProcessWorkingSet();
+			m_loadProgress = LoadProgress::Started;
+			loadRequired = true;
 		}
-		__except (LogStackWalker::LogStack(GetExceptionInformation()))
+		else if (m_loadProgress == LoadProgress::Started)
 		{
-			REL_FATALERROR("Fatal Exception during Game Data load");
 			return false;
 		}
+		// LoadProgress::LoadComplete
+	}
+	if (loadRequired)
+	{
+		if (!OneTimeLoad())
+			return false;
 	}
 
 	while (!EventPublisher::Instance().GoodToGo())
@@ -94,7 +119,7 @@ bool PluginFacade::Init()
 void PluginFacade::Start()
 {
 	// do not start the thread if we failed to initialize
-	if (!m_pluginOK)
+	if (!Loaded())
 		return;
 	std::thread([]()
 	{
@@ -148,7 +173,6 @@ bool PluginFacade::Load()
 	REL_MESSAGE("*** LOAD *** Build Collections");
 	CollectionManager::Instance().ProcessDefinitions();
 
-	m_pluginOK = true;
 	REL_MESSAGE("Plugin Data load complete!");
 	return true;
 }

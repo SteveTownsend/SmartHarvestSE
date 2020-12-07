@@ -206,9 +206,10 @@ void PopulationCenters::Categorize(void)
 
 void PopulationCenters::AddOtherPlaces(void)
 {
-	// Helgen Reborn vendor CELLs
-	const std::string espName("Helgen Reborn.esp");
-	std::vector<RE::FormID> helgenRebornVendors = {
+	size_t baseline(0);
+	// Helgen Reborn house CELLs
+	std::string espName("Helgen Reborn.esp");
+	std::vector<RE::FormID> helgenRebornHouses = {
 		0x31f4c,			// aaaBalokHouse04
 		0x31eac,			// aaaBalokHouse05
 		0x7fd96,			// aaaBalokHouseHill03
@@ -224,7 +225,7 @@ void PopulationCenters::AddOtherPlaces(void)
 		0x31f41,			// aaaBalokHouse03
 		0x32059				// aaaBalokHouse02
 	};
-	for (const RE::FormID formID : helgenRebornVendors)
+	for (const RE::FormID formID : helgenRebornHouses)
 	{
 		const RE::TESObjectCELL* cell(DataCase::GetInstance()->FindExactMatch<RE::TESObjectCELL>(espName, formID));
 		if (cell)
@@ -233,7 +234,40 @@ void PopulationCenters::AddOtherPlaces(void)
 			m_cells.insert(std::make_pair(cell->GetFormID(), PopulationCenterSize::Towns));
 		}
 	}
-	DBG_VMESSAGE("Added {} CELLs as Town, expected {}", m_cells.size(), helgenRebornVendors.size());
+	if (m_cells.size() > baseline)
+	{
+		REL_VMESSAGE("Added {} Helgen Reborn CELLs as Town, expected {}", m_cells.size() - baseline, helgenRebornHouses.size());
+	}
+
+	baseline = m_cells.size();
+	// Helgen Reborn house CELLs
+	espName = "LC_BuildYourNobleHouse.esp";
+	std::vector<RE::FormID> LC_BuildYourNobleHouseHouses = {
+		0x2baad,			// LCBYHunterHouse
+		0x180d00,			// LCBYChickenHouse
+		0x2bd43,			// LCBYLumberjackHouse
+		0x1121d,			// LCByMaraChurch
+		0x17674d,			// LCBYTavern01
+		0x2b935,			// LCBYHJamirHouse
+		0x11054,			// LCBYClayMineHouse
+		0x2b6f4,			// LCBYCarpiteria
+		0x10fc0,			// LCBYHouseIgnar
+		0x2beb0,			// LCBYFarmerHouse
+		0x17ba9b			// LCBYalchimist
+	};
+	for (const RE::FormID formID : LC_BuildYourNobleHouseHouses)
+	{
+		const RE::TESObjectCELL* cell(DataCase::GetInstance()->FindExactMatch<RE::TESObjectCELL>(espName, formID));
+		if (cell)
+		{
+			REL_MESSAGE("LC_Build Your Noble House Cell {}/0x{:08x} treated as Settlement", cell->GetName(), cell->GetFormID());
+			m_cells.insert(std::make_pair(cell->GetFormID(), PopulationCenterSize::Towns));
+		}
+	}
+	if (m_cells.size() > baseline)
+	{
+		REL_VMESSAGE("Added {} LC_Build Your Noble House CELLs as Town, expected {}", m_cells.size() - baseline, LC_BuildYourNobleHouseHouses.size());
+	}
 }
 
 }

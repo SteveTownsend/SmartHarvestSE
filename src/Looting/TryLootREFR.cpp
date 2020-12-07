@@ -298,6 +298,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 		else if (!skipLooting)
 		{
+			// check if final output of harvest is lootable
 			lootingType = LootingTypeFromIniSetting(
 				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, m_typeName.c_str()));
 			if (lootingType == LootingType::LeaveBehind)
@@ -309,6 +310,18 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				}
 				skipLooting = true;
 				result = Lootability::ItemTypeIsSetToPreventLooting;
+			}
+			else if (HarvestForbiddenForForm(m_candidate->GetBaseObject()))
+			{
+				// check if harvest is forbidden for Base Object, irrespective of final harvested item
+				if (!dryRun)
+				{
+					DBG_VMESSAGE("REFR 0x{:08x} with type {} has unharvestable Base Object {}/0x{:08x}", m_candidate->GetFormID(), m_typeName,
+						m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->GetFormID());
+					data->BlockReference(m_candidate, Lootability::HarvestDisallowedForBaseObjectType);
+				}
+				skipLooting = true;
+				result = Lootability::HarvestDisallowedForBaseObjectType;
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
@@ -643,8 +656,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			LootingType lootingType(LootingType::LeaveBehind);
+			static const bool recordDups(true);		// final decision to loot the item happens here
 			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-				ConditionMatcher(target, m_targetType, objType)));
+				ConditionMatcher(target, m_targetType, objType), recordDups));
 			if (collectible.first)
 			{
 				CollectibleHandling collectibleAction(collectible.second);
@@ -779,6 +793,8 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 {
 	if (!m_candidate)
 		return;
+
+	REL_MESSAGE("Loot {} items from {}/0x{:08x}", targets.size(), m_candidate->GetName(), m_candidate->formID);
 
 	// visual notification, if requested
 	if (animationType == 1)
@@ -920,6 +936,17 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 		}
 	}
 	return legality;
+}
+
+bool TryLootREFR::HarvestForbiddenForForm(const RE::TESForm* form) const
+{
+	// flora
+	if (form->As<RE::TESObjectTREE>() || form->As<RE::TESFlora>())
+	{
+		return LootingTypeFromIniSetting(INIFile::GetInstance()->GetSetting(
+			INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, ObjTypeName::Flora)) == LootingType::LeaveBehind;
+	}
+	return false;
 }
 
 bool TryLootREFR::IsBookGlowable() const

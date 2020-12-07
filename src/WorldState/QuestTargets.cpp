@@ -27,6 +27,65 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
+LeveledListMembers::LeveledListMembers(const RE::TESLevItem* rootItem,
+	std::unordered_set<RE::FormID>& members) : m_members(members), LeveledItemCategorizer(rootItem)
+{
+}
+
+std::unordered_set<RE::FormID> LeveledListMembers::m_exclusions;
+
+void LeveledListMembers::SetupExclusions()
+{
+	std::vector<std::tuple<std::string, RE::FormID>> excludedLVLI = {
+		{"Skyrim.esm", 0x4e4f3},								// DA09DawnbreakerList
+		{"Complete Alchemy & Cooking Overhaul.esp", 0xcb2be},	// CACO_ALLIngredients
+		{"Complete Alchemy & Cooking Overhaul.esp", 0x6b0f3a}	// CACO_ALLIngredients_New
+	};
+	std::unordered_set<RE::TESLevItem*> excludedForms;
+	for (const auto& lvliDef : excludedLVLI)
+	{
+		std::string espName(std::get<0>(lvliDef));
+		RE::FormID formID(std::get<1>(lvliDef));
+		RE::TESLevItem* lvliForm(DataCase::GetInstance()->FindExactMatch<RE::TESLevItem>(espName, formID));
+		if (lvliForm)
+		{
+			REL_MESSAGE("LVLI {}:0x{:08x} found for Quest Target", espName, lvliForm->GetFormID());
+			m_exclusions.insert(lvliForm->GetFormID());
+		}
+		else
+		{
+			REL_MESSAGE("LVLI {}/0x{:08x} not found for Load Order", espName, formID);
+		}
+	}
+}
+
+void LeveledListMembers::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType)
+{
+	if (!m_exclusions.contains(m_rootItem->GetFormID()))
+	{
+		if (m_members.insert(itemForm->GetFormID()).second)
+		{
+			REL_VMESSAGE("LVLI 0x{:08x} member {}/0x{:08x} not treated as Quest Target",
+				m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
+		}
+		else
+		{
+			DBG_VMESSAGE("LVLI 0x{:08x} member {}/0x{:08x} already not treated as Quest Target",
+				m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
+		}
+	}
+	else if (m_members.contains(itemForm->GetFormID()))
+	{
+		REL_WARNING("Exclusion LVLI 0x{:08x} member {}/0x{:08x} already not treated as Quest Target",
+			m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
+	}
+	else
+	{
+		REL_VMESSAGE("Exclusion LVLI 0x{:08x} member {}/0x{:08x} can be treated as Quest Target",
+			m_rootItem->GetFormID(), itemForm->GetName(), itemForm->GetFormID());
+	}
+}
+
 std::unique_ptr<QuestTargets> QuestTargets::m_instance;
 
 QuestTargets& QuestTargets::Instance()
@@ -34,6 +93,7 @@ QuestTargets& QuestTargets::Instance()
 	if (!m_instance)
 	{
 		m_instance = std::make_unique<QuestTargets>();
+		LeveledListMembers::SetupExclusions();
 	}
 	return *m_instance;
 }
@@ -51,9 +111,16 @@ bool QuestTargets::IsLootableInanimateReference(const RE::TESObjectREFR* refr) c
 
 void QuestTargets::Analyze()
 {
+	// any items that is in a Leveled List is not blacklisted as a Quest Target
+	std::unordered_set<RE::FormID> lvliMembers;
+	for (const auto leveledItem : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESLevItem>())
+	{
+		LeveledListMembers(leveledItem, lvliMembers).CategorizeContents();
+	}
+
 	for (const auto quest : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>())
 	{
-		DBG_VMESSAGE("Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
+		REL_VMESSAGE("Quest Targets for {}/0x{:08x}", quest->GetName(), quest->GetFormID());
 		std::unordered_map<uint32_t, const RE::BGSBaseAlias*> aliasByID;
 		for (const auto alias : quest->aliases)
 		{
@@ -70,6 +137,7 @@ void QuestTargets::Analyze()
 				{
 					// Check for specific instance of item created-in another alias
 					uint16_t createdIn(refAlias->fillData.created.alias.alias);
+					const RE::TESBoundObject* targetItem(refAlias->fillData.created.object);
 					if (refAlias->fillData.created.alias.create == RE::BGSRefAlias::CreatedFillData::Alias::Create::kIn)
 					{
 						const auto target(aliasByID.find(createdIn));
@@ -85,18 +153,16 @@ void QuestTargets::Analyze()
 									if (refr)
 									{
 										// this object in this specific REFR is a Quest Target
-										if (BlacklistQuestTargetReferencedItem(refAlias->fillData.created.object, refr))
+										if (BlacklistQuestTargetReferencedItem(targetItem, refr))
 										{
 											REL_VMESSAGE("Blacklist Specific REFR {}/0x{:08x} to ALCO as Quest Target Item {}/0x{:08x}",
-												refr->GetName(), refr->GetFormID(),
-												refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+												refr->GetName(), refr->GetFormID(), targetItem->GetName(), targetItem->GetFormID());
 											continue;
 										}
 										else
 										{
 											DBG_VMESSAGE("Failed to Blacklist Specific REFR {}/0x{:08x} to ALCO as Quest Target Item {}/0x{:08x}",
-												refr->GetName(), refr->GetFormID(),
-												refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+												refr->GetName(), refr->GetFormID(), targetItem->GetName(), targetItem->GetFormID());
 										}
 									}
 								}
@@ -104,38 +170,49 @@ void QuestTargets::Analyze()
 							else if (targetAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kUniqueActor)
 							{
 								// created in ALUA
-								if (targetAlias->fillData.uniqueActor.uniqueActor)
+								RE::TESNPC* npc(targetAlias->fillData.uniqueActor.uniqueActor);
+								if (npc)
 								{
-									// do not blacklist e.g. Torygg's War Horn 0xE77BB
-									DBG_VMESSAGE("RefAlias ALCO {}/0x{:08x} is created-in ALUA {}/0x{:08x}",
-										refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(),
-										targetAlias->fillData.uniqueActor.uniqueActor->GetName(), targetAlias->fillData.uniqueActor.uniqueActor->GetFormID());
+									// do not blacklist e.g. Torygg's War Horn 0xE77BB, but blacklist the hosting NPC
+									if (BlacklistQuestTargetNPC(npc))
+									{
+										REL_VMESSAGE("Blacklist created-in ALUA {}/0x{:08x} for RefAlias ALCO {}/0x{:08x}",
+											npc->GetName(), npc->GetFormID(), targetItem->GetName(), targetItem->GetFormID());
+									}
+									else
+									{
+										DBG_VMESSAGE("Using created-in ALUA {}/0x{:08x} to blacklist RefAlias ALCO {}/0x{:08x}",
+											npc->GetName(), npc->GetFormID(), targetItem->GetName(), targetItem->GetFormID());
+									}
+									continue;
 								}
 							}
 						}
 					}
-					else
-					{
-						DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item {}/0x{:08x} has type kAt",
-							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
-					}
-					size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refAlias->fillData.created.object));
+					DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item {}/0x{:08x} has type kAt",
+						targetItem->GetName(), targetItem->GetFormID());
+					// if item is in permitted LVLI, do not blacklist it
+					size_t itemCount(PlacedObjects::Instance().NumberOfInstances(targetItem));
 					if (itemCount >= BoringQuestTargetThreshold)
 					{
 						DBG_VMESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
-							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount, BoringQuestTargetThreshold);
+							targetItem->GetName(), targetItem->GetFormID(), itemCount, BoringQuestTargetThreshold);
+					}
+					else if (lvliMembers.contains(targetItem->GetFormID()))
+					{
+						DBG_VMESSAGE("RefAlias ALCO excluded as Quest Target Item {}/0x{:08x}, member of LVLI",
+							targetItem->GetName(), targetItem->GetFormID());
 					}
 					// record if unique or Quest Object flag set
-					else if ((isQuest || (!refAlias->fillData.created.object->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
-						BlacklistQuestTargetItem(refAlias->fillData.created.object))
+					else if ((isQuest || (!targetItem->As<RE::TESNPC>() && itemCount <= RareQuestTargetThreshold)) &&
+						BlacklistQuestTargetItem(targetItem))
 					{
 						REL_VMESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item {}/0x{:08x} ({} placed)",
-							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID(), itemCount);
+							targetItem->GetName(), targetItem->GetFormID(), itemCount);
 					}
 					else
 					{
-						DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
-							refAlias->fillData.created.object->GetName(), refAlias->fillData.created.object->GetFormID());
+						DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}", targetItem->GetName(), targetItem->GetFormID());
 					}
 				}
 				else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced)

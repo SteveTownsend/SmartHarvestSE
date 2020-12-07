@@ -27,7 +27,7 @@ namespace shse
 RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void) const
 {
 	if (!m_extraData)
-		return false;
+		return nullptr;
 
 	auto exEnchant = m_extraData->GetByType<RE::ExtraEnchantment>();
 	return (exEnchant && exEnchant->enchantment) ? exEnchant->enchantment : nullptr;
