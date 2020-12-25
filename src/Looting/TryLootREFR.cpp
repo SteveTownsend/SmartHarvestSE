@@ -258,6 +258,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 
 		LootingType lootingType(LootingType::LeaveBehind);
+		bool whitelisted(false);
 		if (collectible.first)
 		{
 			CollectibleHandling collectibleAction(collectible.second);
@@ -285,6 +286,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				result = Lootability::LawAbidingSoNoWhitelistItemLooting;
 			}
+			whitelisted = true;
 			lootingType = LootingType::LootAlwaysSilent;
 		}
 		else if (ManagedList::BlackList().Contains(m_candidate->GetBaseObject()))
@@ -367,7 +369,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
-			const bool manualLootNotify(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
+			const bool manualLootNotify(INIFile::GetInstance()->GetSetting(
+				INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
 			const bool mineAll(LootingTypeFromIniSetting(
 				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, "oreVein")) == LootingType::LootOreVeinAlways);
 			if (!isFirehose || mineAll)
@@ -390,9 +393,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				return Lootability::HarvestOperationPending;
 			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
+			const bool whiteListNotify(INIFile::GetInstance()->GetSetting(
+				INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "WhiteListTargetNotify") != 0);
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
-				collectible.first, PlayerState::Instance().PerkIngredientMultiplier());
+				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
 			if (isFirehose)
 			{
 				// do not revisit over-generous sources any time soon
@@ -632,8 +637,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::ItemTheftTriggered;
 		}
 
-		// Build list of lootable targets with notification, collectibility flag & count for each
-		std::vector<std::tuple<InventoryItem, bool, bool, size_t>> targets;
+		// Build list of lootable targets with notification, collectibility flag, whitelist notification & count for each
+		const bool whiteListNotify(INIFile::GetInstance()->GetSetting(
+			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "WhiteListTargetNotify") != 0);
+		std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>> targets;
 		targets.reserve(lootableItems);
 		for (auto& targetItemInfo : lister.GetLootableItems())
 		{
@@ -656,6 +663,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			LootingType lootingType(LootingType::LeaveBehind);
+			bool sendWhiteListNotify(false);
 			static const bool recordDups(true);		// final decision to loot the item happens here
 			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
 				ConditionMatcher(target, m_targetType, objType), recordDups));
@@ -688,6 +696,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				// whitelisted objects are always looted silently
 				DBG_VMESSAGE("transfer whitelisted 0x{:08x}", target->formID);
 				lootingType = LootingType::LootAlwaysSilent;
+				sendWhiteListNotify = whiteListNotify;
 			}
 			else if (ManagedList::BlackList().Contains(target))
 			{
@@ -723,7 +732,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			// item count unknown at this point
-			targets.push_back({ targetItemInfo, LootingRequiresNotification(lootingType), collectible.first, 0 });
+			targets.push_back({ targetItemInfo, LootingRequiresNotification(lootingType), collectible.first, sendWhiteListNotify, 0 });
 			DBG_MESSAGE("get {} ({}) from container {}/0x{:08x}", target->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
@@ -788,7 +797,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	return result;
 }
 
-void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets,
+void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets,
 	const int animationType, const bool inlineTransfer)
 {
 	if (!m_candidate)
@@ -815,6 +824,7 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 		InventoryItem& itemInfo(std::get<0>(target));
 		bool notify(std::get<1>(target));
 		bool collectible(std::get<2>(target));
+		bool whiteListNotify(std::get<3>(target));
 		if (!madeSound)
 		{
 			RE::PlayerCharacter::GetSingleton()->PlayPickUpSound(itemInfo.BoundObject(), true, false);
@@ -823,10 +833,10 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 		std::string name(itemInfo.BoundObject()->GetName());
 		size_t count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible, inlineTransfer));
 		// save count in case we have to copy these after failure to transfer (e.g. MrB's Lootable Things)
-		std::get<3>(target) = count;
+		std::get<4>(target) = count;
+		std::string notificationText;
 		if (notify)
 		{
-			std::string notificationText;
 			if (count > 1)
 			{
 				static RE::BSFixedString multiActivate(DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG"));
@@ -853,10 +863,20 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 				RE::DebugNotification(notificationText.c_str());
 			}
 		}
+		if (whiteListNotify)
+		{
+			static RE::BSFixedString whiteListMsg(DataCase::GetInstance()->GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"));
+			if (!whiteListMsg.empty())
+			{
+				notificationText = whiteListMsg;
+				StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
+				RE::DebugNotification(notificationText.c_str());
+			}
+		}
 	}
 }
 
-void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets)
+void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets)
 {
 	if (!m_candidate)
 		return;
@@ -864,7 +884,7 @@ void TryLootREFR::CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bo
 	for (auto& target : targets)
 	{
 		InventoryItem& itemInfo(std::get<0>(target));
-		itemInfo.MakeCopies(RE::PlayerCharacter::GetSingleton(), std::get<3>(target));
+		itemInfo.MakeCopies(RE::PlayerCharacter::GetSingleton(), std::get<4>(target));
 	}
 }
 

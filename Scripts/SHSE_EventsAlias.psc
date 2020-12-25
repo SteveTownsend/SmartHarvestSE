@@ -838,7 +838,7 @@ int Function SupportedCritterActivateCount(ObjectReference target)
 EndFunction
 
 
-Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool collectible, float ingredientCount)
+Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
     form baseForm = akTarget.GetBaseObject()
 
@@ -920,6 +920,12 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
             Debug.Notification(activateMsg)
         endif
     endif
+    if isWhitelisted
+        string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseForm.GetName())
+        if whitelistMsg
+            Debug.Notification(whitelistMsg)
+        endif
+    endIf
     
     UnlockHarvest(akTarget, silent)
 endEvent

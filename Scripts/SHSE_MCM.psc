@@ -80,6 +80,7 @@ int bossChestLoot
 int enchantedItemLoot
 
 bool manualLootTargetNotify
+bool whiteListTargetNotify
 
 bool disableDuringCombat
 bool disableWhileWeaponIsDrawn
@@ -258,6 +259,7 @@ function LoadSettingsFromNative()
     playContainerAnimation = GetSetting(type_Harvest, type_Config, "PlayContainerAnimation") as int
 
     manualLootTargetNotify = GetSetting(type_Harvest, type_Config, "ManualLootTargetNotify") as bool
+    whiteListTargetNotify = GetSetting(type_Harvest, type_Config, "WhiteListTargetNotify") as bool
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
 
@@ -329,6 +331,7 @@ Function SaveSettingsToNative()
     PutSetting(type_Harvest, type_Config, "LockedChestLoot", lockedChestLoot as float)
     PutSetting(type_Harvest, type_Config, "BossChestLoot", bossChestLoot as float)
     PutSetting(type_Harvest, type_Config, "ManualLootTargetNotify", manualLootTargetNotify as float)
+    PutSetting(type_Harvest, type_Config, "WhiteListTargetNotify", whiteListTargetNotify as float)
 
     PutSetting(type_Harvest, type_Config, "DisableDuringCombat", disableDuringCombat as float)
     PutSetting(type_Harvest, type_Config, "DisableWhileWeaponIsDrawn", disableWhileWeaponIsDrawn as float)
@@ -475,6 +478,7 @@ EndFunction
 Function SetMiscDefaults(bool firstTime)
     ; New or clarified defaults and constants
     manualLootTargetNotify = true
+    whiteListTargetNotify = false
 
     defaultRadius = 30
     defaultInterval = 1.0
@@ -1106,6 +1110,7 @@ event OnPageReset(string currentPage)
         AddTextOptionST("valuableItemLoot", "$SHSE_VALUABLE_ITEM_LOOT", s_specialObjectHandlingArray[valuableItemLoot])
         AddSliderOptionST("valuableItemThreshold", "$SHSE_VALUABLE_ITEM_THRESHOLD", valuableItemThreshold as float, "$SHSE_MONEY")
         AddToggleOptionST("manualLootTargetNotify", "$SHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
+        AddToggleOptionST("whiteListTargetNotify", "$SHSE_WHITELIST_TARGET_NOTIFY", whiteListTargetNotify)
         AddTextOptionST("playContainerAnimation", "$SHSE_PLAY_CONTAINER_ANIMATION", s_playContainerAnimationArray[playContainerAnimation])
 
 ;   ======================== RIGHT ========================
@@ -2032,6 +2037,22 @@ state manualLootTargetNotify
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_MANUAL_LOOT_TARGET_NOTIFY"))
+    endEvent
+endState
+
+state whiteListTargetNotify
+    event OnSelectST()
+        whiteListTargetNotify = !(whiteListTargetNotify as bool)
+        SetToggleOptionValueST(whiteListTargetNotify)
+    endEvent
+
+    event OnDefaultST()
+        whiteListTargetNotify = false
+        SetToggleOptionValueST(whiteListTargetNotify)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_WHITELIST_TARGET_NOTIFY"))
     endEvent
 endState
 
