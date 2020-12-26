@@ -840,7 +840,11 @@ EndFunction
 
 Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
+    ; capture values now, dynamic REFRs can become invalid before we need them
+    int refrID = akTarget.GetFormID()
     form baseForm = akTarget.GetBaseObject()
+    int baseID = baseForm.GetFormID()
+    string baseName = baseForm.GetName()
 
     ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + baseForm) 
     ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ")
@@ -908,26 +912,26 @@ Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, 
             targets[1] = "{COUNT}"
 
             string[] replacements = New String[2]
-            replacements[0] = baseForm.GetName()
+            replacements[0] = baseName
             replacements[1] = count as string
             
             activateMsg = ReplaceArray(translation, targets, replacements)
         else
             string translation = GetTranslation("$SHSE_ACTIVATE_MSG")
-            activateMsg = Replace(translation, "{ITEMNAME}", baseForm.GetName())
+            activateMsg = Replace(translation, "{ITEMNAME}", baseName)
         endif
         if (activateMsg)
             Debug.Notification(activateMsg)
         endif
     endif
     if isWhitelisted
-        string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseForm.GetName())
+        string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseName)
         if whitelistMsg
             Debug.Notification(whitelistMsg)
         endif
     endIf
     
-    UnlockHarvest(akTarget, silent)
+    UnlockHarvest(refrID, baseID, baseName, silent)
 endEvent
 
 ; NPC looting appears to have thread safety issues requiring script to perform
