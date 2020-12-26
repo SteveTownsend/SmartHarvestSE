@@ -960,8 +960,9 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 
 bool TryLootREFR::HarvestForbiddenForForm(const RE::TESForm* form) const
 {
-	// flora
-	if (form->As<RE::TESObjectTREE>() || form->As<RE::TESFlora>())
+	// flora, but not those that produce cash money
+	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
+	if (m_typeName != septimsName && (form->As<RE::TESObjectTREE>() || form->As<RE::TESFlora>()))
 	{
 		return LootingTypeFromIniSetting(INIFile::GetInstance()->GetSetting(
 			INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, ObjTypeName::Flora)) == LootingType::LeaveBehind;

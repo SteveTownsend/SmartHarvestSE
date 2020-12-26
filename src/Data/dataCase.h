@@ -179,6 +179,7 @@ private:
 	{
 	public:
 		ProduceFormCategorizer(RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName);
+		inline ObjectType ContentsType() const { return m_contentsType; }
 
 	protected:
 		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
@@ -187,6 +188,7 @@ private:
 		const std::string m_targetName;
 		RE::TESProduceForm* m_produceForm;
 		RE::TESForm* m_contents;
+		ObjectType m_contentsType;
 	};
 
 	template <typename T>
@@ -213,8 +215,10 @@ private:
 			const RE::TESLevItem* leveledItem(ingredient->As<RE::TESLevItem>());
 			if (leveledItem)
 			{
-				DBG_VMESSAGE("{}/0x{:08x} ingredient is Leveled Item", targetName, target->GetFormID());
-				ProduceFormCategorizer(target, leveledItem, targetName).CategorizeContents();
+				ProduceFormCategorizer categorizer(target, leveledItem, targetName);
+				categorizer.CategorizeContents();
+				REL_VMESSAGE("{}/0x{:08x} has ingredient Leveled Item, type {}", targetName, target->GetFormID(),
+					GetObjectTypeName(categorizer.ContentsType()));
 			}
 			else
 			{
@@ -222,13 +226,15 @@ private:
 				storedType = GetObjectTypeForForm(ingredient);
 				if (storedType != ObjectType::unknown)
 				{
-					DBG_VMESSAGE("Target {}/0x{:08x} has ingredient {}/0x{:08x} stored as type {}", targetName, target->GetFormID(),
+					REL_VMESSAGE("{}/0x{:08x} has ingredient {}/0x{:08x} stored as type {}", targetName, target->GetFormID(),
 						ingredient->GetName(), ingredient->GetFormID(), GetObjectTypeName(storedType).c_str());
 					ProducerLootables::Instance().SetLootableForProducer(target, const_cast<RE::TESBoundObject*>(ingredient));
 				}
 				else
 				{
 					storedType = DefaultIngredientObjectType(target);
+					REL_VMESSAGE("{}/0x{:08x} has ingredient {}/0x{:08x} with default type {}", targetName, target->GetFormID(),
+						ingredient->GetName(), ingredient->GetFormID(), GetObjectTypeName(storedType).c_str());
 				}
 				if (storedType != ObjectType::unknown)
 				{ 
@@ -237,7 +243,7 @@ private:
 				}
 				else
 				{
-					DBG_VMESSAGE("Target {}/0x{:08x} not stored", targetName, target->GetFormID());
+					REL_WARNING("Target {}/0x{:08x} not stored", targetName, target->GetFormID());
 				}
 			}
 		}
