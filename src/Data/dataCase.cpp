@@ -596,6 +596,17 @@ void DataCase::IncludeBSBruma()
 	}
 }
 
+void DataCase::IncludeToolsOfKagrenac()
+{
+	static std::string espName("Tools of Kagrenac.esp");
+	static RE::FormID ayleidGoldFormID(0x6028dc);
+	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
+	if (ayleidGoldForm)
+	{
+		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+	}
+}
+
 void DataCase::RecordOffLimitsLocations()
 {
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
@@ -1087,6 +1098,9 @@ void DataCase::HandleExceptions()
 	IncludeCorpseCoinage();
 	// whitelist Hearthfire Extended Apiary
 	IncludeHearthfireExtendedApiary();
+	// categorize custom Gold forms
+	IncludeBSBruma();
+	IncludeToolsOfKagrenac();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
@@ -1395,25 +1409,6 @@ void DataCase::CategorizeStatics()
 		if (clayOrStoneForm)
 		{
 			AddFirehose(clayOrStoneForm);
-		}
-	}
-
-	{
-		// record BSBruma septims special case
-		static const std::string bsAssetsName("BSAssets.esm");
-		const RE::FormID ayleidMalaId(0x6028dc);
-		RE::TESForm* ayleidMalaForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidMalaId, bsAssetsName));
-		if (ayleidMalaForm)
-		{
-			SetObjectTypeForForm(ayleidMalaForm, ObjectType::septims);
-		}
-	}
-	{
-		static const std::string tokName("Tools of Kagrenac.esp");
-		const RE::FormID ayleidMalaId(0x2eef49);
-		RE::TESForm* ayleidMalaForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidMalaId, tokName));
-		{
-			SetObjectTypeForForm(ayleidMalaForm, ObjectType::septims);
 		}
 	}
 }

@@ -493,6 +493,7 @@ private:
 	void IncludeHearthfireExtendedApiary();
 	void IncludePileOfGold();
 	void IncludeBSBruma();
+	void IncludeToolsOfKagrenac();
 
 	DataCase(void);
 };
