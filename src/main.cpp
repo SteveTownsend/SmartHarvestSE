@@ -35,7 +35,7 @@ http://www.fsf.org/licensing/licenses
 
 std::shared_ptr<spdlog::logger> SHSELogger;
 const std::string LoggerName = "SHSE_Logger";
-
+const std::string LogLevelVariable = "SmartHarvestSELogLevel";
 void SaveCallback(SKSE::SerializationInterface* a_intfc)
 {
 	DBG_MESSAGE("Serialization Save hook called");
@@ -116,6 +116,34 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 #if _DEBUG
 	_CrtSetReportHook(MyCrtReportHook);
 #endif
+	char* levelValue;
+	size_t requiredSize;
+	// default log level is ERROR
+	spdlog::level::level_enum logLevel(spdlog::level::err);
+	if (getenv_s(&requiredSize, NULL, 0, LogLevelVariable.c_str()) == 0 && requiredSize > 0)
+	{
+		levelValue = (char*)malloc((requiredSize + 1) * sizeof(char));
+		if (levelValue)
+		{
+			levelValue[requiredSize] = 0;	// ensure null-terminated
+			// Get the value of the LIB environment variable.
+			if (getenv_s(&requiredSize, levelValue, requiredSize, LogLevelVariable.c_str()) == 0)
+			{
+				try
+				{
+					int envLevel = std::stoi(levelValue);
+					if (envLevel >= SPDLOG_LEVEL_TRACE && envLevel <= SPDLOG_LEVEL_OFF)
+					{
+						logLevel = (spdlog::level::level_enum)envLevel;
+					}
+				}
+				catch (const std::exception&)
+				{
+				}
+			}
+		}
+	}
+
 	std::filesystem::path logPath(SKSE::log::log_directory());
 	try
 	{
@@ -130,8 +158,8 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	{
 		return false;
 	}	
-	spdlog::set_level(spdlog::level::trace); // Set global log level
-	spdlog::flush_on(spdlog::level::trace);	// always flush
+	spdlog::set_level(logLevel); // Set global log level
+	spdlog::flush_on(logLevel);	// always flush
 #if 0
 #if _DEBUG
 	SKSE::add_papyrus_sink();	// TODO what goes in here now
