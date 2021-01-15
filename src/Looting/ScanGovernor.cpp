@@ -699,34 +699,43 @@ bool ScanGovernor::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilen
 	RecursiveLockGuard guard(m_searchLock);
 	if (!refr)
 		return false;
-	if ((m_HarvestLock.insert(refr)).second)
+	constexpr std::chrono::milliseconds timeout(static_cast<long long>(PendingHarvestTimeoutSeconds * 1000.0));
+	auto expiry(std::chrono::high_resolution_clock::now() + timeout);
+	if (m_harvestRequested.insert( { { refr->GetFormID(), refr->GetBaseObject()->GetFormID() }, expiry } ).second)
 	{
 		if (!isSilent)
 			++m_pendingNotifies;
 		return true;
 	}
-	return false;
+	else
+	{
+		REL_WARNING("LockHarvest failed for REFR 0x{:08x} to 0x{:08x}/{}", refr->GetFormID(),
+			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
+		return false;
+	}
 }
 
-bool ScanGovernor::UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
+bool ScanGovernor::UnlockHarvest(const RE::FormID refrID, const RE::FormID baseID, const std::string& baseName, bool isSilent)
 {
 	RecursiveLockGuard guard(m_searchLock);
-	if (!refr)
-		return false;
-	if (m_HarvestLock.erase(refr) > 0)
+	if (m_harvestRequested.erase({ refrID, baseID }) > 0)
 	{
 		if (!isSilent)
 			--m_pendingNotifies;
 		return true;
 	}
+	else
+	{
+		REL_WARNING("UnlockHarvest failed for REFR 0x{:08x} to 0x{:08x}/{}", refrID, baseID, baseName);
+	}
 	return false;
 }
 
-void ScanGovernor::Clear()
+void ScanGovernor::Clear(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_searchLock);
-	// unblock all blocked auto-harvest objects
-	ClearPendingHarvestNotifications();
+	// unblock expired blocked auto-harvest objects
+	ClearPendingHarvestNotifications(gameReload);
 	// Dynamic containers that we looted reset on cell change
 	ResetLootedDynamicREFRs();
 	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
@@ -740,7 +749,18 @@ void ScanGovernor::Clear()
 bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_searchLock);
-	return m_HarvestLock.contains(refr);
+	auto matched(m_harvestRequested.find({ refr->GetFormID(), refr->GetBaseObject()->GetFormID() }));
+	if (matched == m_harvestRequested.cend())
+	{
+		return false;
+	}
+	// ensure the matched harvest operation is not expired, if so remove and allow
+	if (matched->second < std::chrono::high_resolution_clock::now())
+	{
+		m_harvestRequested.erase(matched);
+		return false;
+	}
+	return true;
 }
 
 size_t ScanGovernor::PendingHarvestNotifications() const
@@ -749,16 +769,41 @@ size_t ScanGovernor::PendingHarvestNotifications() const
 	return m_pendingNotifies;
 }
 
-void ScanGovernor::ClearPendingHarvestNotifications()
+void ScanGovernor::ClearPendingHarvestNotifications(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_searchLock);
-	return m_HarvestLock.clear();
+	if (gameReload)
+	{
+		DBG_MESSAGE("Cleared {} Pending-Harvest events", m_harvestRequested.size());
+		m_pendingNotifies = 0;
+		m_harvestRequested.clear();
+	}
+	else
+	{
+		auto currentTime(std::chrono::high_resolution_clock::now());
+		auto next(m_harvestRequested.begin());
+		size_t discarded(0);
+		while (next != m_harvestRequested.end())
+		{
+			if (next->second < currentTime)
+			{
+				next = m_harvestRequested.erase(next);
+				--m_pendingNotifies;
+				++discarded;
+			}
+			else
+			{
+				++next;
+			}
+		}
+		DBG_MESSAGE("Expired {} Pending-Harvest events", discarded);
+	}
 }
 
 void ScanGovernor::ClearGlowExpiration()
 {
 	RecursiveLockGuard guard(m_searchLock);
-	return m_glowExpiration.clear();
+	m_glowExpiration.clear();
 }
 
 // SPERG doubles mined item amounts based on KYWD values. Store those items beforehand and recheck afterwards, adjusting counts for Player.

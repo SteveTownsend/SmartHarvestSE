@@ -6,7 +6,7 @@ string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
-bool Function UnlockHarvest(ObjectReference refr, bool isSilent) global native
+bool Function UnlockHarvest(int refrID, int baseID, string baseName, bool isSilent) global native
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native

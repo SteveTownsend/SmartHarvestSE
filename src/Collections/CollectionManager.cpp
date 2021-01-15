@@ -408,7 +408,7 @@ void CollectionManager::PrintMembership(void) const
 			}
 			else
 			{
-				REL_ERROR("[No Members]");
+				REL_MESSAGE("[No Members]");
 			}
 		}
 	}

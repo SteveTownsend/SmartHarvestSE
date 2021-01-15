@@ -52,13 +52,15 @@ public:
 	static constexpr size_t MaxREFRSPerPass = 75;
 #endif
 
-	void Clear();
+	void Clear(const bool gameReload);
 
 	static constexpr int HarvestSpamLimit = 10;
 	size_t PendingHarvestNotifications() const;
+	// time allowed for PendingHarvest event to be unlocked by script
+	static constexpr int PendingHarvestTimeoutSeconds = 10;
 	bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 	bool IsLockedForHarvest(const RE::TESObjectREFR* refr) const;
-	bool UnlockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
+	bool UnlockHarvest(const RE::FormID refrID, const RE::FormID baseID, const std::string& baseName, const bool isSilent);
 
 	void ToggleCalibration(const bool glowDemo);
 	void InvokeLootSense(void);
@@ -84,7 +86,7 @@ public:
 	void ResetLootedDynamicREFRs();
 	void ResetLootedContainers();
 	void ForgetLockedContainers();
-	void ClearPendingHarvestNotifications();
+	void ClearPendingHarvestNotifications(const bool gameReload);
 	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void ClearGlowExpiration();
 
@@ -105,7 +107,9 @@ private:
 
 	static std::unique_ptr<ScanGovernor> m_instance;
 
-	std::unordered_set<const RE::TESObjectREFR*> m_HarvestLock;
+	// record time limit for each harvest operation, indexed on REFR and Base FormID
+	mutable std::unordered_map<std::pair<RE::FormID, RE::FormID>,
+		std::chrono::time_point<std::chrono::high_resolution_clock>, pair_hash> m_harvestRequested;
 	size_t m_pendingNotifies;
 
 	bool m_searchAllowed;

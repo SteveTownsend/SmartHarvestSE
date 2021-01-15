@@ -373,9 +373,10 @@ namespace papyrus
 		return shse::LocationTracker::Instance().CurrentPlayerPlace();
 	}
 
-	bool UnlockHarvest(RE::StaticFunctionTag*, RE::TESObjectREFR* refr, const bool isSilent)
+	bool UnlockHarvest(RE::StaticFunctionTag*, const int refrID, const int baseID,
+		const RE::BSFixedString baseName, const bool isSilent)
 	{
-		return shse::ScanGovernor::Instance().UnlockHarvest(refr, isSilent);
+		return shse::ScanGovernor::Instance().UnlockHarvest(RE::FormID(refrID), RE::FormID(baseID), baseName.c_str(), isSilent);
 	}
 
 	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
