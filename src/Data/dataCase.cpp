@@ -596,6 +596,17 @@ void DataCase::IncludeBSBruma()
 	}
 }
 
+void DataCase::IncludeToolsOfKagrenac()
+{
+	static std::string espName("Tools of Kagrenac.esp");
+	static RE::FormID ayleidGoldFormID(0x6028dc);
+	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
+	if (ayleidGoldForm)
+	{
+		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+	}
+}
+
 void DataCase::RecordOffLimitsLocations()
 {
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
@@ -1087,6 +1098,9 @@ void DataCase::HandleExceptions()
 	IncludeCorpseCoinage();
 	// whitelist Hearthfire Extended Apiary
 	IncludeHearthfireExtendedApiary();
+	// categorize custom Gold forms
+	IncludeBSBruma();
+	IncludeToolsOfKagrenac();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
@@ -1454,7 +1468,8 @@ void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* levele
 
 DataCase::ProduceFormCategorizer::ProduceFormCategorizer(
 	RE::TESProduceForm* produceForm, const RE::TESLevItem* rootItem, const std::string& targetName) :
-	LeveledItemCategorizer(rootItem), m_targetName(targetName), m_produceForm(produceForm), m_contents(nullptr)
+	LeveledItemCategorizer(rootItem), m_targetName(targetName), m_produceForm(produceForm),
+	m_contents(nullptr), m_contentsType(ObjectType::unknown)
 {
 }
 
@@ -1472,6 +1487,7 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 		{
 			DataCase::GetInstance()->SetObjectTypeForForm(itemForm, itemType);
 			m_contents = itemForm;
+			m_contentsType = itemType;
 		}
 	}
 	else if (m_contents == itemForm)
@@ -1489,6 +1505,7 @@ void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm,
 			REL_WARNING("Target {}/0x{:08x} contents type {} overwriting type {} for form {}/0x{:08x}", m_targetName, m_rootItem->GetFormID(),
 				GetObjectTypeName(itemType), GetObjectTypeName(existingType), m_contents->GetName(), m_contents->GetFormID());
 			DataCase::GetInstance()->ForceObjectTypeForForm(m_contents, itemType);
+			m_contentsType = itemType;
 		}
 		else
 		{

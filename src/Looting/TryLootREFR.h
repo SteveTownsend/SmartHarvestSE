@@ -40,9 +40,9 @@ private:
 
 	Lootability ItemLootingLegality(const bool isCollectible, INIFile::SecondaryType targetType);
 	Lootability LootingLegality(const INIFile::SecondaryType targetType);
-	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets,
+	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets,
 		const int animationType, const bool directTransfer);
-	void CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, size_t>>& targets);
+	void CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets);
 	bool HarvestForbiddenForForm(const RE::TESForm* form) const;
 
 	// special object glow - not too long, in case we loot or move away. Used for Loot Sense too.
