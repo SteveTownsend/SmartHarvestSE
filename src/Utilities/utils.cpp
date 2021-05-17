@@ -42,7 +42,8 @@ namespace FileUtils
 		if (s_runtimeDirectory.empty())
 		{
 			char	runtimePathBuf[MAX_PATH];
-			uint32_t	runtimePathLength = GetModuleFileName(GetModuleHandle(NULL), runtimePathBuf, sizeof(runtimePathBuf));
+			uint32_t	runtimePathLength = SKSE::WinAPI::CLSSEGetModuleFileName(
+				SKSE::WinAPI::CLSSEGetModuleHandle((const char *)(NULL)), runtimePathBuf, sizeof(runtimePathBuf));
 			if (runtimePathLength && (runtimePathLength < sizeof(runtimePathBuf)))
 			{
 				std::string	runtimePath(runtimePathBuf, runtimePathLength);

@@ -344,8 +344,7 @@ RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraData
 	RE::EnchantmentItem* enchantment = nullptr;
 	for (auto extraList = extraLists->begin(); extraList != extraLists->end(); ++extraList)
 	{
-		ExtraDataListHelper exListHelper(*extraList);
-		enchantment = exListHelper.GetEnchantment();
+		enchantment = ExtraDataList::GetEnchantment(*extraList);
 		if (enchantment)
 			return enchantment;
 	}

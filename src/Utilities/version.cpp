@@ -50,14 +50,14 @@ void VersionInfo::GetPluginVersionInfo()
 	m_majorVersion = 0;
 
 	std::string moduleName = FileUtils::GetPluginFileName();
-	DWORD zero = 0;		// handle bizarro Win API
+	std::uint32_t zero = 0;		// handle bizarro Win API
 	DWORD verInfoLen = 0;
 	BYTE* verInfo = NULL;
 	VS_FIXEDFILEINFO* fileInfo = NULL;
 	UINT len = 0;
 
 	/* Get the size of FileVersionInfo structure */
-	verInfoLen = GetFileVersionInfoSize(moduleName.c_str(), &zero);
+	verInfoLen = SKSE::WinAPI::CLSSEGetFileVersionInfoSize(moduleName.c_str(), &zero);
 	if (verInfoLen == 0) {
 		REL_WARNING("GetFileVersionInfoSize() Failed");
 		return;
@@ -65,13 +65,13 @@ void VersionInfo::GetPluginVersionInfo()
 
 	/* Get FileVersionInfo structure */
 	verInfo = new BYTE[verInfoLen];
-	if (!GetFileVersionInfo(moduleName.c_str(), 0, verInfoLen, verInfo)) {
+	if (!SKSE::WinAPI::CLSSEGetFileVersionInfo(moduleName.c_str(), 0, verInfoLen, verInfo)) {
 		REL_WARNING("GetFileVersionInfo() Failed");
 		return;
 	}
 
 	/* Query for File version details. */
-	if (!VerQueryValue(verInfo, "\\", (LPVOID*)&fileInfo, &len)) {
+	if (!SKSE::WinAPI::CLSSEVerQueryValue(verInfo, "\\", (LPVOID*)&fileInfo, &len)) {
 		REL_WARNING("VerQueryValue() Failed");
 		return;
 	}

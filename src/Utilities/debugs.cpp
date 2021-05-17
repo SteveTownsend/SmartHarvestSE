@@ -70,7 +70,9 @@ void DumpExtraData(const RE::ExtraDataList* extraList)
 		DBG_MESSAGE("extraData:[0x%03x]", extraData.GetType());
 
 		RE::NiPointer<RE::TESObjectREFR> targetRef;
+		/* TODO fix this up
 		RE::RTTI::DumpTypeName(const_cast<RE::BSExtraData*>(&extraData));
+		*/
 		if (extraData.GetType() == RE::ExtraDataType::kCount)
 			DBG_MESSAGE("kCount ({})", ((RE::ExtraCount&)extraData).count);
 		else if (extraData.GetType() == RE::ExtraDataType::kCharge)
@@ -96,16 +98,16 @@ void DumpExtraData(const RE::ExtraDataList* extraList)
 		}
 		else if (extraData.GetType() == RE::ExtraDataType::kActivateRef)
 		{
-			RE::ExtraActivateRef* exActivateRef = static_cast<RE::ExtraActivateRef*>(const_cast<RE::BSExtraData*>(&extraData));
 			/* TODO fix this up
+			RE::ExtraActivateRef* exActivateRef = static_cast<RE::ExtraActivateRef*>(const_cast<RE::BSExtraData*>(&extraData));
 			DumpClass(exActivateRef, sizeof(RE::ExtraActivateRef) / 8);
 			*/
 			DBG_MESSAGE("kActivateRef");
 		}
 		else if (extraData.GetType() == RE::ExtraDataType::kActivateRefChildren)
 		{
-			RE::ExtraActivateRefChildren* exActivateRefChain = static_cast<RE::ExtraActivateRefChildren*>(const_cast<RE::BSExtraData*>(&extraData));
 			/* TODO fix this up
+			RE::ExtraActivateRefChildren* exActivateRefChain = static_cast<RE::ExtraActivateRefChildren*>(const_cast<RE::BSExtraData*>(&extraData));
 			DumpClass(exActivateRefChain, sizeof(RE::ExtraActivateRefChildren) / 8);
 			DBG_MESSAGE("{:02x} ({:08x})", extraData.GetType(), ((RE::ExtraActivateRefChildren&)extraData).data->unk3->formID);
 			*/

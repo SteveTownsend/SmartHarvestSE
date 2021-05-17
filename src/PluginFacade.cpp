@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 #include "PluginFacade.h"
 
 #include "Utilities/versiondb.h"
+#include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"

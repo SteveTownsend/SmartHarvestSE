@@ -21,16 +21,10 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
-
-class ExtraDataListHelper
+namespace ExtraDataList
 {
-public:
-	ExtraDataListHelper(const RE::ExtraDataList* extraData) : m_extraData(extraData) {}
-	RE::EnchantmentItem* GetEnchantment(void) const;
-	bool IsItemQuestObject(const RE::TESBoundObject* item) const;
-	bool IsREFRQuestObject(const RE::TESObjectREFR* refr) const;
-
-	const RE::ExtraDataList* m_extraData;
-};
-
+	RE::EnchantmentItem* GetEnchantment(const RE::ExtraDataList* extraData);
+	bool IsItemQuestObject(const RE::TESBoundObject* item, const RE::ExtraDataList* extraData);
+	bool IsREFRQuestObject(const RE::TESObjectREFR* refr, const RE::ExtraDataList* extraData);
+}
 }

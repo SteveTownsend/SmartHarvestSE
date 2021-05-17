@@ -65,11 +65,7 @@ bool LootableREFR::IsQuestItem() const
 	if (!targetRef)
 		targetRef.reset(const_cast<RE::TESObjectREFR*>(m_ref));
 
-	ExtraDataListHelper extraListEx(&targetRef->extraList);
-	if (!extraListEx.m_extraData)
-		return false;
-
-	return extraListEx.IsREFRQuestObject(m_ref);
+	return ExtraDataList::IsREFRQuestObject(targetRef.get(), &targetRef->extraList);
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const

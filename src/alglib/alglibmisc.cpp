@@ -1,5 +1,5 @@
 /*************************************************************************
-ALGLIB 3.16.0 (source code generated 2019-12-19)
+ALGLIB 3.17.0 (source code generated 2020-12-27)
 Copyright (c) Sergey Bochkanov (ALGLIB project).
 
 >>> SOURCE LICENSE >>>
@@ -20,7 +20,8 @@ http://www.fsf.org/licensing/licenses
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-#include "alglib/alglibmisc.h"
+#include "alglib/ap.h"
+#include "alglibmisc.h"
 
 // disable some irrelevant warnings
 #if (AE_COMPILER==AE_MSVC) && !defined(AE_ALL_WARNINGS)
@@ -2738,6 +2739,70 @@ double hqrndnormal(const hqrndstate &state, const xparams _xparams)
     double result = alglib_impl::hqrndnormal(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<double*>(&result));
+}
+
+/*************************************************************************
+Random number generator: vector with random entries (normal distribution)
+
+This function generates N random numbers from normal distribution.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalv(const hqrndstate &state, const ae_int_t n, real_1d_array &x, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndnormalv(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), n, const_cast<alglib_impl::ae_vector*>(x.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+Random number generator: matrix with random entries (normal distribution)
+
+This function generates MxN random matrix.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalm(const hqrndstate &state, const ae_int_t m, const ae_int_t n, real_2d_array &x, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndnormalm(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), m, n, const_cast<alglib_impl::ae_matrix*>(x.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
 }
 
 /*************************************************************************
@@ -7282,6 +7347,87 @@ double hqrndnormal(hqrndstate* state, ae_state *_state)
     hqrndnormal2(state, &v1, &v2, _state);
     result = v1;
     return result;
+}
+
+
+/*************************************************************************
+Random number generator: vector with random entries (normal distribution)
+
+This function generates N random numbers from normal distribution.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalv(hqrndstate* state,
+     ae_int_t n,
+     /* Real    */ ae_vector* x,
+     ae_state *_state)
+{
+    ae_int_t i;
+    ae_int_t n2;
+    double v1;
+    double v2;
+
+    ae_vector_clear(x);
+
+    n2 = n/2;
+    rallocv(n, x, _state);
+    for(i=0; i<=n2-1; i++)
+    {
+        hqrndnormal2(state, &v1, &v2, _state);
+        x->ptr.p_double[2*i+0] = v1;
+        x->ptr.p_double[2*i+1] = v2;
+    }
+    if( n%2!=0 )
+    {
+        hqrndnormal2(state, &v1, &v2, _state);
+        x->ptr.p_double[n-1] = v1;
+    }
+}
+
+
+/*************************************************************************
+Random number generator: matrix with random entries (normal distribution)
+
+This function generates MxN random matrix.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalm(hqrndstate* state,
+     ae_int_t m,
+     ae_int_t n,
+     /* Real    */ ae_matrix* x,
+     ae_state *_state)
+{
+    ae_int_t i;
+    ae_int_t j;
+    ae_int_t n2;
+    double v1;
+    double v2;
+
+    ae_matrix_clear(x);
+
+    n2 = n/2;
+    ae_matrix_set_length(x, m, n, _state);
+    for(i=0; i<=m-1; i++)
+    {
+        for(j=0; j<=n2-1; j++)
+        {
+            hqrndnormal2(state, &v1, &v2, _state);
+            x->ptr.pp_double[i][2*j+0] = v1;
+            x->ptr.pp_double[i][2*j+1] = v2;
+        }
+        if( n%2!=0 )
+        {
+            hqrndnormal2(state, &v1, &v2, _state);
+            x->ptr.pp_double[i][n-1] = v1;
+        }
+    }
 }
 
 

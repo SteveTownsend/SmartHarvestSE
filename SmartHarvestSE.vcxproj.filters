@@ -7,9 +7,6 @@
     <ClCompile Include="src\FormHelpers\ArmorHelper.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="src\FormHelpers\EnchantmentItemHelper.cpp">
-      <Filter>src\FormHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
@@ -181,9 +178,6 @@
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\ArmorHelper.h">
-      <Filter>src\FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h">
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h">

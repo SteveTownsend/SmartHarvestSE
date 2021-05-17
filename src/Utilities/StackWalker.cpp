@@ -87,7 +87,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <tchar.h>
-#include <windows.h>
+//#include <windows.h>
 #pragma comment(lib, "version.lib") // for "VerQueryValue"
 #pragma warning(disable : 4826)
 
@@ -748,7 +748,7 @@ private:
                         {
                             UINT  len;
                             TCHAR szSubBlock[] = _T("\\");
-                            if (VerQueryValue(vData, szSubBlock, (LPVOID*)&fInfo, &len) == 0)
+                            if (SKSE::WinAPI::CLSSEVerQueryValue(vData, szSubBlock, (LPVOID*)&fInfo, &len) == 0)
                                 fInfo = NULL;
                             else
                             {
@@ -949,7 +949,7 @@ BOOL StackWalker::LoadModules()
         }
 
         // Now add the path for the main-module:
-        if (GetModuleFileNameA(NULL, szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::CLSSEGetModuleFileName(NULL, szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             for (char* p = (szTemp + strlen(szTemp) - 1); p >= szTemp; --p)

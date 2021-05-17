@@ -120,14 +120,13 @@ size_t ContainerLister::AnalyzeLootableItems()
 			{
 				if (*extraList)
 				{
-					ExtraDataListHelper exListHelper(*extraList);
-					if (exListHelper.IsItemQuestObject(item))
+					if (ExtraDataList::IsItemQuestObject(item, *extraList))
 					{
 						DBG_DMESSAGE("Quest Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_questItems.insert(item);
 					}
 					TESFormHelper itemEx(item, m_targetType);
-					if (exListHelper.GetEnchantment() != nullptr)
+					if (ExtraDataList::GetEnchantment(*extraList) != nullptr)
 					{
 						DBG_DMESSAGE("Enchanted Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_enchantedItems.insert(item);
