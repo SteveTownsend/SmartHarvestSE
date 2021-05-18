@@ -69,6 +69,7 @@ int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
 string[] s_specialObjectHandlingArray
+string[] s_enchantedObjectHandlingArray
 string[] s_questObjectHandlingArray
 string[] s_behaviorToggleArray
 int playContainerAnimation
@@ -660,6 +661,15 @@ Function MigrateFromFormLists()
     eventScript.CreateArraysFromFormLists()
 EndFunction
 
+Function InitEnchantedObjects()
+    s_enchantedObjectHandlingArray = New String[5]
+    s_enchantedObjectHandlingArray[0] = "$SHSE_DONT_PICK_UP"
+    s_enchantedObjectHandlingArray[1] = "$SHSE_PICK_UP"
+    s_enchantedObjectHandlingArray[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
+    s_enchantedObjectHandlingArray[3] = "$SHSE_PICK_UP_UNKNOWN"
+    s_enchantedObjectHandlingArray[4] = "$SHSE_CONTAINER_GLOW_PERSISTENT_UNKNOWN"
+EndFunction
+
 ; called when new game started or mod installed mid-playthrough
 Event OnConfigInit()
     ;DebugTrace("** OnConfigInit start **")
@@ -694,6 +704,8 @@ Event OnConfigInit()
     s_specialObjectHandlingArray[1] = "$SHSE_PICK_UP"
     s_specialObjectHandlingArray[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
 
+    InitEnchantedObjects()
+
     s_behaviorArray = New String[5]
     s_behaviorArray[0] = "$SHSE_DONT_PICK_UP"
     s_behaviorArray[1] = "$SHSE_PICK_UP_W/O_MSG"
@@ -716,7 +728,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 46
+    return 47
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -827,6 +839,9 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 46 && CurrentVersion < 46
         MigrateFromFormLists()
+    endIf
+    if a_version >= 47 && CurrentVersion < 47
+        InitEnchantedObjects()
     endIf
 endEvent
 
@@ -1106,7 +1121,7 @@ event OnPageReset(string currentPage)
         AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_specialObjectHandlingArray[lockedChestLoot])
         AddTextOptionST("bossChestLoot", "$SHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
         AddTextOptionST("playerBelongingsLoot", "$SHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
-        AddTextOptionST("enchantedItemLootState", "$SHSE_ENCHANTED_ITEM_LOOT", s_specialObjectHandlingArray[enchantedItemLoot])
+        AddTextOptionST("enchantedItemLootState", "$SHSE_ENCHANTED_ITEM_LOOT", s_enchantedObjectHandlingArray[enchantedItemLoot])
         AddTextOptionST("valuableItemLoot", "$SHSE_VALUABLE_ITEM_LOOT", s_specialObjectHandlingArray[valuableItemLoot])
         AddSliderOptionST("valuableItemThreshold", "$SHSE_VALUABLE_ITEM_THRESHOLD", valuableItemThreshold as float, "$SHSE_MONEY")
         AddToggleOptionST("manualLootTargetNotify", "$SHSE_MANUAL_LOOT_TARGET_NOTIFY", manualLootTargetNotify)
@@ -1935,14 +1950,14 @@ endState
 
 state enchantedItemLootState
     event OnSelectST()
-        int size = s_specialObjectHandlingArray.length
+        int size = s_enchantedObjectHandlingArray.length
         enchantedItemLoot = CycleInt(enchantedItemLoot, size)
-        SetTextOptionValueST(s_specialObjectHandlingArray[enchantedItemLoot])
+        SetTextOptionValueST(s_enchantedObjectHandlingArray[enchantedItemLoot])
     endEvent
 
     event OnDefaultST()
         enchantedItemLoot = 1
-        SetTextOptionValueST(s_specialObjectHandlingArray[enchantedItemLoot])
+        SetTextOptionValueST(s_enchantedObjectHandlingArray[enchantedItemLoot])
     endEvent
 
     event OnHighlightST()

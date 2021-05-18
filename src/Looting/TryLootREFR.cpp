@@ -173,27 +173,35 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-		if (m_candidate->IsEnchanted())
+		EnchantedObjectHandling enchantedLoot =
+			EnchantedObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
+		ObjectType newType = TESFormHelper::EnchantedREFREffectiveType(m_candidate, objType, enchantedLoot);
+		if (TypeIsEnchanted(newType))
 		{
-			SpecialObjectHandling enchantedLoot =
-				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
-			DBG_VMESSAGE("Enchanted Item {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("Loose Enchanted Item {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 			if (m_glowOnly)
 			{
-				enchantedLoot = SpecialObjectHandling::GlowTarget;
+				enchantedLoot = EnchantedObjectHandling::GlowTarget;
 			}
-			if (enchantedLoot == SpecialObjectHandling::GlowTarget)
+			if (enchantedLoot == EnchantedObjectHandling::GlowTarget || enchantedLoot == EnchantedObjectHandling::GlowTargetUnknown)
 			{
 				DBG_VMESSAGE("glow enchanted object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
 
-			if (!IsSpecialObjectLootable(enchantedLoot))
+			if (!IsEnchantedObjectLootable(enchantedLoot))
 			{
 				skipLooting = true;
 				// in this case, Collectibility can override the decision
 				result = Lootability::CannotLootEnchantedObject;
 			}
+		}
+		// Enchanted items may be treated as unenchanted if the enchantment is known
+		if (newType != objType)
+		{
+			objType = newType;
+			m_typeName = GetObjectTypeName(newType);
+			refrEx.SetEffectiveObjectType(newType);
 		}
 
 		if (refrEx.IsValuable())
@@ -327,7 +335,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 			else if (LootingDependsOnValueWeight(lootingType, objType))
 			{
-				TESFormHelper helper(m_candidate->GetBaseObject(), m_targetType);
+				TESFormHelper helper(m_candidate->GetBaseObject(), objType, m_targetType);
 				if (helper.ValueWeightTooLowToLoot())
 				{
 					if (!dryRun)
@@ -421,8 +429,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
 				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
+		EnchantedObjectHandling enchantedLoot =
+			EnchantedObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
 		ContainerLister lister(m_targetType, m_candidate);
-		size_t lootableItems(lister.AnalyzeLootableItems());
+		size_t lootableItems(lister.AnalyzeLootableItems(enchantedLoot));
 		if (lootableItems == 0)
 		{
 			if (!dryRun)
@@ -520,18 +530,16 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (lister.HasEnchantedItem())
 			{
-				SpecialObjectHandling enchantedLoot =
-					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
 				if (m_glowOnly)
 				{
-					enchantedLoot = SpecialObjectHandling::GlowTarget;
+					enchantedLoot = EnchantedObjectHandling::GlowTarget;
 				}
-				if (enchantedLoot == SpecialObjectHandling::GlowTarget)
+				if (enchantedLoot == EnchantedObjectHandling::GlowTarget || enchantedLoot == EnchantedObjectHandling::GlowTargetUnknown)
 				{
 					DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::EnchantedItem);
 				}
-				if (!IsSpecialObjectLootable(enchantedLoot))
+				if (!IsEnchantedObjectLootable(enchantedLoot))
 				{
 					// this is not a blocker for looting of non-special items
 					lister.ExcludeEnchantedItems();
@@ -717,7 +725,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					continue;
 				}
 				else if (LootingDependsOnValueWeight(lootingType, objType) &&
-					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot())
+					TESFormHelper(target, objType, m_targetType).ValueWeightTooLowToLoot())
 				{
 					DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
 					data->BlockForm(target, Lootability::ValueWeightPreventsLooting);

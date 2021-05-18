@@ -30,10 +30,11 @@ class LootableREFR : public IHasValueWeight
 public:
 	explicit LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope);
 
-	int16_t GetItemCount();
+	int16_t GetItemCount() const;
 	bool IsQuestItem() const;
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	bool IsValuable(void) const;
+	void SetEffectiveObjectType(const ObjectType effectiveType);
 
 	RE::TESForm* GetLootable() const;
 	void SetLootable(RE::TESForm* lootable);

@@ -30,8 +30,10 @@ namespace shse
 {
 
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
-	m_refr(refr),	m_targetType(targetType), m_collectibleAction(CollectibleHandling::Leave)
+	m_refr(refr), m_targetType(targetType), m_collectibleAction(CollectibleHandling::Leave)
 {
+	m_enchantedLoot = EnchantedObjectHandlingFromIniSetting(
+		INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
 }
 
 void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate)
@@ -52,7 +54,7 @@ void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*
 		if (predicate(itemObject))
 		{
 			DBG_DMESSAGE("Matched filter predicate for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
-			m_lootableItems.emplace_back(std::move(entry), count);
+			m_lootableItems.emplace_back(std::move(entry), count, m_enchantedLoot);
 		}
 	}
 }
@@ -82,7 +84,7 @@ size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject
 	return items;
 }
 
-size_t ContainerLister::AnalyzeLootableItems()
+size_t ContainerLister::AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling)
 {
 	if (!m_refr)
 		return 0;
@@ -126,15 +128,22 @@ size_t ContainerLister::AnalyzeLootableItems()
 						m_questItems.insert(item);
 					}
 					TESFormHelper itemEx(item, m_targetType);
-					if (ExtraDataList::GetEnchantment(*extraList) != nullptr)
+					RE::EnchantmentItem* enchantItem(nullptr);
+					if ((enchantItem = ExtraDataList::GetEnchantment(*extraList)) != nullptr)
 					{
-						DBG_DMESSAGE("Enchanted Item {}/0x{:08x}", item->GetName(), item->GetFormID());
-						m_enchantedItems.insert(item);
+						if (TESFormHelper::ConfirmEnchanted(enchantItem, enchantedObjectHandling))
+						{
+							DBG_DMESSAGE("Enchanted Item {}/0x{:08x}", item->GetName(), item->GetFormID());
+							m_enchantedItems.insert(item);
+						}
 					}
-					else if (itemEx.GetEnchantment() != nullptr)
+					else if ((enchantItem = itemEx.GetEnchantment()) != nullptr)
 					{
-						DBG_DMESSAGE("Enchanted Item={}/0x{:08x}", item->GetName(), item->GetFormID());
-						m_enchantedItems.insert(item);
+						if (TESFormHelper::ConfirmEnchanted(enchantItem, enchantedObjectHandling))
+						{
+							DBG_DMESSAGE("Enchanted Item={}/0x{:08x}", item->GetName(), item->GetFormID());
+							m_enchantedItems.insert(item);
+						}
 					}
 					if (itemEx.IsValuable())
 					{

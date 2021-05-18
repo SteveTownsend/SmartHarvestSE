@@ -78,3 +78,21 @@ inline const char* PrintResourceType(ResourceType resourceType)
 	static std::vector<const char*> resourceTypeNames = { "Ore", "Geode", "Volcanic", "VolcanicDigSite" };
 	return resourceTypeNames.at(static_cast<size_t>(resourceType));
 }
+
+inline bool TypeIsEnchanted(const ObjectType objType)
+{
+	return objType == ObjectType::enchantedArmor ||
+		objType == ObjectType::enchantedJewelry ||
+		objType == ObjectType::enchantedWeapon;
+}
+
+inline ObjectType ConvertToUnenchanted(const ObjectType objType)
+{
+	if (objType == ObjectType::enchantedArmor)
+		return ObjectType::armor;
+	if (objType == ObjectType::enchantedJewelry)
+		return ObjectType::jewelry;
+	if (objType == ObjectType::enchantedWeapon)
+		return ObjectType::weapon;
+	return objType;
+}

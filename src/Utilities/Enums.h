@@ -112,6 +112,15 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
+enum class EnchantedObjectHandling {
+	DoNotLoot = 0,
+	DoLoot,
+	GlowTarget,
+	DoLootUnknown,
+	GlowTargetUnknown,
+	MAX
+};
+
 enum class QuestObjectHandling {
 	NoAction = 0,
 	GlowTarget,
@@ -143,6 +152,24 @@ inline CollectibleHandling UpdateCollectibleHandling(const CollectibleHandling i
 inline bool IsSpecialObjectLootable(const SpecialObjectHandling specialObjectHandling)
 {
 	return specialObjectHandling == SpecialObjectHandling::DoLoot;
+}
+
+inline bool IsEnchantedObjectLootable(const EnchantedObjectHandling enchantedObjectHandling)
+{
+	return enchantedObjectHandling == EnchantedObjectHandling::DoLoot ||
+		enchantedObjectHandling == EnchantedObjectHandling::DoLootUnknown;
+}
+
+inline bool IsEnchantedObjectGlowSet(const EnchantedObjectHandling enchantedObjectHandling)
+{
+	return enchantedObjectHandling == EnchantedObjectHandling::GlowTarget ||
+		enchantedObjectHandling == EnchantedObjectHandling::GlowTargetUnknown;
+}
+
+inline bool IncludeEnchantedObjectIfKnown(const EnchantedObjectHandling enchantedObjectHandling)
+{
+	return enchantedObjectHandling == EnchantedObjectHandling::DoLoot ||
+		enchantedObjectHandling == EnchantedObjectHandling::GlowTarget;
 }
 
 inline bool CanLootCollectible(const CollectibleHandling collectibleHandling)
@@ -199,6 +226,16 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 		return SpecialObjectHandling::DoNotLoot;
 	}
 	return static_cast<SpecialObjectHandling>(intSetting);
+}
+
+inline EnchantedObjectHandling EnchantedObjectHandlingFromIniSetting(const double iniSetting)
+{
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(EnchantedObjectHandling::MAX))
+	{
+		return EnchantedObjectHandling::DoNotLoot;
+	}
+	return static_cast<EnchantedObjectHandling>(intSetting);
 }
 
 inline QuestObjectHandling QuestObjectHandlingFromIniSetting(const double iniSetting)

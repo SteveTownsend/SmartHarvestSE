@@ -70,16 +70,23 @@ bool LootableREFR::IsQuestItem() const
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
 	static const bool recordDups(true);		// final decision to loot the item happens here
 	return itemEx.TreatAsCollectible(recordDups);
 }
 
 bool LootableREFR::IsValuable() const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
 	return itemEx.IsValuable();
 }
+
+void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
+{
+	m_objectType = effectiveType;
+	m_typeName = GetObjectTypeName(m_objectType);
+}
+
 
 RE::TESForm* LootableREFR::GetLootable() const
 {
@@ -93,13 +100,13 @@ void LootableREFR::SetLootable(RE::TESForm* lootable)
 
 uint32_t LootableREFR::CalculateWorth(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
 	return itemEx.GetWorth();
 }
 
 double LootableREFR::GetWeight(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_scope);
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
 	return itemEx.GetWeight();
 }
 
@@ -113,7 +120,7 @@ uint32_t LootableREFR::GetFormID() const
 	return m_ref->GetBaseObject()->formID;
 }
 
-int16_t LootableREFR::GetItemCount()
+int16_t LootableREFR::GetItemCount() const
 {
 	if (!m_ref)
 		return 1;
