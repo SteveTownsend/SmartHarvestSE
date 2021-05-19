@@ -529,24 +529,33 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             CheckLootable(targetedRefr)
         endIf
     else
-        ; regular press. Does nothing unless this is a non-generated Dead Body or Container
+        ; regular press. Does nothing unless this is a non-generated Dead Body or Container, or a Lootable Object
         bool valid = False
-        if !IsDynamic(targetedRefr)
-            Actor refrActor = targetedRefr as Actor
-            Container refrContainer = targetedRefr.GetBaseObject() as Container
-            if (refrActor && refrActor.IsDead()) || refrContainer
+        Actor refrActor = targetedRefr as Actor
+        Container refrContainer = targetedRefr.GetBaseObject() as Container
+        if refrActor || refrContainer
+            valid = !IsDynamic(targetedRefr) && ((refrActor && refrActor.IsDead()) || refrContainer)
+            if valid
                 ; blacklist or un-blacklist the REFR, not the Base, to avoid blocking other REFRs with same Base
                 if isWhiteKey
                     RemoveFromBlackList(targetedRefr)
                 else ; BlackList Key
                     AddToBlackList(targetedRefr)
                 EndIf
-                SyncLists(false, true)    ; not a reload
-                valid = True
-            endIf
-        endIf
-        if !valid
-            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER_OR_NPC")
+            endif
+        elseif IsLootableObject(targetedRefr)
+            ; open world blacklist or whitelist for item
+            valid = True
+            if isWhiteKey
+                HandleWhiteListKeyPress(targetedRefr.GetBaseObject())
+            else ; blacklist key
+                HandleBlackListKeyPress(targetedRefr.GetBaseObject())
+            endif
+        endif
+        if valid
+            SyncLists(false, true)    ; not a reload
+        else
+            Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_LISTS")
         endIf
     endIf
 EndFunction

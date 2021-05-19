@@ -405,6 +405,25 @@ namespace papyrus
 		return refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm();
 	}
 
+	bool IsLootableObject(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		// Do not allow processing of bad REFR or Base
+		if (!refr || !refr->GetBaseObject() || !refr->Is3DLoaded())
+			return false;
+		// non-lootable forms
+		RE::FormType formType(refr->GetBaseObject()->GetFormType());
+		if (formType == RE::FormType::Door ||
+			formType == RE::FormType::Furniture ||
+			formType == RE::FormType::Hazard ||
+			formType == RE::FormType::IdleMarker ||
+			formType == RE::FormType::MovableStatic ||
+			formType == RE::FormType::Static)
+		{
+			return false;
+		}
+		return true;
+	}
+
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
 	{
 		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
@@ -681,6 +700,7 @@ namespace papyrus
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
 		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
+		a_vm->RegisterFunction("IsLootableObject", SHSE_PROXY, papyrus::IsLootableObject);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);

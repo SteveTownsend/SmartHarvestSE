@@ -10,6 +10,7 @@ bool Function UnlockHarvest(int refrID, int baseID, string baseName, bool isSile
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native
+bool Function IsLootableObject(ObjectReference refr) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
