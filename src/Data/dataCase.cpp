@@ -741,7 +741,7 @@ void DataCase::ResetBlockedReferences(const bool gameReload)
 		RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
 		if (!refr)
 			continue;
-		if (GetBaseFormObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
+		if (GetEffectiveObjectType(refr->GetBaseObject()) == ObjectType::oreVein &&
 			OreVeinResourceType(refr->GetBaseObject()->As<RE::TESObjectACTI>()) == ResourceType::volcanicDigSite)
 		{
 			firehouseSources.insert(refrID.first);
@@ -783,6 +783,62 @@ void DataCase::ClearReferenceBlacklist()
 	DBG_MESSAGE("Reset blacklisted REFRs");
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blacklistRefr.clear();
+}
+
+void DataCase::RefreshKnownIngredients()
+{
+	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
+	if (!player)
+		return;
+
+	RecursiveLockGuard guard(m_blockListLock);
+	for (auto& ingredientFlag : m_ingredientEffectsKnown)
+	{
+		RE::IngredientItem* ingredient(RE::TESForm::LookupByID<RE::IngredientItem>(ingredientFlag.first));
+		if (!ingredient)
+		{
+			ingredientFlag.second = false;		// assume unknown effects exist
+			continue;
+		}
+		ingredientFlag.second = AllEffectsKnown(ingredient);
+	}
+}
+
+bool DataCase::IsIngredientKnown(const RE::TESForm* form) const
+{
+	const RE::IngredientItem* ingredient(form->As<RE::IngredientItem>());
+	if (!ingredient)
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	auto ingredientFlag(m_ingredientEffectsKnown.find(ingredient->GetFormID()));
+	if (ingredientFlag == m_ingredientEffectsKnown.end())
+		return false;
+	if (!ingredientFlag->second)
+	{
+		// not known on last check - recheck and update
+		ingredientFlag->second = AllEffectsKnown(ingredient);
+	}
+	return ingredientFlag->second;
+}
+
+bool DataCase::AllEffectsKnown(const RE::IngredientItem* ingredient) const
+{
+	bool known(true);		// if we find one we don't know, this flips
+	for (const auto effect : ingredient->effects)
+	{
+		if (!effect->baseEffect->GetKnown())
+		{
+			DBG_VMESSAGE("Found unknown effect {}/0x{:08x} on ingredient {}/0x{:08x}", effect->baseEffect->GetFullName(),
+				effect->baseEffect->GetFormID(), ingredient->GetFullName(), ingredient->GetFormID());
+			known = false;
+			break;
+		}
+	}
+	if (known)
+	{
+		DBG_VMESSAGE("All effects known for ingredient {}/0x{:08x}", ingredient->GetFullName(), ingredient->GetFormID());
+	}
+	return known;
 }
 
 bool DataCase::BlockForm(const RE::TESForm* form, const Lootability reason)
@@ -865,6 +921,10 @@ bool DataCase::SetObjectTypeForForm(const RE::TESForm* form, const ObjectType ob
 	if (inserted.second)
 	{
 		REL_VMESSAGE("{}/0x{:08x} uses ObjectType {}", name, form->GetFormID(), GetObjectTypeName(objectType));
+		if (objectType == ObjectType::ingredient)
+		{
+			m_ingredientEffectsKnown.insert({ form->GetFormID(), false});
+		}
 	}
 	else if (objectType != inserted.first->second)
 	{
@@ -962,6 +1022,7 @@ void DataCase::ListsClear(const bool gameReload)
 	if (gameReload)
 	{
 		ClearReferenceBlacklist();
+		RefreshKnownIngredients();
 	}
 	// reset blocked Base Objects and REFRs, reseed with off-limits containers
 	ResetBlockedForms();
@@ -1362,7 +1423,7 @@ void DataCase::CategorizeStatics()
 	SetObjectTypeForFormType(RE::FormType::Scroll, ObjectType::scroll);
 	SetObjectTypeForFormType(RE::FormType::Ammo, ObjectType::ammo);
 	SetObjectTypeForFormType(RE::FormType::ProjectileArrow, ObjectType::ammo);
-	SetObjectTypeForFormType(RE::FormType::Light, ObjectType::light);
+	SetObjectTypeForFormType(RE::FormType::Light, ObjectType::clutter);
 
 	// Map well-known forms to ObjectType
 	SetObjectTypeForFormID(LockPick, ObjectType::lockpick);
@@ -1400,7 +1461,7 @@ void DataCase::CategorizeStatics()
 		}
 	}
 
-	// record CACO non-potions which are tagged as VendorItemPotion
+	// record Hearthfire building materials
 	static std::string hearthFiresName("HearthFires.esm");
 	static std::vector<RE::FormID> clayOrStone({ 0x9f2, 0x9f3, 0xA14, 0x306b, 0x310b, 0xa511 });
 	for (const auto clayOrStoneFormID : clayOrStone)

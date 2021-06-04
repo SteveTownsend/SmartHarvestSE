@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "WorldState/LocationTracker.h"
 #include "Collections/CollectionManager.h"
+#include "Data/SettingsCache.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/AdventureTargets.h"
 #include "WorldState/PartyMembers.h"
@@ -601,7 +602,7 @@ bool LocationTracker::Refresh()
 		AdventureTargets::Instance().CheckReachedCurrentDestination(m_playerLocation);
 
 		// Player changed location - may be a standalone Cell with m_playerLocation nullptr e.g. 000HatredWell
-		bool tellPlayer(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0);
+		bool tellPlayer(SettingsCache::Instance().NotifyLocationChange());
 
 		// check if new location/cell is a newly-visited player house
 		if (!IsPlacePlayerHome(m_playerCellID, m_playerLocation))

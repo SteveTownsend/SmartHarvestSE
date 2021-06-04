@@ -40,8 +40,7 @@ PopulationCenters& PopulationCenters::Instance()
 void PopulationCenters::RefreshConfig(void)
 {
 	RecursiveLockGuard guard(m_centersLock);
-	m_excludedCenterSize = PopulationCenterSizeFromIniSetting(
-		INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "PreventPopulationCenterLooting"));
+	m_excludedCenterSize = SettingsCache::Instance().PreventPopulationCenterLooting();
 }
 
 bool PopulationCenters::CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const
@@ -65,7 +64,7 @@ bool PopulationCenters::CannotLoot(const RE::FormID cellID, const RE::BGSLocatio
 	return false;
 }
 
-PopulationCenterSize PopulationCenters::PopulationCenterSizeFromIniSetting(const double iniSetting) const
+PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniSetting)
 {
 	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
 	if (intSetting >= static_cast<int32_t>(PopulationCenterSize::MAX))

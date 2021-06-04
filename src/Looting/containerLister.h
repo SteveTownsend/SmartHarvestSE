@@ -26,6 +26,14 @@ namespace shse
 
 typedef std::vector<InventoryItem> LootableItems;
 
+struct InventoryEntry
+{
+	ObjectType m_excessType;
+	int m_count;
+	double m_weight;
+};
+typedef std::unordered_map<RE::FormID, InventoryEntry> InventoryCache;
+
 struct ContainerLister
 {
 public:
@@ -39,6 +47,7 @@ public:
 	inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
 	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
 	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
+	InventoryCache CacheIfExcessHandlingEnabled() const;
 	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
 	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
 	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }

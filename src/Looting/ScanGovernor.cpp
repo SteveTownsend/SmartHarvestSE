@@ -21,9 +21,9 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
+#include "Data/SettingsCache.h"
 #include "Looting/TryLootREFR.h"
 #include "Looting/ScanGovernor.h"
-#include "Utilities/debugs.h"
 #include "Utilities/utils.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/LocationTracker.h"
@@ -303,8 +303,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			{
 				return Lootability::ReferenceIsLiveActor;
 			}
-			if (DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
-					INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::DoNotLoot)
+			if (SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
 			{
 				return Lootability::LootDeadBodyDisabled;
 			}
@@ -391,7 +390,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 		}
 		else if (refr->GetBaseObject()->As<RE::TESContainer>())
 		{
-			if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootContainer") == 0.0)
+			if (!SettingsCache::Instance().EnableLootContainer())
 			{
 				return Lootability::LootContainersDisabled;
 			}
@@ -400,13 +399,16 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			{
 				return Lootability::ContainerBlacklistedByUser;
 			}
+			// REFR to container may be a Loot Transfer Target assigned by user
+			if (ManagedList::TransferList().Contains(refr))
+			{
+				return Lootability::ContainerIsLootTransferTarget;
+			}
 			m_targetType = INIFile::SecondaryType::containers;
 		}
 		else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
 		{
-			DeadBodyLooting lootBodies(DeadBodyLootingFromIniSetting(
-				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")));
-			if (lootBodies == DeadBodyLooting::DoNotLoot)
+			if (SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
 			{
 				return Lootability::LootDeadBodyDisabled;
 			}
@@ -441,7 +443,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			}
 			possibleDupes.push_back(refr);
 		}
-		else if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "enableHarvest") == 0.0)
+		else if (!SettingsCache::Instance().EnableHarvest())
 		{
 			return Lootability::HarvestLooseItemDisabled;
 		}
@@ -456,16 +458,14 @@ void ScanGovernor::LootAllEligible()
 	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
 	DistanceToTarget targets;
 	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
-	double radius(LocationTracker::Instance().IsPlayerIndoors() ?
-		INIFile::GetInstance()->GetIndoorsRadius(INIFile::PrimaryType::harvest) : INIFile::GetInstance()->GetRadius(INIFile::PrimaryType::harvest));
-	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, INIFile::GetInstance()->GetVerticalFactor());
-	bool respectDoors(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0.);
-	ReferenceFilter filter(targets, rangeCheck, respectDoors, MaxREFRSPerPass);
+	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
+	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
+	ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), MaxREFRSPerPass);
 	// this adds eligible REFRs ordered by distance from player
 	filter.FindLootableReferences();
 
 	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
-	// This seems no harm apart but offends my aesthetic sensibilities, so prevent it.
+	// This seems to do no harm but offends my aesthetic sensibilities, so prevent it.
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Loot Eligible Targets");
 #endif
@@ -560,11 +560,9 @@ void ScanGovernor::InvokeLootSense(void)
 {
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to glow in an orderly fashion than to do it all on one pass.
 	DistanceToTarget targets;
-	double radius(LocationTracker::Instance().IsPlayerIndoors() ?
-		INIFile::GetInstance()->GetIndoorsRadius(INIFile::PrimaryType::harvest) : INIFile::GetInstance()->GetRadius(INIFile::PrimaryType::harvest));
-	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, INIFile::GetInstance()->GetVerticalFactor());
-	bool respectDoors(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DoorsPreventLooting") != 0.);
-	ReferenceFilter filter(targets, rangeCheck, respectDoors, MaxREFRSPerPass);
+	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
+	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
+	ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), MaxREFRSPerPass);
 	// this adds eligible REFRs ordered by distance from player
 	filter.FindLootableReferences();
 

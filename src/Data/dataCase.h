@@ -73,6 +73,9 @@ public:
 	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const;
 	void ClearReferenceBlacklist();
 
+	void RefreshKnownIngredients();
+	bool IsIngredientKnown(const RE::TESForm* form) const;
+
 	bool BlockForm(const RE::TESForm* form, const Lootability reason);
 	Lootability IsFormBlocked(const RE::TESForm* form) const;
 	void ResetBlockedForms();
@@ -153,6 +156,7 @@ private:
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
+	mutable std::unordered_map<RE::FormID, bool> m_ingredientEffectsKnown;
 	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
@@ -165,6 +169,8 @@ private:
 	void RecordOffLimitsLocations(void);
 	void RecordPlayerHouseCells(void);
 	void BlockOffLimitsContainers(void);
+
+	bool AllEffectsKnown(const RE::IngredientItem* ingredient) const;
 
 	template <typename T>
 	ObjectType DefaultIngredientObjectType(const T* form)

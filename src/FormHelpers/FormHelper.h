@@ -42,6 +42,7 @@ public:
 	inline const RE::TESForm* Form() const { return m_form; }
 
 	virtual double GetWeight(void) const override;
+	static double GetWeight(const RE::TESForm* form);
 
 protected:
 	void init();

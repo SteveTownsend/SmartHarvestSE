@@ -19,7 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-#include "Data/iniSettings.h"
+#include "Data/SettingsCache.h"
 
 namespace shse
 {
@@ -42,11 +42,13 @@ void ProcessManualLootItem(const RE::TESBoundObject* item);
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsLocked(const RE::TESObjectREFR * refr);
-ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr);
-ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm);
+ObjectType GetEffectiveObjectType(const RE::TESForm* baseForm);
+ObjectType GetBaseObjectType(const RE::TESForm* baseForm);
 // this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
-ObjectType GetBaseFormObjectType(const RE::TESObjectREFR* refr);
+ObjectType GetEffectiveObjectType(const RE::TESObjectREFR* refr);
+ObjectType GetBaseObjectType(const RE::TESObjectREFR* refr);
 // end link-time misuse guard
+ObjectType GetExcessObjectType(const RE::TESForm* baseForm);
 std::string GetFormTypeName(const RE::FormType formType);
 std::string GetObjectTypeName(const ObjectType objectType);
 ObjectType GetObjectTypeByTypeName(const std::string& name);
@@ -72,7 +74,7 @@ inline bool IsValueWeightExempt(ObjectType objectType)
 inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
 {
 	// Config setting overrides
-	if (INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInSettlement") == 0)
+	if (!SettingsCache::Instance().LootAllowedItemsInSettlement())
 		return false;
 	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
 	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.

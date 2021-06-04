@@ -11,16 +11,18 @@ Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native
 bool Function IsLootableObject(ObjectReference refr) global native
+string Function ValidTransferTargetLocation(ObjectReference refr, bool linksChest) global native
+bool Function SupportsExcessHandling(int objectType) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypeByName(string name) global native
 int Function GetResourceTypeByName(string name) global native
 float Function GetSetting(int m_section_first, int m_section_second, string m_key) global native
-float Function GetSettingObjectArrayEntry(int m_section_first, int m_section_second, int index) global native
+float Function GetSettingObjectArrayEntry(int m_section_first, int m_section_second, int objectType) global native
 int Function GetSettingGlowArrayEntry(int m_section_first, int m_section_second, int index) global native
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native
-Function PutSettingObjectArrayEntry(int section_first, int section_second, int index, float value) global native
+Function PutSettingObjectArrayEntry(int section_first, int section_second, int objectType, float value) global native
 Function PutSettingGlowArrayEntry(int section_first, int section_second, int index, int value) global native
 Function SyncNativeSettings() global native
 

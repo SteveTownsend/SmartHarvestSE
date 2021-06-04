@@ -31,7 +31,7 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetBaseFormObjectType(form))
+TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetEffectiveObjectType(form))
 {
 	init();
 }
@@ -96,6 +96,10 @@ bool TESFormHelper::ConfirmEnchanted(const RE::EnchantmentItem* item, const Ench
 // modified from RE::TESObjectREFR::IsEnchanted
 ObjectType TESFormHelper::EnchantedREFREffectiveType(const RE::TESObjectREFR* refr, const ObjectType objectType, const EnchantedObjectHandling handling)
 {
+	// no mapping except for 'enchanted*'
+	if (!TypeIsEnchanted(objectType))
+		return objectType;
+
 	auto xEnch = refr->extraList.GetByType<RE::ExtraEnchantment>();
 	if (xEnch && xEnch->enchantment && ConfirmEnchanted(xEnch->enchantment, handling)) {
 		DBG_DMESSAGE("ExtraList Enchantment 0x{:08x} for {}/0x{:08x}",
@@ -169,10 +173,15 @@ std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const boo
 
 double TESFormHelper::GetWeight() const
 {
-	if (!m_form)
-		return 0.0;
+	return GetWeight(m_form);
+}
 
-	const RE::TESWeightForm* pWeight(m_form->As<RE::TESWeightForm>());
+double TESFormHelper::GetWeight(const RE::TESForm* form)
+{
+	if (!form)
+	return 0.0;
+
+	const RE::TESWeightForm* pWeight(form->As<RE::TESWeightForm>());
 	if (!pWeight)
 		return 0.0;
 

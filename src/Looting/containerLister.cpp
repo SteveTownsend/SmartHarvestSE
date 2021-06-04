@@ -21,9 +21,11 @@ http://www.fsf.org/licensing/licenses
 
 #include "FormHelpers/FormHelper.h"
 #include "Data/dataCase.h"
+#include "Data/SettingsCache.h"
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
+#include "Looting/objects.h"
 #include "WorldState/QuestTargets.h"
 
 namespace shse
@@ -32,8 +34,7 @@ namespace shse
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
 	m_refr(refr), m_targetType(targetType), m_collectibleAction(CollectibleHandling::Leave)
 {
-	m_enchantedLoot = EnchantedObjectHandlingFromIniSetting(
-		INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
+	m_enchantedLoot = SettingsCache::Instance().EnchantedObjectHandlingType();
 }
 
 void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate)
@@ -84,6 +85,32 @@ size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject
 	return items;
 }
 
+InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
+{
+	// refactored following QuickLookRE
+	InventoryCache cache;
+	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
+	for (auto& item : inv) {
+		auto& [count, entry] = item.second;
+		if (count <= 0)
+			continue;
+		const RE::TESBoundObject* itemObject = entry->GetObject();
+		if (!FormUtils::IsConcrete(itemObject))
+			continue;
+
+		if (itemObject->formType == RE::FormType::LeveledItem)
+			continue;
+
+		ObjectType excessType(GetExcessObjectType(itemObject));
+		if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
+			continue;
+
+		double weight(TESFormHelper::GetWeight(itemObject));
+		DBG_DMESSAGE("Excess handling for item {}/0x{:08x}, count={}, weight={}", itemObject->GetName(), itemObject->GetFormID(), count, weight);
+		cache[itemObject->GetFormID()] = { excessType, count, weight };
+	}
+	return cache;
+}
 size_t ContainerLister::AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling)
 {
 	if (!m_refr)

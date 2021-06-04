@@ -21,6 +21,9 @@ http://www.fsf.org/licensing/licenses
 
 class INIFile;
 
+namespace shse
+{
+
 class IHasValueWeight
 {
 public:
@@ -47,3 +50,5 @@ protected:
 	mutable uint32_t m_worth;
 	mutable bool m_worthSetup;
 };
+
+}

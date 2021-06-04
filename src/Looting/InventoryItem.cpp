@@ -31,7 +31,7 @@ namespace shse
 InventoryItem::InventoryItem(
 	std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count, const EnchantedObjectHandling enchantedObjectHandling) :
 	m_inlineTransfer(false), m_entry(std::move(a_entry)), m_count(a_count),
-	m_objectType(GetBaseFormObjectType(m_entry->GetObject()))
+	m_objectType(GetEffectiveObjectType(m_entry->GetObject()))
 {
 	// Decorate objectType for player-created enchantments: promote vanilla object if it has enchantment.
 	DBG_VMESSAGE("{}/0x{:08x} has type {}", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), GetObjectTypeName(m_objectType));

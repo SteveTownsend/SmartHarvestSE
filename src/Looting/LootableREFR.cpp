@@ -28,7 +28,7 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
-
+       
 LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_scope(scope), m_lootable(nullptr)
 {
 	// Projectile REFRs need to be mapped to lootable Ammo
@@ -41,9 +41,25 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 			m_ref->GetFormID(), m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID(),
 			m_lootable->GetName(), m_lootable->GetFormID());
 	}
-	else
+	else if (scope == INIFile::SecondaryType::itemObjects)
 	{
-		m_objectType = GetREFRObjectType(m_ref);
+		DataCase* data = DataCase::GetInstance();
+		m_lootable = data->ConvertIfLeveledItem(m_ref->GetBaseObject());
+		if (m_ref->formType == RE::FormType::ActorCharacter)
+		{
+			// derived from REFR directly
+			m_objectType = ObjectType::actor;
+		}
+		else if (m_lootable->formType == RE::FormType::Activator && HasAshPile(m_ref))
+		{
+			m_objectType = ObjectType::unknown;
+		}
+		else
+		{
+			m_objectType = GetBaseObjectType(m_lootable);
+		}
+		DBG_MESSAGE("REFR 0x{:08x} Base {}/0x{:08x} Object Type {}",
+			m_ref->GetFormID(), m_lootable->GetName(), m_lootable->GetFormID(), GetObjectTypeName(m_objectType));
 	}
 	m_typeName = GetObjectTypeName(m_objectType);
 }
@@ -88,12 +104,12 @@ void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
 }
 
 
-RE::TESForm* LootableREFR::GetLootable() const
+const RE::TESForm* LootableREFR::GetLootable() const
 {
 	return m_lootable;
 }
 
-void LootableREFR::SetLootable(RE::TESForm* lootable)
+void LootableREFR::SetLootable(const RE::TESForm* lootable)
 {
 	m_lootable = lootable;
 }
@@ -106,8 +122,7 @@ uint32_t LootableREFR::CalculateWorth(void) const
 
 double LootableREFR::GetWeight(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
-	return itemEx.GetWeight();
+	return TESFormHelper::GetWeight(m_lootable ? m_lootable : m_ref->GetBaseObject());
 }
 
 const char* LootableREFR::GetName() const
@@ -139,8 +154,7 @@ int16_t LootableREFR::GetItemCount() const
 	if (m_objectType == ObjectType::oreVein)
 	{
 		// limit ore harvesting to constrain Player Home mining
-		return static_cast<int16_t>(INIFile::GetInstance()->GetSetting(
-			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "maxMiningItems"));
+		return SettingsCache::Instance().MaxMiningItems();
 	}
 	return 1;
 }

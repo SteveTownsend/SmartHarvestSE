@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include "Looting/containerLister.h"
 #include "WorldState/LocationTracker.h"
 
 namespace shse
@@ -52,6 +53,7 @@ private:
 	void ResetCarryWeight();
 	void AdjustCarryWeight();
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
+	void CheckExcessInventory(const bool force);
 
 	static std::unique_ptr<PlayerState> m_instance;
 
@@ -60,6 +62,11 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
 	bool m_perksAddLeveledItemsOnDeath;
 	float m_harvestedIngredientMultiplier;
+
+	// Excess inventory management
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
+	// specialized cache of inventory items
+	InventoryCache m_currentItems;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;

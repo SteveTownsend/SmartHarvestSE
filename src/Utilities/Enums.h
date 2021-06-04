@@ -112,6 +112,13 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
+enum class ContainerAnimationHandling {
+	DoNotPlay = 0,
+	Play,
+	Glow,
+	MAX
+};
+
 enum class EnchantedObjectHandling {
 	DoNotLoot = 0,
 	DoLoot,
@@ -124,6 +131,29 @@ enum class EnchantedObjectHandling {
 enum class QuestObjectHandling {
 	NoAction = 0,
 	GlowTarget,
+	MAX
+};
+
+enum class ExcessInventoryHandling : uint8_t {
+	NoLimits = 0,
+	LeaveBehind,
+	ConvertToSeptims,
+	Container1,
+	Container2,
+	Container3,
+	Container4,
+	Container5,
+	Container6,
+	Container7,
+	Container8,
+	Container9,
+	Container10,
+	Container11,
+	Container12,
+	Container13,
+	Container14,
+	Container15,
+	Container16,
 	MAX
 };
 
@@ -158,12 +188,6 @@ inline bool IsEnchantedObjectLootable(const EnchantedObjectHandling enchantedObj
 {
 	return enchantedObjectHandling == EnchantedObjectHandling::DoLoot ||
 		enchantedObjectHandling == EnchantedObjectHandling::DoLootUnknown;
-}
-
-inline bool IsEnchantedObjectGlowSet(const EnchantedObjectHandling enchantedObjectHandling)
-{
-	return enchantedObjectHandling == EnchantedObjectHandling::GlowTarget ||
-		enchantedObjectHandling == EnchantedObjectHandling::GlowTargetUnknown;
 }
 
 inline bool IncludeEnchantedObjectIfKnown(const EnchantedObjectHandling enchantedObjectHandling)
@@ -228,6 +252,16 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 	return static_cast<SpecialObjectHandling>(intSetting);
 }
 
+inline ContainerAnimationHandling ContainerAnimationHandlingFromIniSetting(const double iniSetting)
+{
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(ContainerAnimationHandling::MAX))
+	{
+		return ContainerAnimationHandling::DoNotPlay;
+	}
+	return static_cast<ContainerAnimationHandling>(intSetting);
+}
+
 inline EnchantedObjectHandling EnchantedObjectHandlingFromIniSetting(const double iniSetting)
 {
 	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
@@ -246,6 +280,16 @@ inline QuestObjectHandling QuestObjectHandlingFromIniSetting(const double iniSet
 		return QuestObjectHandling::NoAction;
 	}
 	return static_cast<QuestObjectHandling>(intSetting);
+}
+
+inline ExcessInventoryHandling ExcessInventoryHandlingFromIniSetting(const double iniSetting)
+{
+	uint8_t intSetting(static_cast<uint8_t>(iniSetting));
+	if (intSetting >= static_cast<int8_t>(LootingType::MAX))
+	{
+		return ExcessInventoryHandling::NoLimits;
+	}
+	return static_cast<ExcessInventoryHandling>(intSetting);
 }
 
 inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
@@ -426,6 +470,7 @@ enum class Lootability {
 	DeadBodyBlacklistedByUser,
 	NPCExcludedByDeadBodyFilter,
 	NPCIsInBlacklistCollection,
+	ContainerIsLootTransferTarget,
 	MAX
 };
 

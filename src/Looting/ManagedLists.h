@@ -28,6 +28,7 @@ class ManagedList
 public:
 	static ManagedList& BlackList();
 	static ManagedList& WhiteList();
+	static ManagedList& TransferList();
 	ManagedList() {}
 
 	void Reset();
@@ -40,6 +41,7 @@ private:
 
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;
+	static std::unique_ptr<ManagedList> m_transferList;
 
 	std::unordered_map<RE::FormID, std::string> m_members;
 	mutable RecursiveLock m_listLock;

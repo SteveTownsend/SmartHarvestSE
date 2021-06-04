@@ -260,6 +260,7 @@
     <ClCompile Include="src\Data\dataCase.cpp" />
     <ClCompile Include="src\Data\iniSettings.cpp" />
     <ClCompile Include="src\Data\LoadOrder.cpp" />
+    <ClCompile Include="src\Data\SettingsCache.cpp" />
     <ClCompile Include="src\Data\SimpleIni.cpp" />
     <ClCompile Include="src\FormHelpers\AlchemyItemHelper.cpp" />
     <ClCompile Include="src\FormHelpers\ArmorHelper.cpp" />
@@ -287,7 +288,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\Utilities\debugs.cpp" />
     <ClCompile Include="src\Utilities\Enums.cpp" />
     <ClCompile Include="src\Utilities\Exception.cpp" />
     <ClCompile Include="src\Utilities\LogStackWalker.cpp" />
@@ -329,6 +329,7 @@
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
     <ClInclude Include="src\Data\LoadOrder.h" />
+    <ClInclude Include="src\Data\SettingsCache.h" />
     <ClInclude Include="src\Data\SimpleIni.h" />
     <ClInclude Include="src\FormHelpers\AlchemyItemHelper.h" />
     <ClInclude Include="src\FormHelpers\ArmorHelper.h" />
@@ -351,7 +352,6 @@
     <ClInclude Include="src\Looting\TryLootREFR.h" />
     <ClInclude Include="src\PluginFacade.h" />
     <ClInclude Include="src\PrecompiledHeaders.h" />
-    <ClInclude Include="src\Utilities\debugs.h" />
     <ClInclude Include="src\Utilities\Enums.h" />
     <ClInclude Include="src\Utilities\Exception.h" />
     <ClInclude Include="src\Utilities\LogStackWalker.h" />

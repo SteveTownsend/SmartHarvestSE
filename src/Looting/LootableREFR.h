@@ -36,8 +36,8 @@ public:
 	bool IsValuable(void) const;
 	void SetEffectiveObjectType(const ObjectType effectiveType);
 
-	RE::TESForm* GetLootable() const;
-	void SetLootable(RE::TESForm* lootable);
+	const RE::TESForm* GetLootable() const;
+	void SetLootable(const RE::TESForm* lootable);
 	virtual double GetWeight(void) const override;
 	inline const RE::TESObjectREFR* GetReference() const { return m_ref; }
 	inline INIFile::SecondaryType Scope() const { return m_scope; }
@@ -50,7 +50,7 @@ protected:
 private:
 	const RE::TESObjectREFR* m_ref;
 	const INIFile::SecondaryType m_scope;
-	RE::TESForm* m_lootable;
+	const RE::TESForm* m_lootable;
 };
 
 }
