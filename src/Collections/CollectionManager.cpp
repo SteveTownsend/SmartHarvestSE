@@ -80,7 +80,7 @@ void CollectionManager::Refresh() const
 	EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
-bool CollectionManager::ItemIsCollectionCandidate(const RE::TESForm* item) const
+bool CollectionManager::ItemIsCollectionCandidate(RE::TESBoundObject* item) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
 	return m_collectionsByFormID.contains(item->GetFormID()) || m_collectionsByObjectType.contains(GetEffectiveObjectType(item));
@@ -112,7 +112,7 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 	}
 }
 
-void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType)
+void CollectionManager::CheckEnqueueAddedItem(RE::TESBoundObject* form, const INIFile::SecondaryType scope, const ObjectType objectType)
 {
 	if (!IsAvailable())
 		return;
@@ -124,7 +124,7 @@ void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form, const INI
 	}
 }
 
-void CollectionManager::EnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType)
+void CollectionManager::EnqueueAddedItem(RE::TESBoundObject* form, const INIFile::SecondaryType scope, const ObjectType objectType)
 {
 	m_addedItemQueue.emplace_back(std::make_tuple(form, scope, objectType));
 }
@@ -154,7 +154,7 @@ void CollectionManager::ProcessAddedItems()
 	for (const auto ownedItem : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
-		const RE::TESForm* form(std::get<0>(ownedItem));
+		RE::TESBoundObject* form(std::get<0>(ownedItem));
 		if (ItemIsCollectionCandidate(form))
 		{
 			DBG_VMESSAGE("Check collectability of added item 0x{:08x}", form->GetFormID());

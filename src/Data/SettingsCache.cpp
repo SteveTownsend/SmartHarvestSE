@@ -90,7 +90,9 @@ void SettingsCache::Refresh(void)
 	auto vw(m_valueWeight.begin());
 	auto lootingType(m_lootingType.begin());
 	auto excessHandling(m_excessHandling.begin());
-	for (size_t index = 1; index <= TypeCount; ++index, ++vw, ++lootingType, ++excessHandling)
+	auto excessCount(m_excessCount.begin());
+	auto excessWeight(m_excessWeight.begin());
+	for (size_t index = 1; index <= TypeCount; ++index, ++vw, ++lootingType, ++excessHandling, ++excessCount, ++excessWeight)
 	{
 		std::string typeName(GetObjectTypeName(ObjectType(index)));
 		*vw = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::valueWeight, typeName);
@@ -101,6 +103,11 @@ void SettingsCache::Refresh(void)
 		*excessHandling = ExcessInventoryHandlingFromIniSetting(
 			ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::excessHandling, typeName));
 		REL_VMESSAGE("Excess Handling {} for {} items", *excessHandling, typeName);
+		*excessCount = static_cast<int>(
+			ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::maxItems, typeName));
+		REL_VMESSAGE("Excess Count {} for {} items", *excessCount, typeName);
+		*excessWeight = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::maxWeight, typeName);
+		REL_VMESSAGE("Excess Weight {:0.2f} for {} items", *excessWeight, typeName);
 	}
 
 	m_deadBodyLooting = DeadBodyLootingFromIniSetting(
@@ -237,6 +244,16 @@ ExcessInventoryHandling SettingsCache::ExcessInventoryHandlingType(ObjectType ob
 {
 	size_t index(std::min(TypeCount, size_t(objectType)) - 1);
 	return m_excessHandling[index];
+}
+int SettingsCache::ExcessInventoryCount(ObjectType objectType) const
+{
+	size_t index(std::min(TypeCount, size_t(objectType)) - 1);
+	return m_excessCount[index];
+}
+double SettingsCache::ExcessInventoryWeight(ObjectType objectType) const
+{
+	size_t index(std::min(TypeCount, size_t(objectType)) - 1);
+	return m_excessWeight[index];
 }
 DeadBodyLooting SettingsCache::DeadBodyLootingType() const
 {

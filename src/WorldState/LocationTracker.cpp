@@ -451,7 +451,7 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 	{
 		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
 		{
-			DBG_VMESSAGE("GetCellOwner Hit {:08x}", static_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
+			DBG_VMESSAGE("GetCellOwner Hit 0x{:08x}", static_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
 			return static_cast<const RE::ExtraOwnership&>(extraData).owner;
 		}
 	}

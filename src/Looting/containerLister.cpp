@@ -21,7 +21,6 @@ http://www.fsf.org/licensing/licenses
 
 #include "FormHelpers/FormHelper.h"
 #include "Data/dataCase.h"
-#include "Data/SettingsCache.h"
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
@@ -94,7 +93,7 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		auto& [count, entry] = item.second;
 		if (count <= 0)
 			continue;
-		const RE::TESBoundObject* itemObject = entry->GetObject();
+		RE::TESBoundObject* itemObject = entry->GetObject();
 		if (!FormUtils::IsConcrete(itemObject))
 			continue;
 
@@ -105,9 +104,11 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
 			continue;
 
-		double weight(TESFormHelper::GetWeight(itemObject));
-		DBG_DMESSAGE("Excess handling for item {}/0x{:08x}, count={}, weight={}", itemObject->GetName(), itemObject->GetFormID(), count, weight);
-		cache[itemObject->GetFormID()] = { excessType, count, weight };
+		TESFormHelper helper(itemObject, excessType, INIFile::SecondaryType::itemObjects);
+		uint32_t value(helper.GetWorth());
+		double weight(helper.GetWeight());
+		DBG_DMESSAGE("Excess handling for item {}/0x{:08x}, count={}, weight={:0.2f}", itemObject->GetName(), itemObject->GetFormID(), count, weight);
+		cache.insert({ itemObject, InventoryEntry(excessType, count, value, weight) });
 	}
 	return cache;
 }

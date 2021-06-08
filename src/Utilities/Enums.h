@@ -471,6 +471,7 @@ enum class Lootability {
 	NPCExcludedByDeadBodyFilter,
 	NPCIsInBlacklistCollection,
 	ContainerIsLootTransferTarget,
+	InventoryLimitsEnforced,
 	MAX
 };
 

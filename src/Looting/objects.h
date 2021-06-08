@@ -42,13 +42,13 @@ void ProcessManualLootItem(const RE::TESBoundObject* item);
 RE::NiTimeController* GetTimeController(RE::TESObjectREFR* refr);
 bool IsBossContainer(const RE::TESObjectREFR * refr);
 bool IsLocked(const RE::TESObjectREFR * refr);
-ObjectType GetEffectiveObjectType(const RE::TESForm* baseForm);
+ObjectType GetEffectiveObjectType(const RE::TESBoundObject* baseForm);
 ObjectType GetBaseObjectType(const RE::TESForm* baseForm);
 // this overload deliberately has no definition, to trap at link-time misuse of the baseForm function to handle a REFR
 ObjectType GetEffectiveObjectType(const RE::TESObjectREFR* refr);
 ObjectType GetBaseObjectType(const RE::TESObjectREFR* refr);
 // end link-time misuse guard
-ObjectType GetExcessObjectType(const RE::TESForm* baseForm);
+ObjectType GetExcessObjectType(const RE::TESBoundObject* baseForm);
 std::string GetFormTypeName(const RE::FormType formType);
 std::string GetObjectTypeName(const ObjectType objectType);
 ObjectType GetObjectTypeByTypeName(const std::string& name);

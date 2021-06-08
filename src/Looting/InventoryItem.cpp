@@ -81,6 +81,18 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 		return 0;
 	}
 
+	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
+	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType));
+	if (limit <= 0)
+	{
+		DBG_VMESSAGE("Inventory Limits preclude looting of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
+		return 0;
+	}
+	else
+	{
+		toRemove = std::min(m_count, static_cast<ptrdiff_t>(limit));
+	}
+
 	DBG_VMESSAGE("get {}/0x{:08x} ({})", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
 	std::vector<std::pair<RE::ExtraDataList*, std::ptrdiff_t>> queued;
 	if (m_entry->extraLists) {
@@ -161,6 +173,18 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 
 void InventoryItem::MakeCopies(RE::TESObjectREFR* target, size_t count)
 {
+
+	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
+	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType));
+	if (limit <= 0)
+	{
+		DBG_VMESSAGE("Inventory Limits preclude copying of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
+		return;
+	}
+	else
+	{
+		count = std::min(count, static_cast<size_t>(limit));
+	}
 	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<int32_t>(count), nullptr);
 }
 

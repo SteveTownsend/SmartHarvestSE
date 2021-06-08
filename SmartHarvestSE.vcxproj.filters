@@ -169,6 +169,9 @@
     <ClCompile Include="src\Data\SettingsCache.cpp">
       <Filter>src\Data</Filter>
     </ClCompile>
+    <ClCompile Include="src\WorldState\InventoryCache.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -350,6 +353,9 @@
     </ClInclude>
     <ClInclude Include="src\Data\SettingsCache.h">
       <Filter>src\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\InventoryCache.h">
+      <Filter>src\WorldState</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -87,6 +87,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::NPCExcludedByDeadBodyFilter: return "NPCExcludedByDeadBodyFilter";
 	case Lootability::NPCIsInBlacklistCollection: return "NPCIsInBlacklistCollection";
 	case Lootability::ContainerIsLootTransferTarget: return "ContainerIsLootTransferTarget";
+	case Lootability::InventoryLimitsEnforced: return "InventoryLimitsEnforced";
 	default: return "";
 	}
 }

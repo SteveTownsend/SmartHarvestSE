@@ -103,13 +103,12 @@ void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
 	m_typeName = GetObjectTypeName(m_objectType);
 }
 
-
-const RE::TESForm* LootableREFR::GetLootable() const
+const RE::TESBoundObject* LootableREFR::GetLootable() const
 {
 	return m_lootable;
 }
 
-void LootableREFR::SetLootable(const RE::TESForm* lootable)
+void LootableREFR::SetLootable(const RE::TESBoundObject* lootable)
 {
 	m_lootable = lootable;
 }
@@ -122,7 +121,8 @@ uint32_t LootableREFR::CalculateWorth(void) const
 
 double LootableREFR::GetWeight(void) const
 {
-	return TESFormHelper::GetWeight(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
+	return itemEx.GetWeight();
 }
 
 const char* LootableREFR::GetName() const

@@ -111,7 +111,7 @@ bool IHasValueWeight::IsValuable() const
 		// allow small tolerance for floating point uncertainty
 		if (minValue > 0. && double(worth) >= minValue - 0.01)
 		{
-			DBG_VMESSAGE("{}/{:08x} has value {} vs threshold {:0.2f}: Valuable", GetName(), GetFormID(), worth, minValue);
+			DBG_VMESSAGE("{}/0x{:08x} has value {} vs threshold {:0.2f}: Valuable", GetName(), GetFormID(), worth, minValue);
 			return true;
 		}
 	}

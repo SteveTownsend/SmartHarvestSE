@@ -20,19 +20,13 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "InventoryItem.h"
+#include "Data/SettingsCache.h"
+#include "WorldState/InventoryCache.h"
 
 namespace shse
 {
 
 typedef std::vector<InventoryItem> LootableItems;
-
-struct InventoryEntry
-{
-	ObjectType m_excessType;
-	int m_count;
-	double m_weight;
-};
-typedef std::unordered_map<RE::FormID, InventoryEntry> InventoryCache;
 
 struct ContainerLister
 {

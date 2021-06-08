@@ -174,7 +174,7 @@ bool IsQuestTargetNPC(const RE::Actor* actor)
 	return result;
 }
 
-ObjectType GetEffectiveObjectType(const RE::TESForm* baseForm)
+ObjectType GetEffectiveObjectType(const RE::TESBoundObject* baseForm)
 {
 	// Leveled items typically redirect to their contents
 	DataCase* data = DataCase::GetInstance();
@@ -226,7 +226,7 @@ ObjectType GetBaseObjectType(const RE::TESForm * baseForm)
 	return ObjectType::unknown;
 }
 
-ObjectType GetExcessObjectType(const RE::TESForm* baseForm)
+ObjectType GetExcessObjectType(const RE::TESBoundObject* baseForm)
 {
 	// Some types are conflated to simplify management of excess inventory
 	ObjectType objType = GetEffectiveObjectType(baseForm);

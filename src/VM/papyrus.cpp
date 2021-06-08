@@ -89,7 +89,7 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = shse::GetEffectiveObjectType(thisForm);
+		ObjectType objType = shse::GetEffectiveObjectType(thisForm->As<RE::TESBoundObject>());
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 
@@ -290,7 +290,7 @@ namespace papyrus
 
 	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* critter, RE::TESForm* lootable)
 	{
-		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
+		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable->As<RE::TESBoundObject>());
 	}
 
 	void PrepareSPERGMining(RE::StaticFunctionTag*)
@@ -349,7 +349,7 @@ namespace papyrus
 			shse::ManagedList::TransferList().Reset();
 		}
 	}
-	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, const RE::TESForm* entry)
+	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, RE::TESForm* entry)
 	{
 		if (entryType == BlackList)
 		{
@@ -402,7 +402,7 @@ namespace papyrus
 	bool IsQuestTarget(RE::StaticFunctionTag*, RE::TESForm* item)
 	{
 		bool cannotLoot(shse::QuestTargets::Instance().UserCannotPermission(item));
-		REL_MESSAGE("Item {}/{:08x} is {}a Quest Target", item ? item->GetName() : "invalid", item ? item->GetFormID() : InvalidForm,
+		REL_MESSAGE("Item {}/0x{:08x} is {}a Quest Target", item ? item->GetName() : "invalid", item ? item->GetFormID() : InvalidForm,
 			cannotLoot ? "" : "not ");
 		return cannotLoot;
 	}
@@ -424,11 +424,11 @@ namespace papyrus
 	{
 		// Check if player can designate this REFR as a target for loot transfer
 		// Do not allow processing of bad REFR or Base
-		DBG_VMESSAGE("Check REFR {:08x} as transfer target - linked to chest {}", refr->GetFormID(), linksChest);
+		DBG_VMESSAGE("Check REFR 0x{:08x} as transfer target - linked to chest {}", refr->GetFormID(), linksChest);
 		if (IsREFRDynamic(refr))
 			return "";
 		const RE::TESObjectCONT* container(nullptr);
-		DBG_VMESSAGE("Check REFR {:08x} for container", refr->GetFormID());
+		DBG_VMESSAGE("Check REFR 0x{:08x} for container", refr->GetFormID());
 		if (linksChest)
 		{
 			DBG_VMESSAGE("REFR indicates linked chest");
@@ -436,14 +436,14 @@ namespace papyrus
 			const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
 			if (activator)
 			{
-				DBG_VMESSAGE("Check ACTI {}/{:08x} for linked container", activator->GetFullName(), activator->GetFormID());
+				DBG_VMESSAGE("Check ACTI {}/0x{:08x} for linked container", activator->GetFullName(), activator->GetFormID());
 				const RE::TESObjectREFR* linkedRefr(refr->GetLinkedRef(nullptr));
 				if (linkedRefr)
 				{
 					container = linkedRefr->GetBaseObject()->As<RE::TESObjectCONT>();
 					if (container)
 					{
-						DBG_VMESSAGE("ACTI {}/{:08x} has linked container {}/{:08x}", activator->GetFullName(), activator->GetFormID(),
+						DBG_VMESSAGE("ACTI {}/0x{:08x} has linked container {}/0x{:08x}", activator->GetFullName(), activator->GetFormID(),
 							container->GetFullName(), container->GetFormID());
 					}
 				}
@@ -458,17 +458,17 @@ namespace papyrus
 
 		if (container->data.flags.any(RE::CONT_DATA::Flag::kRespawn))
 		{
-			DBG_VMESSAGE("Respawning container {}/{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
+			DBG_VMESSAGE("Respawning container {}/0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
 			return "";
 		}
 		// must be in player house to be safe
 		if (!shse::LocationTracker::Instance().IsPlayerAtHome())
 		{
-			DBG_VMESSAGE("Player not in their house, cannot target {}/{:08x}", container->GetFullName(), container->GetFormID());
+			DBG_VMESSAGE("Player not in their house, cannot target {}/0x{:08x}", container->GetFullName(), container->GetFormID());
 			return "";
 		}
 		std::string houseName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
-		DBG_VMESSAGE("Player house {} -> Transfer target {}/{:08x}", houseName, container->GetFullName(), container->GetFormID());
+		DBG_VMESSAGE("Player house {} -> Transfer target {}/0x{:08x}", houseName, container->GetFullName(), container->GetFormID());
 		return houseName;
 	}
 
@@ -538,7 +538,7 @@ namespace papyrus
 		return shse::CollectionManager::Instance().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<const RE::TESForm*> forms,
+	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<RE::TESForm*> forms,
 		const std::vector<int> scopes, const std::vector<int> objectTypes, const int itemCount)
 	{
 		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
@@ -550,7 +550,8 @@ namespace papyrus
 		while (current < itemCount)
 		{
 			// checked API
-			shse::CollectionManager::Instance().CheckEnqueueAddedItem(*form, INIFile::SecondaryType(*scope), ObjectType(*objectType));
+			shse::CollectionManager::Instance().CheckEnqueueAddedItem(
+				(*form)->As<RE::TESBoundObject>(), INIFile::SecondaryType(*scope), ObjectType(*objectType));
 			++current;
 			++form;
 			++scope;

@@ -998,7 +998,7 @@ const char* DataCase::GetTranslation(const char* key) const
 	return translation->second.c_str();
 }
 
-const RE::TESForm* DataCase::ConvertIfLeveledItem(const RE::TESForm* form) const
+const RE::TESBoundObject* DataCase::ConvertIfLeveledItem(const RE::TESBoundObject* form) const
 {
 	const RE::TESProduceForm* produceForm(form->As<RE::TESProduceForm>());
 	if (produceForm)
@@ -1522,7 +1522,14 @@ void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* levele
 		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
 		if (itemType != ObjectType::unknown)
 		{
-			ProcessContentLeaf(itemForm, itemType);
+			RE::TESBoundObject* boundItem = itemForm->As<RE::TESBoundObject>();
+			if (!boundItem)
+			{
+				REL_WARNING("LVLI 0x{:08x} has content leaf {}/0x{:08x} that is not TESBoundObject", m_rootItem->GetFormID(),
+					itemForm->GetName(), itemForm->GetFormID());
+				return;
+			}
+			ProcessContentLeaf(boundItem, itemType);
 		}
 	}
 }
@@ -1534,7 +1541,7 @@ DataCase::ProduceFormCategorizer::ProduceFormCategorizer(
 {
 }
 
-void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType)
+void DataCase::ProduceFormCategorizer::ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType)
 {
 	if (!m_contents)
 	{

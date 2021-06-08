@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/DataCase.h"
 #include "Data/LoadOrder.h"
 #include "Data/SettingsCache.h"
+#include "FormHelpers/FormHelper.h"
 #include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
 #include "Looting/ScanGovernor.h"
@@ -117,6 +118,12 @@ void PlayerState::CheckExcessInventory(const bool force)
 		m_lastExcessCheck = nowTime;
 		m_currentItems = lister.CacheIfExcessHandlingEnabled();
 		DBG_DMESSAGE("Cached {} inventory items", m_currentItems.size());
+
+		// Transfer or sell items in excess of limits
+		for (auto& item : m_currentItems)
+		{
+			item.second.HandleExcess(item.first);
+		}
 	}
 }
 
@@ -353,6 +360,24 @@ void PlayerState::UpdateGameTime(const float gameTime)
 	RecursiveLockGuard guard(m_playerLock);
 	DBG_MESSAGE("GameTime is now {:0.3f}/{}", gameTime, GameCalendar::Instance().DateTimeString(gameTime));
 	m_gameTime = gameTime;
+}
+
+// returns -1 if items are marked to be left behind and inventory is full, or the number allowed before limits are breached
+int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType) const
+{
+	ObjectType excessType(GetExcessObjectType(form));
+	if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
+		return InventoryEntry::UnlimitedItems;
+
+	// Inventory limit is configured - check if item is already being tracked
+	auto cached(m_currentItems.find(form));
+	if (cached == m_currentItems.end())
+	{
+		TESFormHelper helper(form, objType, INIFile::SecondaryType::itemObjects);
+		// add to cache if limited and not found
+		cached = m_currentItems.insert({ form, InventoryEntry(excessType, 0, helper.GetWorth(), helper.GetWeight()) }).first;
+	}
+	return cached->second.Headroom();
 }
 
 }

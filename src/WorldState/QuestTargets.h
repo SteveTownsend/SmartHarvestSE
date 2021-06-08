@@ -31,7 +31,7 @@ public:
 	static void SetupExclusions();
 
 protected:
-	virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType) override;
+	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType) override;
 
 private:
 	std::unordered_set<RE::FormID>& m_members;

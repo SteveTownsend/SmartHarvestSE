@@ -29,8 +29,8 @@ namespace shse
 class TESFormHelper : public IHasValueWeight
 {
 public:
-	TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope);
-	TESFormHelper(const RE::TESForm* form, ObjectType effectiveType, const INIFile::SecondaryType scope);
+	TESFormHelper(const RE::TESBoundObject* form, const INIFile::SecondaryType scope);
+	TESFormHelper(const RE::TESBoundObject* form, ObjectType effectiveType, const INIFile::SecondaryType scope);
 
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
@@ -42,12 +42,11 @@ public:
 	inline const RE::TESForm* Form() const { return m_form; }
 
 	virtual double GetWeight(void) const override;
-	static double GetWeight(const RE::TESForm* form);
 
 protected:
 	void init();
 
-	const RE::TESForm* m_form;
+	const RE::TESBoundObject* m_form;
 	const shse::ConditionMatcher m_matcher;
 
 	virtual const char* GetName() const override;

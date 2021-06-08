@@ -19,34 +19,26 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include <unordered_map>
+
 namespace shse
 {
 
-// blacklist and whitelist - can contain Container/Dead Actor (REFR), location, cell or item (base object, not REFR)
-class ManagedList
-{
-public:
-	static ManagedList& BlackList();
-	static ManagedList& WhiteList();
-	static ManagedList& TransferList();
-	ManagedList() {}
+	class InventoryEntry
+	{
+	public:
+		InventoryEntry(const ObjectType excessType, const int count, const uint32_t value, const double weight);
+		static constexpr int UnlimitedItems = 1000000;
+		int Headroom() const;
+		void HandleExcess(const RE::TESBoundObject* item);
 
-	void Reset();
-	void Add(RE::TESForm* entry);
-	bool Contains(const RE::TESForm* entry) const;
-	bool ContainsID(const RE::FormID entryID) const;
-	RE::TESForm* ByIndex(const size_t index) const;
+	private:
+		ExcessInventoryHandling m_excessHandling;
+		int m_count;
+		int m_maxCount;
+		uint32_t m_value;
+		double m_weight;
+	};
 
-private:
-	bool HasEntryWithSameName(const RE::TESForm* form) const;
-
-	static std::unique_ptr<ManagedList> m_blackList;
-	static std::unique_ptr<ManagedList> m_whiteList;
-	static std::unique_ptr<ManagedList> m_transferList;
-
-	std::unordered_map<RE::FormID, std::string> m_members;
-	std::vector<RE::TESForm*> m_orderedList;
-	mutable RecursiveLock m_listLock;
-};
-
+	typedef std::unordered_map<const RE::TESBoundObject*, InventoryEntry> InventoryCache;
 }

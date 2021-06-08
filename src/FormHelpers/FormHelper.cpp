@@ -31,12 +31,12 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetEffectiveObjectType(form))
+TESFormHelper::TESFormHelper(const RE::TESBoundObject* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetEffectiveObjectType(form))
 {
 	init();
 }
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form, ObjectType effectiveType, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, effectiveType)
+TESFormHelper::TESFormHelper(const RE::TESBoundObject* form, ObjectType effectiveType, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, effectiveType)
 {
 	init();
 }
@@ -51,7 +51,7 @@ void TESFormHelper::init()
 
 RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
 {
-	return dynamic_cast<RE::BGSKeywordForm*>(const_cast<RE::TESForm*>(m_form));
+	return dynamic_cast<RE::BGSKeywordForm*>(const_cast<RE::TESBoundObject*>(m_form));
 }
 
 RE::EnchantmentItem* TESFormHelper::GetEnchantment()
@@ -173,15 +173,10 @@ std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const boo
 
 double TESFormHelper::GetWeight() const
 {
-	return GetWeight(m_form);
-}
-
-double TESFormHelper::GetWeight(const RE::TESForm* form)
-{
-	if (!form)
+	if (!m_form)
 	return 0.0;
 
-	const RE::TESWeightForm* pWeight(form->As<RE::TESWeightForm>());
+	const RE::TESWeightForm* pWeight(m_form->As<RE::TESWeightForm>());
 	if (!pWeight)
 		return 0.0;
 

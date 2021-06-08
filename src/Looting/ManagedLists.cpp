@@ -76,12 +76,13 @@ void ManagedList::Reset()
 		else
 		{
 			REL_MESSAGE("Reset TransferList");
+			m_orderedList.clear();
 		}
 		m_members.clear();
 	}
 }
 
-void ManagedList::Add(const RE::TESForm* entry)
+void ManagedList::Add(RE::TESForm* entry)
 {
 	std::string name;
 	const RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
@@ -97,6 +98,10 @@ void ManagedList::Add(const RE::TESForm* entry)
 		this == m_blackList.get() ? "BlackList" : (this == m_whiteList.get() ? "WhiteList" : "TransferList"));
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert({ entry->GetFormID(), name });
+	if (this == m_transferList.get())
+	{
+		m_orderedList.push_back(entry);
+	}
 }
 
 bool ManagedList::Contains(const RE::TESForm* entry) const
@@ -111,6 +116,13 @@ bool ManagedList::ContainsID(const RE::FormID entryID) const
 {
 	RecursiveLockGuard guard(m_listLock);
 	return m_members.contains(entryID);
+}
+
+RE::TESForm* ManagedList::ByIndex(const size_t index) const
+{
+	if (this == m_transferList.get() && index < m_orderedList.size())
+		return m_orderedList[index];
+	return nullptr;
 }
 
 // sometimes multiple items use the same name - we treat them all the same

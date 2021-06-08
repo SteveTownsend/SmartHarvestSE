@@ -50,6 +50,8 @@ public:
 	double ValueWeight(ObjectType objectType) const;
 	LootingType ObjectLootingType(ObjectType objectType) const;
 	ExcessInventoryHandling ExcessInventoryHandlingType(ObjectType objectType) const;
+	int ExcessInventoryCount(ObjectType objectType) const;
+	double ExcessInventoryWeight(ObjectType objectType) const;
 
 	DeadBodyLooting DeadBodyLootingType() const;
 	EnchantedObjectHandling EnchantedObjectHandlingType() const;
@@ -114,6 +116,8 @@ private:
 
 	std::array<LootingType, TypeCount> m_lootingType;
 	std::array<ExcessInventoryHandling, TypeCount> m_excessHandling;
+	std::array<int, TypeCount> m_excessCount;
+	std::array<double, TypeCount> m_excessWeight;
 	std::array<double, TypeCount> m_valueWeight;
 };
 

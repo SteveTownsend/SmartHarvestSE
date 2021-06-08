@@ -56,7 +56,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
 		if (!dryRun && objType == ObjectType::critter)
 		{
-			RE::TESForm* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
+			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
 				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
@@ -405,6 +405,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
 				return Lootability::HarvestOperationPending;
+			// Check inventory limits. We don't try to fine-tune transfer-count here since the exact amount to be retrieved is not known.
+			if (PlayerState::Instance().ItemHeadroom(refrEx.GetLootable(), objType) <= 0)
+			{
+				DBG_VMESSAGE("Inventory Limits preclude harvest for {}/0x{:08x}", refrEx.GetLootable()->GetName(), refrEx.GetLootable()->GetFormID());
+				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
+				return Lootability::InventoryLimitsEnforced;
+			}
 			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
 			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());

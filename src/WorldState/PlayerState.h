@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/containerLister.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/InventoryCache.h"
 
 namespace shse
 {
@@ -47,6 +48,7 @@ public:
 	bool WithinDetectionRange(const double distance) const;
 	void UpdateGameTime(const float gameTime);
 	inline float CurrentGameTime() const { return m_gameTime; }
+	int ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType) const;
 
 private:
 	void CheckPerks(const bool force);
@@ -66,7 +68,7 @@ private:
 	// Excess inventory management
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
 	// specialized cache of inventory items
-	InventoryCache m_currentItems;
+	mutable InventoryCache m_currentItems;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;
