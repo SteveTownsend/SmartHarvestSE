@@ -1298,24 +1298,32 @@ EndEvent
 
 ; check if Actor detects player - used for real stealing, or stealibility check in dry run
 Event OnStealIfUndetected(int actorCount, bool dryRun)
-    int currentActor = 0
-    bool detected = False
     ;DebugTrace("Check player detection, actorCount=" + actorCount)
+    ; Get all the requested actors to check first, as this is a slow process
+    Form[] actors = Utility.CreateFormArray(actorCount)
+    int currentActor = 0
+    while currentActor < actorCount
+        actors[currentActor] = GetDetectingActor(currentActor, dryRun)
+        currentActor += 1
+    endWhile
+
     String msg
+    bool detected = False
+    currentActor = 0
     while currentActor < actorCount && !detected
         if !OKToScan()
             msg = "UI Open : Actor Detection interrupted"
             AlwaysTrace(msg)
             detected = True     ; do not steal items while UI is active
         else
-            Actor npc = GetDetectingActor(currentActor, dryRun)
-            if player.IsDetectedBy(npc)
+            Actor npc = actors[currentActor] as Actor
+            if npc && player.IsDetectedBy(npc)
                 msg = "Player detected by " + npc.getActorBase().GetName()
                 detected = True
             else
                 ;DebugTrace("Player not detected by " + npc.getActorBase().GetName())
             endIf
-            currentActor = currentActor + 1
+            currentActor += 1
         endIf
     endWhile
 

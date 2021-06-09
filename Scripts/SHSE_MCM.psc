@@ -829,10 +829,10 @@ Function RemoveLightCategory()
             while index < newId.length
                 newId[index] = id_objectSettingArray[oldIndex]
                 index += 1
-                oldIndex += 1
-                if index == objType_Clutter
+                if oldIndex == objType_Clutter
                     oldIndex += 1
                 endif
+                oldIndex += 1
             endwhile
             id_objectSettingArray = newId
         endif
@@ -843,10 +843,10 @@ Function RemoveLightCategory()
             while index < newObj.length
                 newObj[index] = objectSettingArray[oldIndex]
                 index += 1
-                oldIndex += 1
-                if index == objType_Clutter
+                if oldIndex == objType_Clutter
                     oldIndex += 1
                 endif
+                oldIndex += 1
             endwhile
             objectSettingArray = newObj
         endif
@@ -857,10 +857,10 @@ Function RemoveLightCategory()
             while index < newidVW.length
                 newidVW[index] = id_valueWeightArray[oldIndex]
                 index += 1
-                oldIndex += 1
-                if index == objType_Clutter
+                if oldIndex == objType_Clutter
                     oldIndex += 1
                 endif
+                oldIndex += 1
             endwhile
             id_valueWeightArray = newidVW
         endif
@@ -871,14 +871,15 @@ Function RemoveLightCategory()
             while index < newVW.length
                 newVW[index] = valueWeightSettingArray[oldIndex]
                 index += 1
-                oldIndex += 1
-                if index == objType_Clutter
+                if oldIndex == objType_Clutter
                     oldIndex += 1
                 endif
+                oldIndex += 1
             endwhile
             valueWeightSettingArray = newVW
         endif
     endIf
+    SetObjectTypeData()
 
 EndFunction
 
