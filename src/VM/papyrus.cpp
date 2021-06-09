@@ -290,7 +290,7 @@ namespace papyrus
 
 	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* critter, RE::TESForm* lootable)
 	{
-		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable->As<RE::TESBoundObject>());
+		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable ? lootable->As<RE::TESBoundObject>() : nullptr);
 	}
 
 	void PrepareSPERGMining(RE::StaticFunctionTag*)

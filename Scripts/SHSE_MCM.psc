@@ -696,7 +696,7 @@ EndFunction
 
 Function InstallAdventuresPower()
     ;clear out existing adventure - the fields could be out of date for new logic
-    SetAdventuresStatus()
+    SetAdventuresStatus(False)
 EndFunction
 
 Function InstallFortunePower()
@@ -822,7 +822,7 @@ Function RemoveLightCategory()
     if doneInit != 0
         ; arrays should all be in place, preserve settings that come later than light's old slot
         ; old arrays have two unused settings - 0 for unknown, and an entry for light (after clutter)
-        if id_objectSettingArray
+        if id_objectSettingArray && id_objectSettingArray.length > 30
             Int[] newId = New Int[30]
             int index = 0
             int oldIndex = 1
@@ -836,7 +836,7 @@ Function RemoveLightCategory()
             endwhile
             id_objectSettingArray = newId
         endif
-        if objectSettingArray
+        if objectSettingArray && objectSettingArray.length > 30
             float[] newObj = New float[30]
             int index = 0
             int oldIndex = 1
@@ -850,7 +850,7 @@ Function RemoveLightCategory()
             endwhile
             objectSettingArray = newObj
         endif
-        if id_valueWeightArray
+        if id_valueWeightArray && id_valueWeightArray.length > 30
             int[] newidVW = New int[30]
             int index = 0
             int oldIndex = 1
@@ -864,7 +864,7 @@ Function RemoveLightCategory()
             endwhile
             id_valueWeightArray = newidVW
         endif
-        if valueWeightSettingArray
+        if valueWeightSettingArray && valueWeightSettingArray.length > 30
             float[] newVW = New float[30]
             int index = 0
             int oldIndex = 1
@@ -1266,7 +1266,7 @@ Function GetCollectionGroupPolicy()
     SyncCollectionGroupPolicyUI()
 EndFunction
 
-Function PopulateCollectionsForGroup(String groupName)
+Function PopulateCollectionsForGroup(bool inMCM, String groupName)
     GetCollectionGroupPolicy()
     collectionCount = CollectionsInGroup(groupName)
     lastKnownPolicy = ""
@@ -1286,7 +1286,9 @@ Function PopulateCollectionsForGroup(String groupName)
         collectionIndex = 0
     endIf
     ; reset Collection list for new Group
-    SetMenuOptionValueST(collectionNames[collectionIndex], false, "chooseCollectionIndex")
+    if inMCM
+        SetMenuOptionValueST(collectionNames[collectionIndex], false, "chooseCollectionIndex")
+    endIf
     GetCollectionPolicy(collectionNames[collectionIndex])
 EndFunction
 
@@ -1474,7 +1476,7 @@ event OnPageReset(string currentPage)
         if collectionsEnabled && collectionGroupCount > 0
             flags = OPTION_FLAG_NONE
             initialGroupName = collectionGroupNames[collectionGroup]
-            PopulateCollectionsForGroup(initialGroupName)
+            PopulateCollectionsForGroup(False, initialGroupName)
         endIf
 
         AddHeaderOption("$SHSE_COLLECTIONS_GLOBAL_HEADER")
@@ -2689,13 +2691,13 @@ state chooseCollectionGroup
     event OnMenuAcceptST(int index)
         SetMenuOptionValueST(collectionGroupNames[index])
         collectionGroup = index
-        PopulateCollectionsForGroup(collectionGroupNames[index])
+        PopulateCollectionsForGroup(True, collectionGroupNames[index])
     endEvent
 
     event OnDefaultST()
         collectionGroup = 0
         SetMenuOptionValueST(collectionGroupNames[collectionGroup])
-        PopulateCollectionsForGroup(collectionGroupNames[collectionGroup])
+        PopulateCollectionsForGroup(True, collectionGroupNames[collectionGroup])
     endEvent
 
     event OnHighlightST()
@@ -2851,6 +2853,9 @@ state itemsCollected
 endState
 
 Function CheckAdventuresPower()
+    if !player
+        return
+    endif
     if adventuresEnabled
         player.AddSpell(AdventurersInstinctPower)
     else
@@ -2858,12 +2863,15 @@ Function CheckAdventuresPower()
     endIf
 EndFunction
 
-Function SetAdventuresStatus()
+Function SetAdventuresStatus(bool inMCM)
     CheckAdventuresPower()
-    ResetAdventureType()
+    ResetAdventureType(inMCM)
 EndFunction
 
 Function CheckFortunePower()
+    if !player
+        return
+    endif
     if fortuneHuntingEnabled
         player.AddSpell(FortuneHuntersInstinctPower)
     else
@@ -2875,13 +2883,13 @@ state adventuresEnabled
     event OnSelectST()
         adventuresEnabled = !adventuresEnabled
         SetToggleOptionValueST(adventuresEnabled)
-        SetAdventuresStatus()
+        SetAdventuresStatus(True)
     endEvent
 
     event OnDefaultST()
         adventuresEnabled = false
         SetToggleOptionValueST(adventuresEnabled)
-        SetAdventuresStatus()
+        SetAdventuresStatus(True)
     endEvent
 
     event OnHighlightST()
@@ -2901,14 +2909,14 @@ state chooseAdventureType
         adventureType = index
         SetMenuOptionValueST(adventureTypeNames[adventureType])
         PopulateAdventureWorlds()
-        ResetAdventureWorld()
+        ResetAdventureWorld(True)
     endEvent
 
     event OnDefaultST()
         adventureType = 0
         SetMenuOptionValueST(adventureTypeNames[adventureType])
         PopulateAdventureWorlds()
-        ResetAdventureWorld()
+        ResetAdventureWorld(True)
     endEvent
 
     event OnHighlightST()
@@ -2916,34 +2924,40 @@ state chooseAdventureType
     endEvent
 endState
 
-Function ResetAdventureType()
-    if adventuresEnabled
-        SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseAdventureType")
-    else
-        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureType")
-    endIf
+Function ResetAdventureType(bool inMCM)
+    if inMCM
+        if adventuresEnabled
+            SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseAdventureType")
+        else
+            SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureType")
+        endIf
+        SetMenuOptionValueST("", false, "chooseAdventureType")
+    endif
     adventureType = 0
-    SetMenuOptionValueST("", false, "chooseAdventureType")
     worldCount = 0
-    ResetAdventureWorld()
+    ResetAdventureWorld(inMCM)
 EndFunction
 
-Function ResetAdventureWorld()
-    if worldCount > 0
-        SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseAdventureWorld")
-        SetMenuOptionValueST(worldNames[worldIndex], false, "chooseAdventureWorld")
-    else
-        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureWorld")
-        SetMenuOptionValueST("", false, "chooseAdventureWorld")
+Function ResetAdventureWorld(bool inMCM)
+    if inMCM
+        if worldCount > 0
+            SetOptionFlagsST(OPTION_FLAG_NONE, false, "chooseAdventureWorld")
+            SetMenuOptionValueST(worldNames[worldIndex], false, "chooseAdventureWorld")
+        else
+            SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "chooseAdventureWorld")
+            SetMenuOptionValueST("", false, "chooseAdventureWorld")
+        endIf
     endIf
-    ResetAdventureActive(OPTION_FLAG_DISABLED)
+    ResetAdventureActive(inMCM, OPTION_FLAG_DISABLED)
 EndFunction
 
-Function ResetAdventureActive(int flags)
+Function ResetAdventureActive(bool inMCM, int flags)
     adventureActive = false
     ClearAdventureTarget()
-    SetOptionFlagsST(flags, false, "chooseAdventureActive")
-    SetToggleOptionValueST(adventureActive, false, "chooseAdventureActive")
+    if inMCM
+        SetOptionFlagsST(flags, false, "chooseAdventureActive")
+        SetToggleOptionValueST(adventureActive, false, "chooseAdventureActive")
+    endif
 EndFunction
 
 state chooseAdventureWorld
@@ -2956,13 +2970,13 @@ state chooseAdventureWorld
 
     event OnMenuAcceptST(int index)
         worldIndex = index
-        ResetAdventureActive(OPTION_FLAG_NONE)
+        ResetAdventureActive(True, OPTION_FLAG_NONE)
         SetMenuOptionValueST(worldNames[worldIndex])
     endEvent
 
     event OnDefaultST()
         worldIndex = 0
-        ResetAdventureActive(OPTION_FLAG_NONE)
+        ResetAdventureActive(True, OPTION_FLAG_NONE)
         SetMenuOptionValueST(worldNames[worldIndex])
     endEvent
 
