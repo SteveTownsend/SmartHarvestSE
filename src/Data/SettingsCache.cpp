@@ -109,6 +109,9 @@ void SettingsCache::Refresh(void)
 		*excessWeight = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::maxWeight, typeName);
 		REL_VMESSAGE("Excess Weight {:0.2f} for {} items", *excessWeight, typeName);
 	}
+	// convert from percentage to multiplier
+	m_saleValuePercentMultiplier = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "SaleValuePercent") / 100.0;
+	REL_VMESSAGE("Sale Value Percent Multiplier {}", m_saleValuePercentMultiplier);
 
 	m_deadBodyLooting = DeadBodyLootingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody"));
@@ -254,6 +257,10 @@ double SettingsCache::ExcessInventoryWeight(ObjectType objectType) const
 {
 	size_t index(std::min(TypeCount, size_t(objectType)) - 1);
 	return m_excessWeight[index];
+}
+double SettingsCache::SaleValuePercentMultiplier() const
+{
+	return m_saleValuePercentMultiplier;
 }
 DeadBodyLooting SettingsCache::DeadBodyLootingType() const
 {

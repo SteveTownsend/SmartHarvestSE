@@ -66,8 +66,16 @@ void InventoryEntry::HandleExcess(const RE::TESBoundObject* item)
 		{
 			RE::PlayerCharacter::GetSingleton()->RemoveItem(
 				const_cast<RE::TESBoundObject*>(item), excess, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
-			RE::PlayerCharacter::GetSingleton()->AddObjectToContainer(goldItem, nullptr, excess * m_value, nullptr);
-			DBG_VMESSAGE("Sold excess {} of {}/0x{:08x} for {} gold", excess, item->GetName(), item->GetFormID(), excess * m_value);
+			uint32_t payment(static_cast<uint32_t>(static_cast<double>(excess * m_value) * SettingsCache::Instance().SaleValuePercentMultiplier()));
+			if (payment > 0)
+			{
+				RE::PlayerCharacter::GetSingleton()->AddObjectToContainer(goldItem, nullptr, payment, nullptr);
+				DBG_VMESSAGE("Sold excess {} of {}/0x{:08x} for {} gold", excess, item->GetName(), item->GetFormID(), payment);
+			}
+			else
+			{
+				DBG_VMESSAGE("Excess {} of {}/0x{:08x} discarded as worthless", excess, item->GetName(), item->GetFormID());
+			}
 		}
 		else
 		{
