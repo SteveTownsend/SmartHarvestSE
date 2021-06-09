@@ -19,7 +19,9 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
+#include "Looting/containerLister.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/InventoryCache.h"
 
 namespace shse
 {
@@ -46,12 +48,14 @@ public:
 	bool WithinDetectionRange(const double distance) const;
 	void UpdateGameTime(const float gameTime);
 	inline float CurrentGameTime() const { return m_gameTime; }
+	int ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType) const;
 
 private:
 	void CheckPerks(const bool force);
 	void ResetCarryWeight();
 	void AdjustCarryWeight();
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
+	void CheckExcessInventory(const bool force);
 
 	static std::unique_ptr<PlayerState> m_instance;
 
@@ -60,6 +64,11 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
 	bool m_perksAddLeveledItemsOnDeath;
 	float m_harvestedIngredientMultiplier;
+
+	// Excess inventory management
+	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
+	// specialized cache of inventory items
+	mutable InventoryCache m_currentItems;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;

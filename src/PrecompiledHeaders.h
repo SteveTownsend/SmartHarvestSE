@@ -20,14 +20,8 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
 
-#include "CommonLibSSE/include/SKSE/Impl/PCH.h"
-
-#include "CommonLibSSE/include/SKSE/API.h"
-#include "CommonLibSSE/include/SKSE/Interfaces.h"
-#include "CommonLibSSE/include/SKSE/Logger.h"
-#include "CommonLibSSE/include/SKSE/RegistrationSet.h"
-
 #include "CommonLibSSE/include/RE/Skyrim.h"
+#include "CommonLibSSE/include/SKSE/SKSE.h"
 
 #include "nlohmann/json.hpp"
 #include "nlohmann/json-schema.hpp"

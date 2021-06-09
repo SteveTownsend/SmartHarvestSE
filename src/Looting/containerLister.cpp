@@ -24,14 +24,16 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
+#include "Looting/objects.h"
 #include "WorldState/QuestTargets.h"
 
 namespace shse
 {
 
 ContainerLister::ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr) :
-	m_refr(refr),	m_targetType(targetType), m_collectibleAction(CollectibleHandling::Leave)
+	m_refr(refr), m_targetType(targetType), m_collectibleAction(CollectibleHandling::Leave)
 {
+	m_enchantedLoot = SettingsCache::Instance().EnchantedObjectHandlingType();
 }
 
 void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate)
@@ -52,7 +54,7 @@ void ContainerLister::FilterLootableItems(std::function<bool(RE::TESBoundObject*
 		if (predicate(itemObject))
 		{
 			DBG_DMESSAGE("Matched filter predicate for {}/0x{:08x}, count={}", itemObject->GetName(), itemObject->GetFormID(), count);
-			m_lootableItems.emplace_back(std::move(entry), count);
+			m_lootableItems.emplace_back(std::move(entry), count, m_enchantedLoot);
 		}
 	}
 }
@@ -82,7 +84,35 @@ size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject
 	return items;
 }
 
-size_t ContainerLister::AnalyzeLootableItems()
+InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
+{
+	// refactored following QuickLookRE
+	InventoryCache cache;
+	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
+	for (auto& item : inv) {
+		auto& [count, entry] = item.second;
+		if (count <= 0)
+			continue;
+		RE::TESBoundObject* itemObject = entry->GetObject();
+		if (!FormUtils::IsConcrete(itemObject))
+			continue;
+
+		if (itemObject->formType == RE::FormType::LeveledItem)
+			continue;
+
+		ObjectType excessType(GetExcessObjectType(itemObject));
+		if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
+			continue;
+
+		TESFormHelper helper(itemObject, excessType, INIFile::SecondaryType::itemObjects);
+		uint32_t value(helper.GetWorth());
+		double weight(helper.GetWeight());
+		DBG_DMESSAGE("Excess handling for item {}/0x{:08x}, count={}, weight={:0.2f}", itemObject->GetName(), itemObject->GetFormID(), count, weight);
+		cache.insert({ itemObject, InventoryEntry(excessType, count, value, weight) });
+	}
+	return cache;
+}
+size_t ContainerLister::AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling)
 {
 	if (!m_refr)
 		return 0;
@@ -120,22 +150,28 @@ size_t ContainerLister::AnalyzeLootableItems()
 			{
 				if (*extraList)
 				{
-					ExtraDataListHelper exListHelper(*extraList);
-					if (exListHelper.IsItemQuestObject(item))
+					if (ExtraDataList::IsItemQuestObject(item, *extraList))
 					{
 						DBG_DMESSAGE("Quest Item {}/0x{:08x}", item->GetName(), item->GetFormID());
 						m_questItems.insert(item);
 					}
 					TESFormHelper itemEx(item, m_targetType);
-					if (exListHelper.GetEnchantment() != nullptr)
+					RE::EnchantmentItem* enchantItem(nullptr);
+					if ((enchantItem = ExtraDataList::GetEnchantment(*extraList)) != nullptr)
 					{
-						DBG_DMESSAGE("Enchanted Item {}/0x{:08x}", item->GetName(), item->GetFormID());
-						m_enchantedItems.insert(item);
+						if (TESFormHelper::ConfirmEnchanted(enchantItem, enchantedObjectHandling))
+						{
+							DBG_DMESSAGE("Enchanted Item {}/0x{:08x}", item->GetName(), item->GetFormID());
+							m_enchantedItems.insert(item);
+						}
 					}
-					else if (itemEx.GetEnchantment() != nullptr)
+					else if ((enchantItem = itemEx.GetEnchantment()) != nullptr)
 					{
-						DBG_DMESSAGE("Enchanted Item={}/0x{:08x}", item->GetName(), item->GetFormID());
-						m_enchantedItems.insert(item);
+						if (TESFormHelper::ConfirmEnchanted(enchantItem, enchantedObjectHandling))
+						{
+							DBG_DMESSAGE("Enchanted Item={}/0x{:08x}", item->GetName(), item->GetFormID());
+							m_enchantedItems.insert(item);
+						}
 					}
 					if (itemEx.IsValuable())
 					{

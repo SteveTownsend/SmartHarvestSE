@@ -19,8 +19,11 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
-#include "Data/iniSettings.h"
+#include "Data/SettingsCache.h"
 #include "FormHelpers/IHasValueWeight.h"
+
+namespace shse
+{
 
 ObjectType IHasValueWeight::GetObjectType() const
 {
@@ -31,8 +34,6 @@ std::string IHasValueWeight::GetTypeName() const
 {
 	return m_typeName;
 }
-
-constexpr const char* VW_Default = "valueWeightDefault";
 
 uint32_t IHasValueWeight::GetWorth(void) const
 {
@@ -53,12 +54,11 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 	if (IsValuable())
 		return false;
 
-	INIFile* settings(INIFile::GetInstance());
 	// A specified default for value-weight supersedes a missing type-specific value-weight
-	double valueWeight(settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::valueWeight, m_typeName.c_str()));
+	double valueWeight(SettingsCache::Instance().ValueWeight(m_objectType));
 	if (valueWeight <= 0.)
 	{
-		valueWeight = settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, VW_Default);
+		valueWeight = SettingsCache::Instance().ValueWeightDefault();
 	}
 
 	if (valueWeight > 0.)
@@ -107,13 +107,15 @@ bool IHasValueWeight::IsValuable() const
 	uint32_t worth(GetWorth());
 	if (worth > 0)
 	{
-		double minValue(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemThreshold"));
+		double minValue(SettingsCache::Instance().ValuableItemThreshold());
 		// allow small tolerance for floating point uncertainty
 		if (minValue > 0. && double(worth) >= minValue - 0.01)
 		{
-			DBG_VMESSAGE("{}/{:08x} has value {} vs threshold {:0.2f}: Valuable", GetName(), GetFormID(), worth, minValue);
+			DBG_VMESSAGE("{}/0x{:08x} has value {} vs threshold {:0.2f}: Valuable", GetName(), GetFormID(), worth, minValue);
 			return true;
 		}
 	}
 	return false;
+}
+
 }

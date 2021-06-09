@@ -32,7 +32,7 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/CollectionFactory.h"
 #include "Data/CosaveData.h"
 #include "Data/DataCase.h"
-#include "Data/iniSettings.h"
+#include "Data/SettingsCache.h"
 #include "Data/LoadOrder.h"
 #include "Looting/ManagedLists.h"
 #include "Looting/objects.h"
@@ -80,10 +80,10 @@ void CollectionManager::Refresh() const
 	EventPublisher::Instance().TriggerFlushAddedItems();
 }
 
-bool CollectionManager::ItemIsCollectionCandidate(const RE::TESForm* item) const
+bool CollectionManager::ItemIsCollectionCandidate(RE::TESBoundObject* item) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	return m_collectionsByFormID.contains(item->GetFormID()) || m_collectionsByObjectType.contains(GetBaseFormObjectType(item));
+	return m_collectionsByFormID.contains(item->GetFormID()) || m_collectionsByObjectType.contains(GetEffectiveObjectType(item));
 }
 
 void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
@@ -101,7 +101,7 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 	for (const auto& candidate : lister.GetLootableItems())
 	{
 		// assume loose item, we don't know the original source
-		EnqueueAddedItem(candidate.BoundObject(), INIFile::SecondaryType::itemObjects, GetBaseFormObjectType(candidate.BoundObject()));
+		EnqueueAddedItem(candidate.BoundObject(), INIFile::SecondaryType::itemObjects, GetEffectiveObjectType(candidate.BoundObject()));
 		DBG_VMESSAGE("Enqueue Collectible {}/0x{:08x} from Container", candidate.BoundObject()->GetName(), candidate.BoundObject()->GetFormID());
 	}
 	static RE::BSFixedString extraItemsText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_HOTKEY_ADD_CONTENTS_TO_COLLECTIONS")));
@@ -112,7 +112,7 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR* refr)
 	}
 }
 
-void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType)
+void CollectionManager::CheckEnqueueAddedItem(RE::TESBoundObject* form, const INIFile::SecondaryType scope, const ObjectType objectType)
 {
 	if (!IsAvailable())
 		return;
@@ -124,7 +124,7 @@ void CollectionManager::CheckEnqueueAddedItem(const RE::TESForm* form, const INI
 	}
 }
 
-void CollectionManager::EnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType)
+void CollectionManager::EnqueueAddedItem(RE::TESBoundObject* form, const INIFile::SecondaryType scope, const ObjectType objectType)
 {
 	m_addedItemQueue.emplace_back(std::make_tuple(form, scope, objectType));
 }
@@ -154,7 +154,7 @@ void CollectionManager::ProcessAddedItems()
 	for (const auto ownedItem : queuedItems)
 	{
 		// only process items known to be a member of at least one collection
-		const RE::TESForm* form(std::get<0>(ownedItem));
+		RE::TESBoundObject* form(std::get<0>(ownedItem));
 		if (ItemIsCollectionCandidate(form))
 		{
 			DBG_VMESSAGE("Check collectability of added item 0x{:08x}", form->GetFormID());
@@ -304,7 +304,7 @@ void CollectionManager::ReconcileInventory(std::vector<OwnedItem>& additions)
 		{
 			DBG_VMESSAGE("Collectible {}/0x{:08x} new in inventory", item->GetName(), item->GetFormID());
 			// Assumes loose item since we apparently did not autoloot it
-			additions.emplace_back(std::make_tuple(item, INIFile::SecondaryType::itemObjects, GetBaseFormObjectType(item)));
+			additions.emplace_back(std::make_tuple(item, INIFile::SecondaryType::itemObjects, GetEffectiveObjectType(item)));
 		}
 		else
 		{
@@ -789,7 +789,7 @@ void CollectionManager::OnGameReload(void)
 void CollectionManager::RefreshSettings(void)
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	m_mcmEnabled = INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.;
+	m_mcmEnabled = SettingsCache::Instance().CollectionsEnabled();
 	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
 }
 

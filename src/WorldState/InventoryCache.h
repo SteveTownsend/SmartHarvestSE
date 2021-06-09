@@ -19,11 +19,26 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-class EnchantmentItemHelper
+#include <unordered_map>
+
+namespace shse
 {
-public:
-	EnchantmentItemHelper(RE::EnchantmentItem* item) : m_item(item) {}
-	uint32_t GetGoldValue(void);
-private:
-	RE::EnchantmentItem* m_item;
-};
+
+	class InventoryEntry
+	{
+	public:
+		InventoryEntry(const ObjectType excessType, const int count, const uint32_t value, const double weight);
+		static constexpr int UnlimitedItems = 1000000;
+		int Headroom() const;
+		void HandleExcess(const RE::TESBoundObject* item);
+
+	private:
+		ExcessInventoryHandling m_excessHandling;
+		int m_count;
+		int m_maxCount;
+		uint32_t m_value;
+		double m_weight;
+	};
+
+	typedef std::unordered_map<const RE::TESBoundObject*, InventoryEntry> InventoryCache;
+}

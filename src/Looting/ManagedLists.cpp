@@ -27,6 +27,7 @@ namespace shse
 
 std::unique_ptr<ManagedList> ManagedList::m_blackList;
 std::unique_ptr<ManagedList> ManagedList::m_whiteList;
+std::unique_ptr<ManagedList> ManagedList::m_transferList;
 
 ManagedList& ManagedList::BlackList()
 {
@@ -46,9 +47,18 @@ ManagedList& ManagedList::WhiteList()
 	return *m_whiteList;
 }
 
+ManagedList& ManagedList::TransferList()
+{
+	if (!m_transferList)
+	{
+		m_transferList = std::make_unique<ManagedList>();
+	}
+	return *m_transferList;
+}
+
 void ManagedList::Reset()
 {
-	// No baseline for whitelist. Blacklist has a list of known no-loot places.
+	// No baseline for whitelist or transfer-list. Blacklist has a list of known no-loot places.
 	RecursiveLockGuard guard(m_listLock);
 	if (this == m_blackList.get())
 	{
@@ -58,13 +68,21 @@ void ManagedList::Reset()
 	}
 	else
 	{
-		REL_MESSAGE("Reset WhiteList");
-		// whitelist is rebuilt from scratch
+		// whitelist and transferlist are rebuilt from scratch
+		if (this == m_whiteList.get())
+		{
+			REL_MESSAGE("Reset WhiteList");
+		}
+		else
+		{
+			REL_MESSAGE("Reset TransferList");
+			m_orderedList.clear();
+		}
 		m_members.clear();
 	}
 }
 
-void ManagedList::Add(const RE::TESForm* entry)
+void ManagedList::Add(RE::TESForm* entry)
 {
 	std::string name;
 	const RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
@@ -77,9 +95,13 @@ void ManagedList::Add(const RE::TESForm* entry)
 		name = entry->GetName();
 	}
 	REL_MESSAGE("{}/0x{:08x} added to {}", name, entry->GetFormID(),
-		this == m_blackList.get() ? "BlackList" : "WhiteList");
+		this == m_blackList.get() ? "BlackList" : (this == m_whiteList.get() ? "WhiteList" : "TransferList"));
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert({ entry->GetFormID(), name });
+	if (this == m_transferList.get())
+	{
+		m_orderedList.push_back(entry);
+	}
 }
 
 bool ManagedList::Contains(const RE::TESForm* entry) const
@@ -94,6 +116,13 @@ bool ManagedList::ContainsID(const RE::FormID entryID) const
 {
 	RecursiveLockGuard guard(m_listLock);
 	return m_members.contains(entryID);
+}
+
+RE::TESForm* ManagedList::ByIndex(const size_t index) const
+{
+	if (this == m_transferList.get() && index < m_orderedList.size())
+		return m_orderedList[index];
+	return nullptr;
 }
 
 // sometimes multiple items use the same name - we treat them all the same

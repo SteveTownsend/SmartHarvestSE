@@ -23,42 +23,44 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
-
-RE::EnchantmentItem * ExtraDataListHelper::GetEnchantment(void) const
+namespace ExtraDataList
 {
-	if (!m_extraData)
+
+RE::EnchantmentItem* GetEnchantment(const RE::ExtraDataList* extraData)
+{
+	if (!extraData)
 		return nullptr;
 
-	auto exEnchant = m_extraData->GetByType<RE::ExtraEnchantment>();
+	auto exEnchant = extraData->GetByType<RE::ExtraEnchantment>();
 	return (exEnchant && exEnchant->enchantment) ? exEnchant->enchantment : nullptr;
 }
 
-bool ExtraDataListHelper::IsItemQuestObject(const RE::TESBoundObject* item) const
+bool IsItemQuestObject(const RE::TESBoundObject* item, const RE::ExtraDataList* extraData)
 {
-	if (!m_extraData)
+	if (!extraData)
 		return false;
 
-	auto exAliasArray = m_extraData->GetByType<RE::ExtraAliasInstanceArray>();
+	auto exAliasArray = extraData->GetByType<RE::ExtraAliasInstanceArray>();
 	if (!exAliasArray)
 		return false;
 
 	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
 		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
-			if (alias->alias->IsQuestObject()) {
-				DBG_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
-					alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
-				return true;
-			}
-			return false;
-		}) != exAliasArray->aliases.cend();
+		if (alias->alias->IsQuestObject()) {
+			DBG_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
+				alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
+			return true;
+		}
+		return false;
+	}) != exAliasArray->aliases.cend();
 }
 
-bool ExtraDataListHelper::IsREFRQuestObject(const RE::TESObjectREFR* refr) const
+bool IsREFRQuestObject(const RE::TESObjectREFR* refr, const RE::ExtraDataList* extraData)
 {
-	if (!m_extraData)
+	if (!extraData)
 		return false;
 
-	auto exAliasArray = m_extraData->GetByType<RE::ExtraAliasInstanceArray>();
+	auto exAliasArray = extraData->GetByType<RE::ExtraAliasInstanceArray>();
 	if (!exAliasArray)
 		return false;
 
@@ -71,6 +73,8 @@ bool ExtraDataListHelper::IsREFRQuestObject(const RE::TESObjectREFR* refr) const
 		}
 		return false;
 	}) != exAliasArray->aliases.cend();
+
 }
 
+}
 }

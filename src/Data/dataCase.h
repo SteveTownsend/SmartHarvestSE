@@ -39,7 +39,7 @@ private:
 	void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
 
 protected:
-	virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) = 0;
+	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) = 0;
 
 	const RE::TESLevItem* m_rootItem;
 	// prevent infinite recursion
@@ -73,6 +73,9 @@ public:
 	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const;
 	void ClearReferenceBlacklist();
 
+	void RefreshKnownIngredients();
+	bool IsIngredientKnown(const RE::TESForm* form) const;
+
 	bool BlockForm(const RE::TESForm* form, const Lootability reason);
 	Lootability IsFormBlocked(const RE::TESForm* form) const;
 	void ResetBlockedForms();
@@ -92,7 +95,7 @@ public:
 
 	const char* GetTranslation(const char* key) const;
 
-	const RE::TESForm* ConvertIfLeveledItem(const RE::TESForm* form) const;
+	const RE::TESBoundObject* ConvertIfLeveledItem(const RE::TESBoundObject* form) const;
 
 	void CategorizeLootables(void);
 	void ListsClear(const bool gameReload);
@@ -136,6 +139,12 @@ public:
 		return typedForm;
 	}
 
+	// special case statics
+	static constexpr RE::FormID LockPick = 0x0A;
+	static constexpr RE::FormID Gold = 0x0F;
+	static constexpr RE::FormID WispCore = 0x10EB2A;
+	static constexpr RE::FormID RollOfPaper = 0x33761;
+
 private:
 	std::unordered_map<std::string, std::string> m_translations;
 
@@ -153,7 +162,8 @@ private:
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
-	std::unordered_map<const RE::TESProduceForm*, const RE::TESForm*> m_produceFormContents;
+	mutable std::unordered_map<RE::FormID, bool> m_ingredientEffectsKnown;
+	std::unordered_map<const RE::TESProduceForm*, const RE::TESBoundObject*> m_produceFormContents;
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
 	std::unordered_set<const RE::BGSPerk*> m_leveledItemOnDeathPerks;
 	// assume simple setters for now, like vanilla Green Thumb
@@ -165,6 +175,8 @@ private:
 	void RecordOffLimitsLocations(void);
 	void RecordPlayerHouseCells(void);
 	void BlockOffLimitsContainers(void);
+
+	bool AllEffectsKnown(const RE::IngredientItem* ingredient) const;
 
 	template <typename T>
 	ObjectType DefaultIngredientObjectType(const T* form)
@@ -182,7 +194,7 @@ private:
 		inline ObjectType ContentsType() const { return m_contentsType; }
 
 	protected:
-		virtual void ProcessContentLeaf(RE::TESForm* itemForm, ObjectType itemType) override;
+		virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) override;
 
 	private:
 		const std::string m_targetName;
@@ -203,7 +215,7 @@ private:
 			if (!target->GetFullNameLength())
 				continue;
 			const char * targetName(target->GetFullName());
-			const RE::TESBoundObject* ingredient(target->produceItem);
+			RE::TESBoundObject* ingredient(target->produceItem);
 			if (!ingredient)
 			{
 				REL_WARNING("No ingredient for {}/0x{:08x}", targetName, target->GetFormID());
@@ -228,7 +240,7 @@ private:
 				{
 					REL_VMESSAGE("{}/0x{:08x} has ingredient {}/0x{:08x} stored as type {}", targetName, target->GetFormID(),
 						ingredient->GetName(), ingredient->GetFormID(), GetObjectTypeName(storedType).c_str());
-					ProducerLootables::Instance().SetLootableForProducer(target, const_cast<RE::TESBoundObject*>(ingredient));
+					ProducerLootables::Instance().SetLootableForProducer(target, ingredient);
 				}
 				else
 				{
@@ -415,12 +427,6 @@ private:
 	bool CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg) const;
 
 	static DataCase* s_pInstance;
-
-	// special case statics
-	static constexpr RE::FormID LockPick = 0x0A;
-	static constexpr RE::FormID Gold = 0x0F;
-	static constexpr RE::FormID WispCore = 0x10EB2A;
-	static constexpr RE::FormID RollOfPaper = 0x33761;
 
 	void CategorizeStatics();
 	void SetPermanentBlockedItems();

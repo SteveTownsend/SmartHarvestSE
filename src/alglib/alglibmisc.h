@@ -1,5 +1,5 @@
 /*************************************************************************
-ALGLIB 3.16.0 (source code generated 2019-12-19)
+ALGLIB 3.17.0 (source code generated 2020-12-27)
 Copyright (c) Sergey Bochkanov (ALGLIB project).
 
 >>> SOURCE LICENSE >>>
@@ -19,8 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #ifndef _alglibmisc_pkg_h
 #define _alglibmisc_pkg_h
-#include "alglib/ap.h"
-#include "alglib/alglibinternal.h"
+#include "ap.h"
+#include "alglibinternal.h"
 
 /////////////////////////////////////////////////////////////////////////
 //
@@ -1236,6 +1236,32 @@ double hqrndnormal(const hqrndstate &state, const xparams _xparams = alglib::xde
 
 
 /*************************************************************************
+Random number generator: vector with random entries (normal distribution)
+
+This function generates N random numbers from normal distribution.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalv(const hqrndstate &state, const ae_int_t n, real_1d_array &x, const xparams _xparams = alglib::xdefault);
+
+
+/*************************************************************************
+Random number generator: matrix with random entries (normal distribution)
+
+This function generates MxN random matrix.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalm(const hqrndstate &state, const ae_int_t m, const ae_int_t n, real_2d_array &x, const xparams _xparams = alglib::xdefault);
+
+
+/*************************************************************************
 Random number generator: random X and Y such that X^2+Y^2=1
 
 State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
@@ -1916,6 +1942,15 @@ void hqrndseed(ae_int_t s1,
 double hqrnduniformr(hqrndstate* state, ae_state *_state);
 ae_int_t hqrnduniformi(hqrndstate* state, ae_int_t n, ae_state *_state);
 double hqrndnormal(hqrndstate* state, ae_state *_state);
+void hqrndnormalv(hqrndstate* state,
+     ae_int_t n,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void hqrndnormalm(hqrndstate* state,
+     ae_int_t m,
+     ae_int_t n,
+     /* Real    */ ae_matrix* x,
+     ae_state *_state);
 void hqrndunit2(hqrndstate* state, double* x, double* y, ae_state *_state);
 void hqrndnormal2(hqrndstate* state,
      double* x1,

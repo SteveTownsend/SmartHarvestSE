@@ -21,10 +21,12 @@ http://www.fsf.org/licensing/licenses
 #include "PluginFacade.h"
 
 #include "Utilities/versiondb.h"
+#include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
+#include "Data/SettingsCache.h"
 #include "VM/UIState.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/AdventureTargets.h"
@@ -123,7 +125,7 @@ void PluginFacade::Start()
 		return;
 	std::thread([]()
 	{
-		// use structured exception handling to get stack walk on windows exceptions
+		// use structured exception handlin192 to get stack walk on windows exceptions
 		__try
 		{
 			ScanThread();
@@ -188,7 +190,7 @@ void PluginFacade::ScanThread()
 	while (true)
 	{
 		// Delay the scan for each loop
-		double delaySeconds(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds"));
+		double delaySeconds(SettingsCache::Instance().DelaySeconds());
 		delaySeconds = std::max(MinThreadDelaySeconds, delaySeconds);
 		if (ScanGovernor::Instance().Calibrating())
 		{

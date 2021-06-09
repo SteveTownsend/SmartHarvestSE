@@ -27,9 +27,9 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
 #include "Data/dataCase.h"
+#include "Data/SettingsCache.h"
 #include "FormHelpers/FormHelper.h"
 #include "VM/EventPublisher.h"
-#include "Utilities/debugs.h"
 #include "Utilities/utils.h"
 #include "WorldState/PlayerState.h"
 
@@ -56,7 +56,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
 		if (!dryRun && objType == ObjectType::critter)
 		{
-			RE::TESForm* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
+			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
 				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
@@ -143,8 +143,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (refrEx.IsQuestItem())
 		{
-			QuestObjectHandling questObjectLoot =
-				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+			QuestObjectHandling questObjectLoot = SettingsCache::Instance().QuestObjectLoot();
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (m_glowOnly)
 			{
@@ -164,8 +163,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// glow unread notes as they are often quest-related
 		else if (objType == ObjectType::book)
 		{
-			QuestObjectHandling questObjectLoot =
-				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+			QuestObjectHandling questObjectLoot = SettingsCache::Instance().QuestObjectLoot();
 			if (questObjectLoot == QuestObjectHandling::GlowTarget && IsBookGlowable())
 			{
 				DBG_VMESSAGE("Glowable book 0x{:08x}", m_candidate->GetBaseObject()->formID);
@@ -173,22 +171,22 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-		if (m_candidate->IsEnchanted())
+		EnchantedObjectHandling enchantedLoot = SettingsCache::Instance().EnchantedObjectHandlingType();
+		ObjectType newType = TESFormHelper::EnchantedREFREffectiveType(m_candidate, objType, enchantedLoot);
+		if (TypeIsEnchanted(newType))
 		{
-			SpecialObjectHandling enchantedLoot =
-				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
-			DBG_VMESSAGE("Enchanted Item {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			DBG_VMESSAGE("Loose Enchanted Item {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 			if (m_glowOnly)
 			{
-				enchantedLoot = SpecialObjectHandling::GlowTarget;
+				enchantedLoot = EnchantedObjectHandling::GlowTarget;
 			}
-			if (enchantedLoot == SpecialObjectHandling::GlowTarget)
+			if (enchantedLoot == EnchantedObjectHandling::GlowTarget || enchantedLoot == EnchantedObjectHandling::GlowTargetUnknown)
 			{
 				DBG_VMESSAGE("glow enchanted object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::EnchantedItem);
 			}
 
-			if (!IsSpecialObjectLootable(enchantedLoot))
+			if (!IsEnchantedObjectLootable(enchantedLoot))
 			{
 				skipLooting = true;
 				// in this case, Collectibility can override the decision
@@ -196,10 +194,17 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
+		// Enchanted items may be treated as unenchanted if the enchantment is known
+		if (newType != objType)
+		{
+			objType = newType;
+			m_typeName = GetObjectTypeName(newType);
+			refrEx.SetEffectiveObjectType(newType);
+		}
+
 		if (refrEx.IsValuable())
 		{
-			SpecialObjectHandling valuableLoot =
-				SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+			SpecialObjectHandling valuableLoot = SettingsCache::Instance().ValuableItemLoot();
 			DBG_VMESSAGE("Valuable Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
 			if (m_glowOnly)
 			{
@@ -225,6 +230,18 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			{
 				skipLooting = true;
 				result = Lootability::CannotLootAmmo;
+			}
+		}
+
+		// Special case ingredient handling - we may be asked to always pick up ingredients with Unknown effects, overriding 'ingredient' setting
+		bool forceIngredientLoot = false;
+		if (objType == ObjectType::ingredient)
+		{
+			forceIngredientLoot = SettingsCache::Instance().UnknownIngredientLoot() &&
+				!DataCase::GetInstance()->IsIngredientKnown(refrEx.GetLootable());
+			if (forceIngredientLoot)
+			{
+				DBG_VMESSAGE("force pickup of unknown effect ingredient {}/0x{:08x}", refrEx.GetLootable()->GetName(), refrEx.GetLootable()->GetFormID());
 			}
 		}
 
@@ -301,8 +318,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (!skipLooting)
 		{
 			// check if final output of harvest is lootable
-			lootingType = LootingTypeFromIniSetting(
-				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, m_typeName.c_str()));
+			lootingType = forceIngredientLoot ? LootingType::LootAlwaysNotify : SettingsCache::Instance().ObjectLootingType(objType);
 			if (lootingType == LootingType::LeaveBehind)
 			{
 				if (!dryRun)
@@ -325,9 +341,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				skipLooting = true;
 				result = Lootability::HarvestDisallowedForBaseObjectType;
 			}
-			else if (LootingDependsOnValueWeight(lootingType, objType))
+			else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType))
 			{
-				TESFormHelper helper(m_candidate->GetBaseObject(), m_targetType);
+				TESFormHelper helper(m_candidate->GetBaseObject(), objType, m_targetType);
 				if (helper.ValueWeightTooLowToLoot())
 				{
 					if (!dryRun)
@@ -369,10 +385,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
 			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
-			const bool manualLootNotify(INIFile::GetInstance()->GetSetting(
-				INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ManualLootTargetNotify") != 0);
-			const bool mineAll(LootingTypeFromIniSetting(
-				INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, "oreVein")) == LootingType::LootOreVeinAlways);
+			const bool manualLootNotify(SettingsCache::Instance().ManualLootTargetNotify());
+			const bool mineAll(SettingsCache::Instance().ObjectLootingType(ObjectType::oreVein) == LootingType::LootOreVeinAlways);
 			if (!isFirehose || mineAll)
 			{
 				EventPublisher::Instance().TriggerMining(
@@ -391,10 +405,16 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
 				return Lootability::HarvestOperationPending;
+			// Check inventory limits. We don't try to fine-tune transfer-count here since the exact amount to be retrieved is not known.
+			if (PlayerState::Instance().ItemHeadroom(refrEx.GetLootable(), objType) <= 0)
+			{
+				DBG_VMESSAGE("Inventory Limits preclude harvest for {}/0x{:08x}", refrEx.GetLootable()->GetName(), refrEx.GetLootable()->GetFormID());
+				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
+				return Lootability::InventoryLimitsEnforced;
+			}
 			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
-			const bool whiteListNotify(INIFile::GetInstance()->GetSetting(
-				INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "WhiteListTargetNotify") != 0);
+			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
 			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
@@ -413,16 +433,13 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::ReferencesBlacklistedContainer;
 		}
 		DBG_MESSAGE("scanning container/body {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
-#if _DEBUG
-		DumpContainer(LootableREFR(m_candidate, m_targetType));
-#endif
 		bool skipLooting(false);
 		// INI defaults exclude nudity by not looting armor from dead bodies
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
-			DeadBodyLootingFromIniSetting(INIFile::GetInstance()->GetSetting(
-				INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody")) == DeadBodyLooting::LootExcludingArmor);
+			SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::LootExcludingArmor);
+		EnchantedObjectHandling enchantedLoot = SettingsCache::Instance().EnchantedObjectHandlingType();
 		ContainerLister lister(m_targetType, m_candidate);
-		size_t lootableItems(lister.AnalyzeLootableItems());
+		size_t lootableItems(lister.AnalyzeLootableItems(enchantedLoot));
 		if (lootableItems == 0)
 		{
 			if (!dryRun)
@@ -445,8 +462,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// will continue to glow if not auto-looted.
 			if (ScanGovernor::Instance().IsReferenceLockedContainer(m_candidate))
 			{
-				SpecialObjectHandling lockedChestLoot =
-					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "lockedChestLoot"));
+				SpecialObjectHandling lockedChestLoot = SettingsCache::Instance().LockedChestLoot();
 				if (m_glowOnly)
 				{
 					lockedChestLoot = SpecialObjectHandling::GlowTarget;
@@ -466,8 +482,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (IsBossContainer(m_candidate))
 			{
-				SpecialObjectHandling bossChestLoot =
-					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "bossChestLoot"));
+				SpecialObjectHandling bossChestLoot = SettingsCache::Instance().BossChestLoot();
 				if (m_glowOnly)
 				{
 					bossChestLoot = SpecialObjectHandling::GlowTarget;
@@ -489,8 +504,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Container or NPC may itself be a Quest target - if so the entire thing is blocked from autoloot
 		if (refrEx.IsQuestItem())
 		{
-			QuestObjectHandling questObjectLoot =
-				QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+			QuestObjectHandling questObjectLoot = SettingsCache::Instance().QuestObjectLoot();
 			DBG_VMESSAGE("Quest Container/NPC REFR 0x{:08x} to {}/0x{:08x}, glow={}", m_candidate->GetFormID(), m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->formID, questObjectLoot == QuestObjectHandling::GlowTarget ? "true" : "false");
 			if (questObjectLoot == QuestObjectHandling::GlowTarget)
@@ -505,8 +519,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			if (lister.HasQuestItem())
 			{
-				QuestObjectHandling questObjectLoot =
-					QuestObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
+				QuestObjectHandling questObjectLoot = SettingsCache::Instance().QuestObjectLoot();
 				if (questObjectLoot == QuestObjectHandling::GlowTarget)
 				{
 					DBG_VMESSAGE("glow container with quest object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -520,18 +533,16 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (lister.HasEnchantedItem())
 			{
-				SpecialObjectHandling enchantedLoot =
-					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
 				if (m_glowOnly)
 				{
-					enchantedLoot = SpecialObjectHandling::GlowTarget;
+					enchantedLoot = EnchantedObjectHandling::GlowTarget;
 				}
-				if (enchantedLoot == SpecialObjectHandling::GlowTarget)
+				if (enchantedLoot == EnchantedObjectHandling::GlowTarget || enchantedLoot == EnchantedObjectHandling::GlowTargetUnknown)
 				{
 					DBG_VMESSAGE("glow container with enchanted object {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::EnchantedItem);
 				}
-				if (!IsSpecialObjectLootable(enchantedLoot))
+				if (!IsEnchantedObjectLootable(enchantedLoot))
 				{
 					// this is not a blocker for looting of non-special items
 					lister.ExcludeEnchantedItems();
@@ -541,8 +552,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 			if (lister.HasValuableItem())
 			{
-				SpecialObjectHandling valuableLoot =
-					SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
+				SpecialObjectHandling valuableLoot = SettingsCache::Instance().ValuableItemLoot();
 				if (m_glowOnly)
 				{
 					valuableLoot = SpecialObjectHandling::GlowTarget;
@@ -638,8 +648,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 
 		// Build list of lootable targets with notification, collectibility flag, whitelist notification & count for each
-		const bool whiteListNotify(INIFile::GetInstance()->GetSetting(
-			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "WhiteListTargetNotify") != 0);
+		const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
 		std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>> targets;
 		targets.reserve(lootableItems);
 		for (auto& targetItemInfo : lister.GetLootableItems())
@@ -660,6 +669,17 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update
 				DBG_VMESSAGE("block looting of armor from dead body {}/0x{:08x}", target->GetName(), target->GetFormID());
 				continue;
+			}
+			// Special case ingredient handling - we may be asked to always pick up ingredients with Unknown effects, overriding 'ingredient' setting
+			bool forceIngredientLoot = false;
+			if (objType == ObjectType::ingredient)
+			{
+				forceIngredientLoot = SettingsCache::Instance().UnknownIngredientLoot() &&
+					!DataCase::GetInstance()->IsIngredientKnown(target);
+				if (forceIngredientLoot)
+				{
+					DBG_VMESSAGE("force transfer of unknown effect ingredient {}/0x{:08x}", target->GetName(), target->GetFormID());
+				}
 			}
 
 			LootingType lootingType(LootingType::LeaveBehind);
@@ -707,8 +727,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			else
 			{
 				std::string typeName = GetObjectTypeName(objType);
-				lootingType = LootingTypeFromIniSetting(
-					INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName.c_str()));
+				lootingType = forceIngredientLoot ? LootingType::LootAlwaysNotify : SettingsCache::Instance().ObjectLootingType(objType);
 
 				if (lootingType == LootingType::LeaveBehind)
 				{
@@ -716,8 +735,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					data->BlockForm(target, Lootability::ItemTypeIsSetToPreventLooting);
 					continue;
 				}
-				else if (LootingDependsOnValueWeight(lootingType, objType) &&
-					TESFormHelper(target, m_targetType).ValueWeightTooLowToLoot())
+				else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType) &&
+					TESFormHelper(target, objType, m_targetType).ValueWeightTooLowToLoot())
 				{
 					DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
 					data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
@@ -732,7 +751,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			// item count unknown at this point
-			targets.push_back({ targetItemInfo, LootingRequiresNotification(lootingType), collectible.first, sendWhiteListNotify, 0 });
+			targets.push_back({ 
+				targetItemInfo,
+				LootingRequiresNotification(lootingType),
+				collectible.first,
+				sendWhiteListNotify, 0 });
 			DBG_MESSAGE("get {} ({}) from container {}/0x{:08x}", target->GetName(), targetItemInfo.Count(),
 				m_candidate->GetName(), m_candidate->formID);
 		}
@@ -746,27 +769,27 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		if (!targets.empty())
 		{
 			// check highlighting for dead NPC or container
-			int playContainerAnimation(static_cast<int>(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "PlayContainerAnimation")));
-			if (playContainerAnimation > 0)
+			ContainerAnimationHandling playContainerAnimation(SettingsCache::Instance().PlayContainerAnimation());
+			if (playContainerAnimation != ContainerAnimationHandling::DoNotPlay)
 			{
 				if (m_targetType == INIFile::SecondaryType::containers)
 				{
 					if (!GetTimeController(m_candidate))
 					{
 						// no container animation feasible, highlight it instead
-						playContainerAnimation = 2;
+						playContainerAnimation = ContainerAnimationHandling::Glow;
 					}
 				}
 				else
 				{
 					// Dead NPCs cannot be animated, but highlighting requested
-					playContainerAnimation = 2;
+					playContainerAnimation = ContainerAnimationHandling::Glow;
 				}
 			}
 			// Persistent glow for special items overrides "items looted" glow
-			if (playContainerAnimation == 2 && glowDuration > 0)
+			if (playContainerAnimation == ContainerAnimationHandling::Glow && glowDuration > 0)
 			{
-				playContainerAnimation = 0;
+				playContainerAnimation = ContainerAnimationHandling::DoNotPlay;
 			}
 			// use inline transfer for containers on first attempt - fills in item counts
 			GetLootFromContainer(targets, playContainerAnimation, m_targetType == INIFile::SecondaryType::containers);
@@ -798,7 +821,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 }
 
 void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets,
-	const int animationType, const bool inlineTransfer)
+	const ContainerAnimationHandling animationType, const bool inlineTransfer)
 {
 	if (!m_candidate)
 		return;
@@ -806,11 +829,11 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	REL_MESSAGE("Loot {} items from {}/0x{:08x}", targets.size(), m_candidate->GetName(), m_candidate->formID);
 
 	// visual notification, if requested
-	if (animationType == 1)
+	if (animationType == ContainerAnimationHandling::Play)
 	{
 		m_candidate->PlayAnimation("Close", "Open");
 	}
-	else if (animationType == 2)
+	else if (animationType == ContainerAnimationHandling::Glow)
 	{
 		// glow looted object briefly after looting
 		ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
@@ -905,7 +928,17 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 	// Already trying to steal this - bypass repeat check, known to be OK modulo actor or player state change
 	// in the world
 	if (m_stolen)
+	{
+		// Avoid theft due to timing window by removing ownership for autoloot of items for which we were undetected
+		RE::TESForm* owner(m_candidate->GetOwner());
+		if (owner)
+		{
+			DBG_VMESSAGE("Remove owner {}/0x{:08x} from theft target {}/0x{:08x}", owner->GetName(), owner->GetFormID(),
+				m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+			m_candidate->extraList.SetOwner(nullptr);
+		}
 		return Lootability::Lootable;
+	}
 
 	Lootability legality(Lootability::Lootable);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
@@ -964,8 +997,7 @@ bool TryLootREFR::HarvestForbiddenForForm(const RE::TESForm* form) const
 	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
 	if (m_typeName != septimsName && (form->As<RE::TESObjectTREE>() || form->As<RE::TESFlora>()))
 	{
-		return LootingTypeFromIniSetting(INIFile::GetInstance()->GetSetting(
-			INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, ObjTypeName::Flora)) == LootingType::LeaveBehind;
+		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
 	}
 	return false;
 }

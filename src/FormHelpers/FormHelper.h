@@ -29,10 +29,14 @@ namespace shse
 class TESFormHelper : public IHasValueWeight
 {
 public:
-	TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope);
+	TESFormHelper(const RE::TESBoundObject* form, const INIFile::SecondaryType scope);
+	TESFormHelper(const RE::TESBoundObject* form, ObjectType effectiveType, const INIFile::SecondaryType scope);
 
 	RE::BGSKeywordForm* GetKeywordForm(void) const;
 	RE::EnchantmentItem* GetEnchantment(void);
+	static bool ConfirmEnchanted(const RE::EnchantmentItem* item, const EnchantedObjectHandling handling);
+	static ObjectType EnchantedREFREffectiveType(const RE::TESObjectREFR* refr, const ObjectType objectType, const EnchantedObjectHandling handling);
+	static ObjectType EnchantedItemEffectiveType(const RE::TESBoundObject* obj, const ObjectType objectType, const EnchantedObjectHandling handling);
 	uint32_t GetGoldValue(void) const;
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const bool recordDups) const;
 	inline const RE::TESForm* Form() const { return m_form; }
@@ -40,7 +44,9 @@ public:
 	virtual double GetWeight(void) const override;
 
 protected:
-	const RE::TESForm* m_form;
+	void init();
+
+	const RE::TESBoundObject* m_form;
 	const shse::ConditionMatcher m_matcher;
 
 	virtual const char* GetName() const override;

@@ -23,19 +23,24 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/InventoryItem.h"
 #include "Looting/ScanGovernor.h"
 #include "Collections/CollectionManager.h"
+#include "FormHelpers/FormHelper.h"
 
 namespace shse
 {
 
-InventoryItem::InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count) : 
+InventoryItem::InventoryItem(
+	std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count, const EnchantedObjectHandling enchantedObjectHandling) :
 	m_inlineTransfer(false), m_entry(std::move(a_entry)), m_count(a_count),
-	m_objectType(GetBaseFormObjectType(m_entry->GetObject()))
+	m_objectType(GetEffectiveObjectType(m_entry->GetObject()))
 {
-	// Decorate obvjectType for player-created enchantments
+	// Decorate objectType for player-created enchantments: promote vanilla object if it has enchantment.
+	DBG_VMESSAGE("{}/0x{:08x} has type {}", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), GetObjectTypeName(m_objectType));
 	if (m_objectType == ObjectType::weapon || m_objectType == ObjectType::armor || m_objectType == ObjectType::jewelry)
 	{
-		bool hasEnchantment = GetEnchantmentFromExtraLists(m_entry->extraLists) != nullptr;
-		if (hasEnchantment) {
+		// player-created enchantments are always known, so treat as unenchanted unless we collect Known enchangements
+		if (IncludeEnchantedObjectIfKnown(enchantedObjectHandling) &&
+			TESFormHelper::ConfirmEnchanted(GetEnchantmentFromExtraLists(m_entry->extraLists), enchantedObjectHandling))
+		{
 			DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID());
 			switch (m_objectType)
 			{
@@ -53,6 +58,16 @@ InventoryItem::InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, st
 			}
 		}
 	}
+	// we may need to treat an item with vanilla enchantment as unenchanted
+	if (TypeIsEnchanted(m_objectType))
+	{
+		ObjectType newType = TESFormHelper::EnchantedItemEffectiveType(m_entry->GetObject(), m_objectType, enchantedObjectHandling);
+		if (newType != m_objectType)
+		{
+			m_objectType = newType;
+		}
+	}
+	DBG_VMESSAGE("{}/0x{:08x} final type {}", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), GetObjectTypeName(m_objectType));
 }
 InventoryItem::InventoryItem(const InventoryItem& rhs) :
 	m_inlineTransfer(rhs.m_inlineTransfer), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
@@ -64,6 +79,18 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 	auto toRemove = m_count;
 	if (toRemove <= 0) {
 		return 0;
+	}
+
+	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
+	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType));
+	if (limit <= 0)
+	{
+		DBG_VMESSAGE("Inventory Limits preclude looting of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
+		return 0;
+	}
+	else
+	{
+		toRemove = std::min(m_count, static_cast<ptrdiff_t>(limit));
 	}
 
 	DBG_VMESSAGE("get {}/0x{:08x} ({})", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
@@ -146,6 +173,18 @@ void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* targ
 
 void InventoryItem::MakeCopies(RE::TESObjectREFR* target, size_t count)
 {
+
+	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
+	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType));
+	if (limit <= 0)
+	{
+		DBG_VMESSAGE("Inventory Limits preclude copying of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
+		return;
+	}
+	else
+	{
+		count = std::min(count, static_cast<size_t>(limit));
+	}
 	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<int32_t>(count), nullptr);
 }
 

@@ -22,7 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include <map>
 #include <fstream>
 #include <stdio.h>
-#include <Windows.h>
+#include "SKSE/Impl/PCH.h"
 
 #pragma comment(lib, "version.lib")
 
@@ -122,14 +122,14 @@ public:
 		TCHAR szVersionFile[MAX_PATH];
 		GetModuleFileName(NULL, szVersionFile, MAX_PATH);
 
-		DWORD verHandle = 0;
-		DWORD verSize = GetFileVersionInfoSize(szVersionFile, &verHandle);
+		std::uint32_t verHandle = 0;
+		DWORD verSize = SKSE::WinAPI::CLSSEGetFileVersionInfoSize(szVersionFile, &verHandle);
 
 		if (verSize != NULL)
 		{
 			LPSTR verData = new char[verSize];
 			verHandle = 0;
-			if (GetFileVersionInfo(szVersionFile, verHandle, verSize, verData))
+			if (SKSE::WinAPI::CLSSEGetFileVersionInfo(szVersionFile, verHandle, verSize, verData))
 			{
 				{
 					char * vstr = NULL;

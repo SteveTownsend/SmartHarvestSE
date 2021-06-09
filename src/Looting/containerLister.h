@@ -20,6 +20,8 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "InventoryItem.h"
+#include "Data/SettingsCache.h"
+#include "WorldState/InventoryCache.h"
 
 namespace shse
 {
@@ -30,7 +32,7 @@ struct ContainerLister
 {
 public:
 	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr);
-	size_t AnalyzeLootableItems();
+	size_t AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling);
 	void FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
 	size_t CountLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
 	inline bool HasQuestItem() const { return !m_questItems.empty(); }
@@ -39,6 +41,7 @@ public:
 	inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
 	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
 	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
+	InventoryCache CacheIfExcessHandlingEnabled() const;
 	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
 	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
 	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }
@@ -49,6 +52,7 @@ private:
 
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;
+	EnchantedObjectHandling m_enchantedLoot;
 	std::unordered_set<RE::TESBoundObject*> m_questItems;
 	std::unordered_set<RE::TESBoundObject*> m_enchantedItems;
 	std::unordered_set<RE::TESBoundObject*> m_valuableItems;

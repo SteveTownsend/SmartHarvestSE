@@ -35,6 +35,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
+#include "WorldState/LocationTracker.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/PopulationCenters.h"
 #include "WorldState/QuestTargets.h"
@@ -88,7 +89,7 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = shse::GetBaseFormObjectType(thisForm);
+		ObjectType objType = shse::GetEffectiveObjectType(thisForm->As<RE::TESBoundObject>());
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 
@@ -154,9 +155,9 @@ namespace papyrus
 			{
 				value = 0.0f;
 			}
-			else if (tmp_value > IHasValueWeight::ValueWeightMaximum)
+			else if (tmp_value > shse::IHasValueWeight::ValueWeightMaximum)
 			{
-				value = IHasValueWeight::ValueWeightMaximum;
+				value = shse::IHasValueWeight::ValueWeightMaximum;
 			}
 			else
 			{
@@ -289,7 +290,7 @@ namespace papyrus
 
 	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* critter, RE::TESForm* lootable)
 	{
-		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable);
+		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable ? lootable->As<RE::TESBoundObject>() : nullptr);
 	}
 
 	void PrepareSPERGMining(RE::StaticFunctionTag*)
@@ -331,6 +332,7 @@ namespace papyrus
 
 	constexpr int WhiteList = 1;
 	constexpr int BlackList = 2;
+	constexpr int TransferList = 3;
 
 	void ResetList(RE::StaticFunctionTag*, const int entryType)
 	{
@@ -338,20 +340,28 @@ namespace papyrus
 		{
 			shse::ManagedList::BlackList().Reset();
 		}
-		else
+		else if (entryType == WhiteList)
 		{
 			shse::ManagedList::WhiteList().Reset();
 		}
+		else
+		{
+			shse::ManagedList::TransferList().Reset();
+		}
 	}
-	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, const RE::TESForm* entry)
+	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, RE::TESForm* entry)
 	{
 		if (entryType == BlackList)
 		{
 			shse::ManagedList::BlackList().Add(entry);
 		}
-		else
+		else if (entryType == WhiteList)
 		{
 			shse::ManagedList::WhiteList().Add(entry);
+		}
+		else
+		{
+			shse::ManagedList::TransferList().Add(entry);
 		}
 	}
 	// This is the last function called by the scripts when re-syncing state
@@ -392,17 +402,98 @@ namespace papyrus
 	bool IsQuestTarget(RE::StaticFunctionTag*, RE::TESForm* item)
 	{
 		bool cannotLoot(shse::QuestTargets::Instance().UserCannotPermission(item));
-		REL_MESSAGE("Item {}/{:08x} is {}a Quest Target", item ? item->GetName() : "invalid", item ? item->GetFormID() : InvalidForm,
+		REL_MESSAGE("Item {}/0x{:08x} is {}a Quest Target", item ? item->GetName() : "invalid", item ? item->GetFormID() : InvalidForm,
 			cannotLoot ? "" : "not ");
 		return cannotLoot;
 	}
 
-	bool IsDynamic(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	bool IsREFRDynamic(RE::TESObjectREFR* refr)
 	{
 		// Do not allow processing of bad REFR or Base
 		if (!refr || !refr->GetBaseObject())
 			return true;
 		return refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm();
+	}
+
+	bool IsDynamic(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		return IsREFRDynamic(refr);
+	}
+
+	std::string ValidTransferTargetLocation(RE::StaticFunctionTag*, RE::TESObjectREFR* refr, const bool linksChest)
+	{
+		// Check if player can designate this REFR as a target for loot transfer
+		// Do not allow processing of bad REFR or Base
+		DBG_VMESSAGE("Check REFR 0x{:08x} as transfer target - linked to chest {}", refr->GetFormID(), linksChest);
+		if (IsREFRDynamic(refr))
+			return "";
+		const RE::TESObjectCONT* container(nullptr);
+		DBG_VMESSAGE("Check REFR 0x{:08x} for container", refr->GetFormID());
+		if (linksChest)
+		{
+			DBG_VMESSAGE("REFR indicates linked chest");
+			// script indicates we should check for ACTI with link to a Container
+			const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
+			if (activator)
+			{
+				DBG_VMESSAGE("Check ACTI {}/0x{:08x} for linked container", activator->GetFullName(), activator->GetFormID());
+				const RE::TESObjectREFR* linkedRefr(refr->GetLinkedRef(nullptr));
+				if (linkedRefr)
+				{
+					container = linkedRefr->GetBaseObject()->As<RE::TESObjectCONT>();
+					if (container)
+					{
+						DBG_VMESSAGE("ACTI {}/0x{:08x} has linked container {}/0x{:08x}", activator->GetFullName(), activator->GetFormID(),
+							container->GetFullName(), container->GetFormID());
+					}
+				}
+			}
+		}
+		else
+		{
+			container = refr->GetBaseObject()->As<RE::TESObjectCONT>();
+		}
+		if (!container)
+			return "";
+
+		if (container->data.flags.any(RE::CONT_DATA::Flag::kRespawn))
+		{
+			DBG_VMESSAGE("Respawning container {}/0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
+			return "";
+		}
+		// must be in player house to be safe
+		if (!shse::LocationTracker::Instance().IsPlayerAtHome())
+		{
+			DBG_VMESSAGE("Player not in their house, cannot target {}/0x{:08x}", container->GetFullName(), container->GetFormID());
+			return "";
+		}
+		std::string houseName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
+		DBG_VMESSAGE("Player house {} -> Transfer target {}/0x{:08x}", houseName, container->GetFullName(), container->GetFormID());
+		return houseName;
+	}
+
+	bool SupportsExcessHandling(RE::StaticFunctionTag*, int32_t index)
+	{
+		return TypeSupportsExcessHandling(ObjectType(index));
+	}
+
+	bool IsLootableObject(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		// Do not allow processing of bad REFR or Base
+		if (!refr || !refr->GetBaseObject() || !refr->Is3DLoaded())
+			return false;
+		// non-lootable forms
+		RE::FormType formType(refr->GetBaseObject()->GetFormType());
+		if (formType == RE::FormType::Door ||
+			formType == RE::FormType::Furniture ||
+			formType == RE::FormType::Hazard ||
+			formType == RE::FormType::IdleMarker ||
+			formType == RE::FormType::MovableStatic ||
+			formType == RE::FormType::Static)
+		{
+			return false;
+		}
+		return true;
 	}
 
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
@@ -447,7 +538,7 @@ namespace papyrus
 		return shse::CollectionManager::Instance().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<const RE::TESForm*> forms,
+	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<RE::TESForm*> forms,
 		const std::vector<int> scopes, const std::vector<int> objectTypes, const int itemCount)
 	{
 		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
@@ -459,7 +550,8 @@ namespace papyrus
 		while (current < itemCount)
 		{
 			// checked API
-			shse::CollectionManager::Instance().CheckEnqueueAddedItem(*form, INIFile::SecondaryType(*scope), ObjectType(*objectType));
+			shse::CollectionManager::Instance().CheckEnqueueAddedItem(
+				(*form)->As<RE::TESBoundObject>(), INIFile::SecondaryType(*scope), ObjectType(*objectType));
 			++current;
 			++form;
 			++scope;
@@ -681,6 +773,9 @@ namespace papyrus
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
 		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
+		a_vm->RegisterFunction("IsLootableObject", SHSE_PROXY, papyrus::IsLootableObject);
+		a_vm->RegisterFunction("ValidTransferTargetLocation", SHSE_PROXY, papyrus::ValidTransferTargetLocation);
+		a_vm->RegisterFunction("SupportsExcessHandling", SHSE_PROXY, papyrus::SupportsExcessHandling);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);

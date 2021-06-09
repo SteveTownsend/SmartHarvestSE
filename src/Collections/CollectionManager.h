@@ -24,7 +24,7 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse {
 
-typedef std::tuple<const RE::TESForm*, const INIFile::SecondaryType, const ObjectType> OwnedItem;
+typedef std::tuple<RE::TESBoundObject*, const INIFile::SecondaryType, const ObjectType> OwnedItem;
 
 class CollectionManager {
 public:
@@ -35,8 +35,8 @@ public:
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups);
 	void Refresh() const;
 	void CollectFromContainer(const RE::TESObjectREFR* refr);
-	bool ItemIsCollectionCandidate(const RE::TESForm* item) const;
-	void CheckEnqueueAddedItem(const RE::TESForm* form, const INIFile::SecondaryType scope, const ObjectType objectType);
+	bool ItemIsCollectionCandidate(RE::TESBoundObject* item) const;
+	void CheckEnqueueAddedItem(RE::TESBoundObject* form, const INIFile::SecondaryType scope, const ObjectType objectType);
 	void ProcessAddedItems();
 	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
 	inline bool IsAvailable() const { return m_ready; }
@@ -86,7 +86,7 @@ private:
 	void ResolveMembership(void);
 	void AddToRelevantCollections(const ConditionMatcher& matcher, const float gameTime);
 	void ReconcileInventory(std::vector<OwnedItem>& additions);
-	void EnqueueAddedItem(const RE::TESForm*, const INIFile::SecondaryType scope, const ObjectType objectType);
+	void EnqueueAddedItem(RE::TESBoundObject*, const INIFile::SecondaryType scope, const ObjectType objectType);
 
 	static constexpr size_t CollectedSpamLimit = 10;
 	size_t m_notifications;

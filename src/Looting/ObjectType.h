@@ -39,7 +39,6 @@ enum class ObjectType : uint8_t
 	soulgem,
 	key,
 	clutter,
-	light,
 	// books - must be contiguous
 	book,
 	spellbook,
@@ -77,4 +76,47 @@ inline const char* PrintResourceType(ResourceType resourceType)
 {
 	static std::vector<const char*> resourceTypeNames = { "Ore", "Geode", "Volcanic", "VolcanicDigSite" };
 	return resourceTypeNames.at(static_cast<size_t>(resourceType));
+}
+
+inline bool TypeIsEnchanted(const ObjectType objType)
+{
+	return objType == ObjectType::enchantedArmor ||
+		objType == ObjectType::enchantedJewelry ||
+		objType == ObjectType::enchantedWeapon;
+}
+
+inline ObjectType ConvertToUnenchanted(const ObjectType objType)
+{
+	if (objType == ObjectType::enchantedArmor)
+		return ObjectType::armor;
+	if (objType == ObjectType::enchantedJewelry)
+		return ObjectType::jewelry;
+	if (objType == ObjectType::enchantedWeapon)
+		return ObjectType::weapon;
+	return objType;
+}
+
+inline bool TypeSupportsExcessHandling(const ObjectType objType)
+{
+	static const std::unordered_set<ObjectType> validTypes = {
+		ObjectType::ingredient,
+		ObjectType::septims,
+		ObjectType::gem,
+		ObjectType::lockpick,
+		ObjectType::animalHide,
+		ObjectType::oreIngot,
+		ObjectType::soulgem,
+		ObjectType::clutter,
+		ObjectType::book,
+		ObjectType::scroll,
+		ObjectType::ammo,
+		ObjectType::weapon,
+		ObjectType::armor,
+		ObjectType::jewelry,
+		ObjectType::potion,
+		ObjectType::poison,
+		ObjectType::food,
+		ObjectType::drink
+	};
+	return validTypes.contains(objType);
 }
