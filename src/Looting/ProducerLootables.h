@@ -27,14 +27,14 @@ class ProducerLootables
 private:
 	static std::unique_ptr<ProducerLootables> m_instance;
 	mutable RecursiveLock m_producerIngredientLock;
-	std::unordered_map<RE::TESForm*, RE::TESForm*> m_producerLootable;
+	std::unordered_map<RE::TESForm*, RE::TESBoundObject*> m_producerLootable;
 
 public:
 	static ProducerLootables& Instance();
 	ProducerLootables() {}
 
-	bool SetLootableForProducer(RE::TESForm* critter, RE::TESForm* ingredient);
-	RE::TESForm* GetLootableForProducer(RE::TESForm* producer) const;
+	bool SetLootableForProducer(RE::TESForm* critter, RE::TESBoundObject* ingredient);
+	RE::TESBoundObject* GetLootableForProducer(RE::TESForm* producer) const;
 };
 
 }

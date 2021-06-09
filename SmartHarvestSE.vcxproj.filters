@@ -7,9 +7,6 @@
     <ClCompile Include="src\FormHelpers\ArmorHelper.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="src\FormHelpers\EnchantmentItemHelper.cpp">
-      <Filter>src\FormHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp">
       <Filter>src\FormHelpers</Filter>
     </ClCompile>
@@ -72,9 +69,6 @@
     </ClCompile>
     <ClCompile Include="src\VM\UIState.cpp">
       <Filter>src\VM</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Utilities\debugs.cpp">
-      <Filter>src\Utilities</Filter>
     </ClCompile>
     <ClCompile Include="src\Utilities\Exception.cpp">
       <Filter>src\Utilities</Filter>
@@ -172,6 +166,12 @@
     <ClCompile Include="src\WorldState\Saga.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
+    <ClCompile Include="src\Data\SettingsCache.cpp">
+      <Filter>src\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WorldState\InventoryCache.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -181,9 +181,6 @@
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\ArmorHelper.h">
-      <Filter>src\FormHelpers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h">
       <Filter>src\FormHelpers</Filter>
     </ClInclude>
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h">
@@ -245,9 +242,6 @@
     </ClInclude>
     <ClInclude Include="src\VM\UIState.h">
       <Filter>src\VM</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Utilities\debugs.h">
-      <Filter>src\Utilities</Filter>
     </ClInclude>
     <ClInclude Include="src\Utilities\Enums.h">
       <Filter>src\Utilities</Filter>
@@ -355,6 +349,12 @@
       <Filter>src\WorldState</Filter>
     </ClInclude>
     <ClInclude Include="src\WorldState\Saga.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Data\SettingsCache.h">
+      <Filter>src\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\InventoryCache.h">
       <Filter>src\WorldState</Filter>
     </ClInclude>
   </ItemGroup>

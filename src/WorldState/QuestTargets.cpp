@@ -59,7 +59,7 @@ void LeveledListMembers::SetupExclusions()
 	}
 }
 
-void LeveledListMembers::ProcessContentLeaf(RE::TESForm* itemForm, ObjectType)
+void LeveledListMembers::ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType)
 {
 	if (!m_exclusions.contains(m_rootItem->GetFormID()))
 	{

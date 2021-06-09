@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "WorldState/LocationTracker.h"
 #include "Collections/CollectionManager.h"
+#include "Data/SettingsCache.h"
 #include "Looting/ManagedLists.h"
 #include "WorldState/AdventureTargets.h"
 #include "WorldState/PartyMembers.h"
@@ -450,7 +451,7 @@ RE::TESForm* LocationTracker::GetCellOwner(const RE::TESObjectCELL* cell) const
 	{
 		if (extraData.GetType() == RE::ExtraDataType::kOwnership)
 		{
-			DBG_VMESSAGE("GetCellOwner Hit {:08x}", static_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
+			DBG_VMESSAGE("GetCellOwner Hit 0x{:08x}", static_cast<const RE::ExtraOwnership&>(extraData).owner->formID);
 			return static_cast<const RE::ExtraOwnership&>(extraData).owner;
 		}
 	}
@@ -601,7 +602,7 @@ bool LocationTracker::Refresh()
 		AdventureTargets::Instance().CheckReachedCurrentDestination(m_playerLocation);
 
 		// Player changed location - may be a standalone Cell with m_playerLocation nullptr e.g. 000HatredWell
-		bool tellPlayer(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0);
+		bool tellPlayer(SettingsCache::Instance().NotifyLocationChange());
 
 		// check if new location/cell is a newly-visited player house
 		if (!IsPlacePlayerHome(m_playerCellID, m_playerLocation))

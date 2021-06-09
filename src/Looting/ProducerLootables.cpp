@@ -36,7 +36,7 @@ ProducerLootables& ProducerLootables::Instance()
 }
 
 // ingredient nullptr indicates this Producer is pending resolution
-bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESForm* lootable)
+bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESBoundObject* lootable)
 {
 	RecursiveLockGuard guard(m_producerIngredientLock);
 	if (!lootable)
@@ -62,7 +62,7 @@ bool ProducerLootables::SetLootableForProducer(RE::TESForm* producer, RE::TESFor
 	}
 }
 
-RE::TESForm* ProducerLootables::GetLootableForProducer(RE::TESForm* producer) const
+RE::TESBoundObject* ProducerLootables::GetLootableForProducer(RE::TESForm* producer) const
 {
 	RecursiveLockGuard guard(m_producerIngredientLock);
 	const auto matched(m_producerLootable.find(producer));

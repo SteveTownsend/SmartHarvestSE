@@ -91,7 +91,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;_DEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -106,7 +106,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>dbghelp.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dbghelp.lib;shlwapi.lib;%(AdditionalDependencies);version.lib</AdditionalDependencies>
       <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <PreBuildEvent>
@@ -127,7 +127,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -143,7 +143,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies);version.lib</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <GenerateMapFile>true</GenerateMapFile>
@@ -162,7 +162,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_FULL_LOGGING;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -178,7 +178,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies);version.lib</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <GenerateMapFile>true</GenerateMapFile>
@@ -199,7 +199,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>SPDLOG_WCHAR_FILENAMES;_PROFILING;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -215,7 +215,7 @@
       <ModuleDefinitionFile>exports.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies);version.lib</AdditionalDependencies>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <GenerateMapFile>true</GenerateMapFile>
@@ -260,10 +260,10 @@
     <ClCompile Include="src\Data\dataCase.cpp" />
     <ClCompile Include="src\Data\iniSettings.cpp" />
     <ClCompile Include="src\Data\LoadOrder.cpp" />
+    <ClCompile Include="src\Data\SettingsCache.cpp" />
     <ClCompile Include="src\Data\SimpleIni.cpp" />
     <ClCompile Include="src\FormHelpers\AlchemyItemHelper.cpp" />
     <ClCompile Include="src\FormHelpers\ArmorHelper.cpp" />
-    <ClCompile Include="src\FormHelpers\EnchantmentItemHelper.cpp" />
     <ClCompile Include="src\FormHelpers\ExtraDataListHelper.cpp" />
     <ClCompile Include="src\FormHelpers\FormHelper.cpp" />
     <ClCompile Include="src\FormHelpers\IHasValueWeight.cpp" />
@@ -288,7 +288,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\Utilities\debugs.cpp" />
     <ClCompile Include="src\Utilities\Enums.cpp" />
     <ClCompile Include="src\Utilities\Exception.cpp" />
     <ClCompile Include="src\Utilities\LogStackWalker.cpp" />
@@ -307,6 +306,7 @@
     <ClCompile Include="src\WorldState\ActorTracker.cpp" />
     <ClCompile Include="src\WorldState\AdventureTargets.cpp" />
     <ClCompile Include="src\WorldState\GameCalendar.cpp" />
+    <ClCompile Include="src\WorldState\InventoryCache.cpp" />
     <ClCompile Include="src\WorldState\PartyMembers.cpp" />
     <ClCompile Include="src\WorldState\PlacedObjects.cpp" />
     <ClCompile Include="src\WorldState\QuestTargets.cpp" />
@@ -330,10 +330,10 @@
     <ClInclude Include="src\Data\dataCase.h" />
     <ClInclude Include="src\Data\iniSettings.h" />
     <ClInclude Include="src\Data\LoadOrder.h" />
+    <ClInclude Include="src\Data\SettingsCache.h" />
     <ClInclude Include="src\Data\SimpleIni.h" />
     <ClInclude Include="src\FormHelpers\AlchemyItemHelper.h" />
     <ClInclude Include="src\FormHelpers\ArmorHelper.h" />
-    <ClInclude Include="src\FormHelpers\EnchantmentItemHelper.h" />
     <ClInclude Include="src\FormHelpers\ExtraDataListHelper.h" />
     <ClInclude Include="src\FormHelpers\FormHelper.h" />
     <ClInclude Include="src\FormHelpers\IHasValueWeight.h" />
@@ -353,7 +353,6 @@
     <ClInclude Include="src\Looting\TryLootREFR.h" />
     <ClInclude Include="src\PluginFacade.h" />
     <ClInclude Include="src\PrecompiledHeaders.h" />
-    <ClInclude Include="src\Utilities\debugs.h" />
     <ClInclude Include="src\Utilities\Enums.h" />
     <ClInclude Include="src\Utilities\Exception.h" />
     <ClInclude Include="src\Utilities\LogStackWalker.h" />
@@ -369,6 +368,7 @@
     <ClInclude Include="src\WorldState\ActorTracker.h" />
     <ClInclude Include="src\WorldState\AdventureTargets.h" />
     <ClInclude Include="src\WorldState\GameCalendar.h" />
+    <ClInclude Include="src\WorldState\InventoryCache.h" />
     <ClInclude Include="src\WorldState\PositionData.h" />
     <ClInclude Include="src\WorldState\QuestTargets.h" />
     <ClInclude Include="src\WorldState\PartyMembers.h" />

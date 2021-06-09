@@ -23,6 +23,8 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/GameCalendar.h"
 #include "Data/DataCase.h"
 #include "Data/LoadOrder.h"
+#include "Data/SettingsCache.h"
+#include "FormHelpers/FormHelper.h"
 #include "WorldState/LocationTracker.h"
 #include "VM/EventPublisher.h"
 #include "Looting/ScanGovernor.h"
@@ -77,13 +79,17 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 
 	if (onGameReload || onMCMPush)
 	{
-		// reset carry weight state
+		// reset carry weight state and recache settings
 		ResetCarryWeight();
+		SettingsCache::Instance().Refresh();
 	}
 	else
 	{
 		AdjustCarryWeight();
 	}
+
+	// Check excess inventory every so often, and on possible state changes
+	CheckExcessInventory(onGameReload || onMCMPush);
 
 	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
 	const bool sneaking(RE::PlayerCharacter::GetSingleton()->IsSneaking());
@@ -91,19 +97,42 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	{
 		m_sneaking = sneaking;
 		// no player detection by NPC is a prerequisite for autoloot of crime-to-activate items
-		m_ownershipRule = OwnershipRuleFromIniSetting(INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config,
-			sneaking ? "crimeCheckSneaking" : "crimeCheckNotSneaking"));
-		m_belongingsCheck = SpecialObjectHandlingFromIniSetting(INIFile::GetInstance()->GetSetting(
-			INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "playerBelongingsLoot"));
+		m_ownershipRule = sneaking ? SettingsCache::Instance().CrimeCheckSneaking() : SettingsCache::Instance().CrimeCheckNotSneaking();
+		m_belongingsCheck = SettingsCache::Instance().PlayerBelongingsLoot();
+	}
+}
+
+void PlayerState::CheckExcessInventory(const bool force)
+{
+	ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+	RecursiveLockGuard guard(m_playerLock);
+	if (force)
+	{
+		m_lastExcessCheck = std::chrono::steady_clock::time_point();
+	}
+	constexpr std::chrono::milliseconds ExcessInventoryIntervalMillis(15000LL);
+	const auto nowTime(std::chrono::high_resolution_clock::now());
+	if (nowTime - m_lastExcessCheck >= ExcessInventoryIntervalMillis)
+	{
+		DBG_MESSAGE("Check Excess Inventory");
+		m_lastExcessCheck = nowTime;
+		m_currentItems = lister.CacheIfExcessHandlingEnabled();
+		DBG_DMESSAGE("Cached {} inventory items", m_currentItems.size());
+
+		// Transfer or sell items in excess of limits
+		for (auto& item : m_currentItems)
+		{
+			item.second.HandleExcess(item.first);
+		}
 	}
 }
 
 void PlayerState::AdjustCarryWeight()
 {
-	INIFile* settings(INIFile::GetInstance());
-	bool managePlayerHome(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInPlayerHome") != 0.0);
-	bool manageIfWeaponDrawn(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedIfWeaponDrawn") != 0.0);
-	bool manageDuringCombat(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInCombat") != 0.0);
+	bool managePlayerHome(SettingsCache::Instance().UnencumberedInPlayerHome());
+	bool manageIfWeaponDrawn(SettingsCache::Instance().UnencumberedIfWeaponDrawn());
+	bool manageDuringCombat(SettingsCache::Instance().UnencumberedInCombat());
+
 	// no op if this is not in use at all
 	if (!manageDuringCombat && !manageIfWeaponDrawn && !managePlayerHome)
 	{
@@ -180,30 +209,25 @@ bool PlayerState::CanLoot() const
 		return false;
 	}
 
-	INIFile* settings(INIFile::GetInstance());
-	const int disableDuringCombat = static_cast<int>(settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "disableDuringCombat"));
-	if (disableDuringCombat != 0 && RE::PlayerCharacter::GetSingleton()->IsInCombat())
+	if (SettingsCache::Instance().DisableDuringCombat() && RE::PlayerCharacter::GetSingleton()->IsInCombat())
 	{
 		DBG_VMESSAGE("Player in combat, skip");
 		return false;
 	}
 
-	const int disableWhileWeaponIsDrawn = static_cast<int>(settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "disableWhileWeaponIsDrawn"));
-	if (disableWhileWeaponIsDrawn != 0 && player->IsWeaponDrawn())
+	if (SettingsCache::Instance().DisableWhileWeaponIsDrawn() && player->IsWeaponDrawn())
 	{
 		DBG_VMESSAGE("Player weapon is drawn, skip");
 		return false;
 	}
 
-	const int disableWhileConcealed = static_cast<int>(settings->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DisableWhileConcealed"));
-	if (disableWhileConcealed != 0 && IsMagicallyConcealed(player))
+	if (SettingsCache::Instance().DisableWhileConcealed() && IsMagicallyConcealed(player))
 	{
 		DBG_MESSAGE("Player is magically concealed, skip");
 		return false;
 	}
 
-	const int fortuneHuntingEnabled = static_cast<int>(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "FortuneHuntingEnabled"));
-	if (fortuneHuntingEnabled != 0)
+	if (SettingsCache::Instance().FortuneHuntingEnabled())
 	{
 		DBG_MESSAGE("Player is a Fortune Hunter, skip");
 		return false;
@@ -251,10 +275,10 @@ float PlayerState::PerkIngredientMultiplier() const
 // reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
 void PlayerState::ResetCarryWeight()
 {
-	INIFile* settings(INIFile::GetInstance());
-	bool managePlayerHome(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInPlayerHome") != 0.0);
-	bool manageIfWeaponDrawn(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedIfWeaponDrawn") != 0.0);
-	bool manageDuringCombat(settings->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "UnencumberedInCombat") != 0.0);
+	bool managePlayerHome(SettingsCache::Instance().UnencumberedInPlayerHome());
+	bool manageIfWeaponDrawn(SettingsCache::Instance().UnencumberedIfWeaponDrawn());
+	bool manageDuringCombat(SettingsCache::Instance().UnencumberedInCombat());
+
 	// do not adjust if this is not in use at all
 	if (manageDuringCombat || manageIfWeaponDrawn || managePlayerHome)
 	{
@@ -336,6 +360,24 @@ void PlayerState::UpdateGameTime(const float gameTime)
 	RecursiveLockGuard guard(m_playerLock);
 	DBG_MESSAGE("GameTime is now {:0.3f}/{}", gameTime, GameCalendar::Instance().DateTimeString(gameTime));
 	m_gameTime = gameTime;
+}
+
+// returns -1 if items are marked to be left behind and inventory is full, or the number allowed before limits are breached
+int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType) const
+{
+	ObjectType excessType(GetExcessObjectType(form));
+	if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
+		return InventoryEntry::UnlimitedItems;
+
+	// Inventory limit is configured - check if item is already being tracked
+	auto cached(m_currentItems.find(form));
+	if (cached == m_currentItems.end())
+	{
+		TESFormHelper helper(form, objType, INIFile::SecondaryType::itemObjects);
+		// add to cache if limited and not found
+		cached = m_currentItems.insert({ form, InventoryEntry(excessType, 0, helper.GetWorth(), helper.GetWeight()) }).first;
+	}
+	return cached->second.Headroom();
 }
 
 }

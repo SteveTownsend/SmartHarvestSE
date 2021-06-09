@@ -46,6 +46,8 @@ inline std::string PopulationCenterSizeName(const PopulationCenterSize centerSiz
 	}
 }
 
+PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniSetting);
+
 class PopulationCenters
 {
 public:
@@ -57,7 +59,6 @@ public:
 	bool CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const;
 
 private:
-	PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniSetting) const;
 	void AddOtherPlaces(void);
 
 	static std::unique_ptr<PopulationCenters> m_instance;

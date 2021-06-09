@@ -28,20 +28,24 @@ class ManagedList
 public:
 	static ManagedList& BlackList();
 	static ManagedList& WhiteList();
+	static ManagedList& TransferList();
 	ManagedList() {}
 
 	void Reset();
-	void Add(const RE::TESForm* entry);
+	void Add(RE::TESForm* entry);
 	bool Contains(const RE::TESForm* entry) const;
 	bool ContainsID(const RE::FormID entryID) const;
+	RE::TESForm* ByIndex(const size_t index) const;
 
 private:
 	bool HasEntryWithSameName(const RE::TESForm* form) const;
 
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;
+	static std::unique_ptr<ManagedList> m_transferList;
 
 	std::unordered_map<RE::FormID, std::string> m_members;
+	std::vector<RE::TESForm*> m_orderedList;
 	mutable RecursiveLock m_listLock;
 };
 

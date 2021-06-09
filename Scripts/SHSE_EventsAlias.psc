@@ -79,10 +79,16 @@ int blackListSize
 
 int location_type_whitelist
 int location_type_blacklist
+int list_type_transfer
 int pauseKeyCode
 int whiteListKeyCode
 int blackListKeyCode
 bool keyHandlingActive
+
+Form[] transferList
+bool[] transferListInUse
+string[] transferNames
+int transferListSize
 
 int maxMiningItems
 int infiniteWeight
@@ -143,6 +149,13 @@ Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
     return newList
 EndFunction
 
+Function CreateTransferListArrays()
+    transferList = Utility.CreateFormArray(16)
+    transferListInUse = Utility.CreateBoolArray(16)
+    transferNames = Utility.CreateStringArray(16)
+    transferListSize = 0
+EndFunction
+
 int Function GetWhiteListSize()
     return whiteListSize
 EndFunction
@@ -151,12 +164,24 @@ int Function GetBlackListSize()
     return blackListSize
 EndFunction
 
+int Function GetTransferListSize()
+    return transferListSize
+EndFunction
+
 Form[] Function GetWhiteList()
     return whiteListedForms
 EndFunction
 
 Form[] Function GetBlackList()
     return blackListedForms
+EndFunction
+
+Form[] Function GetTransferList()
+    return transferList
+EndFunction
+
+string[] Function GetTransferNames()
+    return transferNames
 EndFunction
 
 ; merge FormList with plugin data
@@ -168,7 +193,7 @@ Function SyncList(int listNum, Form[] forms, int formCount)
     while index < formCount
         Form nextEntry = forms[index]
         ; do not push junk to C++
-        if nextEntry && StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0
+        if nextEntry && ((listnum == list_type_transfer) || (StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0))
             AddEntryToList(listNum, nextEntry)
         endif
         index += 1
@@ -206,12 +231,52 @@ int Function UpdateListedForms(int totalEntries, Form[] myList, form[] updateLis
     return valid
 endFunction
 
+int Function UpdateNamedListedForms(int totalEntries, bool[] myListInUse, Form[] myList, string[] myNames, form[] updateList, bool[] updateInUse, string[] updateNames, bool[] flags, string trans)
+    ; replace existing entries with valid Forms from MCM
+    int index = 0
+    int valid = 0
+    while index < totalEntries
+        if flags[index]
+            myList[valid] = updateList[index]
+            myListInUse[valid] = updateInUse[index]
+            myNames[valid] = updateNames[index]
+            valid += 1
+        else
+            string translation = GetTranslation(trans)
+            if (translation)
+                translation = Replace(translation, "{ITEMNAME}", updateNames[index])
+                if (translation)
+                    Debug.Notification(translation)
+                endif
+            endif
+        endIf
+        index += 1
+    endWhile
+    ;clear any removed entries
+    index = valid
+    while index < totalEntries
+    	myList[index] = None
+    	myListInUse[index] = False
+    	myNames[index] = ""
+    	index += 1
+    endWhile
+    if valid != totalEntries
+        AlwaysTrace("Updated Form[] size from (" + totalEntries + ") to (" + valid + ")")
+    endIf
+    return valid
+endFunction
+
 Function UpdateWhiteList(int totalEntries, Form[] updateList, bool[] flags, string trans)
     whiteListSize = UpdateListedForms(totalEntries, whiteListedForms, updateList, flags, trans)
 EndFunction
 
 Function UpdateBlackList(int totalEntries, Form[] updateList, bool[] flags, string trans)
     blackListSize = UpdateListedForms(totalEntries, blackListedForms, updateList, flags, trans)
+EndFunction
+
+Function UpdateTransferList(int totalEntries, bool[] updateInUse, Form[] updateList, string[] names, bool[] flags, string trans)
+    transferListSize = UpdateNamedListedForms(totalEntries, transferListInUse, transferList, transferNames, updateList, updateInUse, names, flags, trans)
+    SyncList(list_type_transfer, transferList, transferListSize)
 EndFunction
 
 ;push updated lists to plugin
@@ -239,6 +304,22 @@ int Function RemoveFormAtIndex(Form[] forms, int entries, int index)
     return entries
 endFunction
 
+int Function RemoveStringAtIndex(string[] strings, int entries, int index)
+    if index < entries
+        AlwaysTrace("Removing " + strings[index] + ", entry " + (index+1) + " of " + entries)
+        ; shuffle down entries above this one
+        while index < entries - 1
+            strings[index] = strings[index+1]
+            index += 1
+        endWhile
+        ; clear prior final entry
+        strings[entries - 1] = None
+        return entries - 1
+    endIf
+    AlwaysTrace(index + " not valid for string[]")
+    return entries
+endFunction
+
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
 function ToggleStatusInBlackList(Form item)
     if !item
@@ -256,6 +337,17 @@ function ToggleStatusInWhiteList(Form item)
     endif
     if !RemoveFromWhiteList(item)
         AddToWhiteList(item)
+    endif
+endFunction
+
+; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
+function ToggleStatusInTransferList(string locationName, Form item)
+    if !item
+        return
+    endif
+
+    if RemoveFromTransferList(locationName, item) == 0
+        AddToTransferList(locationName, item)
     endif
 endFunction
 
@@ -369,6 +461,70 @@ function AddToBlackList(Form target)
     endif
 endFunction
 
+int function RemoveFromTransferList(string locationName, Form target)
+    int match = transferList.find(target)
+    if match != -1
+        if transferListInUse[match]
+            string translation = GetTranslation("$SHSE_TRANSFERLIST_CANNOT_REMOVE_IN_USE")
+            if (translation)
+                string msg = Replace(translation, "{ITEMNAME}", locationName + "/" + GetNameForListForm(target))
+                if (msg)
+                    Debug.Notification(msg)
+                endif
+            endif
+            return -1
+        endif
+        string translation = GetTranslation("$SHSE_TRANSFERLIST_REMOVED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", locationName + "/" + GetNameForListForm(target))
+            if (msg)
+                Debug.Notification(msg)
+            endif
+        endif
+        RemoveStringAtIndex(transferNames, transferListSize, match)
+        transferListSize = RemoveFormAtIndex(transferList, transferListSize, match)
+        AlwaysTrace(transferListSize + " entries on TransferList")
+        return 1
+    endIf
+    AlwaysTrace(target + " not found in TransferList")
+    return 0
+endFunction
+
+function AddToTransferList(string locationName, Form target)
+    ; do not add if empty or no name
+    string containerName = GetNameForListForm(target)
+    if !target || StringUtil.GetLength(containerName) == 0
+        return
+    endIf
+    string name = locationName + "/" + containerName
+    if transferListSize == 16
+        string translation = GetTranslation("$SHSE_TRANSFERLIST_FULL")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", name)
+            if (msg)
+                Debug.Notification(msg)
+            endif
+        endif
+        return
+    endIf
+    if transferList.find(target) == -1
+        string translation = GetTranslation("$SHSE_TRANSFERLIST_ADDED")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", name)
+            if (msg)
+                Debug.Notification(msg)
+            endif
+        endif
+        transferList[transferListSize] = target
+        transferListInUse[transferListSize] = False
+        transferNames[transferListSize] = name
+        transferListSize += 1
+        AlwaysTrace(target + " added to TransferList, size now " + transferListSize)
+    else
+        AlwaysTrace(target + " already on TransferList")
+    endif
+endFunction
+
 Function SetDefaultShaders()
     ; must line up with native GlowReason enum
     glowReasonLockedContainer = 0
@@ -438,6 +594,7 @@ Function SyncUpdatedNativeDataTypes()
 
     location_type_whitelist = 1
     location_type_blacklist = 2
+    list_type_transfer = 3
 
     infiniteWeight = 100000
 endFunction
@@ -529,25 +686,50 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
             CheckLootable(targetedRefr)
         endIf
     else
-        ; regular press. Does nothing unless this is a non-generated Dead Body or Container
+        ; regular press. Does nothing unless this is a non-generated Dead Body or Container, or a Lootable Object
         bool valid = False
-        if !IsDynamic(targetedRefr)
-            Actor refrActor = targetedRefr as Actor
-            Container refrContainer = targetedRefr.GetBaseObject() as Container
-            if (refrActor && refrActor.IsDead()) || refrContainer
+        Actor refrActor = targetedRefr as Actor
+        Container refrContainer = targetedRefr.GetBaseObject() as Container
+        if refrActor || refrContainer
+            valid = !IsDynamic(targetedRefr) && ((refrActor && refrActor.IsDead()) || refrContainer)
+            if valid
                 ; blacklist or un-blacklist the REFR, not the Base, to avoid blocking other REFRs with same Base
                 if isWhiteKey
                     RemoveFromBlackList(targetedRefr)
                 else ; BlackList Key
                     AddToBlackList(targetedRefr)
                 EndIf
-                SyncLists(false, true)    ; not a reload
-                valid = True
-            endIf
+            endif
+        elseif IsLootableObject(targetedRefr)
+            ; open world blacklist or whitelist for item
+            valid = True
+            if isWhiteKey
+                HandleWhiteListKeyPress(targetedRefr.GetBaseObject())
+            else ; blacklist key
+                HandleBlackListKeyPress(targetedRefr.GetBaseObject())
+            endif
+        endif
+        if valid
+            SyncLists(false, true)    ; not a reload
+        else
+            Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_LISTS")
         endIf
-        if !valid
-            Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER_OR_NPC")
-        endIf
+    endIf
+EndFunction
+
+; Pause hotkey on crosshair item indicatse user is trying to set or unset a Loot Transfer Target
+Function HandleCrosshairPauseHotKey(ObjectReference targetedRefr)
+    ; Does nothing unless this is a Container to which we can safely send loot
+    ; chekc for Activator that just Activates the linked Container
+    ActivateLinkedChestDummyScript linkedChest = targetedRefr as ActivateLinkedChestDummyScript
+    DebugTrace("REFR " + targetedRefr + ". linked container " + linkedChest)
+    string locationName = ValidTransferTargetLocation(targetedRefr, linkedChest != None)
+    if locationName != ""
+        ; add or remove the REFR, not the Base, to avoid blocking other REFRs with same Base
+        ToggleStatusInTransferList(locationName, targetedRefr)
+        SyncList(list_type_transfer, transferList, transferListSize)
+    else
+        Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_TRANSFERLIST")
     endIf
 EndFunction
 
@@ -561,7 +743,14 @@ Event OnKeyUp(Int keyCode, Float holdTime)
     endif
     keyHandlingActive = true
     if (!Utility.IsInMenumode())
+        ; handle hotkey actions for crosshair in reference
+        ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
         if keyCode == pauseKeyCode
+            if targetedRefr
+                HandleCrosshairPauseHotKey(targetedRefr)
+                keyHandlingActive = false
+                return
+            endIf
             if holdTime > 3.0
                 ; trigger shader test on really long press
                 ToggleCalibration(holdTime > 10.0)
@@ -569,8 +758,6 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 Pause()
             endif
         elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode
-            ; handle hotkey actions for crosshair in reference
-            ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
             if targetedRefr
                 HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteListKeyCode, holdTime)
                 keyHandlingActive = false
@@ -1111,24 +1298,32 @@ EndEvent
 
 ; check if Actor detects player - used for real stealing, or stealibility check in dry run
 Event OnStealIfUndetected(int actorCount, bool dryRun)
-    int currentActor = 0
-    bool detected = False
     ;DebugTrace("Check player detection, actorCount=" + actorCount)
+    ; Get all the requested actors to check first, as this is a slow process
+    Form[] actors = Utility.CreateFormArray(actorCount)
+    int currentActor = 0
+    while currentActor < actorCount
+        actors[currentActor] = GetDetectingActor(currentActor, dryRun)
+        currentActor += 1
+    endWhile
+
     String msg
+    bool detected = False
+    currentActor = 0
     while currentActor < actorCount && !detected
         if !OKToScan()
             msg = "UI Open : Actor Detection interrupted"
             AlwaysTrace(msg)
             detected = True     ; do not steal items while UI is active
         else
-            Actor npc = GetDetectingActor(currentActor, dryRun)
-            if player.IsDetectedBy(npc)
+            Actor npc = actors[currentActor] as Actor
+            if npc && player.IsDetectedBy(npc)
                 msg = "Player detected by " + npc.getActorBase().GetName()
                 detected = True
             else
                 ;DebugTrace("Player not detected by " + npc.getActorBase().GetName())
             endIf
-            currentActor = currentActor + 1
+            currentActor += 1
         endIf
     endWhile
 
@@ -1172,6 +1367,7 @@ Event OnGameReady()
     ; only need to check Collections requisite data structure on reload, not MCM close
     ResetCollections()
     PushGameTime(Utility.GetCurrentGameTime())
+    SyncList(list_type_transfer, transferList, transferListSize)
     SyncLists(True, True)
     ; kick off scan thread release checking once game is ready. Use sentinel value for this case.
     StartCheckReportUIState(-1)

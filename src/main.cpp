@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
+#include "Utilities/LogStackWalker.h"
 #include "VM/papyrus.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"
@@ -115,11 +116,14 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 {
 #if _DEBUG
 	_CrtSetReportHook(MyCrtReportHook);
+	// default log level is ERROR
+	spdlog::level::level_enum logLevel(spdlog::level::trace);
+#else
+	// default log level is ERROR
+	spdlog::level::level_enum logLevel(spdlog::level::err);
 #endif
 	char* levelValue;
 	size_t requiredSize;
-	// default log level is ERROR
-	spdlog::level::level_enum logLevel(spdlog::level::err);
 	if (getenv_s(&requiredSize, NULL, 0, LogLevelVariable.c_str()) == 0 && requiredSize > 0)
 	{
 		levelValue = (char*)malloc((requiredSize + 1) * sizeof(char));
@@ -144,7 +148,7 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 		}
 	}
 
-	std::filesystem::path logPath(SKSE::log::log_directory());
+	std::filesystem::path logPath(SKSE::log::log_directory().value());
 	try
 	{
 		std::wstring fileName(logPath.generic_wstring());
@@ -175,10 +179,10 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 		REL_FATALERROR("Loaded in editor, marking as incompatible");
 		return false;
 	}
-	SKSE::Version runtimeVer(a_skse->RuntimeVersion());
+	REL::Version runtimeVer(a_skse->RuntimeVersion());
 	if (runtimeVer < SKSE::RUNTIME_1_5_73)
 	{
-		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.GetString());
+		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.string());
 		return false;
 	}
 	return true;
@@ -187,9 +191,7 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 {
 	REL_MESSAGE("{} plugin loaded", SHSE_NAME);
-	if (!SKSE::Init(skse)) {
-		return false;
-	}
+	SKSE::Init(skse);
 	SKSE::GetMessagingInterface()->RegisterListener("SKSE", SKSEMessageHandler);
 
 	auto serialization = SKSE::GetSerializationInterface();

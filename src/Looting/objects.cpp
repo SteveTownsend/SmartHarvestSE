@@ -174,30 +174,19 @@ bool IsQuestTargetNPC(const RE::Actor* actor)
 	return result;
 }
 
-// this is the pivotal function that maps a REFR to its loot category
-ObjectType GetREFRObjectType(const RE::TESObjectREFR* refr)
-{
-	if (!refr || !refr->GetBaseObject())
-		return ObjectType::unknown;
-
-	if (refr->formType == RE::FormType::ActorCharacter)
-		// derived from REFR directly
-		return ObjectType::actor;
-
-	if (refr->GetBaseObject()->formType == RE::FormType::Activator && HasAshPile(refr))
-		return ObjectType::unknown;
-
-	return GetBaseFormObjectType(refr->GetBaseObject());
-}
-
-ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm)
+ObjectType GetEffectiveObjectType(const RE::TESBoundObject* baseForm)
 {
 	// Leveled items typically redirect to their contents
 	DataCase* data = DataCase::GetInstance();
 	baseForm = data->ConvertIfLeveledItem(baseForm);
 	if (!baseForm)
 		return ObjectType::unknown;
+	return GetBaseObjectType(baseForm);
+}
 
+ObjectType GetBaseObjectType(const RE::TESForm * baseForm)
+{
+	DataCase* data = DataCase::GetInstance();
 	ObjectType objectType(data->GetObjectTypeForForm(baseForm));
 	if (objectType != ObjectType::unknown)
 	{
@@ -237,6 +226,16 @@ ObjectType GetBaseFormObjectType(const RE::TESForm* baseForm)
 	return ObjectType::unknown;
 }
 
+ObjectType GetExcessObjectType(const RE::TESBoundObject* baseForm)
+{
+	// Some types are conflated to simplify management of excess inventory
+	ObjectType objType = GetEffectiveObjectType(baseForm);
+	if (objType >= ObjectType::spellbook && objType <= ObjectType::skillbookRead)
+		return ObjectType::book;
+	if (TypeIsEnchanted(objType))
+		return ConvertToUnenchanted(objType);
+	return objType;
+}
 
 const std::unordered_map<RE::FormType, std::string> nameByFormType({
 	{RE::FormType::ActorCharacter, "ActorCharacter"},
@@ -271,7 +270,6 @@ const std::unordered_map<ObjectType, std::string> nameByObjectType({
 	{ObjectType::soulgem, "soulgem"},
 	{ObjectType::key, "key"},
 	{ObjectType::clutter, "clutter"},
-	{ObjectType::light, "light"},
 	{ObjectType::book, "book"},
 	{ObjectType::spellbook, "spellbook"},
 	{ObjectType::skillbook, "skillbook"},
@@ -344,8 +342,7 @@ RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraData
 	RE::EnchantmentItem* enchantment = nullptr;
 	for (auto extraList = extraLists->begin(); extraList != extraLists->end(); ++extraList)
 	{
-		ExtraDataListHelper exListHelper(*extraList);
-		enchantment = exListHelper.GetEnchantment();
+		enchantment = ExtraDataList::GetEnchantment(*extraList);
 		if (enchantment)
 			return enchantment;
 	}

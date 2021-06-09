@@ -27,7 +27,7 @@ namespace shse
 class InventoryItem
 {
 public:
-	InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count);
+	InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count, const EnchantedObjectHandling enchantedObjectHandling);
 	InventoryItem(const InventoryItem& rhs);
 
 	// returns number of objects added

@@ -107,27 +107,6 @@ void INIFile::PutSetting(PrimaryType m_section_first, SecondaryType m_section_se
 	SetValue<double>(section, key, m_value);
 }
 
-double INIFile::GetRadius(PrimaryType first)
-{
-	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
-	const double setting(GetSetting(first, SecondaryType::config, "RadiusFeet"));
-	DBG_VMESSAGE("Search radius {:0.2f} feet -> {:0.2f} units", setting, setting / DistanceUnitInFeet);
-	return setting / DistanceUnitInFeet;
-}
-
-double INIFile::GetIndoorsRadius(PrimaryType first)
-{
-	// Value for feet per unit from https://www.creationkit.com/index.php?title=Unit
-	const double setting(GetSetting(first, SecondaryType::config, "IndoorsRadiusFeet"));
-	DBG_VMESSAGE("Indoors search radius {:0.2f} feet -> {:0.2f} units", setting, setting / DistanceUnitInFeet);
-	return setting / DistanceUnitInFeet;
-}
-
-double INIFile::GetVerticalFactor()
-{
-	return GetSetting(PrimaryType::harvest, SecondaryType::config, "VerticalRadiusFactor");
-}
-
 void INIFile::SaveFile(void)
 {
 	static const bool useDefaults(false);

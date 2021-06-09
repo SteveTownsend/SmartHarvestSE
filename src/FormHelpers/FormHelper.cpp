@@ -31,7 +31,17 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetBaseFormObjectType(form))
+TESFormHelper::TESFormHelper(const RE::TESBoundObject* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetEffectiveObjectType(form))
+{
+	init();
+}
+
+TESFormHelper::TESFormHelper(const RE::TESBoundObject* form, ObjectType effectiveType, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, effectiveType)
+{
+	init();
+}
+
+void TESFormHelper::init()
 {
 	// If this is a leveled item, try to redirect to its contents
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
@@ -41,7 +51,7 @@ TESFormHelper::TESFormHelper(const RE::TESForm* form, const INIFile::SecondaryTy
 
 RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
 {
-	return dynamic_cast<RE::BGSKeywordForm*>(const_cast<RE::TESForm*>(m_form));
+	return dynamic_cast<RE::BGSKeywordForm*>(const_cast<RE::TESBoundObject*>(m_form));
 }
 
 RE::EnchantmentItem* TESFormHelper::GetEnchantment()
@@ -56,6 +66,71 @@ RE::EnchantmentItem* TESFormHelper::GetEnchantment()
    		    return enchanted->formEnchanting;
 	}
 	return nullptr;
+}
+
+bool TESFormHelper::ConfirmEnchanted(const RE::EnchantmentItem* item, const EnchantedObjectHandling handling)
+{
+	if (!item)
+		return false;
+	// Player may not be interested in known enchantments - treat item with known enchantment as unenchanted
+	if (IncludeEnchantedObjectIfKnown(handling))
+	{
+		DBG_DMESSAGE("Skip Enchantment check for {}/0x{:08x} due to loot handling {}", item->GetName(), item->GetFormID(), handling);
+		return true;
+	}
+	if (item->data.baseEnchantment)
+	{
+		bool known(item->data.baseEnchantment->GetKnown());
+		DBG_DMESSAGE("Base Enchantment {}/0x{:08x} known={} for {}/0x{:08x}", item->data.baseEnchantment->GetName(),
+			item->data.baseEnchantment->GetFormID(), known, item->GetName(), item->GetFormID());
+		return !known;
+	}
+	else
+	{
+		bool known(item->GetKnown());
+		DBG_DMESSAGE("Enchantment {}/0x{:08x} known={}", item->GetName(), item->GetFormID(), known);
+		return !known;
+	}
+}
+
+// modified from RE::TESObjectREFR::IsEnchanted
+ObjectType TESFormHelper::EnchantedREFREffectiveType(const RE::TESObjectREFR* refr, const ObjectType objectType, const EnchantedObjectHandling handling)
+{
+	// no mapping except for 'enchanted*'
+	if (!TypeIsEnchanted(objectType))
+		return objectType;
+
+	auto xEnch = refr->extraList.GetByType<RE::ExtraEnchantment>();
+	if (xEnch && xEnch->enchantment && ConfirmEnchanted(xEnch->enchantment, handling)) {
+		DBG_DMESSAGE("ExtraList Enchantment 0x{:08x} for {}/0x{:08x}",
+			xEnch->enchantment->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		return objectType;
+	}
+
+	auto obj = refr->GetObjectReference();
+	if (obj) {
+		auto ench = obj->As<RE::TESEnchantableForm>();
+		if (ench && ench->formEnchanting && ConfirmEnchanted(ench->formEnchanting, handling)) {
+			DBG_DMESSAGE("Enchantment Form 0x{:08x} for {}/0x{:08x}",
+				ench->formEnchanting->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+			return objectType;
+		}
+	}
+
+	return ConvertToUnenchanted(objectType);
+}
+
+ObjectType TESFormHelper::EnchantedItemEffectiveType(const RE::TESBoundObject* obj, const ObjectType objectType, const EnchantedObjectHandling handling)
+{
+	if (obj) {
+		auto ench = obj->As<RE::TESEnchantableForm>();
+		if (ench && ench->formEnchanting && ConfirmEnchanted(ench->formEnchanting, handling)) {
+			DBG_DMESSAGE("Enchantment Form 0x{:08x} for {}/0x{:08x}", ench->formEnchanting->GetFormID(), obj->GetName(), obj->GetFormID());
+			return objectType;
+		}
+	}
+
+	return ConvertToUnenchanted(objectType);
 }
 
 uint32_t TESFormHelper::GetGoldValue() const
@@ -99,7 +174,7 @@ std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const boo
 double TESFormHelper::GetWeight() const
 {
 	if (!m_form)
-		return 0.0;
+	return 0.0;
 
 	const RE::TESWeightForm* pWeight(m_form->As<RE::TESWeightForm>());
 	if (!pWeight)

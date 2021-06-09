@@ -1,5 +1,5 @@
 /*************************************************************************
-ALGLIB 3.16.0 (source code generated 2019-12-19)
+ALGLIB 3.17.0 (source code generated 2020-12-27)
 Copyright (c) Sergey Bochkanov (ALGLIB project).
 
 >>> SOURCE LICENSE >>>
@@ -69,17 +69,18 @@ namespace alglib_impl
 #ifdef AE_USE_CPP
 }
 #endif
-#if AE_OS==AE_WINDOWS
+#if AE_OS==AE_WINDOWS || defined(AE_DEBUG4WINDOWS)
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501
 #endif
 #include <windows.h>
 #include <process.h>
-#elif AE_OS==AE_POSIX
+#elif AE_OS==AE_POSIX || defined(AE_DEBUG4POSIX)
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sched.h>
+#include <sys/time.h>
 #endif
 /* Debugging helpers for Windows */
 #ifdef AE_DEBUG4WINDOWS
@@ -2419,6 +2420,29 @@ void ae_trace(const char * printf_fmt, ...)
         fflush(alglib_trace_file);
     }
 }
+
+int ae_tickcount()
+{
+#if AE_OS==AE_WINDOWS || defined(AE_DEBUG4WINDOWS)
+    return (int)GetTickCount();
+#elif AE_OS==AE_POSIX || defined(AE_DEBUG4POSIX)
+    struct timeval now;
+    ae_int64_t r, v;
+    gettimeofday(&now, NULL);
+    v = now.tv_sec;
+    r = v*1000;
+    v = now.tv_usec/1000;
+    r = r+v;
+    return r;
+    /*struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now) )
+        return 0;
+    return now.tv_sec * 1000.0 + now.tv_nsec / 1000000.0;*/
+#else
+    return 0;
+#endif
+}
+
 
 /************************************************************************
 Real math functions
@@ -6191,32 +6215,6 @@ void _rcommstate_destroy(rcommstate* p)
 {
     _rcommstate_clear(p);
 }
-
-#ifdef AE_DEBUG4WINDOWS
-int _tickcount()
-{
-    return GetTickCount();
-}
-#endif
-
-#ifdef AE_DEBUG4POSIX
-#include <sys/time.h>
-int _tickcount()
-{
-    struct timeval now;
-    ae_int64_t r, v;
-    gettimeofday(&now, NULL);
-    v = now.tv_sec;
-    r = v*1000;
-    v = now.tv_usec/1000;
-    r = r+v;
-    return r;
-    /*struct timespec now;
-    if (clock_gettime(CLOCK_MONOTONIC, &now) )
-        return 0;
-    return now.tv_sec * 1000.0 + now.tv_nsec / 1000000.0;*/
-}
-#endif
 
 
 }
