@@ -6,6 +6,7 @@ GlobalVariable Property g_LootingEnabled Auto
 int CACOModIndex
 int FossilMiningModIndex
 int HearthfireExtendedModIndex
+int MagicChestModIndex
 bool scanActive = True
 int pluginNonce
 bool pluginDelayed
@@ -721,9 +722,11 @@ EndFunction
 Function HandleCrosshairPauseHotKey(ObjectReference targetedRefr)
     ; Does nothing unless this is a Container to which we can safely send loot
     ; chekc for Activator that just Activates the linked Container
-    ActivateLinkedChestDummyScript linkedChest = targetedRefr as ActivateLinkedChestDummyScript
-    DebugTrace("REFR " + targetedRefr + ". linked container " + linkedChest)
-    string locationName = ValidTransferTargetLocation(targetedRefr, linkedChest != None)
+    bool linkedChest = targetedRefr as ActivateLinkedChestDummyScript != None
+    bool knownGood = (MagicChestModIndex != 255) && (targetedRefr as _Skyrim_SE_Nexus_Script != None)
+    linkedChest = linkedChest || knownGood
+    DebugTrace("REFR " + targetedRefr + ". linked container ? " + linkedChest + " known good " + knownGood)
+    string locationName = ValidTransferTargetLocation(targetedRefr, linkedChest, knownGood)
     if locationName != ""
         ; add or remove the REFR, not the Base, to avoid blocking other REFRs with same Base
         ToggleStatusInTransferList(locationName, targetedRefr)
@@ -1363,6 +1366,13 @@ Event OnGameReady()
     if HearthfireExtendedModIndex != 255
         AlwaysTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
     endif
+
+    ; yes, this really is the ESP name
+    MagicChestModIndex = Game.GetModByName("Skyrim_SE_Nexus .esp")
+    if MagicChestModIndex != 255
+        AlwaysTrace("Magic Chest Spell with Multi Linked Containers mod index: " + MagicChestModIndex)
+    endif
+
 
     ; only need to check Collections requisite data structure on reload, not MCM close
     ResetCollections()

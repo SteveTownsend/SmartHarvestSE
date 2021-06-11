@@ -11,7 +11,7 @@ Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native
 bool Function IsLootableObject(ObjectReference refr) global native
-string Function ValidTransferTargetLocation(ObjectReference refr, bool linksChest) global native
+string Function ValidTransferTargetLocation(ObjectReference refr, bool linksChest, bool knownGood) global native
 bool Function SupportsExcessHandling(int objectType) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 

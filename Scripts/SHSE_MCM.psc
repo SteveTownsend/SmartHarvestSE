@@ -251,7 +251,7 @@ float[] function GetSettingToExcessHandlingArray(int section1, int section2)
             float setting = GetSettingObjectArrayEntry(section1, section2, objType)
             int targets = eventScript.GetTransferListSize()
             if setting > (1 + targets) as float
-                ; references unknown transfter target - pick highest valid value
+                ; references unknown transfer target - pick highest valid value
                 setting = (1 + targets) as float
             endif
             result[index] = setting
@@ -1105,9 +1105,10 @@ Event OnConfigOpen()
             whiteList_name_array = Utility.CreateStringArray(validSize)
             whiteList_flag_array = Utility.CreateBoolArray(validSize)
             index = max_size
+            ; iterate forwards, to preserve order
+            index = 0
             int entry = 0
-            while index > 0
-                index -= 1
+            while index < max_size
                 Form nextEntry = currentList[index]
                 string name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
@@ -1116,6 +1117,7 @@ Event OnConfigOpen()
                     whiteList_flag_array[entry] = true
                     entry += 1
                 endIf
+                index += 1
             endWhile
         endIf
         AlwaysTrace("Whitelist has " + validSize + " valid entries, " + max_size + " in Form[]")
@@ -1148,9 +1150,10 @@ Event OnConfigOpen()
             blackList_name_array = Utility.CreateStringArray(validSize)
             blackList_flag_array = Utility.CreateBoolArray(validSize)
             index = max_size
+            ; iterate forwards, to preserve order
+            index = 0
             int entry = 0
-            while index > 0
-                index -= 1
+            while index < max_size
                 Form nextEntry = currentList[index]
                 string name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
@@ -1159,6 +1162,7 @@ Event OnConfigOpen()
                     blackList_flag_array[entry] = true
                     entry += 1
                 endIf
+                index += 1
             endWhile
         endIf
         AlwaysTrace("BlackList has " + validSize + " valid entries, " + max_size + " in Form[]")
@@ -1191,10 +1195,10 @@ Event OnConfigOpen()
             id_transferList_array = Utility.CreateIntArray(validSize)
             transferList_name_array = Utility.CreateStringArray(validSize)
             transferList_flag_array = Utility.CreateBoolArray(validSize)
-            index = max_size
+            ; iterate forwards, order must be preserved to ensure correct linkage to target
+            index = 0
             int entry = 0
-            while index > 0
-                index -= 1
+            while index < max_size
                 Form nextEntry = currentList[index]
                 if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
                     transferList_form_array[entry] = nextEntry
@@ -1202,6 +1206,7 @@ Event OnConfigOpen()
                     transferList_flag_array[entry] = true
                     entry += 1
                 endIf
+                index += 1
             endWhile
         endIf
         AlwaysTrace("TransferList has " + validSize + " valid entries, " + max_size + " in Form[]")

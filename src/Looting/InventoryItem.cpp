@@ -82,7 +82,7 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 	}
 
 	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
-	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType));
+	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType, static_cast<int>(toRemove)));
 	if (limit <= 0)
 	{
 		DBG_VMESSAGE("Inventory Limits preclude looting of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
@@ -175,7 +175,7 @@ void InventoryItem::MakeCopies(RE::TESObjectREFR* target, size_t count)
 {
 
 	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
-	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType));
+	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), m_objectType, static_cast<int>(count)));
 	if (limit <= 0)
 	{
 		DBG_VMESSAGE("Inventory Limits preclude copying of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());

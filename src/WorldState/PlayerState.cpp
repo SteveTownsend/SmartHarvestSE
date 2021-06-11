@@ -47,6 +47,7 @@ PlayerState& PlayerState::Instance()
 PlayerState::PlayerState() :
 	m_perksAddLeveledItemsOnDeath(false),
 	m_harvestedIngredientMultiplier(1.),
+	m_refreshCache(false),
 	m_carryAdjustedForCombat(false),
 	m_carryAdjustedForPlayerHome(false),
 	m_carryAdjustedForDrawnWeapon(false),
@@ -89,7 +90,12 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	}
 
 	// Check excess inventory every so often, and on possible state changes
-	CheckExcessInventory(onGameReload || onMCMPush);
+	// Do not process excess inventory if scanning is disabled - player may be trying to manually sell items
+	// per https://github.com/SteveTownsend/SmartHarvestSE/issues/252
+	if (ScanGovernor::Instance().CanSearch())
+	{
+		CheckExcessInventory(onGameReload || onMCMPush);
+	}
 
 	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
 	const bool sneaking(RE::PlayerCharacter::GetSingleton()->IsSneaking());
@@ -106,10 +112,12 @@ void PlayerState::CheckExcessInventory(const bool force)
 {
 	ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
 	RecursiveLockGuard guard(m_playerLock);
-	if (force)
+	if (force || m_refreshCache)
 	{
 		m_lastExcessCheck = std::chrono::steady_clock::time_point();
 	}
+	m_refreshCache = false;
+
 	constexpr std::chrono::milliseconds ExcessInventoryIntervalMillis(15000LL);
 	const auto nowTime(std::chrono::high_resolution_clock::now());
 	if (nowTime - m_lastExcessCheck >= ExcessInventoryIntervalMillis)
@@ -363,13 +371,15 @@ void PlayerState::UpdateGameTime(const float gameTime)
 }
 
 // returns -1 if items are marked to be left behind and inventory is full, or the number allowed before limits are breached
-int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType) const
+int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType, const int delta) const
 {
 	ObjectType excessType(GetExcessObjectType(form));
 	if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
 		return InventoryEntry::UnlimitedItems;
 
 	// Inventory limit is configured - check if item is already being tracked
+	// Trigger reconciliation before next loot scan whenever we loot an item with inventory limits
+	m_refreshCache = true;
 	auto cached(m_currentItems.find(form));
 	if (cached == m_currentItems.end())
 	{
@@ -377,7 +387,7 @@ int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType
 		// add to cache if limited and not found
 		cached = m_currentItems.insert({ form, InventoryEntry(excessType, 0, helper.GetWorth(), helper.GetWeight()) }).first;
 	}
-	return cached->second.Headroom();
+	return cached->second.Headroom(form, delta);
 }
 
 }

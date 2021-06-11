@@ -29,12 +29,13 @@ namespace shse
 	public:
 		InventoryEntry(const ObjectType excessType, const int count, const uint32_t value, const double weight);
 		static constexpr int UnlimitedItems = 1000000;
-		int Headroom() const;
+		int Headroom(const RE::TESBoundObject* item, const int delta) const;
 		void HandleExcess(const RE::TESBoundObject* item);
 
 	private:
 		ExcessInventoryHandling m_excessHandling;
 		int m_count;
+		mutable int m_totalDelta;		// number of items assumed added by loot requests since last reconciliation
 		int m_maxCount;
 		uint32_t m_value;
 		double m_weight;

@@ -29,6 +29,7 @@ namespace shse
 InventoryEntry::InventoryEntry(const ObjectType excessType, const int count, const uint32_t value, const double weight) :
 	m_excessHandling(SettingsCache::Instance().ExcessInventoryHandlingType(excessType)),
 	m_count(count),
+	m_totalDelta(0),
 	m_value(value),
 	m_weight(weight)
 {
@@ -42,11 +43,21 @@ InventoryEntry::InventoryEntry(const ObjectType excessType, const int count, con
 	}
 }
 
-int InventoryEntry::Headroom() const
+int InventoryEntry::Headroom(const RE::TESBoundObject* item, const int delta) const
 {
+	// record item count in aggregate delta to avoid over-looting of locally-abundant items in the 'Leave Behind' category
 	if (m_excessHandling == ExcessInventoryHandling::LeaveBehind)
 	{
-		return std::max(0, m_maxCount - m_count);
+		DBG_VMESSAGE("Check LeaveBehind for {}/0x{:08x}: delta {} vs max {}, cached {}, total-delta {}",
+			item->GetName(), item->GetFormID(), delta, m_maxCount, m_count, m_totalDelta);
+		int headroom = std::max(0, m_maxCount - (m_count + m_totalDelta));
+		m_totalDelta += headroom;
+		return headroom;
+	}
+	else
+	{
+		// will always loot this many
+		m_totalDelta += delta;
 	}
 	// all other cases are reconciled periodically, so take them and sort it out then
 	return UnlimitedItems;

@@ -406,7 +406,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
 				return Lootability::HarvestOperationPending;
 			// Check inventory limits. We don't try to fine-tune transfer-count here since the exact amount to be retrieved is not known.
-			if (PlayerState::Instance().ItemHeadroom(refrEx.GetLootable(), objType) <= 0)
+			int itemCount(refrEx.GetItemCount());
+			if (PlayerState::Instance().ItemHeadroom(refrEx.GetLootable(), objType, itemCount) <= 0)
 			{
 				DBG_VMESSAGE("Inventory Limits preclude harvest for {}/0x{:08x}", refrEx.GetLootable()->GetName(), refrEx.GetLootable()->GetFormID());
 				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
@@ -415,7 +416,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
 			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
-			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, refrEx.GetItemCount(),
+			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, itemCount,
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
 			if (isFirehose)

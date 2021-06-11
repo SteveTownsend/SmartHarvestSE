@@ -82,9 +82,9 @@ void SettingsCache::Refresh(void)
 	m_notifyLocationChange = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0.0;
 	REL_VMESSAGE("Notify Player of Location Change {}", m_notifyLocationChange);
 
-	m_valuableItemThreshold = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "ValuableItemThreshold");
+	m_valuableItemThreshold = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemThreshold");
 	REL_VMESSAGE("Valuable Item Threshold {:0.2f}", m_valuableItemThreshold);
-	m_valueWeightDefault = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "ValueWeightDefault");
+	m_valueWeightDefault = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValueWeightDefault");
 	REL_VMESSAGE("Value Weight Default {:0.2f}", m_valueWeightDefault);
 
 	auto vw(m_valueWeight.begin());

@@ -420,11 +420,11 @@ namespace papyrus
 		return IsREFRDynamic(refr);
 	}
 
-	std::string ValidTransferTargetLocation(RE::StaticFunctionTag*, RE::TESObjectREFR* refr, const bool linksChest)
+	std::string ValidTransferTargetLocation(RE::StaticFunctionTag*, RE::TESObjectREFR* refr, const bool linksChest, const bool knownGood)
 	{
 		// Check if player can designate this REFR as a target for loot transfer
 		// Do not allow processing of bad REFR or Base
-		DBG_VMESSAGE("Check REFR 0x{:08x} as transfer target - linked to chest {}", refr->GetFormID(), linksChest);
+		DBG_VMESSAGE("Check REFR 0x{:08x} as transfer target - linked to chest {}, known good {}", refr->GetFormID(), linksChest, knownGood);
 		if (IsREFRDynamic(refr))
 			return "";
 		const RE::TESObjectCONT* container(nullptr);
@@ -461,15 +461,28 @@ namespace papyrus
 			DBG_VMESSAGE("Respawning container {}/0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
 			return "";
 		}
-		// must be in player house to be safe
-		if (!shse::LocationTracker::Instance().IsPlayerAtHome())
+		// must be in player house to be safe, unless known good
+		if (!knownGood && !shse::LocationTracker::Instance().IsPlayerAtHome())
 		{
 			DBG_VMESSAGE("Player not in their house, cannot target {}/0x{:08x}", container->GetFullName(), container->GetFormID());
 			return "";
 		}
-		std::string houseName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
-		DBG_VMESSAGE("Player house {} -> Transfer target {}/0x{:08x}", houseName, container->GetFullName(), container->GetFormID());
-		return houseName;
+		if (knownGood)
+		{
+			std::string placeName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
+			if (placeName.empty())
+			{
+				placeName = "Unknown";
+			}
+			DBG_VMESSAGE("Forced known good @ {} -> Transfer target {}/0x{:08x}", placeName, container->GetFullName(), container->GetFormID());
+			return placeName;
+		}
+		else
+		{
+			std::string houseName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
+			DBG_VMESSAGE("Player house {} -> Transfer target {}/0x{:08x}", houseName, container->GetFullName(), container->GetFormID());
+			return houseName;
+		}
 	}
 
 	bool SupportsExcessHandling(RE::StaticFunctionTag*, int32_t index)
