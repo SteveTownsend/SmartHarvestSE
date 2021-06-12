@@ -461,6 +461,11 @@ namespace papyrus
 			DBG_VMESSAGE("Respawning container {}/0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
 			return "";
 		}
+		if (shse::ManagedList::TransferList().HasContainer(container->GetFormID()))
+		{
+			DBG_VMESSAGE("Multiplexed linked container {}/0x{:08x} is already a transfer target", container->GetFullName(), container->GetFormID());
+			return "";
+		}
 		// must be in player house to be safe, unless known good
 		if (!knownGood && !shse::LocationTracker::Instance().IsPlayerAtHome())
 		{

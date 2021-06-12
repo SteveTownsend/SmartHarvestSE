@@ -23,30 +23,48 @@ namespace shse
 {
 
 // blacklist and whitelist - can contain Container/Dead Actor (REFR), location, cell or item (base object, not REFR)
+class ManagedTargets;
+
 class ManagedList
 {
 public:
 	static ManagedList& BlackList();
 	static ManagedList& WhiteList();
-	static ManagedList& TransferList();
+	static ManagedTargets& TransferList();
 	ManagedList() {}
+	virtual ~ManagedList() {}
 
-	void Reset();
-	void Add(RE::TESForm* entry);
-	bool Contains(const RE::TESForm* entry) const;
+	virtual void Reset();
+	virtual void Add(RE::TESForm* entry);
+	virtual bool Contains(const RE::TESForm* entry) const;
 	bool ContainsID(const RE::FormID entryID) const;
-	RE::TESForm* ByIndex(const size_t index) const;
+
+protected:
+	std::unordered_map<RE::FormID, std::string> m_members;
+	mutable RecursiveLock m_listLock;
 
 private:
 	bool HasEntryWithSameName(const RE::TESForm* form) const;
 
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;
-	static std::unique_ptr<ManagedList> m_transferList;
+	static std::unique_ptr<ManagedTargets> m_transferList;
+};
 
-	std::unordered_map<RE::FormID, std::string> m_members;
+class ManagedTargets : public ManagedList
+{
+public:
+	using ManagedList::ManagedList;
+
+	virtual void Reset() override;
+	virtual void Add(RE::TESForm* entry) override;
+	virtual bool Contains(const RE::TESForm* entry) const override;
+	bool HasContainer(RE::FormID container) const;
+	RE::TESForm* ByIndex(const size_t index) const;
+
+private:
 	std::vector<RE::TESForm*> m_orderedList;
-	mutable RecursiveLock m_listLock;
+	std::unordered_set<RE::FormID> m_containers;
 };
 
 }
