@@ -1367,8 +1367,14 @@ Event OnGameReady()
         AlwaysTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
     endif
 
-    ; yes, this really is the ESP name
+    ; yes, this really is the ESP name. And there are three different names.
     MagicChestModIndex = Game.GetModByName("Skyrim_SE_Nexus .esp")
+    if MagicChestModIndex == 255
+        MagicChestModIndex = Game.GetModByName("Skyrim_SE_Nexus_Chests .esp")
+    endif
+    if MagicChestModIndex == 255
+        MagicChestModIndex = Game.GetModByName("SSENexus OCS Patch.esp")
+    endif
     if MagicChestModIndex != 255
         AlwaysTrace("Magic Chest Spell with Multi Linked Containers mod index: " + MagicChestModIndex)
     endif
