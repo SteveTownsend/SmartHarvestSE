@@ -77,6 +77,12 @@ void SettingsCache::Refresh(void)
 	REL_VMESSAGE("Disable while concealed {}", m_disableWhileConcealed);
 	m_fortuneHuntingEnabled = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "FortuneHuntingEnabled") != 0.0;
 	REL_VMESSAGE("Fortune Hunting Enabled {}", m_fortuneHuntingEnabled);
+	m_fortuneHuntItem = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "FortuneHuntItem") != 0.0;
+	REL_VMESSAGE("Fortune Hunt Item {}", m_fortuneHuntItem);
+	m_fortuneHuntNPC = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "FortuneHuntNPC") != 0.0;
+	REL_VMESSAGE("Fortune Hunt NPC {}", m_fortuneHuntNPC);
+	m_fortuneHuntContainer = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "FortuneHuntContainer") != 0.0;
+	REL_VMESSAGE("Fortune Hunt Container {}", m_fortuneHuntContainer);
 	m_collectionsEnabled = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "CollectionsEnabled") != 0.0;
 	REL_VMESSAGE("Collections Enabled {}", m_collectionsEnabled);
 	m_notifyLocationChange = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "NotifyLocationChange") != 0.0;
@@ -216,6 +222,18 @@ bool SettingsCache::DisableWhileConcealed() const
 bool SettingsCache::FortuneHuntingEnabled() const
 {
 	return m_fortuneHuntingEnabled;
+}
+bool SettingsCache::FortuneHuntItem() const
+{
+	return m_fortuneHuntItem;
+}
+bool SettingsCache::FortuneHuntNPC() const
+{
+	return m_fortuneHuntNPC;
+}
+bool SettingsCache::FortuneHuntContainer() const
+{
+	return m_fortuneHuntContainer;
 }
 bool SettingsCache::CollectionsEnabled() const
 {

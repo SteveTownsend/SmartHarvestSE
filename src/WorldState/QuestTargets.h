@@ -48,6 +48,7 @@ public:
 
 	Lootability ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const;
 	Lootability QuestTargetLootability(const RE::TESForm* form, const RE::TESObjectREFR* refr) const;
+	bool AllowsExcessHandling(const RE::TESForm* form) const;
 	bool UserCannotPermission(const RE::TESForm* form) const;
 
 private:
@@ -65,10 +66,10 @@ private:
 	static std::unique_ptr<QuestTargets> m_instance;
 	mutable RecursiveLock m_questLock;
 
-	std::unordered_set<const RE::TESForm*> m_userCannotPermission;
-	std::unordered_set<const RE::TESForm*> m_questTargetItems;
-	std::unordered_map<const RE::TESForm*, std::unordered_set<const RE::TESObjectREFR*>> m_questTargetReferenced;
-	std::unordered_set<const RE::TESObjectREFR*> m_questTargetREFRs;
+	std::unordered_set<RE::FormID> m_userCannotPermission;
+	std::unordered_set<RE::FormID> m_questTargetItems;
+	std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>> m_questTargetReferenced;
+	std::unordered_set<RE::FormID> m_questTargetREFRs;
 };
 
 }

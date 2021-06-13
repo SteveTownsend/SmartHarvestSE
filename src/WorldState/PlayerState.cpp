@@ -235,12 +235,20 @@ bool PlayerState::CanLoot() const
 		return false;
 	}
 
-	if (SettingsCache::Instance().FortuneHuntingEnabled())
+	if (FortuneHuntOnly())
 	{
-		DBG_MESSAGE("Player is a Fortune Hunter, skip");
+		DBG_MESSAGE("Player is a pure Fortune Hunter, skip");
 		return false;
 	}
 	return true;
+}
+
+bool PlayerState::FortuneHuntOnly() const
+{
+	return SettingsCache::Instance().FortuneHuntingEnabled() &&
+		SettingsCache::Instance().FortuneHuntItem() &&
+		SettingsCache::Instance().FortuneHuntNPC() &&
+		SettingsCache::Instance().FortuneHuntContainer();
 }
 
 // check perks that affect looting

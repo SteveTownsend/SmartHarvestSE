@@ -42,6 +42,9 @@ public:
 	bool DisableWhileWeaponIsDrawn() const;
 	bool DisableWhileConcealed() const;
 	bool FortuneHuntingEnabled() const;
+	bool FortuneHuntItem() const;
+	bool FortuneHuntNPC() const;
+	bool FortuneHuntContainer() const;
 	bool CollectionsEnabled() const;
 	bool NotifyLocationChange() const;
 
@@ -89,6 +92,9 @@ private:
 	bool m_disableWhileWeaponIsDrawn;
 	bool m_disableWhileConcealed;
 	bool m_fortuneHuntingEnabled;
+	bool m_fortuneHuntItem;
+	bool m_fortuneHuntNPC;
+	bool m_fortuneHuntContainer;
 	bool m_collectionsEnabled;
 	bool m_notifyLocationChange;
 	double m_valuableItemThreshold;

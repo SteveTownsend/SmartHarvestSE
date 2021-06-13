@@ -163,6 +163,9 @@ string[] worldNames
 bool adventureActive
 
 bool fortuneHuntingEnabled
+bool fortuneHuntItem
+bool fortuneHuntNPC
+bool fortuneHuntContainer
 bool unlockGlowColours
 
 int[] id_valueWeightArray
@@ -358,6 +361,9 @@ function LoadSettingsFromNative()
     adventuresEnabled = GetSetting(type_Common, type_Config, "AdventuresEnabled") as bool
     CheckAdventuresPower()
     fortuneHuntingEnabled = GetSetting(type_Common, type_Config, "FortuneHuntingEnabled") as bool
+    fortuneHuntItem = GetSetting(type_Common, type_Config, "FortuneHuntItem") as bool
+    fortuneHuntNPC = GetSetting(type_Common, type_Config, "FortuneHuntNPC") as bool
+    fortuneHuntContainer = GetSetting(type_Common, type_Config, "FortuneHuntContainer") as bool
     CheckFortunePower()
     unlockGlowColours = GetSetting(type_Common, type_Config, "UnlockGlowColours") as bool
     glowReasonSettingArray = GetSettingToGlowArray(type_Common, type_Glow)
@@ -439,6 +445,9 @@ Function SaveSettingsToNative()
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
     PutSetting(type_Common, type_Config, "AdventuresEnabled", adventuresEnabled as float)
     PutSetting(type_Common, type_Config, "FortuneHuntingEnabled", fortuneHuntingEnabled as float)
+    PutSetting(type_Common, type_Config, "FortuneHuntItem", fortuneHuntItem as float)
+    PutSetting(type_Common, type_Config, "FortuneHuntNPC", fortuneHuntNPC as float)
+    PutSetting(type_Common, type_Config, "FortuneHuntContainer", fortuneHuntContainer as float)
     PutSetting(type_Common, type_Config, "UnlockGlowColours", unlockGlowColours as float)
     PutSettingGlowArray(type_Common, type_Glow, 8, glowReasonSettingArray)
     SyncNativeSettings()
@@ -634,6 +643,7 @@ Function SetMiscDefaults(bool firstTime)
     InstallSagaRendering()
     MigrateFromFormLists()
     InitExcessInventoryHandling()
+    InitFortuneHunting()
 EndFunction
 
 Function InstallCollections()
@@ -793,6 +803,12 @@ Function InitExcessInventoryHandling()
     type_Handling = 7
     type_MaxItems = 8
     type_MaxWeight = 9
+EndFunction
+
+Function InitFortuneHunting()
+    fortuneHuntItem = false
+    fortuneHuntNPC = false
+    fortuneHuntContainer = false
 EndFunction
 
 Function RemoveLightCategory()
@@ -1069,6 +1085,9 @@ Event OnVersionUpdate(int a_version)
         RemoveLightCategory()
         InitExcessInventoryHandling()
     endIf
+    if a_version >= 48 && CurrentVersion < 48
+        InitFortuneHunting()
+    endif
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -1535,6 +1554,14 @@ event OnPageReset(string currentPage)
         SetCursorFillMode(TOP_TO_BOTTOM)
 
         AddToggleOptionST("fortuneHuntingEnabled", "$SHSE_LOOT_SENSE_ENABLED", fortuneHuntingEnabled)
+        int fortuneHuntFlags = OPTION_FLAG_DISABLED
+        if fortuneHuntingEnabled
+            glowColourFlags = OPTION_FLAG_NONE
+        endIf
+
+        AddToggleOptionST("fortuneHuntItemState", "$SHSE_LOOT_SENSE_ITEM", fortuneHuntItem, fortuneHuntFlags)
+        AddToggleOptionST("fortuneHuntNPCState", "$SHSE_LOOT_SENSE_NPC", fortuneHuntNPC, fortuneHuntFlags)
+        AddToggleOptionST("fortuneHuntContainerState", "$SHSE_LOOT_SENSE_CONTAINER", fortuneHuntContainer, fortuneHuntFlags)
 
 ;   ======================== RIGHT ========================
         SetCursorPosition(1)
@@ -3012,21 +3039,70 @@ state chooseAdventureActive
     endEvent
 endState
 
+Function SetFortuneHuntOptions()
+    int flags = OPTION_FLAG_NONE
+    ; reset to default if now locked
+    if !fortuneHuntingEnabled
+        flags = OPTION_FLAG_DISABLED
+    endIf
+    SetOptionFlagsST(flags, false, "fortuneHuntItemState")
+    SetOptionFlagsST(flags, false, "fortuneHuntNPCState")
+    SetOptionFlagsST(flags, false, "fortuneHuntContainerState")
+EndFunction
+
 state fortuneHuntingEnabled
     event OnSelectST()
         fortuneHuntingEnabled = !fortuneHuntingEnabled
         SetToggleOptionValueST(fortuneHuntingEnabled)
         CheckFortunePower()
+        SetFortuneHuntOptions()
     endEvent
 
     event OnDefaultST()
         fortuneHuntingEnabled = false
         SetToggleOptionValueST(fortuneHuntingEnabled)
         CheckFortunePower()
+        SetFortuneHuntOptions()
     endEvent
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_LOOT_SENSE_ENABLED"))
+    endEvent
+endState
+
+state fortuneHuntItemState
+    event OnSelectST()
+        fortuneHuntItem = !fortuneHuntItem
+        SetToggleOptionValueST(fortuneHuntItem)
+    endEvent
+
+    event OnDefaultST()
+        fortuneHuntItem = false
+        SetToggleOptionValueST(fortuneHuntItem)
+    endEvent
+endState
+
+state fortuneHuntNPCState
+    event OnSelectST()
+        fortuneHuntNPC = !fortuneHuntNPC
+        SetToggleOptionValueST(fortuneHuntNPC)
+    endEvent
+
+    event OnDefaultST()
+        fortuneHuntNPC = false
+        SetToggleOptionValueST(fortuneHuntNPC)
+    endEvent
+endState
+
+state fortuneHuntContainerState
+    event OnSelectST()
+        fortuneHuntContainer = !fortuneHuntContainer
+        SetToggleOptionValueST(fortuneHuntContainer)
+    endEvent
+
+    event OnDefaultST()
+        fortuneHuntContainer = false
+        SetToggleOptionValueST(fortuneHuntContainer)
     endEvent
 endState
 

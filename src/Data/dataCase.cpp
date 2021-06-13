@@ -1203,7 +1203,7 @@ void DataCase::SetObjectTypeByKeywords()
 		{"VendorItemGem", ObjectType::gem},
 		{"VendorItemOreIngot", ObjectType::oreIngot},
 		{"VendorItemAnimalHide", ObjectType::animalHide},
-		{"VendorItemAnimalPart", ObjectType::clutter},
+		{"VendorItemAnimalPart", ObjectType::animalHide},
 		{"VendorItemJewelry", ObjectType::jewelry},
 		{"VendorItemArmor", ObjectType::armor},
 		{"VendorItemClothing", ObjectType::armor},

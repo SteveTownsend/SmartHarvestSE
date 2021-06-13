@@ -510,6 +510,12 @@ void ScanGovernor::LootAllEligible()
 		{
 			continue;
 		}
+		// Check if fortune hunting is enabled for target type and skip if so
+		if ((m_targetType == INIFile::SecondaryType::itemObjects && SettingsCache::Instance().FortuneHuntItem()) ||
+			(m_targetType == INIFile::SecondaryType::containers && SettingsCache::Instance().FortuneHuntContainer()) ||
+			(m_targetType == INIFile::SecondaryType::deadbodies && SettingsCache::Instance().FortuneHuntNPC()))
+			continue;
+
 		static const bool stolen(false);
 		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
 	}
@@ -532,6 +538,9 @@ const RE::Actor* ScanGovernor::ActorByIndex(const size_t actorIndex) const
 
 void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 {
+	// Lock required - partial Fortune Hunter's Instinct can operate concurrently with auto-loot for other categories
+	RecursiveLockGuard guard(m_searchLock);
+
 	if (scanType == ReferenceScanType::Calibration)
 	{
 		ProgressGlowDemo();
@@ -558,8 +567,13 @@ void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 // Glow-only, for Immersion enthusiasts
 void ScanGovernor::InvokeLootSense(void)
 {
+	// Lock required - partial Fortune Hunter's Instinct can operate concurrently with auto-loot for other categories
+	RecursiveLockGuard guard(m_searchLock);
+
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to glow in an orderly fashion than to do it all on one pass.
+	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
 	DistanceToTarget targets;
+	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
 	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
 	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
 	ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), MaxREFRSPerPass);
@@ -612,6 +626,12 @@ void ScanGovernor::InvokeLootSense(void)
 		{
 			continue;
 		}
+		// Check if fortune hunting is disabled for target type and skip if so
+		if ((m_targetType == INIFile::SecondaryType::itemObjects && !SettingsCache::Instance().FortuneHuntItem()) ||
+			(m_targetType == INIFile::SecondaryType::containers && !SettingsCache::Instance().FortuneHuntContainer()) ||
+			(m_targetType == INIFile::SecondaryType::deadbodies && !SettingsCache::Instance().FortuneHuntNPC()))
+			continue;
+
 		static const bool stolen(false);
 		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
 	}

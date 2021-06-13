@@ -56,6 +56,7 @@ private:
 	void AdjustCarryWeight();
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
 	void CheckExcessInventory(const bool force);
+	bool FortuneHuntOnly() const;
 
 	static std::unique_ptr<PlayerState> m_instance;
 

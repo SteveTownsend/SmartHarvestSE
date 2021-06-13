@@ -100,6 +100,10 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		if (itemObject->formType == RE::FormType::LeveledItem)
 			continue;
 
+		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
+		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
+			continue;
+
 		ObjectType excessType(GetExcessObjectType(itemObject));
 		if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
 			continue;
