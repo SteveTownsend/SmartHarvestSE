@@ -3,9 +3,13 @@ Scriptname SHSE_EventsAlias extends ReferenceAlias
 import SHSE_PluginProxy
 import SHSE_MCM
 GlobalVariable Property g_LootingEnabled Auto
+
 int CACOModIndex
 int FossilMiningModIndex
 int HearthfireExtendedModIndex
+int MagicChestModIndex
+int VidanisBagOfHoldingModIndex
+
 bool scanActive = True
 int pluginNonce
 bool pluginDelayed
@@ -282,6 +286,7 @@ EndFunction
 ;push updated lists to plugin
 Function SyncLists(bool reload, bool updateLists)
     if updateLists
+        SyncList(list_type_transfer, transferList, transferListSize)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
@@ -672,6 +677,7 @@ function Pause()
     PushScanActive()
 endFunction
 
+; BlackList/WhiteList hotkeys
 Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey, Float holdTime)
     ; check for long press
     if holdTime > 3.0
@@ -717,16 +723,27 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
     endIf
 EndFunction
 
-; Pause hotkey on crosshair item indicatse user is trying to set or unset a Loot Transfer Target
+; Pause hotkey on crosshair item indicates user is trying to set or unset a Loot Transfer Target
 Function HandleCrosshairPauseHotKey(ObjectReference targetedRefr)
     ; Does nothing unless this is a Container to which we can safely send loot
-    ; chekc for Activator that just Activates the linked Container
-    ActivateLinkedChestDummyScript linkedChest = targetedRefr as ActivateLinkedChestDummyScript
-    DebugTrace("REFR " + targetedRefr + ". linked container " + linkedChest)
-    string locationName = ValidTransferTargetLocation(targetedRefr, linkedChest != None)
+    ; check for REFR that encapsulates a valid linked Container
+    bool linkedChest = False
+    bool knownGood = False
+    ObjectReference refrToStore = targetedRefr
+    if targetedRefr as ActivateLinkedChestDummyScript != None
+        linkedChest = True
+    elseif (MagicChestModIndex != 255) && (targetedRefr as _Skyrim_SE_Nexus_Script != None)
+        knownGood = True
+        linkedChest = True
+    elseIf (VidanisBagOfHoldingModIndex != 255) && (targetedRefr as aaaMRbohArmScript != None)
+        knownGood = True
+        refrToStore = (targetedRefr as aaaMRbohArmScript).aaaMRbohContREF
+    endIf
+    ;DebugTrace("REFR " + refrToStore + ", linked container ? " + linkedChest + ", known good ? " + knownGood)
+    string locationName = ValidTransferTargetLocation(refrToStore, linkedChest, knownGood)
     if locationName != ""
         ; add or remove the REFR, not the Base, to avoid blocking other REFRs with same Base
-        ToggleStatusInTransferList(locationName, targetedRefr)
+        ToggleStatusInTransferList(locationName, refrToStore)
         SyncList(list_type_transfer, transferList, transferListSize)
     else
         Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_TRANSFERLIST")
@@ -1364,11 +1381,28 @@ Event OnGameReady()
         AlwaysTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
     endif
 
+    ; yes, this really is the ESP name. And there are three different names.
+    MagicChestModIndex = Game.GetModByName("Skyrim_SE_Nexus .esp")
+    if MagicChestModIndex == 255
+        MagicChestModIndex = Game.GetModByName("Skyrim_SE_Nexus_Chests .esp")
+    endif
+    if MagicChestModIndex == 255
+        MagicChestModIndex = Game.GetModByName("SSENexus OCS Patch.esp")
+    endif
+    if MagicChestModIndex != 255
+        AlwaysTrace("Magic Chest Spell with Multi Linked Containers mod index: " + MagicChestModIndex)
+    endif
+
+    ;update Vidani's Bag Of Holding index in load order, to handle Bag as a Transfer List candidate
+    VidanisBagOfHoldingModIndex = Game.GetModByName("Vidani's Bag of Holding.esp")
+    if VidanisBagOfHoldingModIndex != 255
+        AlwaysTrace("Vidani's Bag Of Holding mod index: " + VidanisBagOfHoldingModIndex)
+    endif
+
     ; only need to check Collections requisite data structure on reload, not MCM close
     ResetCollections()
     PushGameTime(Utility.GetCurrentGameTime())
-    SyncList(list_type_transfer, transferList, transferListSize)
-    SyncLists(True, True)
+    
     ; kick off scan thread release checking once game is ready. Use sentinel value for this case.
     StartCheckReportUIState(-1)
 EndEvent

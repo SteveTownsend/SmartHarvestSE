@@ -51,7 +51,7 @@ CollectionManager& CollectionManager::Instance()
 	return *m_instance;
 }
 
-CollectionManager::CollectionManager() : m_notifications(0), m_ready(false), m_mcmEnabled(false)
+CollectionManager::CollectionManager() : m_notifications(0), m_ready(false)
 {
 }
 
@@ -785,13 +785,6 @@ void CollectionManager::OnGameReload(void)
 	PrintMembership();
 }
 
-// recache relevant settings
-void CollectionManager::RefreshSettings(void)
-{
-	RecursiveLockGuard guard(m_collectionLock);
-	m_mcmEnabled = SettingsCache::Instance().CollectionsEnabled();
-	REL_MESSAGE("User Collections are {}", m_mcmEnabled ? "enabled" : "disabled");
-}
 
 void CollectionManager::AsJSON(nlohmann::json& j) const
 {

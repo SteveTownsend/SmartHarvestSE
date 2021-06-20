@@ -68,6 +68,7 @@ private:
 	std::unordered_map<const RE::BGSLocation*, Position> m_markedPlaces;
 	alglib::kdtree m_markers;
 	mutable RecursiveLock m_locationLock;
+	mutable std::atomic<bool> m_aiRunning;
 
 	static constexpr double OnlyYards = 0.1;
 	static constexpr double LittleWay = 0.3;

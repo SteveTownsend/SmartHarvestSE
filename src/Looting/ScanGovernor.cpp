@@ -64,7 +64,7 @@ ScanGovernor& ScanGovernor::Instance()
 ScanGovernor::ScanGovernor() : m_pendingNotifies(0), m_searchAllowed(false), m_searchNotPaused(false),
 	m_targetType(INIFile::SecondaryType::NONE2), m_spergInProgress(0), m_calibrating(false),
 	m_calibrateRadius(CalibrationRangeDelta), m_calibrateDelta(ScanGovernor::CalibrationRangeDelta),
-	m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget)
+	m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget), m_fhiRunning(false)
 {
 }
 
@@ -299,11 +299,17 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
 		if (refr->GetFormType() == RE::FormType::ActorCharacter)
 		{
+			// check whether out of scope
+			if (!dryRun && 
+				((glowOnly && !SettingsCache::Instance().FortuneHuntNPC()) || (!glowOnly && SettingsCache::Instance().FortuneHuntNPC())))
+			{
+				return Lootability::OutOfScope;
+			}
 			if (!refr->IsDead(true))
 			{
 				return Lootability::ReferenceIsLiveActor;
 			}
-			if (SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
+			if (!glowOnly && SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
 			{
 				return Lootability::LootDeadBodyDisabled;
 			}
@@ -367,10 +373,11 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			m_targetType = INIFile::SecondaryType::deadbodies;
 			// Delay looting exactly once. We only return here after required time since death has expired.
 			// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
-			if (shse::ActorTracker::Instance().SeenAlive(refr) && !HandleAsDynamicData(refr) &&
+			// If we are in glow-only mode it is safe to skip this.
+			if (!glowOnly && shse::ActorTracker::Instance().SeenAlive(refr) && !HandleAsDynamicData(refr) &&
 				DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
-				if (!dryRun && !glowOnly)
+				if (!dryRun)
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);
@@ -390,7 +397,13 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 		}
 		else if (refr->GetBaseObject()->As<RE::TESContainer>())
 		{
-			if (!SettingsCache::Instance().EnableLootContainer())
+			// check whether out of scope
+			if (!dryRun && 
+				((glowOnly && !SettingsCache::Instance().FortuneHuntContainer()) || (!glowOnly && SettingsCache::Instance().FortuneHuntContainer())))
+			{
+				return Lootability::OutOfScope;
+			}
+			if (!glowOnly && !SettingsCache::Instance().EnableLootContainer())
 			{
 				return Lootability::LootContainersDisabled;
 			}
@@ -408,15 +421,22 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 		}
 		else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
 		{
-			if (SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
+			// check whether out of scope
+			if (!dryRun &&
+				((glowOnly && !SettingsCache::Instance().FortuneHuntNPC()) || (!glowOnly && SettingsCache::Instance().FortuneHuntNPC())))
+			{
+				return Lootability::OutOfScope;
+			}
+			if (!glowOnly && SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
 			{
 				return Lootability::LootDeadBodyDisabled;
 			}
 			m_targetType = INIFile::SecondaryType::deadbodies;
 			// Delay looting exactly once. We only return here after required time since death has expired.
-			if (!HandleAsDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
+			// If we are in glow-only mode it is safe to skip this.
+			if (!glowOnly && !HandleAsDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
 			{
-				if (!dryRun && !glowOnly)
+				if (!dryRun)
 				{
 					// Use async looting to allow game to settle actor state and animate their untimely demise
 					RegisterActorTimeOfDeath(refr);
@@ -443,9 +463,18 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			}
 			possibleDupes.push_back(refr);
 		}
-		else if (!SettingsCache::Instance().EnableHarvest())
+		else
 		{
-			return Lootability::HarvestLooseItemDisabled;
+			// check whether out of scope
+			if (!dryRun &&
+				((glowOnly && !SettingsCache::Instance().FortuneHuntItem()) || (!glowOnly && SettingsCache::Instance().FortuneHuntItem())))
+			{
+				return Lootability::OutOfScope;
+			}
+			if (!glowOnly && !SettingsCache::Instance().EnableHarvest())
+			{
+				return Lootability::HarvestLooseItemDisabled;
+			}
 		}
 		return Lootability::Lootable;
 	}
@@ -455,9 +484,13 @@ void ScanGovernor::LootAllEligible()
 {
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to loot in an orderly fashion than to get it all into inventory on
 	// one pass.
-	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
 	DistanceToTarget targets;
-	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
+	if (!SettingsCache::Instance().FortuneHuntNPC())
+	{
+		// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever.
+		// Skipped if NPCs are in glow-only mode
+		shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
+	}
 	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
 	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
 	ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), MaxREFRSPerPass);
@@ -500,6 +533,11 @@ void ScanGovernor::LootAllEligible()
 		else
 		{
 			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
+			// do not process targets that are out of scope due to glow-only mode settings
+			if (lootability == Lootability::OutOfScope)
+			{
+				continue;
+			}
 			if (refr && refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
 			{
 				// different Actors and Chests have different loot
@@ -510,6 +548,7 @@ void ScanGovernor::LootAllEligible()
 		{
 			continue;
 		}
+
 		static const bool stolen(false);
 		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
 	}
@@ -532,6 +571,9 @@ const RE::Actor* ScanGovernor::ActorByIndex(const size_t actorIndex) const
 
 void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 {
+	// Lock required - partial Fortune Hunter's Instinct can operate concurrently with auto-loot for other categories
+	RecursiveLockGuard guard(m_searchLock);
+
 	if (scanType == ReferenceScanType::Calibration)
 	{
 		ProgressGlowDemo();
@@ -558,8 +600,22 @@ void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 // Glow-only, for Immersion enthusiasts
 void ScanGovernor::InvokeLootSense(void)
 {
+	// Do not execute if already in process (Lesser Power spam)
+	bool running(false);
+	if (!m_fhiRunning.compare_exchange_strong(running, true))
+	{
+		REL_MESSAGE("Fortune Hunter's Instinct already running, ignore request");
+		return;
+	}
+	running = true;
+
+	// Lock required - partial Fortune Hunter's Instinct can operate concurrently with auto-loot for other categories
+	RecursiveLockGuard guard(m_searchLock);
+
 	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to glow in an orderly fashion than to do it all on one pass.
+	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
 	DistanceToTarget targets;
+	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
 	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
 	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
 	ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), MaxREFRSPerPass);
@@ -602,6 +658,11 @@ void ScanGovernor::InvokeLootSense(void)
 		else
 		{
 			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
+			// do not process targets that are out of scope due to glow-only mode settings
+			if (lootability == Lootability::OutOfScope)
+			{
+				continue;
+			}
 			if (refr && refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
 			{
 				// different Actors and Chests have different loot
@@ -612,8 +673,14 @@ void ScanGovernor::InvokeLootSense(void)
 		{
 			continue;
 		}
+
 		static const bool stolen(false);
 		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
+	}
+	if (!m_fhiRunning.compare_exchange_strong(running, false))
+	{
+		REL_ERROR("Fortune Hunter's Instinct reset failed");
+		return;
 	}
 }
 
