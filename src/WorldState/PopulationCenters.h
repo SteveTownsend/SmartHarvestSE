@@ -52,10 +52,9 @@ class PopulationCenters
 {
 public:
 	static PopulationCenters& Instance();
-	PopulationCenters() : m_excludedCenterSize(PopulationCenterSize::None) {}
+	PopulationCenters() {}
 
 	void Categorize(void);
-	void RefreshConfig(void);
 	bool CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const;
 
 private:
@@ -63,7 +62,6 @@ private:
 
 	static std::unique_ptr<PopulationCenters> m_instance;
 
-	PopulationCenterSize m_excludedCenterSize;
 	std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> m_centers;
 	std::unordered_map<RE::FormID, PopulationCenterSize> m_cells;
 	mutable RecursiveLock m_centersLock;

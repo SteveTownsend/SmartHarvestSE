@@ -421,6 +421,7 @@ private:
 	void ActivationVerbsByType(const char* activationVerbKey, const ObjectType objectType);
 	void StoreActivationVerbs(void);
 	void CategorizeByActivationVerb(void);
+	void FindCraftingItems(void);
 	void AnalyzePerks(void);
 
 	std::string GetModelPath(const RE::TESForm* thisForm) const;

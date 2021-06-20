@@ -52,7 +52,8 @@ LocationTracker& LocationTracker::Instance()
 
 LocationTracker::LocationTracker() : 
 	m_playerCellID(InvalidForm), m_playerCellX(0.), m_playerCellY(0.), m_playerIndoors(false),
-	m_tellPlayerIfCanLootAfterLoad(false), m_playerLocation(nullptr), m_playerParentWorld(nullptr)
+	m_tellPlayerIfCanLootAfterLoad(false), m_playerLocation(nullptr), m_playerParentWorld(nullptr),
+	m_aiRunning(false)
 {
 }
 
@@ -244,6 +245,15 @@ void LocationTracker::PrintDifferentWorld(const RE::TESWorldSpace* world) const
 
 void LocationTracker::DisplayPlayerLocation() const
 {
+	// Do not execute if already in process (Lesser Power spam)
+	bool running(false);
+	if (!m_aiRunning.compare_exchange_strong(running, true))
+	{
+		REL_MESSAGE("Adventurer's Instinct already running, ignore request");
+		return;
+	}
+	running = true;
+
 	// display location relative to Adventure Target, or nearest marker if no Adventure in progress
 	const RE::BGSLocation* locationDone(nullptr);
 	if (AdventureTargets::Instance().TargetLocation())
@@ -252,6 +262,12 @@ void LocationTracker::DisplayPlayerLocation() const
 	}
 	// print current location if it's not the same as the target
 	PlayerLocationRelativeToNearestMapMarker(locationDone);
+
+	if (!m_aiRunning.compare_exchange_strong(running, false))
+	{
+		REL_ERROR("Adventurer's Instinct reset failed");
+		return;
+	}
 }
 
 std::string LocationTracker::LocationRelativeToNearestMapMarker(const AlglibPosition& position, const bool historic) const

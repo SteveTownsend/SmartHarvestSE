@@ -27,7 +27,7 @@ namespace shse
 
 std::unique_ptr<ManagedList> ManagedList::m_blackList;
 std::unique_ptr<ManagedList> ManagedList::m_whiteList;
-std::unique_ptr<ManagedList> ManagedList::m_transferList;
+std::unique_ptr<ManagedTargets> ManagedList::m_transferList;
 
 ManagedList& ManagedList::BlackList()
 {
@@ -47,11 +47,11 @@ ManagedList& ManagedList::WhiteList()
 	return *m_whiteList;
 }
 
-ManagedList& ManagedList::TransferList()
+ManagedTargets& ManagedList::TransferList()
 {
 	if (!m_transferList)
 	{
-		m_transferList = std::make_unique<ManagedList>();
+		m_transferList = std::make_unique<ManagedTargets>();
 	}
 	return *m_transferList;
 }
@@ -73,11 +73,6 @@ void ManagedList::Reset()
 		{
 			REL_MESSAGE("Reset WhiteList");
 		}
-		else
-		{
-			REL_MESSAGE("Reset TransferList");
-			m_orderedList.clear();
-		}
 		m_members.clear();
 	}
 }
@@ -94,14 +89,9 @@ void ManagedList::Add(RE::TESForm* entry)
 	{
 		name = entry->GetName();
 	}
-	REL_MESSAGE("{}/0x{:08x} added to {}", name, entry->GetFormID(),
-		this == m_blackList.get() ? "BlackList" : (this == m_whiteList.get() ? "WhiteList" : "TransferList"));
+	REL_MESSAGE("{}/0x{:08x} added to {}", name, entry->GetFormID(), this == m_blackList.get() ? "BlackList" : "WhiteList");
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert({ entry->GetFormID(), name });
-	if (this == m_transferList.get())
-	{
-		m_orderedList.push_back(entry);
-	}
 }
 
 bool ManagedList::Contains(const RE::TESForm* entry) const
@@ -118,13 +108,6 @@ bool ManagedList::ContainsID(const RE::FormID entryID) const
 	return m_members.contains(entryID);
 }
 
-RE::TESForm* ManagedList::ByIndex(const size_t index) const
-{
-	if (this == m_transferList.get() && index < m_orderedList.size())
-		return m_orderedList[index];
-	return nullptr;
-}
-
 // sometimes multiple items use the same name - we treat them all the same
 bool ManagedList::HasEntryWithSameName(const RE::TESForm* form) const
 {
@@ -137,6 +120,93 @@ bool ManagedList::HasEntryWithSameName(const RE::TESForm* form) const
 	{
 		return element.second == name;
 	}) != m_members.cend();
+}
+
+void ManagedTargets::Reset()
+{
+	REL_MESSAGE("Reset TransferList");
+	ManagedList::Reset();
+	m_orderedList.clear();
+	m_containers.clear();
+}
+
+void ManagedTargets::Add(RE::TESForm* entry)
+{
+	std::string name;
+	RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
+	if (refr)
+	{
+		name = refr->GetName();
+	}
+	if (name.empty())
+	{
+		name = entry->GetName();
+	}
+	REL_MESSAGE("{}/0x{:08x} added to TransferList", name, entry->GetFormID());
+	RecursiveLockGuard guard(m_listLock);
+	m_members.insert({ entry->GetFormID(), name });
+	m_orderedList.push_back(entry);
+
+	// Record any underlying _linked_ container for checking of multiplexed CONTs. We do not always check CONT for match as many are reused
+	// _without_ linked-ref indirection.
+	if (refr)
+	{
+		const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
+		if (activator)
+		{
+			DBG_VMESSAGE("Check ACTI {}/0x{:08x} -> linked container", activator->GetFullName(), activator->GetFormID());
+			RE::TESObjectREFR* linkedRefr(refr->GetLinkedRef(nullptr));
+			if (linkedRefr)
+			{
+				RE::TESObjectCONT* container = linkedRefr->GetBaseObject()->As<RE::TESObjectCONT>();
+				if (container)
+				{
+					DBG_VMESSAGE("ACTI {}/0x{:08x} has linked container {}/0x{:08x}", activator->GetFullName(), activator->GetFormID(),
+						container->GetFullName(), container->GetFormID());
+					m_containers.insert(container->GetFormID());
+				}
+			}
+		}
+	}
+}
+
+bool ManagedTargets::Contains(const RE::TESForm* entry) const
+{
+	if (!entry)
+		return false;
+	RecursiveLockGuard guard(m_listLock);
+	if (m_members.contains(entry->GetFormID()))
+		return true;
+	// Check for matching linked REFR - if we autoloot the container in this instance, we may transfer loot back to it and enter a toxic loop
+	RE::TESObjectREFR* refr(const_cast<RE::TESForm*>(entry)->As<RE::TESObjectREFR>());
+	if (refr)
+	{
+		const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
+		if (activator)
+		{
+			DBG_VMESSAGE("Check ACTI {}/0x{:08x} for linked container", activator->GetFullName(), activator->GetFormID());
+			RE::TESObjectREFR* linkedRefr(refr->GetLinkedRef(nullptr));
+			if (linkedRefr)
+			{
+				RE::TESObjectCONT* container(linkedRefr->GetBaseObject()->As<RE::TESObjectCONT>());
+				return m_containers.contains(container->GetFormID());
+			}
+		}
+	}
+	return false;
+}
+
+bool ManagedTargets::HasContainer(RE::FormID container) const
+{
+	RecursiveLockGuard guard(m_listLock);
+	return m_containers.contains(container);
+}
+
+RE::TESForm* ManagedTargets::ByIndex(const size_t index) const
+{
+	if (index < m_orderedList.size())
+		return m_orderedList[index];
+	return nullptr;
 }
 
 }

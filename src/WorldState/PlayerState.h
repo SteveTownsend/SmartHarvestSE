@@ -48,7 +48,7 @@ public:
 	bool WithinDetectionRange(const double distance) const;
 	void UpdateGameTime(const float gameTime);
 	inline float CurrentGameTime() const { return m_gameTime; }
-	int ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType) const;
+	int ItemHeadroom(RE::TESBoundObject* form, const int delta) const;
 
 private:
 	void CheckPerks(const bool force);
@@ -56,6 +56,7 @@ private:
 	void AdjustCarryWeight();
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
 	void CheckExcessInventory(const bool force);
+	bool FortuneHuntOnly() const;
 
 	static std::unique_ptr<PlayerState> m_instance;
 
@@ -69,6 +70,7 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
 	// specialized cache of inventory items
 	mutable InventoryCache m_currentItems;
+	mutable bool m_refreshCache;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;

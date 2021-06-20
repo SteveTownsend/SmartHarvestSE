@@ -270,9 +270,9 @@ bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
-	if (m_questTargetItems.insert(item).second)
+	if (m_questTargetItems.insert(item->GetFormID()).second)
 	{
-		m_userCannotPermission.insert(item);
+		m_userCannotPermission.insert(item->GetFormID());
 		return true;
 	}
 	return false;
@@ -284,7 +284,7 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* 
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
-	return m_questTargetReferenced[item].insert(refr).second;
+	return m_questTargetReferenced[item->GetFormID()].insert(refr->GetFormID()).second;
 }
 
 // used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
@@ -293,9 +293,9 @@ bool QuestTargets::BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr)
 	if (!refr->GetBaseObject() || !FormUtils::IsConcrete(refr->GetBaseObject()))
 		return false;
 	// record the base object
-	if (m_questTargetREFRs.insert(refr).second)
+	if (m_questTargetREFRs.insert(refr->GetFormID()).second)
 	{
-		m_userCannotPermission.insert(refr->GetBaseObject());
+		m_userCannotPermission.insert(refr->GetBaseObject()->GetFormID());
 		return true;
 	}
 	return false;
@@ -310,14 +310,14 @@ bool QuestTargets::BlacklistQuestTargetNPC(const RE::TESNPC* npc)
 	if (name.empty())
 		return false;
 	RecursiveLockGuard guard(m_questLock);
-	return m_questTargetItems.insert(npc).second;
+	return m_questTargetItems.insert(npc->GetFormID()).second;
 }
 
 Lootability QuestTargets::ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return Lootability::NullReference;
-	if (m_questTargetREFRs.contains(refr))
+	if (m_questTargetREFRs.contains(refr->GetFormID()))
 	{
 		return Lootability::CannotLootQuestTarget;
 	}
@@ -333,23 +333,45 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const 
 		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_questLock);
 	// check for universal item match with no stored explicit  REFR
-	if (m_questTargetItems.contains(form))
+	if (m_questTargetItems.contains(form->GetFormID()))
 	{
 		return Lootability::CannotLootQuestTarget;
 	}
 	// check for specific reference to base
-	const auto referenced(m_questTargetReferenced.find(form));
-	if (referenced != m_questTargetReferenced.cend() && referenced->second.find(refr) != referenced->second.cend())
+	const auto referenced(m_questTargetReferenced.find(form->GetFormID()));
+	if (referenced != m_questTargetReferenced.cend() && referenced->second.find(refr->GetFormID()) != referenced->second.cend())
 	{
 		return Lootability::CannotLootQuestTarget;
 	}
 	return Lootability::Lootable;
 }
 
+// we need to be extremely conservative in excluding possible Quest Targets from excess inventory handling
+bool QuestTargets::AllowsExcessHandling(const RE::TESForm* form) const
+{
+	if (!form)
+		return false;
+	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
+	if (form->IsDynamicForm())
+		return true;
+	RecursiveLockGuard guard(m_questLock);
+	// check for universal item match with no stored explicit  REFR
+	if (m_questTargetItems.contains(form->GetFormID()))
+	{
+		return false;
+	}
+	// check for any reference to base: this may have been sourced from a specific REFR and we have no way to tell that here
+	if (m_questTargetReferenced.contains(form->GetFormID()))
+	{
+		return false;
+	}
+	return true;
+}
+
 bool QuestTargets::UserCannotPermission(const RE::TESForm* form) const
 {
 	RecursiveLockGuard guard(m_questLock);
-	return m_userCannotPermission.contains(form);
+	return m_userCannotPermission.contains(form->GetFormID());
 }
 
 }

@@ -38,7 +38,7 @@ public:
 	bool ItemIsCollectionCandidate(RE::TESBoundObject* item) const;
 	void CheckEnqueueAddedItem(RE::TESBoundObject* form, const INIFile::SecondaryType scope, const ObjectType objectType);
 	void ProcessAddedItems();
-	inline bool IsMCMEnabled() const { return m_mcmEnabled; }
+	inline bool IsMCMEnabled() const { return SettingsCache::Instance().CollectionsEnabled(); }
 	inline bool IsAvailable() const { return m_ready; }
 	void Clear(void);
 	void OnGameReload(void);
@@ -94,8 +94,6 @@ private:
 	static std::unique_ptr<CollectionManager> m_instance;
 	// data loaded ok?
 	bool m_ready;
-	// enabled for MCM management? if false, administrative Collection Groups will still be used
-	bool m_mcmEnabled;
 
 	mutable RecursiveLock m_collectionLock;
 	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;

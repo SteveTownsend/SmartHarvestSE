@@ -1,6 +1,6 @@
 /*************************************************************************
 SmartHarvest SE
-Copyright (c) Steve Townsend 2020
+Copyright (c) Steve Townsend 2021
 
 >>> SOURCE LICENSE >>>
 This program is free software; you can redistribute it and/or modify
@@ -19,34 +19,24 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-#include <unordered_map>
+#include "Data/dataCase.h"
 
 namespace shse
 {
 
-	class InventoryEntry
-	{
-	public:
-		InventoryEntry(RE::TESBoundObject* item, const int count);
+class CraftingItems
+{
+public:
+	static CraftingItems& Instance();
+	CraftingItems();
 
-		static constexpr int UnlimitedItems = 1000000;
+	bool IsCraftingItem(const RE::TESForm* item) const;
+	bool AddIfNew(const RE::TESForm* item);
 
-		ExcessInventoryHandling HandlingType() const;
-		void Populate();
-		int Headroom(const int delta) const;
-		void HandleExcess(const RE::TESBoundObject* item);
+private:
+	static std::unique_ptr<CraftingItems> m_instance;
+	// lock not required, this is seeded at start and thereafter read-only
+	std::unordered_set<RE::FormID> m_craftingItems;
+};
 
-	private:
-		RE::TESBoundObject* m_item;
-		ExcessInventoryHandling m_excessHandling;
-		ObjectType m_excessType;
-		bool m_crafting;
-		int m_count;
-		mutable int m_totalDelta;		// number of items assumed added by loot requests since last reconciliation
-		int m_maxCount;
-		uint32_t m_value;
-		double m_weight;
-	};
-
-	typedef std::unordered_map<const RE::TESBoundObject*, InventoryEntry> InventoryCache;
 }

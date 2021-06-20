@@ -31,7 +31,9 @@ public:
 	void PrepareForReloadOrNewGame();
 	void ResetTransientState(const bool gameReload);
 	void OnVMSync();
+	void OnGameLoaded();
 	void OnSettingsPushed(void);
+	bool ScanAllowed() const;
 
 	// give the debug message time to catch up during calibration
 	static constexpr double CalibrationThreadDelaySeconds = 5.0;
@@ -57,6 +59,7 @@ private:
 	LoadProgress m_loadProgress;
 	bool m_threadStarted;
 	bool m_pluginSynced;
+	bool m_loadedSettings;
 };
 
 }

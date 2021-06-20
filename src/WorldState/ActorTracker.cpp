@@ -112,7 +112,7 @@ void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 	if (!victim || !victim->myKiller || !m_checkedBodies.insert(victim).second)
 		return;
 	RE::Actor* killer(victim->myKiller.get().get());
-	// it's always the player even if a FOllower did the deed
+	// it's always the player even if a Follower did the deed
 	if (killer == RE::PlayerCharacter::GetSingleton())
 	{
 		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->GetName(), victim->GetFormID());

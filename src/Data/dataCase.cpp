@@ -28,6 +28,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
+#include "WorldState/CraftingItems.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
 #include "Looting/ScanGovernor.h"
@@ -245,6 +246,26 @@ void DataCase::CategorizeByActivationVerb()
 			}
 		}
 		DBG_MESSAGE("{}/0x{:08x} not mappable, uses verb '{}'", formName, activator->GetFormID(), GetVerbFromActivationText(activationText).c_str());
+	}
+}
+
+void DataCase::FindCraftingItems(void)
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+
+	for (RE::BGSConstructibleObject* cobj : dhnd->GetFormArray<RE::BGSConstructibleObject>())
+	{
+		unsigned int total(0);
+		unsigned int added(0);
+		cobj->requiredItems.ForEachContainerObject([&] (RE::ContainerObject& item) -> bool {
+			if (CraftingItems::Instance().AddIfNew(item.obj))
+				++added;
+			++total;
+			return true;
+		});
+		DBG_MESSAGE("Added {} of {} items for COBJ 0x{:08x}", added, total, cobj->GetFormID());
 	}
 }
 
@@ -1121,6 +1142,9 @@ void DataCase::CategorizeLootables()
 		DBG_VMESSAGE("Activation verb {} unhandled at present", unhandledVerb);
 	}
 #endif
+	// crafting components
+	REL_MESSAGE("*** LOAD *** Get Crafting Items");
+	FindCraftingItems();
 
 	// Analyze perks that affect looting
 	DBG_MESSAGE("*** LOAD *** Analyze Perks");
@@ -1203,7 +1227,7 @@ void DataCase::SetObjectTypeByKeywords()
 		{"VendorItemGem", ObjectType::gem},
 		{"VendorItemOreIngot", ObjectType::oreIngot},
 		{"VendorItemAnimalHide", ObjectType::animalHide},
-		{"VendorItemAnimalPart", ObjectType::clutter},
+		{"VendorItemAnimalPart", ObjectType::animalHide},
 		{"VendorItemJewelry", ObjectType::jewelry},
 		{"VendorItemArmor", ObjectType::armor},
 		{"VendorItemClothing", ObjectType::armor},

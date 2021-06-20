@@ -88,6 +88,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::NPCIsInBlacklistCollection: return "NPCIsInBlacklistCollection";
 	case Lootability::ContainerIsLootTransferTarget: return "ContainerIsLootTransferTarget";
 	case Lootability::InventoryLimitsEnforced: return "InventoryLimitsEnforced";
+	case Lootability::OutOfScope: return "OutOfScope";
 	default: return "";
 	}
 }
