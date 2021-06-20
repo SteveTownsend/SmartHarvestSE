@@ -285,7 +285,7 @@ inline QuestObjectHandling QuestObjectHandlingFromIniSetting(const double iniSet
 inline ExcessInventoryHandling ExcessInventoryHandlingFromIniSetting(const double iniSetting)
 {
 	uint8_t intSetting(static_cast<uint8_t>(iniSetting));
-	if (intSetting >= static_cast<int8_t>(LootingType::MAX))
+	if (intSetting >= static_cast<uint8_t>(ExcessInventoryHandling::MAX))
 	{
 		return ExcessInventoryHandling::NoLimits;
 	}
@@ -472,6 +472,7 @@ enum class Lootability {
 	NPCIsInBlacklistCollection,
 	ContainerIsLootTransferTarget,
 	InventoryLimitsEnforced,
+	OutOfScope,
 	MAX
 };
 

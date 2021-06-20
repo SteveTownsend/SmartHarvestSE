@@ -37,16 +37,11 @@ PopulationCenters& PopulationCenters::Instance()
 	return *m_instance;
 }
 
-void PopulationCenters::RefreshConfig(void)
-{
-	RecursiveLockGuard guard(m_centersLock);
-	m_excludedCenterSize = SettingsCache::Instance().PreventPopulationCenterLooting();
-}
-
 bool PopulationCenters::CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const
 {
 	RecursiveLockGuard guard(m_centersLock);
-	if (m_excludedCenterSize == PopulationCenterSize::None)
+	PopulationCenterSize centerSize(SettingsCache::Instance().PreventPopulationCenterLooting());
+	if (centerSize == PopulationCenterSize::None)
 		return false;
 
 	const auto locationRecord(m_centers.find(location));
@@ -54,12 +49,12 @@ bool PopulationCenters::CannotLoot(const RE::FormID cellID, const RE::BGSLocatio
 	// a population center
 	if (locationRecord != m_centers.cend())
 	{
-		return locationRecord->second >= m_excludedCenterSize;
+		return locationRecord->second >= centerSize;
 	}
 	const auto cellRecord(m_cells.find(cellID));
 	if (cellRecord != m_cells.cend())
 	{
-		return cellRecord->second >= m_excludedCenterSize;
+		return cellRecord->second >= centerSize;
 	}
 	return false;
 }

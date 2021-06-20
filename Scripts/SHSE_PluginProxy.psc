@@ -24,7 +24,6 @@ int Function GetSettingGlowArrayEntry(int m_section_first, int m_section_second,
 Function PutSetting(int m_section_first, int m_section_second, string m_key, float m_value) global native
 Function PutSettingObjectArrayEntry(int section_first, int section_second, int objectType, float value) global native
 Function PutSettingGlowArrayEntry(int section_first, int section_second, int index, int value) global native
-Function SyncNativeSettings() global native
 
 bool Function Reconfigure() global native
 Function LoadIniFile(bool useDefaults) global native
@@ -43,6 +42,7 @@ Function ReportOKToScan(bool delayed, int nonce) global native
 Function ResetList(int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
 Function SyncDone(bool reload) global native
+Function GameIsReady() global native
 String Function PrintFormID(int formID) global native
 
 String Function GetTranslation(String key) global native

@@ -104,15 +104,11 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
 			continue;
 
-		ObjectType excessType(GetExcessObjectType(itemObject));
-		if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
+		InventoryEntry itemEntry(itemObject, count);
+		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
 			continue;
-
-		TESFormHelper helper(itemObject, excessType, INIFile::SecondaryType::itemObjects);
-		uint32_t value(helper.GetWorth());
-		double weight(helper.GetWeight());
-		DBG_DMESSAGE("Excess handling for item {}/0x{:08x}, count={}, weight={:0.2f}", itemObject->GetName(), itemObject->GetFormID(), count, weight);
-		cache.insert({ itemObject, InventoryEntry(excessType, count, value, weight) });
+		itemEntry.Populate();
+		cache.insert({ itemObject, itemEntry });
 	}
 	return cache;
 }

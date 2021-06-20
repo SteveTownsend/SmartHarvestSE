@@ -90,9 +90,10 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	}
 
 	// Check excess inventory every so often, and on possible state changes
-	// Do not process excess inventory if scanning is disabled - player may be trying to manually sell items
+	// Do not process excess inventory if scanning is not allowed for any reason
+	// Player may be trying to manually sell items or doing other stuff that does not favour inventory manipulation
 	// per https://github.com/SteveTownsend/SmartHarvestSE/issues/252
-	if (ScanGovernor::Instance().CanSearch())
+	if (PluginFacade::Instance().ScanAllowed())
 	{
 		CheckExcessInventory(onGameReload || onMCMPush);
 	}
@@ -245,8 +246,7 @@ bool PlayerState::CanLoot() const
 
 bool PlayerState::FortuneHuntOnly() const
 {
-	return SettingsCache::Instance().FortuneHuntingEnabled() &&
-		SettingsCache::Instance().FortuneHuntItem() &&
+	return SettingsCache::Instance().FortuneHuntItem() &&
 		SettingsCache::Instance().FortuneHuntNPC() &&
 		SettingsCache::Instance().FortuneHuntContainer();
 }
@@ -379,10 +379,11 @@ void PlayerState::UpdateGameTime(const float gameTime)
 }
 
 // returns -1 if items are marked to be left behind and inventory is full, or the number allowed before limits are breached
-int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType, const int delta) const
+int PlayerState::ItemHeadroom(RE::TESBoundObject* form, const int delta) const
 {
-	ObjectType excessType(GetExcessObjectType(form));
-	if (SettingsCache::Instance().ExcessInventoryHandlingType(excessType) == ExcessInventoryHandling::NoLimits)
+	// if we add this, it will be as a new entry with 0 extant instances
+	InventoryEntry itemEntry(form, 0);
+	if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
 		return InventoryEntry::UnlimitedItems;
 
 	// Inventory limit is configured - check if item is already being tracked
@@ -391,11 +392,11 @@ int PlayerState::ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType
 	auto cached(m_currentItems.find(form));
 	if (cached == m_currentItems.end())
 	{
-		TESFormHelper helper(form, objType, INIFile::SecondaryType::itemObjects);
+		itemEntry.Populate();
 		// add to cache if limited and not found
-		cached = m_currentItems.insert({ form, InventoryEntry(excessType, 0, helper.GetWorth(), helper.GetWeight()) }).first;
+		cached = m_currentItems.insert({ form, itemEntry }).first;
 	}
-	return cached->second.Headroom(form, delta);
+	return cached->second.Headroom(delta);
 }
 
 }

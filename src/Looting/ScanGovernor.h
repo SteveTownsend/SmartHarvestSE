@@ -28,7 +28,6 @@ http://www.fsf.org/licensing/licenses
 
 #include <mutex>
 
-
 namespace shse
 {
 struct pair_hash
@@ -120,6 +119,8 @@ private:
 	std::vector<const RE::Actor*> m_detectiveWannabes;
 
 	mutable RecursiveLock m_searchLock;
+	mutable std::atomic<bool> m_fhiRunning;
+
 	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
 
 	// Record looted REFRs to avoid re-scan of empty or looted chest and dead body.

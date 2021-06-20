@@ -1,6 +1,6 @@
 /*************************************************************************
 SmartHarvest SE
-Copyright (c) Steve Townsend 2020
+Copyright (c) Steve Townsend 2021
 
 >>> SOURCE LICENSE >>>
 This program is free software; you can redistribute it and/or modify
@@ -17,36 +17,41 @@ A copy of the GNU General Public License is available at
 http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
-#pragma once
+#include "PrecompiledHeaders.h"
 
-#include <unordered_map>
+#include "WorldState/CraftingItems.h"
 
 namespace shse
 {
 
-	class InventoryEntry
+std::unique_ptr<CraftingItems> CraftingItems::m_instance;
+
+CraftingItems& CraftingItems::Instance()
+{
+	if (!m_instance)
 	{
-	public:
-		InventoryEntry(RE::TESBoundObject* item, const int count);
+		m_instance = std::make_unique<CraftingItems>();
+	}
+	return *m_instance;
+}
 
-		static constexpr int UnlimitedItems = 1000000;
+CraftingItems::CraftingItems()
+{
+}
 
-		ExcessInventoryHandling HandlingType() const;
-		void Populate();
-		int Headroom(const int delta) const;
-		void HandleExcess(const RE::TESBoundObject* item);
+bool CraftingItems::IsCraftingItem(const RE::TESForm* item) const
+{
+	return m_craftingItems.contains(item->GetFormID());
+}
 
-	private:
-		RE::TESBoundObject* m_item;
-		ExcessInventoryHandling m_excessHandling;
-		ObjectType m_excessType;
-		bool m_crafting;
-		int m_count;
-		mutable int m_totalDelta;		// number of items assumed added by loot requests since last reconciliation
-		int m_maxCount;
-		uint32_t m_value;
-		double m_weight;
-	};
+bool CraftingItems::AddIfNew(const RE::TESForm* item)
+{
+	if (m_craftingItems.insert(item->GetFormID()).second)
+	{
+		DBG_MESSAGE("Crafting item {}/0x{:08x}", item->GetName(), item->GetFormID());
+		return true;
+	}
+	return false;
+}
 
-	typedef std::unordered_map<const RE::TESBoundObject*, InventoryEntry> InventoryCache;
 }

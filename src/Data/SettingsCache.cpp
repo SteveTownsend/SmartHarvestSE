@@ -118,6 +118,17 @@ void SettingsCache::Refresh(void)
 	// convert from percentage to multiplier
 	m_saleValuePercentMultiplier = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "SaleValuePercent") / 100.0;
 	REL_VMESSAGE("Sale Value Percent Multiplier {}", m_saleValuePercentMultiplier);
+	m_handleExcessCraftingItems = ini->GetSetting(
+		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "HandleExcessCraftingItems") != 0;
+	REL_VMESSAGE("Handle Excess Crafting Items {}", m_handleExcessCraftingItems);
+	m_craftingItemsExcessHandling = ExcessInventoryHandlingFromIniSetting(
+		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CraftingItemsExcessHandling"));
+	REL_VMESSAGE("Crafting Item Excess Handling {}", m_craftingItemsExcessHandling);
+	m_craftingItemsExcessCount = static_cast<int>(
+		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CraftingItemsExcessCount"));
+	REL_VMESSAGE("Crafting Items Excess Count {}", m_craftingItemsExcessCount);
+	m_craftingItemsExcessWeight = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CraftingItemsExcessWeight");
+	REL_VMESSAGE("Crafting Items Excess Weight {:0.2f}", m_craftingItemsExcessWeight);
 
 	m_deadBodyLooting = DeadBodyLootingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody"));
@@ -225,15 +236,18 @@ bool SettingsCache::FortuneHuntingEnabled() const
 }
 bool SettingsCache::FortuneHuntItem() const
 {
-	return m_fortuneHuntItem;
+	// main toggle can be cleared in MCM without resetting scoping flags
+	return m_fortuneHuntingEnabled && m_fortuneHuntItem;
 }
 bool SettingsCache::FortuneHuntNPC() const
 {
-	return m_fortuneHuntNPC;
+	// main toggle can be cleared in MCM without resetting scoping flags
+	return m_fortuneHuntingEnabled && m_fortuneHuntNPC;
 }
 bool SettingsCache::FortuneHuntContainer() const
 {
-	return m_fortuneHuntContainer;
+	// main toggle can be cleared in MCM without resetting scoping flags
+	return m_fortuneHuntingEnabled && m_fortuneHuntContainer;
 }
 bool SettingsCache::CollectionsEnabled() const
 {
@@ -279,6 +293,22 @@ double SettingsCache::ExcessInventoryWeight(ObjectType objectType) const
 double SettingsCache::SaleValuePercentMultiplier() const
 {
 	return m_saleValuePercentMultiplier;
+}
+bool SettingsCache::HandleExcessCraftingItems() const
+{
+	return m_handleExcessCraftingItems;
+}
+ExcessInventoryHandling SettingsCache::CraftingItemsExcessHandling() const
+{
+	return m_craftingItemsExcessHandling;
+}
+int SettingsCache::CraftingItemsExcessCount() const
+{
+	return m_craftingItemsExcessCount;
+}
+double SettingsCache::CraftingItemsExcessWeight() const
+{
+	return m_craftingItemsExcessWeight;
 }
 DeadBodyLooting SettingsCache::DeadBodyLootingType() const
 {

@@ -52,7 +52,7 @@ PluginFacade& PluginFacade::Instance()
 	return *m_instance;
 }
 
-PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted), m_threadStarted(false), m_pluginSynced(false)
+PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted), m_threadStarted(false), m_pluginSynced(false), m_loadedSettings(false)
 {
 }
 
@@ -106,7 +106,6 @@ bool PluginFacade::Init()
 		REL_MESSAGE("Event publisher not ready yet");
 		WindowsUtils::TakeNap(0.1);
 	}
-	EventPublisher::Instance().TriggerGameReady();
 
 	if (!m_threadStarted)
 	{
@@ -114,6 +113,8 @@ bool PluginFacade::Init()
 		m_threadStarted = true;
 		Start();
 	}
+	// here we go
+	EventPublisher::Instance().TriggerGameReady();
 	return true;
 }
 
@@ -125,7 +126,7 @@ void PluginFacade::Start()
 		return;
 	std::thread([]()
 	{
-		// use structured exception handlin192 to get stack walk on windows exceptions
+		// use structured exception handling to get stack walk on windows exceptions
 		__try
 		{
 			ScanThread();
@@ -181,7 +182,29 @@ bool PluginFacade::Load()
 
 bool PluginFacade::IsSynced() const {
 	RecursiveLockGuard guard(m_pluginLock);
-	return m_pluginSynced;
+	return m_pluginSynced && m_loadedSettings;
+}
+
+bool PluginFacade::ScanAllowed() const {
+	RecursiveLockGuard guard(m_pluginLock);
+	// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
+	static const bool allowIfRestricted(true);
+	if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
+	{
+		DBG_MESSAGE("Location cannot be looted");
+		return false;
+	}
+	else if (!PlayerState::Instance().CanLoot())
+	{
+		DBG_MESSAGE("Player State prevents looting");
+		return false;
+	}
+	else if (!ScanGovernor::Instance().CanSearch())
+	{
+		DBG_MESSAGE("search disallowed or paused");
+		return false;
+	}
+	return true;
 }
 
 void PluginFacade::ScanThread()
@@ -231,27 +254,9 @@ void PluginFacade::ScanThread()
 		{
 			scanType = ReferenceScanType::Calibration;
 		}
-		else
+		else if (Instance().ScanAllowed())
 		{
-			// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
-			static const bool allowIfRestricted(true);
-			if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
-			{
-				DBG_MESSAGE("Location cannot be looted");
-			}
-			else if (!PlayerState::Instance().CanLoot())
-			{
-				DBG_MESSAGE("Player State prevents looting");
-			}
-			else if (!ScanGovernor::Instance().CanSearch())
-			{
-				DBG_MESSAGE("search disallowed or paused");
-			}
-			else
-			{
-				// looting is allowed
-				scanType = ReferenceScanType::Loot;
-			}
+			scanType = ReferenceScanType::Loot;
 		}
 
 		ScanGovernor::Instance().DoPeriodicSearch(scanType);
@@ -267,6 +272,7 @@ void PluginFacade::PrepareForReloadOrNewGame()
 	// Do not scan again until we are in sync with the scripts
 	RecursiveLockGuard guard(m_pluginLock);
 	m_pluginSynced = false;
+	m_loadedSettings = false;	// this comes from MCM script via OnGameReady
 	REL_MESSAGE("Plugin sync required");
 }
 
@@ -302,6 +308,12 @@ void PluginFacade::OnVMSync()
 	m_pluginSynced = true;
 	REL_MESSAGE("Plugin sync completed");
 	WindowsUtils::LogProcessWorkingSet();
+}
+
+void PluginFacade::OnGameLoaded()
+{
+	REL_MESSAGE("MCM OnGameLoaded completed");
+	m_loadedSettings = true;
 }
 
 // lock not required, by construction

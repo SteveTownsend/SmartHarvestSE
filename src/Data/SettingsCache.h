@@ -56,6 +56,10 @@ public:
 	int ExcessInventoryCount(ObjectType objectType) const;
 	double ExcessInventoryWeight(ObjectType objectType) const;
 	double SaleValuePercentMultiplier() const;
+	bool HandleExcessCraftingItems() const;
+	ExcessInventoryHandling CraftingItemsExcessHandling() const;
+	int CraftingItemsExcessCount() const;
+	double CraftingItemsExcessWeight() const;
 
 	DeadBodyLooting DeadBodyLootingType() const;
 	EnchantedObjectHandling EnchantedObjectHandlingType() const;
@@ -127,6 +131,10 @@ private:
 	std::array<double, TypeCount> m_excessWeight;
 	std::array<double, TypeCount> m_valueWeight;
 	double m_saleValuePercentMultiplier;
+	bool m_handleExcessCraftingItems;
+	ExcessInventoryHandling m_craftingItemsExcessHandling;
+	int m_craftingItemsExcessCount;
+	double m_craftingItemsExcessWeight;
 };
 
 }

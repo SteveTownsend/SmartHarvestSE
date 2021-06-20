@@ -88,6 +88,10 @@ string[] s_excessDisposalArray
 int excessDisposalOptions
 int excessDisposalSell
 int saleValuePercent
+bool handleExcessCraftingItems
+int craftingItemsExcessHandling
+int craftingItemsExcessCount
+float craftingItemsExcessWeight
 int playContainerAnimation
 string[] s_playContainerAnimationArray
 
@@ -356,6 +360,11 @@ function LoadSettingsFromNative()
     excessCountArray = GetSettingToExcessHandlingArray(type_Harvest, type_MaxItems)
     excessWeightArray = GetSettingToExcessHandlingArray(type_Harvest, type_MaxWeight)
 
+    handleExcessCraftingItems = GetSetting(type_Harvest, type_Config, "HandleExcessCraftingItems") as bool
+    craftingItemsExcessHandling = GetSetting(type_Harvest, type_Config, "CraftingItemsExcessHandling") as int
+    craftingItemsExcessCount = GetSetting(type_Harvest, type_Config, "CraftingItemsExcessCount") as int
+    craftingItemsExcessWeight = GetSetting(type_Harvest, type_Config, "CraftingItemsExcessWeight") as float
+
     collectionsEnabled = GetSetting(type_Common, type_Config, "CollectionsEnabled") as bool
     ; Adventures are linked to a Lesser Power that needs to be enabled if settings so indicate
     adventuresEnabled = GetSetting(type_Common, type_Config, "AdventuresEnabled") as bool
@@ -437,6 +446,11 @@ Function SaveSettingsToNative()
     PutSettingToExcessHandlingArray(type_Harvest, type_MaxItems, 30, excessCountArray)
     PutSettingToExcessHandlingArray(type_Harvest, type_MaxWeight, 30, excessWeightArray)
 
+    PutSetting(type_Harvest, type_Config, "HandleExcessCraftingItems", handleExcessCraftingItems as float)
+    PutSetting(type_Harvest, type_Config, "CraftingItemsExcessHandling", craftingItemsExcessHandling as float)
+    PutSetting(type_Harvest, type_Config, "CraftingItemsExcessCount", craftingItemsExcessCount as float)
+    PutSetting(type_Harvest, type_Config, "CraftingItemsExcessWeight", craftingItemsExcessWeight as float)
+
     PutSetting(type_Harvest, type_Config, "ValueWeightDefault", valueWeightDefault as float)
     PutSetting(type_Harvest, type_Config, "SaleValuePercent", saleValuePercent as float)
     PutSetting(type_Harvest, type_Config, "MaxMiningItems", maxMiningItems as float)
@@ -450,7 +464,6 @@ Function SaveSettingsToNative()
     PutSetting(type_Common, type_Config, "FortuneHuntContainer", fortuneHuntContainer as float)
     PutSetting(type_Common, type_Config, "UnlockGlowColours", unlockGlowColours as float)
     PutSettingGlowArray(type_Common, type_Glow, 8, glowReasonSettingArray)
-    SyncNativeSettings()
 endFunction
 
 ; push current settings to plugin and event handler script
@@ -644,6 +657,7 @@ Function SetMiscDefaults(bool firstTime)
     MigrateFromFormLists()
     InitExcessInventoryHandling()
     InitFortuneHunting()
+    InitExcessCraftingItems()
 EndFunction
 
 Function InstallCollections()
@@ -803,6 +817,13 @@ Function InitExcessInventoryHandling()
     type_Handling = 7
     type_MaxItems = 8
     type_MaxWeight = 9
+EndFunction
+
+Function InitExcessCraftingItems()
+    handleExcessCraftingItems = False
+    craftingItemsExcessHandling = 0
+    craftingItemsExcessCount = 0
+    craftingItemsExcessWeight = 0.0
 EndFunction
 
 Function InitFortuneHunting()
@@ -1088,19 +1109,30 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 48 && CurrentVersion < 48
         InitFortuneHunting()
     endif
+    if a_version >= 49 && CurrentVersion < 49
+        InitExcessCraftingItems()
+    endif
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
 Event OnGameReload()
-    AlwaysTrace("SHSE_MCM.OnGameReload")
+    AlwaysTrace("SHSE_MCM.OnGameReload starting")
     parent.OnGameReload()
     ApplySetting()
+
+    ; ensure event script and plugin have accurate form lists
+    PopulateLists()
+    eventScript.UpdateWhiteList(whiteListEntries, whiteList_form_array, whiteList_flag_array, "$SHSE_WHITELIST_REMOVED")
+    eventScript.UpdateBlackList(blackListEntries, blackList_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
+    UpdateTransferTargets()
+    eventScript.SyncLists(True, True)
+    
+    ; tell plugin settings are good
+    GameIsReady()
+    AlwaysTrace("SHSE_MCM.OnGameReload complete")
 endEvent
 
-Event OnConfigOpen()
-    ;DebugTrace("OnConfigOpen")
-    InitPages()
-    
+Function PopulateLists()
     int max_size = eventScript.GetWhiteListSize()
     if max_size > 0
         Form[] currentList = eventScript.GetWhiteList()
@@ -1234,6 +1266,12 @@ Event OnConfigOpen()
         AlwaysTrace("TransferList is empty")
         transferListEntries = 0
     endif
+EndFunction
+
+Event OnConfigOpen()
+    ;DebugTrace("OnConfigOpen")
+    InitPages()
+    PopulateLists()
 endEvent
 
 Function PopulateCollectionGroups()
@@ -1556,7 +1594,7 @@ event OnPageReset(string currentPage)
         AddToggleOptionST("fortuneHuntingEnabled", "$SHSE_LOOT_SENSE_ENABLED", fortuneHuntingEnabled)
         int fortuneHuntFlags = OPTION_FLAG_DISABLED
         if fortuneHuntingEnabled
-            glowColourFlags = OPTION_FLAG_NONE
+            fortuneHuntFlags = OPTION_FLAG_NONE
         endIf
 
         AddToggleOptionST("fortuneHuntItemState", "$SHSE_LOOT_SENSE_ITEM", fortuneHuntItem, fortuneHuntFlags)
@@ -1618,7 +1656,7 @@ event OnPageReset(string currentPage)
         int index = 0
         int objType = 1
         int supported = 0
-        while index < s_objectTypeNameArray.length && supported < 9 ; put the other half on RHS
+        while index < s_objectTypeNameArray.length && supported < 10 ; put the other half on RHS
             if SupportsExcessHandling(objType)
                 id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[(excessHandlingArray[index] as int)])
                 id_excessCountArray[index] = AddSliderOption("", excessCountArray[index], "$SHSE_ITEMS")
@@ -1632,7 +1670,14 @@ event OnPageReset(string currentPage)
         ;   ======================== RIGHT ========================
         SetCursorPosition(1)
 
-        AddEmptyOption()
+        AddToggleOptionST("handleExcessCraftingItemsState", "$SHSE_HANDLE_EXCESS_CRAFTING_ITEMS", handleExcessCraftingItems)
+        int craftingItemFlags = OPTION_FLAG_DISABLED
+        if handleExcessCraftingItems
+            craftingItemFlags = OPTION_FLAG_NONE
+        endIf
+        AddTextOptionST("craftingItemsExcessHandlingState", "$SHSE_CRAFTING_ITEMS", s_excessDisposalArray[craftingItemsExcessHandling], craftingItemFlags)
+        AddSliderOptionST("craftingItemsExcessCountState", "", craftingItemsExcessCount as float, "$SHSE_ITEMS", craftingItemFlags)
+        AddSliderOptionST("craftingItemsExcessWeightState", "", craftingItemsExcessWeight as float, "$SHSE_WEIGHT", craftingItemFlags)
 
         while index < s_objectTypeNameArray.length ; oreVein is the last
             if SupportsExcessHandling(objType)
@@ -1665,6 +1710,9 @@ event OnPageReset(string currentPage)
 endEvent
 
 bool Function TargetInUse(int handlerId)
+    if handlerId == CraftingItemsExcessHandling
+        return True
+    endIf
     int index = 0
     while index < excessHandlingArray.length
         if excessHandlingArray[index] == handlerId
@@ -2231,6 +2279,93 @@ state SaleValuePercentState
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_SALE_VALUE_PERCENT"))
+    endEvent
+endState
+
+Function SetExcessCraftingUIFlags()
+    if handleExcessCraftingItems
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "craftingItemsExcessHandlingState")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "craftingItemsExcessCountState")
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "craftingItemsExcessWeightState")
+    else
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "craftingItemsExcessHandlingState")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "craftingItemsExcessCountState")
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "craftingItemsExcessWeightState")
+    endIf
+EndFunction
+
+state handleExcessCraftingItemsState
+    event OnSelectST()
+        handleExcessCraftingItems = !handleExcessCraftingItems
+        SetToggleOptionValueST(handleExcessCraftingItems)
+        SetExcessCraftingUIFlags()
+    endEvent
+
+    event OnDefaultST()
+        handleExcessCraftingItems = false
+        SetToggleOptionValueST(handleExcessCraftingItems)
+        SetExcessCraftingUIFlags()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_HANDLE_EXCESS_CRAFTING_ITEMS"))
+    endEvent
+endState
+
+state craftingItemsExcessHandlingState
+    event OnSelectST()
+        bool foundValid = false
+        while !foundValid
+            craftingItemsExcessHandling = CycleInt(craftingItemsExcessHandling, excessDisposalOptions)
+            ; disallow targets unchecked by user
+            if (craftingItemsExcessHandling as int) <= excessDisposalSell || transferList_flag_array[(craftingItemsExcessHandling as int) - 3]
+                foundValid = True
+            endif
+        endwhile
+        SetTextOptionValueST(s_excessDisposalArray[craftingItemsExcessHandling])
+    endEvent
+
+    event OnDefaultST()
+        craftingItemsExcessHandling = 0
+        SetTextOptionValueST(s_excessDisposalArray[craftingItemsExcessHandling])
+    endEvent
+endState
+
+state craftingItemsExcessCountState
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(craftingItemsExcessCount)
+        SetSliderDialogDefaultValue(0)
+        SetSliderDialogRange(0, 100)
+        SetSliderDialogInterval(1)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        craftingItemsExcessCount = value as int
+        SetSliderOptionValueST(craftingItemsExcessCount, "$SHSE_ITEMS")
+    endEvent
+
+    event OnDefaultST()
+        craftingItemsExcessCount = 0
+        SetSliderOptionValueST(craftingItemsExcessCount, "$SHSE_ITEMS")
+    endEvent
+endState
+
+state craftingItemsExcessWeightState
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(craftingItemsExcessWeight)
+        SetSliderDialogDefaultValue(0)
+        SetSliderDialogRange(0, 100)
+        SetSliderDialogInterval(1)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        craftingItemsExcessWeight = value
+        SetSliderOptionValueST(craftingItemsExcessWeight, "$SHSE_WEIGHT")
+    endEvent
+
+    event OnDefaultST()
+        craftingItemsExcessWeight = 0
+        SetSliderOptionValueST(craftingItemsExcessWeight, "$SHSE_WEIGHT")
     endEvent
 endState
 

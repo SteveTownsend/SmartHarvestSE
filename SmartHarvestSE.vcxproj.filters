@@ -172,6 +172,9 @@
     <ClCompile Include="src\WorldState\InventoryCache.cpp">
       <Filter>src\WorldState</Filter>
     </ClCompile>
+    <ClCompile Include="src\WorldState\CraftingItems.cpp">
+      <Filter>src\WorldState</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource1.h">
@@ -355,6 +358,9 @@
       <Filter>src\Data</Filter>
     </ClInclude>
     <ClInclude Include="src\WorldState\InventoryCache.h">
+      <Filter>src\WorldState</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WorldState\CraftingItems.h">
       <Filter>src\WorldState</Filter>
     </ClInclude>
   </ItemGroup>

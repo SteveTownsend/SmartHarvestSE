@@ -48,7 +48,7 @@ public:
 	bool WithinDetectionRange(const double distance) const;
 	void UpdateGameTime(const float gameTime);
 	inline float CurrentGameTime() const { return m_gameTime; }
-	int ItemHeadroom(const RE::TESBoundObject* form, ObjectType objType, const int delta) const;
+	int ItemHeadroom(RE::TESBoundObject* form, const int delta) const;
 
 private:
 	void CheckPerks(const bool force);

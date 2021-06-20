@@ -407,7 +407,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				return Lootability::HarvestOperationPending;
 			// Check inventory limits. We don't try to fine-tune transfer-count here since the exact amount to be retrieved is not known.
 			int itemCount(refrEx.GetItemCount());
-			if (PlayerState::Instance().ItemHeadroom(refrEx.GetLootable(), objType, itemCount) <= 0)
+			if (PlayerState::Instance().ItemHeadroom(const_cast<RE::TESBoundObject*>(refrEx.GetLootable()), itemCount) <= 0)
 			{
 				DBG_VMESSAGE("Inventory Limits preclude harvest for {}/0x{:08x}", refrEx.GetLootable()->GetName(), refrEx.GetLootable()->GetFormID());
 				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
@@ -640,7 +640,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// immune from stealing.
 		// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
 		// is the delayed autoloot operation after we find we are undetected, don't trigger that check again here.
-		if (!m_stolen && m_candidate->IsOffLimits() &&
+		// This check is skipped if we are in glow-only mode.
+		if (!m_glowOnly && !m_stolen && m_candidate->IsOffLimits() &&
 			PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
 		{
 			DBG_VMESSAGE("Container/deadbody contents {}/0x{:08x} to be stolen if undetected", m_candidate->GetName(), m_candidate->formID);
@@ -761,9 +762,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				m_candidate->GetName(), m_candidate->formID);
 		}
 
-		if (m_glowOnly && !targets.empty())
+		if (m_glowOnly)
 		{
-			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+			if (!targets.empty())
+			{
+				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+			}
 			return result;
 		}
 

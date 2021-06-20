@@ -305,6 +305,7 @@
     <ClCompile Include="src\VM\UIState.cpp" />
     <ClCompile Include="src\WorldState\ActorTracker.cpp" />
     <ClCompile Include="src\WorldState\AdventureTargets.cpp" />
+    <ClCompile Include="src\WorldState\CraftingItems.cpp" />
     <ClCompile Include="src\WorldState\GameCalendar.cpp" />
     <ClCompile Include="src\WorldState\InventoryCache.cpp" />
     <ClCompile Include="src\WorldState\PartyMembers.cpp" />
@@ -367,6 +368,7 @@
     <ClInclude Include="src\VM\UIState.h" />
     <ClInclude Include="src\WorldState\ActorTracker.h" />
     <ClInclude Include="src\WorldState\AdventureTargets.h" />
+    <ClInclude Include="src\WorldState\CraftingItems.h" />
     <ClInclude Include="src\WorldState\GameCalendar.h" />
     <ClInclude Include="src\WorldState\InventoryCache.h" />
     <ClInclude Include="src\WorldState\PositionData.h" />
