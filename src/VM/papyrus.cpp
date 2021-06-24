@@ -89,7 +89,8 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = shse::GetEffectiveObjectType(thisForm->As<RE::TESBoundObject>());
+		RE::TESBoundObject* baseObj(thisForm->As<RE::TESBoundObject>());
+		ObjectType objType = baseObj ? shse::GetEffectiveObjectType(baseObj) : ObjectType::unknown;
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 
@@ -406,6 +407,7 @@ namespace papyrus
 		return cannotLoot;
 	}
 
+	// only called for Container or Actor, so check for Dynamic Base is correct
 	bool IsREFRDynamic(RE::TESObjectREFR* refr)
 	{
 		// Do not allow processing of bad REFR or Base
@@ -494,6 +496,24 @@ namespace papyrus
 	bool SupportsExcessHandling(RE::StaticFunctionTag*, int32_t index)
 	{
 		return TypeSupportsExcessHandling(ObjectType(index));
+	}
+
+	std::string SellItem(RE::StaticFunctionTag*, RE::TESForm* item, const bool excessOnly)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.SellItem(item->As<RE::TESBoundObject>(), excessOnly);
+	}
+
+	std::string TransferItem(RE::StaticFunctionTag*, RE::TESForm* item, const bool excessOnly)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.TransferItem(item->As<RE::TESBoundObject>(), excessOnly);
+	}
+
+	std::string DeleteItem(RE::StaticFunctionTag*, RE::TESForm* item, const bool excessOnly)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.DeleteItem(item->As<RE::TESBoundObject>(), excessOnly);
 	}
 
 	bool IsLootableObject(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -795,6 +815,9 @@ namespace papyrus
 		a_vm->RegisterFunction("IsLootableObject", SHSE_PROXY, papyrus::IsLootableObject);
 		a_vm->RegisterFunction("ValidTransferTargetLocation", SHSE_PROXY, papyrus::ValidTransferTargetLocation);
 		a_vm->RegisterFunction("SupportsExcessHandling", SHSE_PROXY, papyrus::SupportsExcessHandling);
+		a_vm->RegisterFunction("SellItem", SHSE_PROXY, papyrus::SellItem);
+		a_vm->RegisterFunction("TransferItem", SHSE_PROXY, papyrus::TransferItem);
+		a_vm->RegisterFunction("DeleteItem", SHSE_PROXY, papyrus::DeleteItem);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);

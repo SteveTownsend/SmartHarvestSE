@@ -30,7 +30,7 @@ public:
 	static UIState& Instance();
 	UIState();
 
-	void WaitUntilVMGoodToGo();
+	bool WaitUntilVMGoodToGo();
 	void ReportVMGoodToGo(const bool delayed, const int nonce);
 	void Reset();
 

@@ -48,22 +48,25 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 	DataCase* data = DataCase::GetInstance();
 	Lootability result(Lootability::Lootable);
-	LootableREFR refrEx(m_candidate, m_targetType);
 	if (m_targetType == INIFile::SecondaryType::itemObjects)
 	{
+		LootableREFR refrEx(m_candidate, m_targetType);
 		ObjectType objType = refrEx.GetObjectType();
 		m_typeName = refrEx.GetTypeName();
-		// Various form types contain an ingredient or FormList that is the final lootable item - resolve here
-		if (!dryRun && objType == ObjectType::critter)
+		// Various form types contain an ingredient or FormList that is the final lootable item
+		if (!dryRun && refrEx.IsHarvestable())
 		{
 			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
-				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
-					lootable->GetName(), lootable->formID);
+				objType = GetBaseObjectType(lootable);
 				refrEx.SetLootable(lootable);
+				refrEx.SetEffectiveObjectType(objType);
+				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
+					lootable->GetName(), lootable->formID, GetObjectTypeName(objType));
 			}
-			else
+			// resolve here if critter and not yet known
+			else if (refrEx.IsCritter())
 			{
 				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
 				// only trigger if not already pending
@@ -73,6 +76,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
 				}
 				return Lootability::PendingProducerIngredient;
+			}
+			else
+			{
+				REL_WARNING("Non-scripted Producer {}/0x{:08x} has no lootable", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DataCase::GetInstance()->BlockForm(m_candidate->GetBaseObject(), Lootability::ProducerHasNoLootable);
+				return Lootability::ProducerHasNoLootable;
 			}
 		}
 
@@ -141,7 +150,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			return Lootability::BaseObjectOnBlacklist;
 		}
 
-		if (refrEx.IsQuestItem())
+		if (IsQuestItem(m_candidate))
 		{
 			QuestObjectHandling questObjectLoot = SettingsCache::Instance().QuestObjectLoot();
 			DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
@@ -267,7 +276,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
 		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace() &&
 			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
-			!IsItemLootableInPopulationCenter(m_candidate->GetBaseObject(), objType))
+			!refrEx.IsItemLootableInPopulationCenter(objType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
 			result = Lootability::PopulousLocationRestrictsLooting;
@@ -329,7 +338,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				skipLooting = true;
 				result = Lootability::ItemTypeIsSetToPreventLooting;
 			}
-			else if (HarvestForbiddenForForm(m_candidate->GetBaseObject()))
+			else if (refrEx.HarvestForbiddenForForm())
 			{
 				// check if harvest is forbidden for Base Object, irrespective of final harvested item
 				if (!dryRun)
@@ -343,8 +352,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 			else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType))
 			{
-				TESFormHelper helper(m_candidate->GetBaseObject(), objType, m_targetType);
-				if (helper.ValueWeightTooLowToLoot())
+				if (refrEx.ValueWeightTooLowToLoot())
 				{
 					if (!dryRun)
 					{
@@ -354,7 +362,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					skipLooting = true;
 					result = Lootability::ValueWeightPreventsLooting;
 				}
-				DBG_VMESSAGE("{}/0x{:08x} value:{}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, int(helper.GetWorth()));
+				DBG_VMESSAGE("{}/0x{:08x} value:{}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID, int(refrEx.GetWorth()));
 			}
 		}
 
@@ -503,7 +511,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 
 		// Container or NPC may itself be a Quest target - if so the entire thing is blocked from autoloot
-		if (refrEx.IsQuestItem())
+		if (IsQuestItem(m_candidate))
 		{
 			QuestObjectHandling questObjectLoot = SettingsCache::Instance().QuestObjectLoot();
 			DBG_VMESSAGE("Quest Container/NPC REFR 0x{:08x} to {}/0x{:08x}, glow={}", m_candidate->GetFormID(), m_candidate->GetBaseObject()->GetName(),
@@ -994,17 +1002,6 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 		}
 	}
 	return legality;
-}
-
-bool TryLootREFR::HarvestForbiddenForForm(const RE::TESForm* form) const
-{
-	// flora, but not those that produce cash money
-	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
-	if (m_typeName != septimsName && (form->As<RE::TESObjectTREE>() || form->As<RE::TESFlora>()))
-	{
-		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
-	}
-	return false;
 }
 
 bool TryLootREFR::IsBookGlowable() const

@@ -102,6 +102,26 @@ bool IsPlayerOwned(const RE::TESObjectREFR* refr)
 	return false;
 }
 
+bool IsQuestItem(const RE::TESObjectREFR* refr)
+{
+	if (!refr)
+		return false;
+	// check REFR vs pre-populated Quest Targets
+	if (QuestTargets::Instance().ReferencedQuestTargetLootability(refr) == Lootability::CannotLootQuestTarget)
+		return true;
+
+	RE::RefHandle handle;
+	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(refr));
+
+	RE::NiPointer<RE::TESObjectREFR> targetRef;
+	RE::LookupReferenceByHandle(handle, targetRef);
+
+	if (!targetRef)
+		targetRef.reset(const_cast<RE::TESObjectREFR*>(refr));
+
+	return ExtraDataList::IsREFRQuestObject(targetRef.get(), &targetRef->extraList);
+}
+
 void PrintManualLootMessage(const std::string& name)
 {
 	static RE::BSFixedString manualLootText(DataCase::GetInstance()->GetTranslation("$SHSE_MANUAL_LOOT_MSG"));

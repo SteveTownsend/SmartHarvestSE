@@ -34,7 +34,11 @@ namespace shse
 		ExcessInventoryHandling HandlingType() const;
 		void Populate();
 		int Headroom(const int delta) const;
-		void HandleExcess(const RE::TESBoundObject* item);
+		void HandleExcess();
+		int Count() const { return m_count; }
+		std::string Sell(const bool excessOnly);
+		std::string Transfer(const bool excessOnly);
+		std::string Delete(const bool excessOnly);
 
 	private:
 		RE::TESBoundObject* m_item;
@@ -45,7 +49,11 @@ namespace shse
 		mutable int m_totalDelta;		// number of items assumed added by loot requests since last reconciliation
 		int m_maxCount;
 		uint32_t m_value;
+		uint32_t m_saleProceeds;
 		double m_weight;
+		double m_salePercent;
+		int m_handled;
+		std::string m_transferTarget;
 	};
 
 	typedef std::unordered_map<const RE::TESBoundObject*, InventoryEntry> InventoryCache;

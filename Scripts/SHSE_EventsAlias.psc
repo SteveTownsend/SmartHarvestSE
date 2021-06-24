@@ -13,12 +13,14 @@ int VidanisBagOfHoldingModIndex
 bool scanActive = True
 int pluginNonce
 bool pluginDelayed
+bool mcmOpen = False
 
 GlobalVariable StrikesBeforeCollection
 
 Message property whitelist_message auto
 Message property to_list_message auto
-Container Property list_nametag auto
+Message property DisposeMsg auto
+Container Property NameToDisplay auto
 
 ; INIFile::PrimaryType
 int type_Common = 1
@@ -354,6 +356,32 @@ function ToggleStatusInTransferList(string locationName, Form item)
     if RemoveFromTransferList(locationName, item) == 0
         AddToTransferList(locationName, item)
     endif
+endFunction
+
+function HandlePauseKeyPress(Form target)
+    NameToDisplay.SetName(target.GetName())
+    int ibutton = DisposeMsg.show()     ; allows user to dispose of all/excess selected items
+    string result = ""
+    if ibutton == 0 ; Sell All
+        result = SellItem(target, False)
+    elseif ibutton == 1 ; sell excess
+        result = SellItem(target, True)
+    elseif ibutton == 2 ; transfer all
+        result = TransferItem(target, False)
+    elseif ibutton == 3 ; transfer excess
+        result = TransferItem(target, True)
+    elseif ibutton == 4 ; delete all
+        result = DeleteItem(target, False)
+    elseif ibutton == 5 ; delete excess
+        result = DeleteItem(target, True)
+    endIf
+    ; Cancel (6) or unknown option is a no-op
+    if result != ""
+        ; Poke InventoryMenu to update count        
+        Player.RemoveItem(target, 0, True, None)
+        ; display error or action taken
+        Debug.MessageBox(result)
+    endIf
 endFunction
 
 function HandleWhiteListKeyPress(Form target)
@@ -797,7 +825,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             SyncLists(false, true)    ; not a reload
         endif
     ; menu open - only actionable on our blacklist/whitelist keys
-    elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode
+    elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode || keyCode == pauseKeyCode
         string s_menuName = none
         if (UI.IsMenuOpen("InventoryMenu"))
             s_menuName = "InventoryMenu"
@@ -831,30 +859,20 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 return
             endif
 
-            if keyCode == whiteListKeyCode
-                HandleWhiteListKeyPress(itemForm)
-            else ; blacklist key
-                HandleBlackListKeyPress(itemForm)
-            endif
-            SyncLists(false, true)    ; not a reload
+            if keyCode == pauseKeyCode
+                HandlePauseKeyPress(itemForm)
+            else
+                if keyCode == whiteListKeyCode
+                    HandleWhiteListKeyPress(itemForm)
+                else ; blacklist key
+                    HandleBlackListKeyPress(itemForm)
+                endif
+                SyncLists(false, true)    ; not a reload
+            endIf
         endif
     endif
     keyHandlingActive = false
 endEvent
-
-int Function ShowMessage(Message msg, string trans, string target_text = "", string replace_text = "")
-    if (!msg)
-        return -1
-    endif
-    string str = GetTranslation(trans)
-    if (target_text != "" && replace_text != "")
-        str = Replace(str, target_text, replace_text)
-    endif
-    list_nametag.setName(str)
-    int result = msg.Show()
-    list_nametag.setName("dummy_name")
-    return result
-endFunction
 
 function updateMaxMiningItems(int maxItems)
     ;DebugTrace("maxMiningItems -> " + maxItems)
@@ -1268,8 +1286,19 @@ Event OnFlushAddedItems()
     endIf
 EndEvent
 
+Function OnMCMOpen()
+    mcmOpen = True
+EndFunction
+
+Function OnMCMClose()
+    mcmOpen = False
+EndFunction
+
 bool Function OKToScan()
-    if (Utility.IsInMenuMode())
+    if mcmOpen
+        ;DebugTrace("MCM for SHSE is open")
+        return False
+    elseif (Utility.IsInMenuMode())
         ;DebugTrace("UI has menu open")
         return False
     elseif (!Game.IsActivateControlsEnabled())

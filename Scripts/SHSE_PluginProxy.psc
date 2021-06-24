@@ -13,6 +13,9 @@ bool Function IsDynamic(ObjectReference refr) global native
 bool Function IsLootableObject(ObjectReference refr) global native
 string Function ValidTransferTargetLocation(ObjectReference refr, bool linksChest, bool knownGood) global native
 bool Function SupportsExcessHandling(int objectType) global native
+string Function SellItem(Form item, bool excessOnly) global native
+string Function TransferItem(Form item, bool excessOnly) global native
+string Function DeleteItem(Form item, bool excessOnly) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native

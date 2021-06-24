@@ -177,6 +177,7 @@ float[] valueWeightSettingArray
 
 String[] s_behaviorArray
 String[] s_ammoBehaviorArray
+String[] s_harvestBehaviorArray
 String[] s_objectTypeNameArray
 
 int[] id_whiteList_array
@@ -781,6 +782,12 @@ Function InstallDamageLootOptions()
     s_ammoBehaviorArray[4] = "$SHSE_PICK_UP_DAMAGE_W/MSG"
 EndFunction
 
+Function InstallAestheticLootOptions()
+    s_harvestBehaviorArray = New String[2]
+    s_harvestBehaviorArray[0] = "$SHSE_DONT_PICK_UP"
+    s_harvestBehaviorArray[1] = "$SHSE_PICK_UP"
+EndFunction
+
 Function InitPages()
     Pages = New String[10]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
@@ -973,6 +980,7 @@ Event OnConfigInit()
     s_behaviorArray[4] = "$SHSE_PICK_UP_V/W_W/MSG"
 
     InstallDamageLootOptions()
+    InstallAestheticLootOptions()
 
     eventScript.whitelist_form = Game.GetFormFromFile(0x801, "SmartHarvestSE.esp") as Formlist
     eventScript.blacklist_form = Game.GetFormFromFile(0x802, "SmartHarvestSE.esp") as Formlist
@@ -988,7 +996,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 47
+    return 50
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1112,6 +1120,16 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 49 && CurrentVersion < 49
         InitExcessCraftingItems()
     endif
+    if a_version >= 50 && CurrentVersion < 50
+        ;aesthetics loot options - critter/flora
+        InstallAestheticLootOptions()
+        if objectSettingArray[objType_Critter - 1] > 1
+            objectSettingArray[objType_Critter - 1] = 1
+        endIf
+        if objectSettingArray[objType_Flora - 1] > 1
+            objectSettingArray[objType_Flora - 1] = 1
+        endIf
+    endIf
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -1272,6 +1290,7 @@ Event OnConfigOpen()
     ;DebugTrace("OnConfigOpen")
     InitPages()
     PopulateLists()
+    eventScript.OnMCMOpen()
 endEvent
 
 Function PopulateCollectionGroups()
@@ -1400,6 +1419,7 @@ Event OnConfigClose()
     eventScript.UpdateBlackList(blackListEntries, blackList_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
     UpdateTransferTargets()
     eventScript.SyncLists(False, True)
+    eventScript.OnMCMClose()
 endEvent
 
 Function UpdateTransferTargets()
@@ -1414,6 +1434,29 @@ Function UpdateTransferTargets()
     endWhile
 
     eventScript.UpdateTransferList(transferListEntries, transferListInUse, transferList_form_array, transferList_name_array, transferList_flag_array, "$SHSE_TRANSFERLIST_REMOVED")
+EndFunction
+
+Bool Function IsVWRelevant(int objType)
+    if objType == objType_Mine || objType == objType_Septim  || objType == objType_Key
+        return False
+    elseIf objType == objType_LockPick || objType == objType_Critter || objType == objType_Flora
+        return False
+    endIf
+    return True
+EndFunction
+
+Function SetVWOptionStatus(int index)
+    int objType = index + 1
+    if !IsVWRelevant(objType)
+        return
+    endIf
+    int handling = objectSettingArray[index] as int    
+    ; V/W slider only valid if option is set to require it
+    if handling == 3 || handling == 4
+        SetOptionFlags(id_valueWeightArray[index], OPTION_FLAG_NONE)
+    else
+        SetOptionFlags(id_valueWeightArray[index], OPTION_FLAG_DISABLED)
+    endIf
 EndFunction
 
 event OnPageReset(string currentPage)
@@ -1497,6 +1540,8 @@ event OnPageReset(string currentPage)
         while index < s_objectTypeNameArray.length ; oreVein is the last
             if (objType == objType_Mine)
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorToggleArray[(objectSettingArray[index] as int)])
+            elseif (objType == objType_Critter || objType == objType_Flora)
+                id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_harvestBehaviorArray[(objectSettingArray[index] as int)])
             elseif (objType == objType_Ammo)
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_ammoBehaviorArray[(objectSettingArray[index] as int)])
             else
@@ -1515,13 +1560,21 @@ event OnPageReset(string currentPage)
         objType = 1
         while index < s_objectTypeNameArray.length ; oreVein is the last
             ; do not request V/W for weightless or unhandleable item types
-            if (objType == objType_Mine || objType == objType_Septim  || objType == objType_Key || objType == objType_LockPick)
+            if !IsVWRelevant(objType)
                 AddEmptyOption()
-            elseif objType == objType_Ammo
-                ; absolute damage
-                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_DAMAGE")
             else
-                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W")
+                int flags = OPTION_FLAG_NONE
+                int handling = objectSettingArray[index] as int    
+                ; V/W slider only valid if option is set to require it
+                if handling != 3 && handling != 4
+                    flags = OPTION_FLAG_DISABLED
+                endIf
+                if objType == objType_Ammo
+                    ; absolute damage
+                    id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_DAMAGE", flags)
+                else
+                    id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W", flags)
+                endif
             endif
             index += 1
             objType += 1 
@@ -1734,6 +1787,10 @@ Event OnOptionSelect(int a_option)
             int size = s_behaviorToggleArray.length
             objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
             SetTextOptionValue(a_option, s_behaviorToggleArray[(objectSettingArray[index] as int)])
+        elseif (objType == objType_Critter || objType == objType_Flora)
+            int size = s_harvestBehaviorArray.length
+            objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
+            SetTextOptionValue(a_option, s_harvestBehaviorArray[(objectSettingArray[index] as int)])
         elseif (objType == objType_Ammo)
             int size = s_ammoBehaviorArray.length
             objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
@@ -1743,6 +1800,7 @@ Event OnOptionSelect(int a_option)
             objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
             SetTextOptionValue(a_option, s_behaviorArray[(objectSettingArray[index] as int)])
         endif
+        SetVWOptionStatus(index)
         return
     endif
 
@@ -1879,7 +1937,12 @@ event OnOptionHighlight(int a_option)
     
     index = id_objectSettingArray.find(a_option)
     if (index > -1)
-        SetInfoText(s_objectTypeNameArray[index])
+        int objType = index + 1
+        if objType == objType_Critter || objType == objType_Flora
+            SetInfoText(GetTranslation("$SHSE_DESC_HARVESTABLE_TOGGLE"))
+        else
+            SetInfoText(s_objectTypeNameArray[index])
+        endIf
         return
     endif
 

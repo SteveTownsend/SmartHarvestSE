@@ -44,7 +44,8 @@ UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false)
 }
 
 // Check VM is not handling UI - blocks if so, to avoid problems in-game and at game shutdown
-void UIState::WaitUntilVMGoodToGo()
+// Returns True iff there was a UI-induced delay
+bool UIState::WaitUntilVMGoodToGo()
 {
 	const auto startTime(std::chrono::high_resolution_clock::now());
 	++m_nonce;
@@ -65,7 +66,9 @@ void UIState::WaitUntilVMGoodToGo()
 		REL_MESSAGE("UI/controls were active, delay scan");
 		WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
 		REL_MESSAGE("Scan progressing");
+		return true;
 	}
+	return false;
 }
 
 void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)

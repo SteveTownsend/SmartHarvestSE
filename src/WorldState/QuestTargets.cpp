@@ -328,7 +328,8 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const 
 {
 	if (!form)
 		return Lootability::NoBaseObject;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
+	// Dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic.
+	// User-created ALCH may trigger this though.
 	if (form->IsDynamicForm())
 		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_questLock);
@@ -351,7 +352,8 @@ bool QuestTargets::AllowsExcessHandling(const RE::TESForm* form) const
 {
 	if (!form)
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
+	// Dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic.
+	// User-created ALCH may trigger this though.
 	if (form->IsDynamicForm())
 		return true;
 	RecursiveLockGuard guard(m_questLock);

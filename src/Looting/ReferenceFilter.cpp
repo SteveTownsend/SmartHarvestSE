@@ -227,7 +227,7 @@ bool ReferenceFilter::IsFollowerOrDead(const RE::TESObjectREFR* refr) const
 	{
 		if (!actor->IsDead(true)) 
 		{
-			// Do not track live summons or any dynamic REFR as Follower
+			// Do not track live summons or any dynamic Actor REFR as Follower
 			if (IsSummoned(actor) || refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
 				return false;
 			PlayerAffinity affinity(GetPlayerAffinity(actor));
@@ -347,7 +347,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				PlayerAffinity affinity(GetPlayerAffinity(actor));
 				if (affinity == PlayerAffinity::FollowerFaction || affinity == PlayerAffinity::TeamMate)
 				{
-					// Do not track live summons or any dynamic REFR as Follower
+					// Do not track live summons or any dynamic Actor REFR as Follower
 					if (!IsSummoned(actor) && !refr->IsDynamicForm() && !refr->GetBaseObject()->IsDynamicForm())
 					{
 						DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());

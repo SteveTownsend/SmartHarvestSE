@@ -62,26 +62,8 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 			m_ref->GetFormID(), m_lootable->GetName(), m_lootable->GetFormID(), GetObjectTypeName(m_objectType));
 	}
 	m_typeName = GetObjectTypeName(m_objectType);
-}
-
-bool LootableREFR::IsQuestItem() const
-{
-	if (!m_ref)
-		return false;
-	// check REFR vs pre-populated Quest Targets
-	if (QuestTargets::Instance().ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
-		return true;
-
-	RE::RefHandle handle;
-	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(m_ref));
-
-	RE::NiPointer<RE::TESObjectREFR> targetRef;
-	RE::LookupReferenceByHandle(handle, targetRef);
-
-	if (!targetRef)
-		targetRef.reset(const_cast<RE::TESObjectREFR*>(m_ref));
-
-	return ExtraDataList::IsREFRQuestObject(targetRef.get(), &targetRef->extraList);
+	m_critter = m_objectType == ObjectType::critter;
+	m_flora = HasIngredient();
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
@@ -97,8 +79,58 @@ bool LootableREFR::IsValuable() const
 	return itemEx.IsValuable();
 }
 
+bool LootableREFR::IsHarvestable() const
+{
+	bool canHarvest(m_critter || m_flora);
+#if DEBUG
+	auto target(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	DBG_VMESSAGE("check bound object {}/0x{:08x} with type {} harvestable={}",
+		target->GetName(), target->GetFormID(), target->GetFormType(), canHarvest);
+#endif
+	return canHarvest;
+}
+
+bool LootableREFR::IsCritter() const
+{
+	return m_critter;
+}
+
+bool LootableREFR::HasIngredient() const
+{
+	// flora, but not those that produce cash money
+	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
+	auto target(m_lootable ? m_lootable : m_ref->GetBaseObject());
+	return (m_typeName != septimsName && (target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>()));
+}
+
+bool LootableREFR::HarvestForbiddenForForm() const
+{
+	// flora, but not those that produce cash money
+	if (HasIngredient())
+	{
+		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
+	}
+	else if (m_critter)
+	{
+		return SettingsCache::Instance().ObjectLootingType(ObjectType::critter) == LootingType::LeaveBehind;
+	}
+	return false;
+}
+
+bool LootableREFR::IsItemLootableInPopulationCenter(ObjectType objectType) const
+{
+	// Config setting overrides
+	if (!SettingsCache::Instance().LootAllowedItemsInSettlement())
+		return false;
+	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
+	// Harvestables are fine too. We mostly don't want to clear the shelves of every building we walk into here.
+	return IsValueWeightExempt(objectType) || IsHarvestable();
+}
+
 void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
 {
+	DBG_VMESSAGE("Update 0x{:08x} from {} to {}", m_lootable ? m_lootable->GetFormID() : m_ref->GetBaseObject()->GetFormID(),
+		GetObjectTypeName(m_objectType), GetObjectTypeName(effectiveType));
 	m_objectType = effectiveType;
 	m_typeName = GetObjectTypeName(m_objectType);
 }

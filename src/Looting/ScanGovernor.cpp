@@ -76,7 +76,8 @@ bool ScanGovernor::HandleAsDynamicData(RE::TESObjectREFR* refr) const
 	if (LootedDynamicREFRFormID(refr) != InvalidForm)
 		return true;
 
-	// risk exists if REFR or its concrete object is dynamic
+	// risk exists if REFR or its concrete object is dynamic. This is only called for Container or Actor, so check for
+	// Dynamic Base is correct
 	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
 	{
 		DBG_VMESSAGE("dynamic REFR 0x{:08x} or base 0x{:08x} for {}", refr->GetFormID(),
@@ -730,7 +731,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	REL_MESSAGE("Lootability checked for {}", message.c_str());
 	resultStr.str("");
 
-	resultStr << LootabilityName(result) << ' ' << LocationTracker::Instance().PlayerExactLocation();
+	resultStr << LootabilityName(result) << LocationTracker::Instance().PlayerExactLocation();
 	message = resultStr.str();
 	RE::DebugNotification(message.c_str());
 	REL_MESSAGE("Lootability result: {}", message.c_str());

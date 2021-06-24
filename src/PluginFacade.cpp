@@ -229,7 +229,7 @@ void PluginFacade::ScanThread()
 		}
 
 		// block until UI is good to go
-		UIState::Instance().WaitUntilVMGoodToGo();
+		bool delayed(UIState::Instance().WaitUntilVMGoodToGo());
 
 		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
 		if (!LocationTracker::Instance().Refresh())
@@ -238,7 +238,7 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		static const bool onMCMPush(false);
+		static const bool onMCMPush(delayed);
 		static const bool onGameReload(false);
 		PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 

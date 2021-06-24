@@ -104,6 +104,16 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
 			continue;
 
+		// register any new user-created Ingestible
+		if (itemObject->IsDynamicForm())
+		{
+			if (itemObject->GetFormType() == RE::FormType::AlchemyItem)
+			{
+				// User created potion or poison
+				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
+			}
+		}
+
 		InventoryEntry itemEntry(itemObject, count);
 		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
 			continue;
@@ -112,6 +122,65 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 	}
 	return cache;
 }
+
+std::string ContainerLister::SellItem(RE::TESBoundObject* target, const bool excessOnly)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		std::string err(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_CANNOT_SELL"));
+		StringUtils::Replace(err, "{ITEMNAME}", target->GetName());
+		return err;
+	}
+	return entry.Sell(excessOnly);
+}
+std::string ContainerLister::TransferItem(RE::TESBoundObject* target, const bool excessOnly)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		std::string err(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_CANNOT_TRANSFER"));
+		StringUtils::Replace(err, "{ITEMNAME}", target->GetName());
+		return err;
+	}
+	return entry.Transfer(excessOnly);
+}
+std::string ContainerLister::DeleteItem(RE::TESBoundObject* target, const bool excessOnly)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		std::string err(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_CANNOT_DELETE"));
+		StringUtils::Replace(err, "{ITEMNAME}", target->GetName());
+		return err;
+	}
+	return entry.Delete(excessOnly);
+}
+
+InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* target) const
+{
+	// refactored following QuickLookRE
+	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
+	for (auto& item : inv) {
+		auto& [count, entry] = item.second;
+		RE::TESBoundObject* itemObject = entry->GetObject();
+		if (target != itemObject)
+			continue;
+		if (count <= 0)
+			break;
+		if (!FormUtils::IsConcrete(itemObject))
+			break;
+		if (itemObject->formType == RE::FormType::LeveledItem)
+			break;
+		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
+		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
+			break;
+
+		return InventoryEntry(itemObject, count);
+	}
+	return InventoryEntry(target, 0);
+}
+
 size_t ContainerLister::AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling)
 {
 	if (!m_refr)

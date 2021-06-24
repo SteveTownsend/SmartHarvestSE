@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/dataCase.h"
 #include "Data/SettingsCache.h"
 #include "Looting/ManagedLists.h"
+#include "Utilities/utils.h"
 
 namespace shse
 {
@@ -31,7 +32,13 @@ namespace shse
 InventoryEntry::InventoryEntry(RE::TESBoundObject* item, const int count) :
 	m_item(item),
 	m_count(count),
-	m_totalDelta(0)
+	m_totalDelta(0),
+	m_maxCount(0),
+	m_value(0),
+	m_saleProceeds(0),
+	m_weight(0.0),
+	m_salePercent(0.0),
+	m_handled(0)
 {
 	m_crafting = SettingsCache::Instance().HandleExcessCraftingItems() && CraftingItems::Instance().IsCraftingItem(m_item);
 	if (m_crafting)
@@ -75,6 +82,7 @@ void InventoryEntry::Populate()
 		int maxItemsByWeight(static_cast<int>(maxWeight / weight));
 		m_maxCount = std::min(m_maxCount, maxItemsByWeight);
 	}
+	m_salePercent = SettingsCache::Instance().SaleValuePercentMultiplier();
 }
 
 int InventoryEntry::Headroom(const int delta) const
@@ -97,29 +105,29 @@ int InventoryEntry::Headroom(const int delta) const
 	return UnlimitedItems;
 }
 
-void InventoryEntry::HandleExcess(const RE::TESBoundObject* item)
+void InventoryEntry::HandleExcess()
 {
 	static RE::TESBoundObject* goldItem(RE::TESForm::LookupByID<RE::TESBoundObject>(DataCase::Gold));
 	if (m_excessHandling == ExcessInventoryHandling::NoLimits || m_excessHandling == ExcessInventoryHandling::LeaveBehind)
 	{
 		return;
 	}
-	int excess(m_count - m_maxCount);
-	if (excess > 0)
+	m_handled = std::max(m_count - m_maxCount, 0);
+	if (m_handled > 0)
 	{
 		if (m_excessHandling == ExcessInventoryHandling::ConvertToSeptims)
 		{
 			RE::PlayerCharacter::GetSingleton()->RemoveItem(
-				const_cast<RE::TESBoundObject*>(item), excess, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
-			uint32_t payment(static_cast<uint32_t>(static_cast<double>(excess * m_value) * SettingsCache::Instance().SaleValuePercentMultiplier()));
-			if (payment > 0)
+				const_cast<RE::TESBoundObject*>(m_item), m_handled, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+			m_saleProceeds = static_cast<uint32_t>(static_cast<double>(m_handled * m_value) * m_salePercent);
+			if (m_saleProceeds > 0)
 			{
-				RE::PlayerCharacter::GetSingleton()->AddObjectToContainer(goldItem, nullptr, payment, nullptr);
-				DBG_VMESSAGE("Sold excess {} of {}/0x{:08x} for {} gold", excess, item->GetName(), item->GetFormID(), payment);
+				RE::PlayerCharacter::GetSingleton()->AddObjectToContainer(goldItem, nullptr, m_saleProceeds, nullptr);
+				DBG_VMESSAGE("Sold excess {} of {}/0x{:08x} for {} gold", m_handled, m_item->GetName(), m_item->GetFormID(), m_saleProceeds);
 			}
 			else
 			{
-				DBG_VMESSAGE("Excess {} of {}/0x{:08x} discarded as worthless", excess, item->GetName(), item->GetFormID());
+				DBG_VMESSAGE("Excess {} of {}/0x{:08x} discarded as worthless", m_handled, m_item->GetName(), m_item->GetFormID());
 			}
 		}
 		else
@@ -139,14 +147,56 @@ void InventoryEntry::HandleExcess(const RE::TESBoundObject* item)
 			}
 			if (refr && refr->GetBaseObject()->As<RE::TESObjectCONT>())
 			{
+				m_transferTarget = refr->GetBaseObject()->GetName();
 				RE::PlayerCharacter::GetSingleton()->RemoveItem(
-					const_cast<RE::TESBoundObject*>(item), excess, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
-				refr->AddObjectToContainer(const_cast<RE::TESBoundObject*>(item), nullptr, excess, nullptr);
-				DBG_VMESSAGE("Moved excess {} of {}/0x{:08x} to Container for REFR 0x{:08x}",
-					excess, item->GetName(), item->GetFormID(), refr->GetFormID());
+					const_cast<RE::TESBoundObject*>(m_item), m_handled, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+				refr->AddObjectToContainer(const_cast<RE::TESBoundObject*>(m_item), nullptr, m_handled, nullptr);
+				DBG_VMESSAGE("Moved excess {} of {}/0x{:08x} to Container {} for REFR 0x{:08x}",
+					m_handled, m_item->GetName(), m_item->GetFormID(), m_transferTarget, refr->GetFormID());
 			}
 		}
 	}
+}
+
+std::string InventoryEntry::Sell(const bool excessOnly)
+{
+	Populate();
+	m_excessHandling = ExcessInventoryHandling::ConvertToSeptims;
+	if (!excessOnly)
+		m_maxCount = 0;
+	HandleExcess();
+	std::string sold(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_SOLD"));
+	StringUtils::Replace(sold, "{ITEMNAME}", m_item->GetName());
+	StringUtils::Replace(sold, "{ITEMCOUNT}", std::to_string(m_handled));
+	StringUtils::Replace(sold, "{ITEMVALUE}", std::to_string(m_saleProceeds));
+	return sold;
+}
+std::string InventoryEntry::Transfer(const bool excessOnly)
+{
+	if (!UseTransferForExcess(m_excessHandling))
+		return "Transfer not set up for type " + (m_crafting ? "crafting" : GetObjectTypeName(m_excessType));
+	Populate();
+	if (!excessOnly)
+		m_maxCount = 0;
+	HandleExcess();
+	std::string transferred(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_TRANSFERRED"));
+	StringUtils::Replace(transferred, "{ITEMNAME}", m_item->GetName());
+	StringUtils::Replace(transferred, "{ITEMCOUNT}", std::to_string(m_handled));
+	StringUtils::Replace(transferred, "{ITEMTARGET}", m_transferTarget);
+	return transferred;
+}
+std::string InventoryEntry::Delete(const bool excessOnly)
+{
+	Populate();
+	m_excessHandling = ExcessInventoryHandling::ConvertToSeptims;
+	m_salePercent = 0.0;		// sell for 0.0 is effectively a deletion
+	if (!excessOnly)
+		m_maxCount = 0;
+	HandleExcess();
+	std::string deleted(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_DELETED"));
+	StringUtils::Replace(deleted, "{ITEMNAME}", m_item->GetName());
+	StringUtils::Replace(deleted, "{ITEMCOUNT}", std::to_string(m_handled));
+	return deleted;
 }
 
 }

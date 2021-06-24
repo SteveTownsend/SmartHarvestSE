@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "Utilities/Enums.h"
+#include "Looting/objects.h"
 
 namespace shse
 {
@@ -91,6 +92,22 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::OutOfScope: return "OutOfScope";
 	default: return "";
 	}
+}
+
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
+{
+	if (IsValueWeightExempt(objectType))
+	{
+		DBG_VMESSAGE("No V/W check for objType {}", GetObjectTypeName(objectType));
+		return false;
+	}
+	if (lootingType != LootingType::LootIfValuableEnoughNotify && lootingType != LootingType::LootIfValuableEnoughSilent)
+	{
+		DBG_VMESSAGE("No V/W check for LootingType {}", lootingType);
+		return false;
+	}
+	DBG_VMESSAGE("V/W check required for LootingType {}, objType {}", lootingType, GetObjectTypeName(objectType));
+	return true;
 }
 
 }

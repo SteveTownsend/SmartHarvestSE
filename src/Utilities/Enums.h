@@ -292,17 +292,14 @@ inline ExcessInventoryHandling ExcessInventoryHandlingFromIniSetting(const doubl
 	return static_cast<ExcessInventoryHandling>(intSetting);
 }
 
-inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
+inline bool UseTransferForExcess(const ExcessInventoryHandling handling)
 {
-	if (objectType == ObjectType::septims ||
-		objectType == ObjectType::key ||
-		objectType == ObjectType::oreVein ||
-		objectType == ObjectType::lockpick)
-		return false;
-	if (lootingType != LootingType::LootIfValuableEnoughNotify && lootingType != LootingType::LootIfValuableEnoughSilent)
-		return false;
-	return true;
+	return handling != ExcessInventoryHandling::ConvertToSeptims &&
+		handling != ExcessInventoryHandling::LeaveBehind &&
+		handling != ExcessInventoryHandling::NoLimits;
 }
+
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType);
 
 enum class DeadBodyLooting {
 	DoNotLoot = 0,
