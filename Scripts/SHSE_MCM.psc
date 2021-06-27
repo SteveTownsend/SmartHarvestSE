@@ -513,8 +513,8 @@ Function SetOreVeinChoices()
 EndFunction
 
 Function DefaultExcessDisposalChoices()
-    ; No Action/Leave/Sell/Container Max (16)
-    s_excessDisposalArray = New String[19]
+    ; No Action/Leave/Sell/Container Max (64)
+    s_excessDisposalArray = New String[67]
     s_excessDisposalArray[0] = "$SHSE_NO_LIMITS"
     s_excessDisposalArray[1] = "$SHSE_LEAVE_BEHIND"
     s_excessDisposalArray[2] = "$SHSE_AUTO_SELL"
@@ -523,7 +523,7 @@ Function DefaultExcessDisposalChoices()
 EndFunction
 
 Function AugmentExcessDisposalChoices()
-    ; Leave/Sell/Container - max length 3 + 16
+    ; Leave/Sell/Container - max length 3 + 64
     int index = 0
     int choice = 3
     while index < transferListEntries
@@ -826,6 +826,10 @@ Function InitExcessInventoryHandling()
     type_MaxWeight = 9
 EndFunction
 
+Function ExpandExcessInventoryTargets()
+    eventScript.MigrateTransferListArrays(16, 64)
+EndFunction
+
 Function InitExcessCraftingItems()
     handleExcessCraftingItems = False
     craftingItemsExcessHandling = 0
@@ -996,7 +1000,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 50
+    return 51
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1129,6 +1133,9 @@ Event OnVersionUpdate(int a_version)
         if objectSettingArray[objType_Flora - 1] > 1
             objectSettingArray[objType_Flora - 1] = 1
         endIf
+    endIf
+    if a_version >= 51 && CurrentVersion < 51
+        ExpandExcessInventoryTargets()
     endIf
 endEvent
 

@@ -93,6 +93,7 @@ bool keyHandlingActive
 
 Form[] transferList
 bool[] transferListInUse
+bool[] transferListEntryFree
 string[] transferNames
 int transferListSize
 
@@ -156,10 +157,33 @@ Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
 EndFunction
 
 Function CreateTransferListArrays()
-    transferList = Utility.CreateFormArray(16)
-    transferListInUse = Utility.CreateBoolArray(16)
-    transferNames = Utility.CreateStringArray(16)
+    transferList = Utility.CreateFormArray(64)
+    transferListInUse = Utility.CreateBoolArray(64)
+    transferListEntryFree = Utility.CreateBoolArray(64)
+    transferNames = Utility.CreateStringArray(64)
     transferListSize = 0
+EndFunction
+
+Function MigrateTransferListArrays(int oldLimit, int newLimit)
+    if transferList == None || transferList.Length != oldLimit || newLimit < oldLimit
+        ; just don't, OK?
+        return
+    endIf
+    Utility.ResizeFormArray(transferList, newLimit)
+    Utility.ResizeBoolArray(transferListInUse, newLimit)
+    Utility.ResizeStringArray(transferNames, newLimit)
+    if transferListEntryFree == None
+        transferListEntryFree = Utility.CreateBoolArray(newLimit)
+    else
+        Utility.ResizeBoolArray(transferListEntryFree, newLimit)
+    endIf
+    int index = 0
+    while index < oldLimit
+        transferListEntryFree[index] = transferList[index] == None
+        ;DebugTrace("Transfer List index " + index + " is " + transferList[index] + ", entry free? " + transferListEntryFree[index])
+        index += 1
+    endWhile
+    AlwaysTrace("Migrated " + transferListSize + " Transfer List entries, limit " + oldLimit + " to new limit " + newLimit)
 EndFunction
 
 int Function GetWhiteListSize()
@@ -530,7 +554,7 @@ function AddToTransferList(string locationName, Form target)
         return
     endIf
     string name = locationName + "/" + containerName
-    if transferListSize == 16
+    if transferListSize == 64
         string translation = GetTranslation("$SHSE_TRANSFERLIST_FULL")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", name)
@@ -791,12 +815,13 @@ Event OnKeyUp(Int keyCode, Float holdTime)
         ; handle hotkey actions for crosshair in reference
         ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
         if keyCode == pauseKeyCode
-            if targetedRefr
-                HandleCrosshairPauseHotKey(targetedRefr)
-                keyHandlingActive = false
-                return
-            endIf
             if holdTime > 3.0
+                ; add Container to TargetList requires long press
+                if targetedRefr
+                    HandleCrosshairPauseHotKey(targetedRefr)
+                    keyHandlingActive = false
+                    return
+                endIf
                 ; trigger shader test on really long press
                 ToggleCalibration(holdTime > 10.0)
             else
