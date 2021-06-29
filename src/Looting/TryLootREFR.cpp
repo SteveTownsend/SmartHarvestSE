@@ -469,20 +469,20 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			// If a container is once found locked, it remains treated the same way according to the looting rules. This means a chest that player unlocked
 			// will continue to glow if not auto-looted.
-			if (ScanGovernor::Instance().IsReferenceLockedContainer(m_candidate))
+			LockedContainerHandling lockedChestLoot = SettingsCache::Instance().LockedChestLoot();
+			if (ScanGovernor::Instance().IsReferenceLockedContainer(m_candidate, lockedChestLoot))
 			{
-				SpecialObjectHandling lockedChestLoot = SettingsCache::Instance().LockedChestLoot();
 				if (m_glowOnly)
 				{
-					lockedChestLoot = SpecialObjectHandling::GlowTarget;
+					lockedChestLoot = LockedContainerHandling::GlowTarget;
 				}
-				if (lockedChestLoot == SpecialObjectHandling::GlowTarget)
+				if (lockedChestLoot == LockedContainerHandling::GlowTarget)
 				{
 					DBG_VMESSAGE("glow locked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::LockedContainer);
 				}
 
-				if (!IsSpecialObjectLootable(lockedChestLoot))
+				if (!IsLockedContainerLootable(lockedChestLoot))
 				{
 					skipLooting = true;
 					result = Lootability::ContainerIsLocked;

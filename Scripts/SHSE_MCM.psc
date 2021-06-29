@@ -81,6 +81,7 @@ int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
 string[] s_specialObjectHandlingArray
+string[] s_lockedContainerHandlingArray
 string[] s_enchantedObjectHandlingArray
 string[] s_questObjectHandlingArray
 string[] s_behaviorToggleArray
@@ -789,6 +790,14 @@ Function InstallAestheticLootOptions()
     s_harvestBehaviorArray[1] = "$SHSE_PICK_UP"
 EndFunction
 
+Function InstallLockedContainerOptions()
+    s_lockedContainerHandlingArray = New String[4]
+    s_lockedContainerHandlingArray[0] = "$SHSE_DONT_PICK_UP"
+    s_lockedContainerHandlingArray[1] = "$SHSE_PICK_UP"
+    s_lockedContainerHandlingArray[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
+    s_lockedContainerHandlingArray[3] = "$SHSE_PICK_UP_AFTER_UNLOCK"
+EndFunction
+
 Function InitPages()
     Pages = New String[10]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
@@ -986,6 +995,7 @@ Event OnConfigInit()
 
     InstallDamageLootOptions()
     InstallAestheticLootOptions()
+    InstallLockedContainerOptions()
 
     eventScript.whitelist_form = Game.GetFormFromFile(0x801, "SmartHarvestSE.esp") as Formlist
     eventScript.blacklist_form = Game.GetFormFromFile(0x802, "SmartHarvestSE.esp") as Formlist
@@ -1137,6 +1147,7 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 51 && CurrentVersion < 51
         ExpandExcessInventoryTargets()
+        InstallLockedContainerOptions()
     endIf
 endEvent
 
@@ -1511,7 +1522,7 @@ event OnPageReset(string currentPage)
 
         AddHeaderOption("$SHSE_SPECIAL_OBJECT_BEHAVIOR_HEADER")
         AddTextOptionST("questObjectLoot", "$SHSE_QUESTOBJECT_LOOT", s_questObjectHandlingArray[questObjectLoot])
-        AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_specialObjectHandlingArray[lockedChestLoot])
+        AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_lockedContainerHandlingArray[lockedChestLoot])
         AddTextOptionST("bossChestLoot", "$SHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
         AddTextOptionST("playerBelongingsLoot", "$SHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
         AddTextOptionST("enchantedItemLootState", "$SHSE_ENCHANTED_ITEM_LOOT", s_enchantedObjectHandlingArray[enchantedItemLoot])
@@ -2703,14 +2714,14 @@ endState
 
 state lockedChestLoot
     event OnSelectST()
-        int size = s_specialObjectHandlingArray.length
+        int size = s_lockedContainerHandlingArray.length
         lockedChestLoot = CycleInt(lockedChestLoot, size)
-        SetTextOptionValueST(s_specialObjectHandlingArray[lockedChestLoot])
+        SetTextOptionValueST(s_lockedContainerHandlingArray[lockedChestLoot])
     endEvent
 
     event OnDefaultST()
         lockedChestLoot = 2
-        SetTextOptionValueST(s_specialObjectHandlingArray[lockedChestLoot])
+        SetTextOptionValueST(s_lockedContainerHandlingArray[lockedChestLoot])
     endEvent
 
     event OnHighlightST()

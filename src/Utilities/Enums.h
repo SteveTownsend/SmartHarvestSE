@@ -112,6 +112,14 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
+enum class LockedContainerHandling {
+	DoNotLoot = 0,
+	DoLoot,
+	GlowTarget,
+	LootOnceUnlocked,
+	MAX
+};
+
 enum class ContainerAnimationHandling {
 	DoNotPlay = 0,
 	Play,
@@ -232,6 +240,12 @@ inline bool IsSpecialObjectLootable(const SpecialObjectHandling specialObjectHan
 	return specialObjectHandling == SpecialObjectHandling::DoLoot;
 }
 
+inline bool IsLockedContainerLootable(const LockedContainerHandling lockedContainerHandling)
+{
+	return lockedContainerHandling == LockedContainerHandling::DoLoot ||
+		lockedContainerHandling == LockedContainerHandling::LootOnceUnlocked;
+}
+
 inline bool IsEnchantedObjectLootable(const EnchantedObjectHandling enchantedObjectHandling)
 {
 	return enchantedObjectHandling == EnchantedObjectHandling::DoLoot ||
@@ -298,6 +312,16 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 		return SpecialObjectHandling::DoNotLoot;
 	}
 	return static_cast<SpecialObjectHandling>(intSetting);
+}
+
+inline LockedContainerHandling LockedContainerHandlingFromIniSetting(const double iniSetting)
+{
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(LockedContainerHandling::MAX))
+	{
+		return LockedContainerHandling::DoNotLoot;
+	}
+	return static_cast<LockedContainerHandling>(intSetting);
 }
 
 inline ContainerAnimationHandling ContainerAnimationHandlingFromIniSetting(const double iniSetting)

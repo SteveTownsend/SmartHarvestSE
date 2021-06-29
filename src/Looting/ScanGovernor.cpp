@@ -159,7 +159,7 @@ void ScanGovernor::ResetLootedContainers()
 }
 
 // Remember locked containers so we do not auto-loot after player unlock, if config forbids
-bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const
+bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr, const LockedContainerHandling lockedChestLoot) const
 {
 	if (!refr)
 		return false;
@@ -174,6 +174,14 @@ bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) con
 		auto locked(m_lockedContainers.find(refr));
 		if (locked != m_lockedContainers.end())
 		{
+			// if set to loot once unlocked, go ahead
+			if (lockedChestLoot == LockedContainerHandling::LootOnceUnlocked)
+			{
+				DBG_VMESSAGE("Forget REFR 0x{:08x} to now-unlocked container {}/0x{:08x}", refr->GetFormID(),
+					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+				m_lockedContainers.erase(locked);
+				return false;
+			}
 			// if item count has changed, remove from locked container list: manually looted, we assume
 			size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
 				[=](RE::TESBoundObject*) -> bool { return true; }));

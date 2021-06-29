@@ -149,7 +149,7 @@ void SettingsCache::Refresh(void)
 	m_playerBelongingsLoot = SpecialObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "PlayerBelongingsLoot"));
 	REL_VMESSAGE("Player Belongings Loot {}", m_playerBelongingsLoot);
-	m_lockedChestLoot = SpecialObjectHandlingFromIniSetting(
+	m_lockedChestLoot = LockedContainerHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LockedChestLoot"));
 	REL_VMESSAGE("Locked Chest Loot {}", m_lockedChestLoot);
 	m_bossChestLoot = SpecialObjectHandlingFromIniSetting(
@@ -334,7 +334,7 @@ SpecialObjectHandling SettingsCache::PlayerBelongingsLoot() const
 {
 	return m_playerBelongingsLoot;
 }
-SpecialObjectHandling SettingsCache::LockedChestLoot() const
+LockedContainerHandling SettingsCache::LockedChestLoot() const
 {
 	return m_lockedChestLoot;
 }

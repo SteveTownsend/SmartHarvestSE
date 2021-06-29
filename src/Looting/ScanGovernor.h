@@ -80,7 +80,7 @@ public:
 	void MarkContainerLootedRepeatGlow(const RE::TESObjectREFR* refr, const int glowDuration);
 	void MarkContainerLooted(const RE::TESObjectREFR* refr);
 	bool IsLootedContainer(const RE::TESObjectREFR* refr) const;
-	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const;
+	bool IsReferenceLockedContainer(const RE::TESObjectREFR* refr, const LockedContainerHandling lockedChestLoot) const;
 	bool HandleAsDynamicData(RE::TESObjectREFR* refr) const;
 	void ResetLootedDynamicREFRs();
 	void ResetLootedContainers();
