@@ -68,6 +68,7 @@ private:
 
 	std::unordered_set<RE::FormID> m_userCannotPermission;
 	std::unordered_set<RE::FormID> m_questTargetItems;
+	std::unordered_set<RE::FormID> m_questTargetAllItems;
 	std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>> m_questTargetReferenced;
 	std::unordered_set<RE::FormID> m_questTargetREFRs;
 };
