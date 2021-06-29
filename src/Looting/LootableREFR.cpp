@@ -63,7 +63,7 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 	}
 	m_typeName = GetObjectTypeName(m_objectType);
 	m_critter = m_objectType == ObjectType::critter;
-	m_flora = HasIngredient();
+	m_flora = !m_critter && HasIngredient();
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
@@ -82,7 +82,7 @@ bool LootableREFR::IsValuable() const
 bool LootableREFR::IsHarvestable() const
 {
 	bool canHarvest(m_critter || m_flora);
-#if DEBUG
+#if _DEBUG
 	auto target(m_lootable ? m_lootable : m_ref->GetBaseObject());
 	DBG_VMESSAGE("check bound object {}/0x{:08x} with type {} harvestable={}",
 		target->GetName(), target->GetFormID(), target->GetFormType(), canHarvest);
@@ -100,13 +100,19 @@ bool LootableREFR::HasIngredient() const
 	// flora, but not those that produce cash money
 	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
 	auto target(m_lootable ? m_lootable : m_ref->GetBaseObject());
-	return (m_typeName != septimsName && (target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>()));
+	bool hasIngredient(false);
+	if (m_typeName != septimsName && (target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>()))
+	{
+		hasIngredient = true;
+	}
+	DBG_VMESSAGE("{} object {}/0x{:08x} has-ingredient={}", m_typeName, target->GetName(), target->GetFormID(), hasIngredient);
+	return hasIngredient;
 }
 
 bool LootableREFR::HarvestForbiddenForForm() const
 {
 	// flora, but not those that produce cash money
-	if (HasIngredient())
+	if (m_flora)
 	{
 		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
 	}
