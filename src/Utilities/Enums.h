@@ -242,8 +242,7 @@ inline bool IsSpecialObjectLootable(const SpecialObjectHandling specialObjectHan
 
 inline bool IsLockedContainerLootable(const LockedContainerHandling lockedContainerHandling)
 {
-	return lockedContainerHandling == LockedContainerHandling::DoLoot ||
-		lockedContainerHandling == LockedContainerHandling::LootOnceUnlocked;
+	return lockedContainerHandling == LockedContainerHandling::DoLoot;
 }
 
 inline bool IsEnchantedObjectLootable(const EnchantedObjectHandling enchantedObjectHandling)

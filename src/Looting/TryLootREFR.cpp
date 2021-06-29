@@ -476,7 +476,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				{
 					lockedChestLoot = LockedContainerHandling::GlowTarget;
 				}
-				if (lockedChestLoot == LockedContainerHandling::GlowTarget)
+				if (lockedChestLoot == LockedContainerHandling::GlowTarget || lockedChestLoot == LockedContainerHandling::LootOnceUnlocked)
 				{
 					DBG_VMESSAGE("glow locked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
 					UpdateGlowReason(GlowReason::LockedContainer);
