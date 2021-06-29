@@ -196,6 +196,7 @@ int[] id_transferList_array
 Form[] transferList_form_array
 int transferListEntries
 String[] transferList_name_array
+int[] transferList_index_array
 bool[] transferList_flag_array
 
 int[] id_glowReasonArray
@@ -531,7 +532,7 @@ Function AugmentExcessDisposalChoices()
         index += 1
         choice += 1
     endWhile
-    excessDisposalOptions = 3 + index
+    excessDisposalOptions = choice
 EndFunction
 
 Function SetDeadBodyChoices()
@@ -1248,49 +1249,45 @@ Function PopulateLists()
         blackListEntries = 0
     endif
 
-    max_size = eventScript.GetTransferListSize()
-    if max_size > 0
-        ; assume max size initially, resize if bad entries are found
-        Form[] currentList = eventScript.GetTransferList()
-        string[] currentNames = eventScript.GetTransferNames()
-        int validSize = 0
-        int index = max_size
-        while index > 0
-            index -= 1
-            Form nextEntry = currentList[index]
-            string name = GetNameForListForm(nextEntry)
-            if nextEntry && StringUtil.GetLength(name) > 0
-                validSize += 1
-            else
-                AlwaysTrace("Skip bad TransferList Form (" + nextEntry + ")")
-            endIf
-        endWhile
-        ; copy in only the valid forms
-        if validSize > 0
-            transferList_form_array = Utility.CreateFormArray(validSize)
-            id_transferList_array = Utility.CreateIntArray(validSize)
-            transferList_name_array = Utility.CreateStringArray(validSize)
-            transferList_flag_array = Utility.CreateBoolArray(validSize)
-            ; iterate forwards, order must be preserved to ensure correct linkage to target
-            index = 0
-            int entry = 0
-            while index < max_size
-                Form nextEntry = currentList[index]
-                if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
-                    transferList_form_array[entry] = nextEntry
-                    transferList_name_array[entry] = currentNames[index]
-                    transferList_flag_array[entry] = true
-                    entry += 1
-                endIf
-                index += 1
-            endWhile
+    ; Transfer List can be sparse
+    Form[] currentList = eventScript.GetTransferList()
+    string[] currentNames = eventScript.GetTransferNames()
+    int validSize = 0
+    int index = 0
+    max_size = 64
+    while index < max_size
+        Form nextEntry = currentList[index]
+        if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
+            validSize += 1
+        else
+            AlwaysTrace("Skip empty TransferList Form index " + index)
         endIf
-        AlwaysTrace("TransferList has " + validSize + " valid entries, " + max_size + " in Form[]")
-        transferListEntries = validSize
-    else
-        AlwaysTrace("TransferList is empty")
-        transferListEntries = 0
-    endif
+        index += 1
+    endWhile
+    ; copy in only the valid forms
+    if validSize > 0
+        transferList_form_array = Utility.CreateFormArray(validSize)
+        id_transferList_array = Utility.CreateIntArray(validSize)
+        transferList_name_array = Utility.CreateStringArray(validSize)
+        transferList_index_array = Utility.CreateIntArray(validSize)
+        transferList_flag_array = Utility.CreateBoolArray(validSize)
+        ; iterate forwards, order must be preserved to ensure correct linkage to target
+        index = 0
+        int entry = 0
+        while index < max_size
+            Form nextEntry = currentList[index]
+            if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
+                transferList_form_array[entry] = nextEntry
+                transferList_name_array[entry] = currentNames[index]
+                transferList_index_array[entry] = index
+                transferList_flag_array[entry] = True
+                entry += 1
+            endIf
+            index += 1
+        endWhile
+    endIf
+    AlwaysTrace("TransferList has " + validSize + " valid entries, " + max_size + " in Form[]")
+    transferListEntries = validSize
 EndFunction
 
 Event OnConfigOpen()
@@ -1433,14 +1430,12 @@ Function UpdateTransferTargets()
     ; Need to avoid hotkey deletion of in-use targets
     bool[] transferListInUse = Utility.CreateBoolArray(transferListEntries)
     int index = 0
-    int handlerId = 3
     while index < transferListEntries
-        transferListInUse[index] = TargetInUse(handlerId)
+        transferListInUse[index] = TargetInUse(3 + transferList_index_array[index])
         index += 1
-        handlerId += 1
     endWhile
 
-    eventScript.UpdateTransferList(transferListEntries, transferListInUse, transferList_form_array, transferList_name_array, transferList_flag_array, "$SHSE_TRANSFERLIST_REMOVED")
+    eventScript.UpdateTransferList(transferListEntries, transferListInUse, transferList_form_array, transferList_index_array, transferList_name_array, transferList_flag_array, "$SHSE_TRANSFERLIST_REMOVED")
 EndFunction
 
 Bool Function IsVWRelevant(int objType)
@@ -1755,16 +1750,14 @@ event OnPageReset(string currentPage)
         endif
 
         int index = 0
-        int handlerId = 3
         while index < transferListEntries
             int flags = OPTION_FLAG_NONE
             ; grey this out if it is in use as a loot transfer target
-            if TargetInUse(handlerId)
+            if TargetInUse(3 + transferList_index_array[index])
                 flags = OPTION_FLAG_DISABLED
             endif
             id_transferList_array[index] = AddToggleOption(transferList_name_array[index], transferList_flag_array[index], flags)
             index += 1
-            handlerId += 1
         endWhile
     endif
 endEvent

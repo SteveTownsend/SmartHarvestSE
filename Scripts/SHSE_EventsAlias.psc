@@ -93,7 +93,6 @@ bool keyHandlingActive
 
 Form[] transferList
 bool[] transferListInUse
-bool[] transferListEntryFree
 string[] transferNames
 int transferListSize
 
@@ -159,7 +158,6 @@ EndFunction
 Function CreateTransferListArrays()
     transferList = Utility.CreateFormArray(64)
     transferListInUse = Utility.CreateBoolArray(64)
-    transferListEntryFree = Utility.CreateBoolArray(64)
     transferNames = Utility.CreateStringArray(64)
     transferListSize = 0
 EndFunction
@@ -172,17 +170,6 @@ Function MigrateTransferListArrays(int oldLimit, int newLimit)
     Utility.ResizeFormArray(transferList, newLimit)
     Utility.ResizeBoolArray(transferListInUse, newLimit)
     Utility.ResizeStringArray(transferNames, newLimit)
-    if transferListEntryFree == None
-        transferListEntryFree = Utility.CreateBoolArray(newLimit)
-    else
-        Utility.ResizeBoolArray(transferListEntryFree, newLimit)
-    endIf
-    int index = 0
-    while index < oldLimit
-        transferListEntryFree[index] = transferList[index] == None
-        ;DebugTrace("Transfer List index " + index + " is " + transferList[index] + ", entry free? " + transferListEntryFree[index])
-        index += 1
-    endWhile
     AlwaysTrace("Migrated " + transferListSize + " Transfer List entries, limit " + oldLimit + " to new limit " + newLimit)
 EndFunction
 
@@ -222,8 +209,8 @@ Function SyncList(int listNum, Form[] forms, int formCount)
     int index = 0
     while index < formCount
         Form nextEntry = forms[index]
-        ; do not push junk to C++
-        if nextEntry && ((listnum == list_type_transfer) || (StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0))
+        ; do not push empty entries to C++ for blacklist or whitelist. Transfer List is sparse.
+        if (listnum == list_type_transfer) || (nextEntry && (StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0))
             AddEntryToList(listNum, nextEntry)
         endif
         index += 1
@@ -261,17 +248,31 @@ int Function UpdateListedForms(int totalEntries, Form[] myList, form[] updateLis
     return valid
 endFunction
 
-int Function UpdateNamedListedForms(int totalEntries, bool[] myListInUse, Form[] myList, string[] myNames, form[] updateList, bool[] updateInUse, string[] updateNames, bool[] flags, string trans)
+int Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[] updateInUse, int[] indices, string[] updateNames, bool[] flags, string trans)
     ; replace existing entries with valid Forms from MCM
     int index = 0
+    int xrefIndex = 0   ; index of the passed container in the sparse list
     int valid = 0
-    while index < totalEntries
+    while index < activeEntries
+        ; iterate blank entries
+        while xrefIndex < indices[index]
+            transferListInUse[xrefIndex] = False
+            transferList[xrefIndex] = None
+            transferNames[xrefIndex] = None
+            xrefIndex += 1
+        endWhile
+
         if flags[index]
-            myList[valid] = updateList[index]
-            myListInUse[valid] = updateInUse[index]
-            myNames[valid] = updateNames[index]
+            transferListInUse[xRefIndex] = updateInUse[index]
+            transferList[xRefIndex] = updateList[index]
+            transferNames[xRefIndex] = updateNames[index]
             valid += 1
         else
+            transferListInUse[xrefIndex] = False
+            transferList[xrefIndex] = None
+            transferNames[xrefIndex] = None
+            transferListSize -= 1
+	    
             string translation = GetTranslation(trans)
             if (translation)
                 translation = Replace(translation, "{ITEMNAME}", updateNames[index])
@@ -280,19 +281,9 @@ int Function UpdateNamedListedForms(int totalEntries, bool[] myListInUse, Form[]
                 endif
             endif
         endIf
+        xrefIndex += 1
         index += 1
     endWhile
-    ;clear any removed entries
-    index = valid
-    while index < totalEntries
-    	myList[index] = None
-    	myListInUse[index] = False
-    	myNames[index] = ""
-    	index += 1
-    endWhile
-    if valid != totalEntries
-        AlwaysTrace("Updated Form[] size from (" + totalEntries + ") to (" + valid + ")")
-    endIf
     return valid
 endFunction
 
@@ -304,8 +295,8 @@ Function UpdateBlackList(int totalEntries, Form[] updateList, bool[] flags, stri
     blackListSize = UpdateListedForms(totalEntries, blackListedForms, updateList, flags, trans)
 EndFunction
 
-Function UpdateTransferList(int totalEntries, bool[] updateInUse, Form[] updateList, string[] names, bool[] flags, string trans)
-    transferListSize = UpdateNamedListedForms(totalEntries, transferListInUse, transferList, transferNames, updateList, updateInUse, names, flags, trans)
+Function UpdateTransferList(int activeEntries, bool[] updateInUse, Form[] updateList, int[] indices, string[] names, bool[] flags, string trans)
+    transferListSize = UpdateTransferListForms(activeEntries, updateList, updateInUse, indices, names, flags, trans)
     SyncList(list_type_transfer, transferList, transferListSize)
 EndFunction
 
@@ -335,20 +326,16 @@ int Function RemoveFormAtIndex(Form[] forms, int entries, int index)
     return entries
 endFunction
 
-int Function RemoveStringAtIndex(string[] strings, int entries, int index)
-    if index < entries
-        AlwaysTrace("Removing " + strings[index] + ", entry " + (index+1) + " of " + entries)
-        ; shuffle down entries above this one
-        while index < entries - 1
-            strings[index] = strings[index+1]
-            index += 1
-        endWhile
-        ; clear prior final entry
-        strings[entries - 1] = None
-        return entries - 1
+int Function ClearTransferListEntry(int listMax, int index)
+    if index < listMax
+        AlwaysTrace("Removing " + transferList[index] + ", entry " + index + " of " + listMax)
+        transferList[index] = None
+        transferNames[index] = None
+        transferListInUse[index] = False
+        transferListSize -= 1
+    else
+        AlwaysTrace(index + " not a valid index for TransferList")
     endIf
-    AlwaysTrace(index + " not valid for string[]")
-    return entries
 endFunction
 
 ; manages FormList in VM - SyncLists pushes state to plugin once all local operations are complete
@@ -538,8 +525,7 @@ int function RemoveFromTransferList(string locationName, Form target)
                 Debug.Notification(msg)
             endif
         endif
-        RemoveStringAtIndex(transferNames, transferListSize, match)
-        transferListSize = RemoveFormAtIndex(transferList, transferListSize, match)
+        ClearTransferListEntry(64, match)
         AlwaysTrace(transferListSize + " entries on TransferList")
         return 1
     endIf
@@ -572,11 +558,19 @@ function AddToTransferList(string locationName, Form target)
                 Debug.Notification(msg)
             endif
         endif
-        transferList[transferListSize] = target
-        transferListInUse[transferListSize] = False
-        transferNames[transferListSize] = name
-        transferListSize += 1
-        AlwaysTrace(target + " added to TransferList, size now " + transferListSize)
+        ; find a free entry
+        int index = 0
+        while index < 64
+            if transferList[index] == None
+                transferList[index] = target
+                transferListInUse[index] = False
+                transferNames[index] = name
+                transferListSize += 1
+                AlwaysTrace(target + " added to TransferList at index " + index + ", size now " + transferListSize)
+                return
+            endif
+            index += 1
+        endWhile
     else
         AlwaysTrace(target + " already on TransferList")
     endif

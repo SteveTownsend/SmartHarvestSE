@@ -132,41 +132,49 @@ void ManagedTargets::Reset()
 
 void ManagedTargets::Add(RE::TESForm* entry)
 {
-	std::string name;
-	RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
-	if (refr)
-	{
-		name = refr->GetName();
-	}
-	if (name.empty())
-	{
-		name = entry->GetName();
-	}
-	REL_MESSAGE("{}/0x{:08x} added to TransferList", name, entry->GetFormID());
 	RecursiveLockGuard guard(m_listLock);
-	m_members.insert({ entry->GetFormID(), name });
 	m_orderedList.push_back(entry);
-
-	// Record any underlying _linked_ container for checking of multiplexed CONTs. We do not always check CONT for match as many are reused
-	// _without_ linked-ref indirection.
-	if (refr)
+	// list is sparse, check form present
+	if (entry)
 	{
-		const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
-		if (activator)
+		std::string name;
+		RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
+		if (refr)
 		{
-			DBG_VMESSAGE("Check ACTI {}/0x{:08x} -> linked container", activator->GetFullName(), activator->GetFormID());
-			RE::TESObjectREFR* linkedRefr(refr->GetLinkedRef(nullptr));
-			if (linkedRefr)
+			name = refr->GetName();
+		}
+		if (name.empty())
+		{
+			name = entry->GetName();
+		}
+		REL_MESSAGE("{}/0x{:08x} added to TransferList", name, entry->GetFormID());
+		m_members.insert({ entry->GetFormID(), name });
+
+		// Record any underlying _linked_ container for checking of multiplexed CONTs. We do not always check CONT for match as many are reused
+		// _without_ linked-ref indirection.
+		if (refr)
+		{
+			const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
+			if (activator)
 			{
-				RE::TESObjectCONT* container = linkedRefr->GetBaseObject()->As<RE::TESObjectCONT>();
-				if (container)
+				DBG_VMESSAGE("Check ACTI {}/0x{:08x} -> linked container", activator->GetFullName(), activator->GetFormID());
+				RE::TESObjectREFR* linkedRefr(refr->GetLinkedRef(nullptr));
+				if (linkedRefr)
 				{
-					DBG_VMESSAGE("ACTI {}/0x{:08x} has linked container {}/0x{:08x}", activator->GetFullName(), activator->GetFormID(),
-						container->GetFullName(), container->GetFormID());
-					m_containers.insert(container->GetFormID());
+					RE::TESObjectCONT* container = linkedRefr->GetBaseObject()->As<RE::TESObjectCONT>();
+					if (container)
+					{
+						DBG_VMESSAGE("ACTI {}/0x{:08x} has linked container {}/0x{:08x}", activator->GetFullName(), activator->GetFormID(),
+							container->GetFullName(), container->GetFormID());
+						m_containers.insert(container->GetFormID());
+					}
 				}
 			}
 		}
+	}
+	else
+	{
+		REL_MESSAGE("Free entry in TransferList at index {}", m_orderedList.size());
 	}
 }
 
