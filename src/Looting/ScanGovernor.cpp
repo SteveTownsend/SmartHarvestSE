@@ -235,7 +235,7 @@ void ScanGovernor::ProgressGlowDemo()
 	{
 		m_nextGlow = CycleGlow(m_nextGlow);
 		std::ostringstream glowText;
-		glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 3 seconds to terminate";
+		glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 1.5 seconds to terminate";
 		RE::DebugNotification(glowText.str().c_str());
 	}
 	else
@@ -246,7 +246,7 @@ void ScanGovernor::ProgressGlowDemo()
 			std::string notificationText("Range: ");
 			notificationText.append(rangeText);
 			StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
-			notificationText.append(", hold Pause key for 3 seconds to terminate");
+			notificationText.append(", hold Pause key for 1.5 seconds to terminate");
 			if (!notificationText.empty())
 			{
 				RE::DebugNotification(notificationText.c_str());

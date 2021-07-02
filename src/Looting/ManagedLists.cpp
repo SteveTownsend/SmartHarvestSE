@@ -130,28 +130,19 @@ void ManagedTargets::Reset()
 	m_containers.clear();
 }
 
-void ManagedTargets::Add(RE::TESForm* entry)
+void ManagedTargets::AddNamed(RE::TESForm* entry, const std::string& name)
 {
 	RecursiveLockGuard guard(m_listLock);
-	m_orderedList.push_back(entry);
+	m_orderedList.push_back({ entry, name });
 	// list is sparse, check form present
 	if (entry)
 	{
-		std::string name;
-		RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
-		if (refr)
-		{
-			name = refr->GetName();
-		}
-		if (name.empty())
-		{
-			name = entry->GetName();
-		}
 		REL_MESSAGE("{}/0x{:08x} added to TransferList", name, entry->GetFormID());
 		m_members.insert({ entry->GetFormID(), name });
 
 		// Record any underlying _linked_ container for checking of multiplexed CONTs. We do not always check CONT for match as many are reused
 		// _without_ linked-ref indirection.
+		RE::TESObjectREFR* refr(entry->As<RE::TESObjectREFR>());
 		if (refr)
 		{
 			const RE::TESObjectACTI* activator(refr->GetBaseObject()->As<RE::TESObjectACTI>());
@@ -174,7 +165,7 @@ void ManagedTargets::Add(RE::TESForm* entry)
 	}
 	else
 	{
-		REL_MESSAGE("Free entry in TransferList at index {}", m_orderedList.size());
+		REL_MESSAGE("Free entry in TransferList at index {}", m_orderedList.size() - 1);
 	}
 }
 
@@ -210,11 +201,11 @@ bool ManagedTargets::HasContainer(RE::FormID container) const
 	return m_containers.contains(container);
 }
 
-RE::TESForm* ManagedTargets::ByIndex(const size_t index) const
+ManagedTarget ManagedTargets::ByIndex(const size_t index) const
 {
 	if (index < m_orderedList.size())
 		return m_orderedList[index];
-	return nullptr;
+	return { nullptr, "" };
 }
 
 }

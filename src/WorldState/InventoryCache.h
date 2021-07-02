@@ -39,6 +39,7 @@ namespace shse
 		std::string Sell(const bool excessOnly);
 		std::string Transfer(const bool excessOnly);
 		std::string Delete(const bool excessOnly);
+		std::string Disposition();
 
 	private:
 		RE::TESBoundObject* m_item;
@@ -47,6 +48,8 @@ namespace shse
 		bool m_crafting;
 		int m_count;
 		mutable int m_totalDelta;		// number of items assumed added by loot requests since last reconciliation
+		int m_maxItems;
+		int m_maxItemsByWeight;
 		int m_maxCount;
 		uint32_t m_value;
 		uint32_t m_saleProceeds;

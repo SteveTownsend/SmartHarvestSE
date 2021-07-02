@@ -45,6 +45,7 @@ public:
 	std::string SellItem(RE::TESBoundObject* target, const bool excessOnly);
 	std::string TransferItem(RE::TESBoundObject* target, const bool excessOnly);
 	std::string DeleteItem(RE::TESBoundObject* target, const bool excessOnly);
+	std::string CheckItemAsExcess(RE::TESBoundObject* target);
 	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
 	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
 	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }

@@ -86,6 +86,9 @@ string[] s_enchantedObjectHandlingArray
 string[] s_questObjectHandlingArray
 string[] s_behaviorToggleArray
 string[] s_excessDisposalArray
+; handle mapping between compact UI list of transfer options and sparse plugin list
+int[] s_excessDisposalEnumToChoice
+int[] s_excessDisposalChoiceToEnum
 int excessDisposalOptions
 int excessDisposalSell
 int saleValuePercent
@@ -221,6 +224,18 @@ int Function CycleInt(int num, int max)
     return result
 endFunction
 
+; handles cross-reference from compact MCM list to sparse plugin list
+; num is an enum value - we need to cycle though the other choices
+int Function CycleExcess(int num, int max)
+    ; find the choice that was used to select this enum
+    int result = s_excessDisposalEnumToChoice[num]
+    result += 1
+    if result >= max
+        result = 0
+    endif
+    return s_excessDisposalChoiceToEnum[result]
+endFunction
+
 function updateMaxMiningItems(int maxItems)
     maxMiningItems = maxItems
     eventScript.updateMaxMiningItems(maxItems)
@@ -259,10 +274,11 @@ float[] function GetSettingToExcessHandlingArray(int section1, int section2)
     while (index < 30)
         if SupportsExcessHandling(objType)
             float setting = GetSettingObjectArrayEntry(section1, section2, objType)
-            int targets = eventScript.GetTransferListSize()
-            if setting > (1 + targets) as float
+            ; 64 containers, plus leave/sell/no-limit - 0 based
+            if setting > (2 + 64) as float
+                AlwaysTrace("Out of range excess handling " + setting + " for objType" + objType)
                 ; references unknown transfer target - pick highest valid value
-                setting = (1 + targets) as float
+                setting = (2 + 64) as float
             endif
             result[index] = setting
         else
@@ -528,8 +544,22 @@ Function AugmentExcessDisposalChoices()
     ; Leave/Sell/Container - max length 3 + 64
     int index = 0
     int choice = 3
+    
+    ; mappings of fixed entries, augmented by sparse array xref
+    s_excessDisposalEnumToChoice = Utility.CreateIntArray(3 + 64, -1)
+    s_excessDisposalEnumToChoice[0] = 0
+    s_excessDisposalEnumToChoice[1] = 1
+    s_excessDisposalEnumToChoice[2] = 2
+
+    s_excessDisposalChoiceToEnum = Utility.CreateIntArray(3 + transferListEntries)
+    s_excessDisposalChoiceToEnum[0] = 0
+    s_excessDisposalChoiceToEnum[1] = 1
+    s_excessDisposalChoiceToEnum[2] = 2
+
     while index < transferListEntries
         s_excessDisposalArray[choice] = transferList_name_array[index]
+        s_excessDisposalEnumToChoice[3 + transferList_index_array[index]] = choice
+        s_excessDisposalChoiceToEnum[choice] = 3 + transferList_index_array[index]
         index += 1
         choice += 1
     endWhile
@@ -1269,9 +1299,10 @@ Function PopulateLists()
     while index < max_size
         Form nextEntry = currentList[index]
         if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
+            ;DebugTrace("TransferList Form index " + index + " for " + currentNames[index])
             validSize += 1
         else
-            AlwaysTrace("Skip empty TransferList Form index " + index)
+            ;DebugTrace("Skip empty TransferList Form index " + index)
         endIf
         index += 1
     endWhile
@@ -1292,6 +1323,7 @@ Function PopulateLists()
                 transferList_name_array[entry] = currentNames[index]
                 transferList_index_array[entry] = index
                 transferList_flag_array[entry] = True
+                ;DebugTrace("TransferList entry #" + entry + " name " + currentNames[index] + " xrefindex " + index)
                 entry += 1
             endIf
             index += 1
@@ -1724,7 +1756,7 @@ event OnPageReset(string currentPage)
         int supported = 0
         while index < s_objectTypeNameArray.length && supported < 10 ; put the other half on RHS
             if SupportsExcessHandling(objType)
-                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[(excessHandlingArray[index] as int)])
+                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)]])
                 id_excessCountArray[index] = AddSliderOption("", excessCountArray[index], "$SHSE_ITEMS")
                 id_excessWeightArray[index] = AddSliderOption("", excessWeightArray[index], "$SHSE_WEIGHT")
                 supported += 1
@@ -1741,13 +1773,13 @@ event OnPageReset(string currentPage)
         if handleExcessCraftingItems
             craftingItemFlags = OPTION_FLAG_NONE
         endIf
-        AddTextOptionST("craftingItemsExcessHandlingState", "$SHSE_CRAFTING_ITEMS", s_excessDisposalArray[craftingItemsExcessHandling], craftingItemFlags)
+        AddTextOptionST("craftingItemsExcessHandlingState", "$SHSE_CRAFTING_ITEMS", s_excessDisposalArray[s_excessDisposalEnumToChoice[craftingItemsExcessHandling]], craftingItemFlags)
         AddSliderOptionST("craftingItemsExcessCountState", "", craftingItemsExcessCount as float, "$SHSE_ITEMS", craftingItemFlags)
         AddSliderOptionST("craftingItemsExcessWeightState", "", craftingItemsExcessWeight as float, "$SHSE_WEIGHT", craftingItemFlags)
 
         while index < s_objectTypeNameArray.length ; oreVein is the last
             if SupportsExcessHandling(objType)
-                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[(excessHandlingArray[index] as int)])
+                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)]])
                 id_excessCountArray[index] = AddSliderOption("", excessCountArray[index], "$SHSE_ITEMS")
                 id_excessWeightArray[index] = AddSliderOption("", excessWeightArray[index], "$SHSE_WEIGHT")
             endif
@@ -1820,15 +1852,15 @@ Event OnOptionSelect(int a_option)
         int objType = index + 1
         bool foundValid = false
         while !foundValid
-            excessHandlingArray[index] = CycleInt(excessHandlingArray[index] as int, excessDisposalOptions)
+            excessHandlingArray[index] = CycleExcess(excessHandlingArray[index] as int, excessDisposalOptions)
             ; do not try to sell septims, for obvious reasons
             if objType == objType_Septim && (excessHandlingArray[index] as int) == excessDisposalSell
             ; skip any target that user has unchecked on the Transfer List page
-            elseif (excessHandlingArray[index] as int) <= excessDisposalSell || transferList_flag_array[(excessHandlingArray[index] as int)- 3]
+            elseif (excessHandlingArray[index] as int) <= excessDisposalSell || transferList_flag_array[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)] - 3]
                 foundValid = True
             endif
         endwhile
-        SetTextOptionValue(a_option, s_excessDisposalArray[(excessHandlingArray[index] as int)])
+        SetTextOptionValue(a_option, s_excessDisposalArray[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)]])
         return
     endif
 
@@ -2390,18 +2422,18 @@ state craftingItemsExcessHandlingState
     event OnSelectST()
         bool foundValid = false
         while !foundValid
-            craftingItemsExcessHandling = CycleInt(craftingItemsExcessHandling, excessDisposalOptions)
+            craftingItemsExcessHandling = CycleExcess(craftingItemsExcessHandling, excessDisposalOptions)
             ; disallow targets unchecked by user
-            if (craftingItemsExcessHandling as int) <= excessDisposalSell || transferList_flag_array[(craftingItemsExcessHandling as int) - 3]
+            if (craftingItemsExcessHandling as int) <= excessDisposalSell || transferList_flag_array[s_excessDisposalEnumToChoice[(craftingItemsExcessHandling as int)] - 3]
                 foundValid = True
             endif
         endwhile
-        SetTextOptionValueST(s_excessDisposalArray[craftingItemsExcessHandling])
+        SetTextOptionValueST(s_excessDisposalArray[s_excessDisposalEnumToChoice[craftingItemsExcessHandling]])
     endEvent
 
     event OnDefaultST()
         craftingItemsExcessHandling = 0
-        SetTextOptionValueST(s_excessDisposalArray[craftingItemsExcessHandling])
+        SetTextOptionValueST(s_excessDisposalArray[s_excessDisposalEnumToChoice[craftingItemsExcessHandling]])
     endEvent
 endState
 

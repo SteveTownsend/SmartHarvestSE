@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "Utilities/Enums.h"
 #include "Looting/objects.h"
+#include "Looting/ManagedLists.h"
 
 namespace shse
 {
@@ -108,6 +109,22 @@ bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objec
 	}
 	DBG_VMESSAGE("V/W check required for LootingType {}, objType {}", lootingType, GetObjectTypeName(objectType));
 	return true;
+}
+
+std::string ExcessInventoryHandlingString(const ExcessInventoryHandling excessInventoryHandling)
+{
+	switch (excessInventoryHandling) {
+	case ExcessInventoryHandling::NoLimits:
+		return "NoLimits";
+	case ExcessInventoryHandling::LeaveBehind:
+		return "LeaveBehind";
+	case ExcessInventoryHandling::ConvertToSeptims:
+		return "ConvertToSeptims";
+	default:
+		// get container name
+		return ManagedList::TransferList().ByIndex(
+			static_cast<size_t>(excessInventoryHandling) - static_cast<size_t>(ExcessInventoryHandling::Container1)).second;
+	}
 }
 
 }

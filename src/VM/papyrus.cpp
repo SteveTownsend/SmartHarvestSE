@@ -354,10 +354,10 @@ namespace papyrus
 		{
 			shse::ManagedList::WhiteList().Add(entry);
 		}
-		else
-		{
-			shse::ManagedList::TransferList().Add(entry);
-		}
+	}
+	void AddEntryToTransferList(RE::StaticFunctionTag*, RE::TESForm* entry, const std::string name)
+	{
+		shse::ManagedList::TransferList().AddNamed(entry, name);
 	}
 	// This is the last function called by the scripts when re-syncing state
 	// This is called for game reload, or whitelist/blacklist updates (reload=false)
@@ -514,6 +514,12 @@ namespace papyrus
 	{
 		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
 		return lister.DeleteItem(item->As<RE::TESBoundObject>(), excessOnly);
+	}
+
+	std::string CheckItemAsExcess(RE::StaticFunctionTag*, RE::TESForm* item)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.CheckItemAsExcess(item->As<RE::TESBoundObject>());
 	}
 
 	bool IsLootableObject(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -818,6 +824,7 @@ namespace papyrus
 		a_vm->RegisterFunction("SellItem", SHSE_PROXY, papyrus::SellItem);
 		a_vm->RegisterFunction("TransferItem", SHSE_PROXY, papyrus::TransferItem);
 		a_vm->RegisterFunction("DeleteItem", SHSE_PROXY, papyrus::DeleteItem);
+		a_vm->RegisterFunction("CheckItemAsExcess", SHSE_PROXY, papyrus::CheckItemAsExcess);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
@@ -841,6 +848,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);
+		a_vm->RegisterFunction("AddEntryToTransferList", SHSE_PROXY, papyrus::AddEntryToTransferList);
 		a_vm->RegisterFunction("SyncDone", SHSE_PROXY, papyrus::SyncDone);
 		a_vm->RegisterFunction("PrintFormID", SHSE_PROXY, papyrus::PrintFormID);
 

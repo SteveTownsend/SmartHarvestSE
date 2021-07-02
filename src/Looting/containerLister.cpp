@@ -157,6 +157,16 @@ std::string ContainerLister::DeleteItem(RE::TESBoundObject* target, const bool e
 	return entry.Delete(excessOnly);
 }
 
+std::string ContainerLister::CheckItemAsExcess(RE::TESBoundObject* target)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		return "Not Handled";
+	}
+	return entry.Disposition();
+}
+
 InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* target) const
 {
 	// refactored following QuickLookRE

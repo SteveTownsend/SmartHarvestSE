@@ -209,10 +209,23 @@ Function SyncList(int listNum, Form[] forms, int formCount)
     int index = 0
     while index < formCount
         Form nextEntry = forms[index]
-        ; do not push empty entries to C++ for blacklist or whitelist. Transfer List is sparse.
-        if (listnum == list_type_transfer) || (nextEntry && (StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0))
+        ; do not push empty entries to C++ for blacklist or whitelist.
+        if nextEntry && (StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0)
             AddEntryToList(listNum, nextEntry)
         endif
+        index += 1
+    endwhile
+endFunction
+
+; merge FormList with plugin data
+Function SyncTransferList(Form[] forms, string[] names, int formCount)
+    ; plugin resets to empty baseline
+    ResetList(list_type_transfer)
+    ; ensure BlackList/WhiteList members are present in the plugin's list
+    int index = 0
+    while index < formCount
+        ; Transfer List is sparse. Include empty entries to keep plugin in sync.
+        AddEntryToTransferList(forms[index], names[index])
         index += 1
     endwhile
 endFunction
@@ -248,17 +261,17 @@ int Function UpdateListedForms(int totalEntries, Form[] myList, form[] updateLis
     return valid
 endFunction
 
-int Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[] updateInUse, int[] indices, string[] updateNames, bool[] flags, string trans)
+Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[] updateInUse, int[] indices, string[] updateNames, bool[] flags, string trans)
     ; replace existing entries with valid Forms from MCM
     int index = 0
     int xrefIndex = 0   ; index of the passed container in the sparse list
-    int valid = 0
     while index < activeEntries
         ; iterate blank entries
         while xrefIndex < indices[index]
             transferListInUse[xrefIndex] = False
             transferList[xrefIndex] = None
-            transferNames[xrefIndex] = None
+            transferNames[xrefIndex] = ""
+            ;DebugTrace("Skip blank transfer list xref-index " + xrefIndex + " index " + index)
             xrefIndex += 1
         endWhile
 
@@ -266,12 +279,13 @@ int Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[
             transferListInUse[xRefIndex] = updateInUse[index]
             transferList[xRefIndex] = updateList[index]
             transferNames[xRefIndex] = updateNames[index]
-            valid += 1
+            ;DebugTrace("In-use transfer list xref-index " + xrefIndex + " index " + index + " " + transferNames[xRefIndex])
         else
             transferListInUse[xrefIndex] = False
             transferList[xrefIndex] = None
-            transferNames[xrefIndex] = None
+            transferNames[xrefIndex] = ""
             transferListSize -= 1
+            ;DebugTrace("Unused transfer list xref-index " + xrefIndex + " index " + index)
 	    
             string translation = GetTranslation(trans)
             if (translation)
@@ -284,7 +298,6 @@ int Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[
         xrefIndex += 1
         index += 1
     endWhile
-    return valid
 endFunction
 
 Function UpdateWhiteList(int totalEntries, Form[] updateList, bool[] flags, string trans)
@@ -296,14 +309,14 @@ Function UpdateBlackList(int totalEntries, Form[] updateList, bool[] flags, stri
 EndFunction
 
 Function UpdateTransferList(int activeEntries, bool[] updateInUse, Form[] updateList, int[] indices, string[] names, bool[] flags, string trans)
-    transferListSize = UpdateTransferListForms(activeEntries, updateList, updateInUse, indices, names, flags, trans)
-    SyncList(list_type_transfer, transferList, transferListSize)
+    UpdateTransferListForms(activeEntries, updateList, updateInUse, indices, names, flags, trans)
+    SyncTransferList(transferList, transferNames, 64)
 EndFunction
 
 ;push updated lists to plugin
 Function SyncLists(bool reload, bool updateLists)
     if updateLists
-        SyncList(list_type_transfer, transferList, transferListSize)
+        SyncTransferList(transferList, transferNames, 64)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
@@ -330,7 +343,7 @@ int Function ClearTransferListEntry(int listMax, int index)
     if index < listMax
         AlwaysTrace("Removing " + transferList[index] + ", entry " + index + " of " + listMax)
         transferList[index] = None
-        transferNames[index] = None
+        transferNames[index] = ""
         transferListInUse[index] = False
         transferListSize -= 1
     else
@@ -385,12 +398,16 @@ function HandlePauseKeyPress(Form target)
         result = DeleteItem(target, False)
     elseif ibutton == 5 ; delete excess
         result = DeleteItem(target, True)
+    elseif ibutton == 6 ; delete excess
+        result = CheckItemAsExcess(target)
     endIf
-    ; Cancel (6) or unknown option is a no-op
+    ; Cancel (7) or unknown option is a no-op
     if result != ""
-        ; Poke InventoryMenu to update count        
-        Player.RemoveItem(target, 0, True, None)
-        ; display error or action taken
+        if ibutton < 6
+            ; Poke InventoryMenu to update count        
+            Player.RemoveItem(target, 0, True, None)
+        endIf
+        ; display diagnostic, error or action taken
         Debug.MessageBox(result)
     endIf
 endFunction
@@ -726,7 +743,7 @@ endFunction
 ; BlackList/WhiteList hotkeys
 Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey, Float holdTime)
     ; check for long press
-    if holdTime > 3.0
+    if holdTime > 1.5
         if isWhiteKey
             if targetedRefr.GetBaseObject() as Container
                 ProcessContainerCollectibles(targetedRefr)
@@ -790,7 +807,7 @@ Function HandleCrosshairPauseHotKey(ObjectReference targetedRefr)
     if locationName != ""
         ; add or remove the REFR, not the Base, to avoid blocking other REFRs with same Base
         ToggleStatusInTransferList(locationName, refrToStore)
-        SyncList(list_type_transfer, transferList, transferListSize)
+        SyncTransferList(transferList, transferNames, 64)
     else
         Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_TRANSFERLIST")
     endIf
@@ -809,7 +826,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
         ; handle hotkey actions for crosshair in reference
         ObjectReference targetedRefr = Game.GetCurrentCrosshairRef()
         if keyCode == pauseKeyCode
-            if holdTime > 3.0
+            if holdTime > 1.5
                 ; add Container to TargetList requires long press
                 if targetedRefr
                     HandleCrosshairPauseHotKey(targetedRefr)
@@ -817,7 +834,7 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     return
                 endIf
                 ; trigger shader test on really long press
-                ToggleCalibration(holdTime > 10.0)
+                ToggleCalibration(holdTime > 5.0)
             else
                 Pause()
             endif

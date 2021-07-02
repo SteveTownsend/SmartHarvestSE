@@ -33,6 +33,8 @@ InventoryEntry::InventoryEntry(RE::TESBoundObject* item, const int count) :
 	m_item(item),
 	m_count(count),
 	m_totalDelta(0),
+	m_maxItems(0),
+	m_maxItemsByWeight(0),
 	m_maxCount(0),
 	m_value(0),
 	m_saleProceeds(0),
@@ -66,22 +68,22 @@ void InventoryEntry::Populate()
 	double maxWeight(0.0);
 	if (m_crafting)
 	{
-		m_maxCount = SettingsCache::Instance().CraftingItemsExcessCount();
+		m_maxItems = SettingsCache::Instance().CraftingItemsExcessCount();
 		maxWeight = SettingsCache::Instance().CraftingItemsExcessWeight();
 	}
 	else
 	{
-		m_maxCount = SettingsCache::Instance().ExcessInventoryCount(m_excessType);
+		m_maxItems = SettingsCache::Instance().ExcessInventoryCount(m_excessType);
 		maxWeight = SettingsCache::Instance().ExcessInventoryWeight(m_excessType);
 	}
-	DBG_DMESSAGE("Excess handling for {} item {}/0x{:08x}, count={} vs {}, per-item weight={:0.2f} vs per-item total {}",
-		(m_crafting ? "crafting" : "non-crafting"), m_item->GetName(), m_item->GetFormID(), m_count, m_maxCount, weight, maxWeight);
 	if (weight > 0.0 && maxWeight > 0.0)
 	{
-		// convert to # of items and round down (by casting)
-		int maxItemsByWeight(static_cast<int>(maxWeight / weight));
-		m_maxCount = std::min(m_maxCount, maxItemsByWeight);
+		// if weight configured, convert to # of items and round down by casting, after incrementing with weight epsilon
+		m_maxItemsByWeight = static_cast<int>((maxWeight / weight) + 0.001);
 	}
+	m_maxCount = std::min(m_maxItems, m_maxItemsByWeight);
+	DBG_DMESSAGE("Excess handling for {} item {}/0x{:08x}, item count={} vs max {}, per-item weight={:0.2f} vs per-item total {} -> {} items",
+		(m_crafting ? "crafting" : "non-crafting"), m_item->GetName(), m_item->GetFormID(), m_count, m_maxItems, weight, maxWeight, m_maxItemsByWeight);
 	m_salePercent = SettingsCache::Instance().SaleValuePercentMultiplier();
 }
 
@@ -133,7 +135,7 @@ void InventoryEntry::HandleExcess()
 		else
 		{
 			size_t index(static_cast<size_t>(m_excessHandling) - static_cast<size_t>(ExcessInventoryHandling::Container1));
-			RE::TESForm* form(ManagedList::TransferList().ByIndex(index));
+			RE::TESForm* form(ManagedList::TransferList().ByIndex(index).first);
 			RE::TESObjectREFR* refr(form->As<RE::TESObjectREFR>());
 			if (refr)
 			{
@@ -197,6 +199,32 @@ std::string InventoryEntry::Delete(const bool excessOnly)
 	StringUtils::Replace(deleted, "{ITEMNAME}", m_item->GetName());
 	StringUtils::Replace(deleted, "{ITEMCOUNT}", std::to_string(m_handled));
 	return deleted;
+}
+std::string InventoryEntry::Disposition()
+{
+	Populate();
+	std::ostringstream oss;
+	oss << m_item->GetName() << " (" << (m_crafting ? "crafting" : GetObjectTypeName(m_excessType));
+	oss << ") " << ExcessInventoryHandlingString(m_excessHandling) << '\n';
+	if (m_excessHandling != ExcessInventoryHandling::NoLimits)
+	{
+		oss << "Max: " << m_maxItems << ',';
+		if (m_maxItemsByWeight > 0)
+		{
+			oss << " by weight: " << m_maxItemsByWeight;
+		}
+		else
+		{
+			oss << " ignore weight";
+		}
+		if (m_excessHandling == ExcessInventoryHandling::ConvertToSeptims)
+			oss << ", sell as " << static_cast<size_t>(m_salePercent * 100.0) << "% of value";
+		else if (m_excessHandling == ExcessInventoryHandling::LeaveBehind)
+			oss << ", leave behind";
+	}
+	std::string result(oss.str());
+	REL_MESSAGE("Excess Inventory Handling for {}/0x{:08x}:\n{}", m_item->GetName(), m_item->GetFormID(), result);
+	return result;
 }
 
 }

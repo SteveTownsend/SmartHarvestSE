@@ -35,7 +35,7 @@ public:
 	virtual ~ManagedList() {}
 
 	virtual void Reset();
-	virtual void Add(RE::TESForm* entry);
+	void Add(RE::TESForm* entry);
 	virtual bool Contains(const RE::TESForm* entry) const;
 	bool ContainsID(const RE::FormID entryID) const;
 
@@ -51,19 +51,21 @@ private:
 	static std::unique_ptr<ManagedTargets> m_transferList;
 };
 
+typedef std::pair<RE::TESForm*, std::string> ManagedTarget;
+
 class ManagedTargets : public ManagedList
 {
 public:
 	using ManagedList::ManagedList;
 
 	virtual void Reset() override;
-	virtual void Add(RE::TESForm* entry) override;
+	void AddNamed(RE::TESForm* entry, const std::string& name);
 	virtual bool Contains(const RE::TESForm* entry) const override;
 	bool HasContainer(RE::FormID container) const;
-	RE::TESForm* ByIndex(const size_t index) const;
+	ManagedTarget ByIndex(const size_t index) const;
 
 private:
-	std::vector<RE::TESForm*> m_orderedList;
+	std::vector<ManagedTarget> m_orderedList;
 	std::unordered_set<RE::FormID> m_containers;
 };
 

@@ -16,6 +16,7 @@ bool Function SupportsExcessHandling(int objectType) global native
 string Function SellItem(Form item, bool excessOnly) global native
 string Function TransferItem(Form item, bool excessOnly) global native
 string Function DeleteItem(Form item, bool excessOnly) global native
+string Function CheckItemAsExcess(Form item) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
@@ -44,6 +45,7 @@ Function ReportOKToScan(bool delayed, int nonce) global native
 
 Function ResetList(int listNum) global native
 Function AddEntryToList(int entryType, Form entry) global native
+Function AddEntryToTransferList(Form entry, string name) global native
 Function SyncDone(bool reload) global native
 Function GameIsReady() global native
 String Function PrintFormID(int formID) global native

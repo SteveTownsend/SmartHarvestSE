@@ -213,6 +213,8 @@ enum class ExcessInventoryHandling : uint8_t {
 	MAX
 };
 
+std::string ExcessInventoryHandlingString(const ExcessInventoryHandling excessInventoryHandling);
+
 inline CollectibleHandling UpdateCollectibleHandling(const CollectibleHandling initial, const CollectibleHandling next)
 {
 	// update if new is more permissive
