@@ -156,20 +156,49 @@ Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
 EndFunction
 
 Function CreateTransferListArrays()
-    transferList = Utility.CreateFormArray(64)
-    transferListInUse = Utility.CreateBoolArray(64)
-    transferNames = Utility.CreateStringArray(64)
+    transferList = Utility.CreateFormArray(64, None)
+    transferListInUse = Utility.CreateBoolArray(64, false)
+    transferNames = Utility.CreateStringArray(64, "")
     transferListSize = 0
 EndFunction
 
 Function MigrateTransferListArrays(int oldLimit, int newLimit)
-    if transferList == None || transferList.Length != oldLimit || newLimit < oldLimit
-        ; just don't, OK?
+    if !transferList || transferList.Length != oldLimit || newLimit < oldLimit
         return
     endIf
-    Utility.ResizeFormArray(transferList, newLimit)
-    Utility.ResizeBoolArray(transferListInUse, newLimit)
-    Utility.ResizeStringArray(transferNames, newLimit)
+    ; in-place Utility.ResizexxxArray does not work
+    Form[] newList = Utility.CreateFormArray(newLimit)
+    bool[] newListInUse = Utility.CreateBoolArray(newLimit)
+    string[] newNames = Utility.CreateStringArray(newLimit)
+    int index = 0
+    while index < oldLimit
+        newList[index] = transferList[index]
+        newListInUse[index] = transferListInUse[index]
+        newNames[index] = transferNames[index]
+        ;DebugTrace("Source index " + index + "=" + transferList[index] + "/" + transferListInUse[index] + "/" + transferNames[index])
+        ;DebugTrace("Temp   index " + index + "=" + newList[index] + "/" + newListInUse[index] + "/" + newNames[index])
+        index += 1
+    endWhile
+    while index < newLimit
+        newList[index] = None
+        newListInUse[index] = False
+        newNames[index] = ""
+        ;DebugTrace("Temp   index " + index + "=" + newList[index] + "/" + newListInUse[index] + "/" + newNames[index])
+        index += 1
+    endWhile
+    transferList = Utility.CreateFormArray(newLimit)
+    transferListInUse = Utility.CreateBoolArray(newLimit)
+    transferNames = Utility.CreateStringArray(newLimit)
+    index = 0
+    while index < newLimit
+        ;DebugTrace("Initial index " + index + "=" + newList[index] + "/" + newListInUse[index] + "/" + newNames[index])
+        transferList[index] = newList[index]
+        transferListInUse[index] = newListInUse[index]
+        transferNames[index] = newNames[index]
+        ;DebugTrace("Interim index " + index + "=" + newList[index] + "/" + newListInUse[index] + "/" + newNames[index])
+        ;DebugTrace("Final   index " + index + "=" + transferList[index] + "/" + transferListInUse[index] + "/" + transferNames[index])
+        index += 1
+    endWhile
     AlwaysTrace("Migrated " + transferListSize + " Transfer List entries, limit " + oldLimit + " to new limit " + newLimit)
 EndFunction
 
