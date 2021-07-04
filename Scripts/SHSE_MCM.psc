@@ -40,6 +40,8 @@ int objType_Clutter
 int objType_Potion
 int objType_Poison
 int objType_Scroll
+int objType_Food
+int objType_Drink
 
 bool enableHarvest
 bool enableLootContainer
@@ -870,6 +872,23 @@ Function ExpandExcessInventoryTargets()
     eventScript.MigrateTransferListArrays(16, 64)
 EndFunction
 
+Function ResetExcessInventoryTargets()
+    ; reset handling if set to container
+    if craftingItemsExcessHandling > excessDisposalSell
+        AlwaysTrace("Reset target container for crafting items")
+        craftingItemsExcessHandling = 0
+    endIf
+    int objType = 0
+    while objType < excessHandlingArray.Length
+        if excessHandlingArray[objType] > excessDisposalSell
+            AlwaysTrace("Reset target container for " + GetObjectTypeNameByType(objType) + " items")
+            excessHandlingArray[objType] = 0
+        endIf
+        objType += 1
+    endWhile
+    eventScript.ResetExcessInventoryTargets()
+EndFunction
+
 Function InitExcessCraftingItems()
     handleExcessCraftingItems = False
     craftingItemsExcessHandling = 0
@@ -971,6 +990,13 @@ Function RemoveLightCategory()
 
 EndFunction
 
+Function AddConsumableObjectTypes()
+    objType_Food = GetObjectTypeByName("food")
+    objType_Drink = GetObjectTypeByName("drink")
+
+    eventScript.SyncUpdatedNativeDataTypes()
+EndFunction
+
 Function InitEnchantedObjects()
     s_enchantedObjectHandlingArray = New String[5]
     s_enchantedObjectHandlingArray[0] = "$SHSE_DONT_PICK_UP"
@@ -1041,7 +1067,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 51
+    return 52
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1178,6 +1204,10 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 51 && CurrentVersion < 51
         ExpandExcessInventoryTargets()
         InstallLockedContainerOptions()
+    endIf
+    if a_version >= 52 && CurrentVersion < 52
+	ResetExcessInventoryTargets()
+        AddConsumableObjectTypes()
     endIf
 endEvent
 
@@ -1917,24 +1947,27 @@ event OnOptionSliderOpen(int a_option)
         int objType = index+1
         if objType == objType_Septim
             ; only useful if they have weight
-            SetSliderDialogInterval(200)
-            SetSliderDialogRange(0, 10000)
+            SetSliderDialogInterval(500)
+            SetSliderDialogRange(0, 100000)
         elseif objType == objType_Ammo || objType == objType_LockPick
             ; light consumables
-            SetSliderDialogInterval(5)
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 250)
-        elseif objType == objType_Soulgem || objType == objType_Gem || objType == objType_Ingredient
-            ; medium weight crafting
-            SetSliderDialogInterval(2)
+        elseif objType == objType_Soulgem || objType == objType_Gem || objType == objType_Ingredient || objType == objType_Food || objType == objType_Drink
+            ; medium weight crafting, mundane consumables - high for needs mods
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 100)
-        elseif objType == objType_Weapon || objType == objType_Armor || objType == objType_Jewelry
-            ; apparel
+        elseif objType == objType_Weapon || objType == objType_Armor || objType == objType_Key
+            ; apparel or keys
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 5)
         elseif objType == objType_Potion || objType == objType_Poison || objType == objType_Scroll
             ; consumables with effects
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 50)
         else
-            ; clutter, animalHide, oreIngot, food, drink, book
+            ; clutter, animalHide, oreIngot, book, jewelry
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 20)
         endif
         return

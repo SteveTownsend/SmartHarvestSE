@@ -27,13 +27,14 @@ namespace shse
 
 std::unique_ptr<ManagedList> ManagedList::m_blackList;
 std::unique_ptr<ManagedList> ManagedList::m_whiteList;
+std::unique_ptr<ManagedList> ManagedList::m_equippedOrWorn;
 std::unique_ptr<ManagedTargets> ManagedList::m_transferList;
 
 ManagedList& ManagedList::BlackList()
 {
 	if (!m_blackList)
 	{
-		m_blackList = std::make_unique<ManagedList>();
+		m_blackList = std::make_unique<ManagedList>("BlackList");
 	}
 	return *m_blackList;
 }
@@ -42,16 +43,25 @@ ManagedList& ManagedList::WhiteList()
 {
 	if (!m_whiteList)
 	{
-		m_whiteList = std::make_unique<ManagedList>();
+		m_whiteList = std::make_unique<ManagedList>("WhiteList");
 	}
 	return *m_whiteList;
+}
+
+ManagedList& ManagedList::EquippedOrWorn()
+{
+	if (!m_equippedOrWorn)
+	{
+		m_equippedOrWorn = std::make_unique<ManagedList>("EquippedOrWorn");
+	}
+	return *m_equippedOrWorn;
 }
 
 ManagedTargets& ManagedList::TransferList()
 {
 	if (!m_transferList)
 	{
-		m_transferList = std::make_unique<ManagedTargets>();
+		m_transferList = std::make_unique<ManagedTargets>("TransferList");
 	}
 	return *m_transferList;
 }
@@ -60,19 +70,25 @@ void ManagedList::Reset()
 {
 	// No baseline for whitelist or transfer-list. Blacklist has a list of known no-loot places.
 	RecursiveLockGuard guard(m_listLock);
+	REL_MESSAGE("Reset {}", m_label);
 	if (this == m_blackList.get())
 	{
-		REL_MESSAGE("Reset BlackList");
 		// seed with the always-forbidden
 		m_members = DataCase::GetInstance()->OffLimitsLocations();
+	}
+	else if (this == m_equippedOrWorn.get())
+	{
+		// seed with current equipped ammo
+		m_members.clear();
+		RE::TESAmmo* ammo(RE::PlayerCharacter::GetSingleton()->GetCurrentAmmo());
+		if (ammo)
+		{
+			Add(ammo);
+		}
 	}
 	else
 	{
 		// whitelist and transferlist are rebuilt from scratch
-		if (this == m_whiteList.get())
-		{
-			REL_MESSAGE("Reset WhiteList");
-		}
 		m_members.clear();
 	}
 }
@@ -89,7 +105,7 @@ void ManagedList::Add(RE::TESForm* entry)
 	{
 		name = entry->GetName();
 	}
-	REL_MESSAGE("{}/0x{:08x} added to {}", name, entry->GetFormID(), this == m_blackList.get() ? "BlackList" : "WhiteList");
+	REL_MESSAGE("{}/0x{:08x} added to {}", name, entry->GetFormID(), m_label);
 	RecursiveLockGuard guard(m_listLock);
 	m_members.insert({ entry->GetFormID(), name });
 }

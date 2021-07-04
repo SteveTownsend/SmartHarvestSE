@@ -28,6 +28,7 @@ namespace shse
 	{
 	public:
 		InventoryEntry(RE::TESBoundObject* item, const int count);
+		InventoryEntry(RE::TESBoundObject* item, const ExcessInventoryExemption exemption);
 
 		static constexpr int UnlimitedItems = 1000000;
 
@@ -42,7 +43,10 @@ namespace shse
 		std::string Disposition();
 
 	private:
+		void init();
+
 		RE::TESBoundObject* m_item;
+		ExcessInventoryExemption m_exemption;
 		ExcessInventoryHandling m_excessHandling;
 		ObjectType m_excessType;
 		bool m_crafting;

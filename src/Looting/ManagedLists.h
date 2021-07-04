@@ -30,8 +30,10 @@ class ManagedList
 public:
 	static ManagedList& BlackList();
 	static ManagedList& WhiteList();
+	static ManagedList& EquippedOrWorn();
 	static ManagedTargets& TransferList();
-	ManagedList() {}
+	ManagedList() = delete;
+	ManagedList(const char* label) : m_label(label) {}
 	virtual ~ManagedList() {}
 
 	virtual void Reset();
@@ -42,12 +44,14 @@ public:
 protected:
 	std::unordered_map<RE::FormID, std::string> m_members;
 	mutable RecursiveLock m_listLock;
+	std::string m_label;
 
 private:
 	bool HasEntryWithSameName(const RE::TESForm* form) const;
 
 	static std::unique_ptr<ManagedList> m_blackList;
 	static std::unique_ptr<ManagedList> m_whiteList;
+	static std::unique_ptr<ManagedList> m_equippedOrWorn;
 	static std::unique_ptr<ManagedTargets> m_transferList;
 };
 

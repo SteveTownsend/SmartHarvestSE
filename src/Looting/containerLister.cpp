@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
+#include "Looting/ManagedLists.h"
 #include "Looting/objects.h"
 #include "WorldState/QuestTargets.h"
 
@@ -102,7 +103,10 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 
 		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
+		{
+			DBG_DMESSAGE("Quest Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
 			continue;
+		}
 
 		// register any new user-created Ingestible
 		if (itemObject->IsDynamicForm())
@@ -112,6 +116,13 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 				// User created potion or poison
 				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
 			}
+		}
+
+		// exempt Equipped and Worn items
+		if (ManagedList::EquippedOrWorn().Contains(itemObject))
+		{
+			DBG_DMESSAGE("Equipped/Worn Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+			continue;
 		}
 
 		InventoryEntry itemEntry(itemObject, count);
@@ -160,10 +171,6 @@ std::string ContainerLister::DeleteItem(RE::TESBoundObject* target, const bool e
 std::string ContainerLister::CheckItemAsExcess(RE::TESBoundObject* target)
 {
 	InventoryEntry entry(GetSingleInventoryEntry(target));
-	if (entry.Count() <= 0)
-	{
-		return "Not Handled";
-	}
 	return entry.Disposition();
 }
 
@@ -177,18 +184,32 @@ InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* targ
 		if (target != itemObject)
 			continue;
 		if (count <= 0)
-			break;
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::CountIsZero);
+		}
 		if (!FormUtils::IsConcrete(itemObject))
-			break;
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::Ineligible);
+		}
 		if (itemObject->formType == RE::FormType::LeveledItem)
-			break;
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::IsLeveledItem);
+		}
 		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
-			break;
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::QuestItem);
+		}
+
+		// exempt Equipped and Worn items
+		if (ManagedList::EquippedOrWorn().Contains(itemObject))
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::ItemInUse);
+		}
 
 		return InventoryEntry(itemObject, count);
 	}
-	return InventoryEntry(target, 0);
+	return InventoryEntry(target, ExcessInventoryExemption::NotFound);
 }
 
 size_t ContainerLister::AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling)

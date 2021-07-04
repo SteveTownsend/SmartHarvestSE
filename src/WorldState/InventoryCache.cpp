@@ -31,6 +31,7 @@ namespace shse
 
 InventoryEntry::InventoryEntry(RE::TESBoundObject* item, const int count) :
 	m_item(item),
+	m_exemption(ExcessInventoryExemption::NotExempt),
 	m_count(count),
 	m_totalDelta(0),
 	m_maxItems(0),
@@ -41,6 +42,28 @@ InventoryEntry::InventoryEntry(RE::TESBoundObject* item, const int count) :
 	m_weight(0.0),
 	m_salePercent(0.0),
 	m_handled(0)
+{
+	init();
+}
+
+InventoryEntry::InventoryEntry(RE::TESBoundObject* item, const ExcessInventoryExemption exemption) :
+	m_item(item),
+	m_exemption(exemption),
+	m_count(0),
+	m_totalDelta(0),
+	m_maxItems(0),
+	m_maxItemsByWeight(0),
+	m_maxCount(0),
+	m_value(0),
+	m_saleProceeds(0),
+	m_weight(0.0),
+	m_salePercent(0.0),
+	m_handled(0)
+{
+	init();
+}
+
+void InventoryEntry::init()
 {
 	m_crafting = SettingsCache::Instance().HandleExcessCraftingItems() && CraftingItems::Instance().IsCraftingItem(m_item);
 	if (m_crafting)
@@ -80,8 +103,12 @@ void InventoryEntry::Populate()
 	{
 		// if weight configured, convert to # of items and round down by casting, after incrementing with weight epsilon
 		m_maxItemsByWeight = static_cast<int>((maxWeight / weight) + 0.001);
+		m_maxCount = std::min(m_maxItems, m_maxItemsByWeight);
 	}
-	m_maxCount = std::min(m_maxItems, m_maxItemsByWeight);
+	else
+	{
+		m_maxCount = m_maxItems;
+	}
 	DBG_DMESSAGE("Excess handling for {} item {}/0x{:08x}, item count={} vs max {}, per-item weight={:0.2f} vs per-item total {} -> {} items",
 		(m_crafting ? "crafting" : "non-crafting"), m_item->GetName(), m_item->GetFormID(), m_count, m_maxItems, weight, maxWeight, m_maxItemsByWeight);
 	m_salePercent = SettingsCache::Instance().SaleValuePercentMultiplier();
@@ -206,6 +233,10 @@ std::string InventoryEntry::Disposition()
 	std::ostringstream oss;
 	oss << m_item->GetName() << " (" << (m_crafting ? "crafting" : GetObjectTypeName(m_excessType));
 	oss << ") " << ExcessInventoryHandlingString(m_excessHandling) << '\n';
+	if (m_exemption != ExcessInventoryExemption::NotExempt)
+	{
+		oss << " Exempt: " << ExcessInventoryExemptionString(m_exemption) << '\n';
+	}
 	if (m_excessHandling != ExcessInventoryHandling::NoLimits)
 	{
 		oss << "Max: " << m_maxItems << ',';

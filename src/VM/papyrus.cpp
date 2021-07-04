@@ -325,19 +325,24 @@ namespace papyrus
 		shse::UIState::Instance().ReportVMGoodToGo(delayed, nonce);
 	}
 
-	constexpr int WhiteList = 1;
-	constexpr int BlackList = 2;
-	constexpr int TransferList = 3;
+	constexpr int White = 1;
+	constexpr int Black = 2;
+	constexpr int Transfer = 3;
+	constexpr int EquippedOrWorn = 4;
 
 	void ResetList(RE::StaticFunctionTag*, const int entryType)
 	{
-		if (entryType == BlackList)
+		if (entryType == Black)
 		{
 			shse::ManagedList::BlackList().Reset();
 		}
-		else if (entryType == WhiteList)
+		else if (entryType == White)
 		{
 			shse::ManagedList::WhiteList().Reset();
+		}
+		else if (entryType == EquippedOrWorn)
+		{
+			shse::ManagedList::EquippedOrWorn().Reset();
 		}
 		else
 		{
@@ -346,13 +351,17 @@ namespace papyrus
 	}
 	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, RE::TESForm* entry)
 	{
-		if (entryType == BlackList)
+		if (entryType == Black)
 		{
 			shse::ManagedList::BlackList().Add(entry);
 		}
-		else if (entryType == WhiteList)
+		else if (entryType == White)
 		{
 			shse::ManagedList::WhiteList().Add(entry);
+		}
+		else if (entryType == EquippedOrWorn)
+		{
+			shse::ManagedList::EquippedOrWorn().Add(entry);
 		}
 	}
 	void AddEntryToTransferList(RE::StaticFunctionTag*, RE::TESForm* entry, const std::string name)

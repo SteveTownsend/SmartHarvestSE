@@ -142,6 +142,18 @@ enum class QuestObjectHandling {
 	MAX
 };
 
+enum class ExcessInventoryExemption : uint8_t {
+	NotExempt = 0,
+	QuestItem,
+	ItemInUse,
+	CountIsZero,
+	Ineligible,
+	IsLeveledItem,
+	NotFound
+};
+
+std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excessInventoryExemption);
+
 enum class ExcessInventoryHandling : uint8_t {
 	NoLimits = 0,
 	LeaveBehind,

@@ -111,6 +111,28 @@ bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objec
 	return true;
 }
 
+std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excessInventoryExemption)
+{
+	switch (excessInventoryExemption) {
+	case ExcessInventoryExemption::NotExempt:
+		return "NotExempt";
+	case ExcessInventoryExemption::QuestItem:
+		return "QuestItem";
+	case ExcessInventoryExemption::ItemInUse:
+		return "ItemInUse";
+	case ExcessInventoryExemption::CountIsZero:
+		return "CountIsZero";
+	case ExcessInventoryExemption::Ineligible:
+		return "Ineligible";
+	case ExcessInventoryExemption::IsLeveledItem:
+		return "IsLeveledItem";
+	case ExcessInventoryExemption::NotFound:
+		return "NotFound";
+	default:
+		return "OutOfRange";
+	}
+}
+
 std::string ExcessInventoryHandlingString(const ExcessInventoryHandling excessInventoryHandling)
 {
 	switch (excessInventoryHandling) {

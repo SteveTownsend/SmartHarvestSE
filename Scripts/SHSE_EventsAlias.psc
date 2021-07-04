@@ -86,6 +86,7 @@ int blackListSize
 int location_type_whitelist
 int location_type_blacklist
 int list_type_transfer
+int list_type_in_use_items
 int pauseKeyCode
 int whiteListKeyCode
 int blackListKeyCode
@@ -193,13 +194,23 @@ Function MigrateTransferListArrays(int oldLimit, int newLimit)
     while index < newLimit
         ;DebugTrace("Initial index " + index + "=" + newList[index] + "/" + newListInUse[index] + "/" + newNames[index])
         transferList[index] = newList[index]
-        transferListInUse[index] = newListInUse[index]
+        transferListInUse[index] = False
         transferNames[index] = newNames[index]
         ;DebugTrace("Interim index " + index + "=" + newList[index] + "/" + newListInUse[index] + "/" + newNames[index])
         ;DebugTrace("Final   index " + index + "=" + transferList[index] + "/" + transferListInUse[index] + "/" + transferNames[index])
         index += 1
     endWhile
     AlwaysTrace("Migrated " + transferListSize + " Transfer List entries, limit " + oldLimit + " to new limit " + newLimit)
+EndFunction
+
+Function ResetExcessInventoryTargets()
+    int index = 0
+    while index < 64
+        ; reset transfer target - the old setting could be corrupt
+        transferListInUse[index] = False
+	index += 1
+    endWhile
+    Debug.MessageBox(GetTranslation("$SHSE_MIGRATED_EXCESS_INVENTORY"))
 EndFunction
 
 int Function GetWhiteListSize()
@@ -245,6 +256,45 @@ Function SyncList(int listNum, Form[] forms, int formCount)
         index += 1
     endwhile
 endFunction
+
+; inform plugin of player's current worn and equipped items
+Function UpdateInUseItems()
+    ResetList(list_type_in_use_items)
+    ; check actor slots for worn items
+    ; based on https://www.creationkit.com/index.php?title=Slot_Masks_-_Armor
+    ;ignore reserved slots
+    int slotsChecked = 0x00100000
+    slotsChecked += 0x00200000 
+    slotsChecked += 0x80000000
+ 
+    int index = 0
+    int thisSlot = 0x1
+    while (thisSlot < 0x80000000)
+        if (Math.LogicalAnd(slotsChecked, thisSlot) != thisSlot) ;only check slots we haven't found anything equipped on already
+            Armor nextWorn = player.GetWornForm(thisSlot) as Armor
+            if nextWorn
+                slotsChecked += nextWorn.GetSlotMask() ;add all slots this item covers to our slotsChecked variable
+                AddEntryToList(list_type_in_use_items, nextWorn)
+            else ;no armor was found on this slot
+                slotsChecked += thisSlot
+            endif
+        endif
+        thisSlot *= 2 ;double the number to move on to the next slot
+    endWhile
+
+    Armor shield = player.GetEquippedShield() as Armor
+    if shield
+        AddEntryToList(list_type_in_use_items, shield)
+    endIf
+    Weapon rhWeapon = player.GetEquippedWeapon() as Weapon
+    if rhWeapon
+        AddEntryToList(list_type_in_use_items, rhWeapon)
+    endIf
+    Weapon lhWeapon = player.GetEquippedWeapon(True) as Weapon
+    if lhWeapon
+        AddEntryToList(list_type_in_use_items, lhWeapon)
+    endIf
+EndFunction
 
 ; merge FormList with plugin data
 Function SyncTransferList(Form[] forms, string[] names, int formCount)
@@ -345,10 +395,14 @@ EndFunction
 ;push updated lists to plugin
 Function SyncLists(bool reload, bool updateLists)
     if updateLists
+        UpdateInUseItems()
         SyncTransferList(transferList, transferNames, 64)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
+    ; reset UI State checking nonce in case saved game left us with a bum value
+    pluginNonce = 0
+    mcmOpen = False
     SyncDone(reload)
 endFunction
 
@@ -692,6 +746,7 @@ Function SyncUpdatedNativeDataTypes()
     location_type_whitelist = 1
     location_type_blacklist = 2
     list_type_transfer = 3
+    list_type_in_use_items = 4
 
     infiniteWeight = 100000
 endFunction
@@ -877,8 +932,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             ; Location/cell blacklist whitelist toggle in worldspace
             Form place = GetPlayerPlace()
             if (!place)
-                string msg = "$SHSE_whitelist_form_ERROR"
-                Debug.Notification(msg)
+                if keyCode == whiteListKeyCode
+                    Debug.Notification(GetTranslation("$SHSE_WHITELIST_FORM_ERROR"))
+                else
+                    Debug.Notification(GetTranslation("$SHSE_BLACKLIST_FORM_ERROR"))
+                endIf
                 keyHandlingActive = false
                 return
             endif
@@ -1377,8 +1435,12 @@ EndFunction
 ; Enter a poll loop if UI State forbids native code from scanning.
 Function CheckReportUIState()
     bool goodToGo = OKToScan()
+    ;DebugTrace("UI Good-to-go = " + goodToGo + " for request " + pluginNonce + " plugin-delayed = " + pluginDelayed)
     if goodToGo
-        ;DebugTrace("Report UI Good-to-go = " + goodToGo + " for request " + nonce)
+        ; if UI was detected open, refresh player's equipped/worn items in case they changed
+        if pluginDelayed
+            UpdateInUseItems()
+        endIf
         ReportOKToScan(pluginDelayed, pluginNonce)
         pluginNonce = 0
         pluginDelayed = false
@@ -1390,6 +1452,7 @@ EndFunction
 
 ; this should not kick off competing OnUpdate cycles
 Function StartCheckReportUIState(int nonce)
+    ;DebugTrace("Kick of UI State check for request " + nonce + ", plugin nonce = " + pluginNonce)
     if pluginNonce == 0
         pluginNonce = nonce
         pluginDelayed = false
