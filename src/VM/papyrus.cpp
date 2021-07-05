@@ -435,10 +435,16 @@ namespace papyrus
 		// Check if player can designate this REFR as a target for loot transfer
 		// Do not allow processing of bad REFR or Base
 		if (!refr)
+		{
+			REL_ERROR("Blank REFR for ValidTransferTargetLocation");
 			return "";
+		}
 		DBG_VMESSAGE("Check REFR 0x{:08x} as transfer target - linked to chest {}, known good {}", refr->GetFormID(), linksChest, knownGood);
 		if (IsREFRDynamic(refr))
+		{
+			REL_ERROR("Dynamic REFR for ValidTransferTargetLocation");
 			return "";
+		}
 		const RE::TESObjectCONT* container(nullptr);
 		DBG_VMESSAGE("Check REFR 0x{:08x} for container", refr->GetFormID());
 		if (linksChest)
@@ -466,22 +472,25 @@ namespace papyrus
 			container = refr->GetBaseObject()->As<RE::TESObjectCONT>();
 		}
 		if (!container)
+		{
+			REL_ERROR("REFR 0x{:08x} for ValidTransferTargetLocation is not a container", refr->GetFormID());
 			return "";
+		}
 
 		if (container->data.flags.any(RE::CONT_DATA::Flag::kRespawn))
 		{
-			DBG_VMESSAGE("Respawning container {}/0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
+			REL_ERROR("Respawning container {}/0x{:08x} for REFR 0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
 		if (shse::ManagedList::TransferList().HasContainer(container->GetFormID()))
 		{
-			DBG_VMESSAGE("Multiplexed linked container {}/0x{:08x} is already a transfer target", container->GetFullName(), container->GetFormID());
+			REL_ERROR("Multiplexed linked container {}/0x{:08x} for REFR 0x{:08x} is already a transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
 		// must be in player house to be safe, unless known good
 		if (!knownGood && !shse::LocationTracker::Instance().IsPlayerAtHome())
 		{
-			DBG_VMESSAGE("Player not in their house, cannot target {}/0x{:08x}", container->GetFullName(), container->GetFormID());
+			REL_ERROR("Player not in their house, cannot use {}/0x{:08x} for REFR 0x{:08x} as a transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
 		if (knownGood)
