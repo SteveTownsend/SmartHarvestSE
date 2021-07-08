@@ -66,14 +66,13 @@ InventoryEntry::InventoryEntry(RE::TESBoundObject* item, const ExcessInventoryEx
 void InventoryEntry::init()
 {
 	m_crafting = SettingsCache::Instance().HandleExcessCraftingItems() && CraftingItems::Instance().IsCraftingItem(m_item);
+	m_excessType = GetExcessObjectType(m_item);
 	if (m_crafting)
 	{
-		m_excessType = ObjectType::unknown;
 		m_excessHandling = SettingsCache::Instance().CraftingItemsExcessHandling();
 	}
 	else
 	{
-		m_excessType = GetExcessObjectType(m_item);
 		m_excessHandling = SettingsCache::Instance().ExcessInventoryHandlingType(m_excessType);
 	}
 }
@@ -89,15 +88,13 @@ void InventoryEntry::Populate()
 	m_value = helper.GetWorth();
 	double weight(helper.GetWeight());
 	double maxWeight(0.0);
+	// for crafting items, we use a more permissive limit per item type, if set
+	m_maxItems = SettingsCache::Instance().ExcessInventoryCount(m_excessType);
+	maxWeight = SettingsCache::Instance().ExcessInventoryWeight(m_excessType);
 	if (m_crafting)
 	{
-		m_maxItems = SettingsCache::Instance().CraftingItemsExcessCount();
-		maxWeight = SettingsCache::Instance().CraftingItemsExcessWeight();
-	}
-	else
-	{
-		m_maxItems = SettingsCache::Instance().ExcessInventoryCount(m_excessType);
-		maxWeight = SettingsCache::Instance().ExcessInventoryWeight(m_excessType);
+		m_maxItems = std::max(m_maxItems, SettingsCache::Instance().CraftingItemsExcessCount());
+		maxWeight = std::max(maxWeight, SettingsCache::Instance().CraftingItemsExcessWeight());
 	}
 	if (weight > 0.0 && maxWeight > 0.0)
 	{
@@ -109,8 +106,9 @@ void InventoryEntry::Populate()
 	{
 		m_maxCount = m_maxItems;
 	}
-	DBG_DMESSAGE("Excess handling for {} item {}/0x{:08x}, item count={} vs max {}, per-item weight={:0.2f} vs per-item total {} -> {} items",
-		(m_crafting ? "crafting" : "non-crafting"), m_item->GetName(), m_item->GetFormID(), m_count, m_maxItems, weight, maxWeight, m_maxItemsByWeight);
+	DBG_DMESSAGE("Excess handling for {} item {}/0x{:08x} type={}, item count={} vs max {}, per-item weight={:0.2f} vs per-item total {} -> {} items",
+		(m_crafting ? "crafting" : "non-crafting"), m_item->GetName(), m_item->GetFormID(), GetObjectTypeName(m_excessType),
+		m_count, m_maxItems, weight, maxWeight, m_maxItemsByWeight);
 	m_salePercent = SettingsCache::Instance().SaleValuePercentMultiplier();
 }
 
@@ -231,7 +229,7 @@ std::string InventoryEntry::Disposition()
 {
 	Populate();
 	std::ostringstream oss;
-	oss << m_item->GetName() << " (" << (m_crafting ? "crafting" : GetObjectTypeName(m_excessType));
+	oss << m_item->GetName() << " (" << (m_crafting ? "crafting" : "non-crafting") << '/' << GetObjectTypeName(m_excessType);
 	oss << ") " << ExcessInventoryHandlingString(m_excessHandling) << '\n';
 	if (m_exemption != ExcessInventoryExemption::NotExempt)
 	{

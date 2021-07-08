@@ -203,14 +203,16 @@ Function MigrateTransferListArrays(int oldLimit, int newLimit)
     AlwaysTrace("Migrated " + transferListSize + " Transfer List entries, limit " + oldLimit + " to new limit " + newLimit)
 EndFunction
 
-Function ResetExcessInventoryTargets()
+Function ResetExcessInventoryTargets(bool updated)
     int index = 0
     while index < 64
         ; reset transfer target - the old setting could be corrupt
         transferListInUse[index] = False
 	index += 1
     endWhile
-    Debug.MessageBox(GetTranslation("$SHSE_MIGRATED_EXCESS_INVENTORY"))
+    if updated
+        Debug.MessageBox(GetTranslation("$SHSE_MIGRATED_EXCESS_INVENTORY"))
+    endIf
 EndFunction
 
 int Function GetWhiteListSize()
@@ -400,9 +402,11 @@ Function SyncLists(bool reload, bool updateLists)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
-    ; reset UI State checking nonce in case saved game left us with a bum value
-    pluginNonce = 0
-    mcmOpen = False
+    if reload
+        ; reset UI State checking nonce in case saved game left us with a bum value
+        pluginNonce = 0
+        mcmOpen = False
+    endIf
     SyncDone(reload)
 endFunction
 
@@ -970,21 +974,21 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 keyHandlingActive = false
                 return
             endif
-            if IsQuestTarget(itemForm)
-                string msg
-                if keyCode == whiteListKeyCode
-                    msg = "$SHSE_WHITELIST_QUEST_TARGET"
-                else
-                    msg = "$SHSE_BLACKLIST_QUEST_TARGET"
-                endIf
-                Debug.Notification(msg)
-                keyHandlingActive = false
-                return
-            endif
 
             if keyCode == pauseKeyCode
                 HandlePauseKeyPress(itemForm)
             else
+                if IsQuestTarget(itemForm)
+                    string msg
+                    if keyCode == whiteListKeyCode
+                        msg = "$SHSE_WHITELIST_QUEST_TARGET"
+                    else
+                        msg = "$SHSE_BLACKLIST_QUEST_TARGET"
+                    endIf
+                    Debug.Notification(msg)
+                    keyHandlingActive = false
+                    return
+                endif
                 if keyCode == whiteListKeyCode
                     HandleWhiteListKeyPress(itemForm)
                 else ; blacklist key
@@ -1183,13 +1187,11 @@ int Function SupportedCritterActivateCount(ObjectReference target)
 EndFunction
 
 
-Event OnHarvest(ObjectReference akTarget, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
+Event OnHarvest(ObjectReference akTarget, Form baseForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
-    form baseForm = akTarget.GetBaseObject()
-    int baseID = baseForm.GetFormID()
-    string baseName = baseForm.GetName()
+    int baseID = akTarget.GetBaseObject().GetFormID()
 
     ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + baseForm) 
     ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ")
@@ -1419,13 +1421,13 @@ EndFunction
 
 bool Function OKToScan()
     if mcmOpen
-        ;DebugTrace("MCM for SHSE is open")
+        AlwaysTrace("MCM for SHSE is open")
         return False
     elseif (Utility.IsInMenuMode())
-        ;DebugTrace("UI has menu open")
+        AlwaysTrace("UI has menu open")
         return False
     elseif (!Game.IsActivateControlsEnabled())
-        ;DebugTrace("UI has controls disabled")
+        AlwaysTrace("UI has controls disabled")
         return False
     endIf
     return True
@@ -1435,7 +1437,7 @@ EndFunction
 ; Enter a poll loop if UI State forbids native code from scanning.
 Function CheckReportUIState()
     bool goodToGo = OKToScan()
-    ;DebugTrace("UI Good-to-go = " + goodToGo + " for request " + pluginNonce + " plugin-delayed = " + pluginDelayed)
+    AlwaysTrace("UI Good-to-go = " + goodToGo + " for request " + pluginNonce + " plugin-delayed = " + pluginDelayed)
     if goodToGo
         ; if UI was detected open, refresh player's equipped/worn items in case they changed
         if pluginDelayed
@@ -1452,7 +1454,7 @@ EndFunction
 
 ; this should not kick off competing OnUpdate cycles
 Function StartCheckReportUIState(int nonce)
-    ;DebugTrace("Kick of UI State check for request " + nonce + ", plugin nonce = " + pluginNonce)
+    AlwaysTrace("Kick off UI State check for request " + nonce + ", plugin nonce = " + pluginNonce)
     if pluginNonce == 0
         pluginNonce = nonce
         pluginDelayed = false
@@ -1559,7 +1561,4 @@ Event OnGameReady()
     ; only need to check Collections requisite data structure on reload, not MCM close
     ResetCollections()
     PushGameTime(Utility.GetCurrentGameTime())
-    
-    ; kick off scan thread release checking once game is ready. Use sentinel value for this case.
-    StartCheckReportUIState(-1)
 EndEvent

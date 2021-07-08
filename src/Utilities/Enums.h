@@ -146,6 +146,7 @@ enum class ExcessInventoryExemption : uint8_t {
 	NotExempt = 0,
 	QuestItem,
 	ItemInUse,
+	IsFavouriteItem,
 	CountIsZero,
 	Ineligible,
 	IsLeveledItem,

@@ -424,7 +424,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
 				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
 			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
-			EventPublisher::Instance().TriggerHarvest(m_candidate, objType, itemCount,
+			EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
 				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
 			if (isFirehose)

@@ -125,6 +125,25 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 			continue;
 		}
 
+		//  exempt Favorite items
+		if (entry->extraLists)
+		{
+			bool favourite(false);
+			for (RE::ExtraDataList* extraData : *(entry->extraLists))
+			{
+				if (extraData->HasType(RE::ExtraDataType::kHotkey))
+				{
+					favourite = true;
+					break;
+				}
+			}
+			if (favourite)
+			{
+				DBG_DMESSAGE("Favourite Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+		}
+
 		InventoryEntry itemEntry(itemObject, count);
 		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
 			continue;
@@ -205,6 +224,16 @@ InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* targ
 		if (ManagedList::EquippedOrWorn().Contains(itemObject))
 		{
 			return InventoryEntry(target, ExcessInventoryExemption::ItemInUse);
+		}
+
+		//  exempt Favorite items
+		if (entry->extraLists)
+		{
+			for (RE::ExtraDataList* extraData : *(entry->extraLists))
+			{
+				if (extraData->HasType(RE::ExtraDataType::kHotkey))
+					return InventoryEntry(target, ExcessInventoryExemption::IsFavouriteItem);
+			}
 		}
 
 		return InventoryEntry(itemObject, count);

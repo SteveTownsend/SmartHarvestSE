@@ -44,6 +44,7 @@ private:
 	std::mutex m_uiLock;
 	bool m_vmResponded;
 	bool m_uiDelayed;
+	bool m_waiting;
 };
 
 }

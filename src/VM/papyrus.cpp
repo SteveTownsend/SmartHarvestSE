@@ -552,6 +552,7 @@ namespace papyrus
 			formType == RE::FormType::Hazard ||
 			formType == RE::FormType::IdleMarker ||
 			formType == RE::FormType::MovableStatic ||
+			formType == RE::FormType::Projectile ||			// do not allow whitelist/blacklist - need to do from Inventory
 			formType == RE::FormType::Static)
 		{
 			return false;

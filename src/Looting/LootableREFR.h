@@ -41,6 +41,7 @@ public:
 	bool HarvestForbiddenForForm() const;
 
 	const RE::TESBoundObject* GetLootable() const;
+	const RE::TESBoundObject* GetTarget() const;
 	void SetLootable(const RE::TESBoundObject* lootable);
 	virtual double GetWeight(void) const override;
 	inline const RE::TESObjectREFR* GetReference() const { return m_ref; }

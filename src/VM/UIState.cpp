@@ -39,7 +39,7 @@ UIState& UIState::Instance()
 	return *m_instance;
 }
 
-UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false)
+UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_waiting(false)
 {
 }
 
@@ -50,18 +50,30 @@ bool UIState::WaitUntilVMGoodToGo()
 	const auto startTime(std::chrono::high_resolution_clock::now());
 	++m_nonce;
 	int nonce(m_nonce);
-	DBG_MESSAGE("UI status request # {}", nonce);
+	REL_MESSAGE("UI status request # {}", nonce);
 	EventPublisher::Instance().TriggerCheckOKToScan(nonce);
 
 	// wait for async result from script
 	std::unique_lock<std::mutex> guard(m_uiLock);
 	m_vmResponded = false;
 	m_uiDelayed = false;
+	m_waiting = true;
 	m_uiReport.wait(guard, [&] { return m_vmResponded; });
+	m_waiting = false;
 	const auto endTime(std::chrono::high_resolution_clock::now());
-	DBG_MESSAGE("Script reported UI ready for request {} after {} microseconds",
+	REL_MESSAGE("Script reported UI ready for request {} after {} microseconds",
 		nonce, std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count());
-	if (m_uiDelayed)
+	if (m_nonce == 0)
+	{
+		REL_MESSAGE("Game load during UI poll, delay scan until synced");
+		while (!PluginFacade::Instance().IsSynced())
+		{
+			WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
+		}
+		REL_MESSAGE("Scan progressing after game load");
+		return true;
+	}
+	else if (m_uiDelayed)
 	{
 		REL_MESSAGE("UI/controls were active, delay scan");
 		WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
@@ -81,7 +93,7 @@ void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)
 	}
 	else
 	{
-		DBG_MESSAGE("VM Good to Go for request {}", nonce);
+		REL_MESSAGE("VM Good to Go for request {}", nonce);
 		// response matches pending request - update the status and release waiter
 	}
 	if (delayed)
@@ -94,9 +106,16 @@ void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)
 
 void UIState::Reset()
 {
+	int nonce = m_nonce;
 	m_nonce = 0;
-	m_vmResponded = false;
 	m_uiDelayed = false;
+	m_vmResponded = m_waiting;
+	// Scan thread was waiting for response when game load kicked off. Release it with a failure code once .
+	if (m_waiting)
+	{
+		REL_MESSAGE("VM check released for request {}", nonce);
+		m_uiReport.notify_one();
+	}
 }
 
 }

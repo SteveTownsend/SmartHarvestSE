@@ -874,19 +874,22 @@ EndFunction
 
 Function ResetExcessInventoryTargets()
     ; reset handling if set to container
+    bool updated = False
     if craftingItemsExcessHandling > excessDisposalSell
         AlwaysTrace("Reset target container for crafting items")
         craftingItemsExcessHandling = 0
+        updated = True
     endIf
     int objType = 0
     while objType < excessHandlingArray.Length
         if excessHandlingArray[objType] > excessDisposalSell
             AlwaysTrace("Reset target container for " + GetObjectTypeNameByType(objType) + " items")
             excessHandlingArray[objType] = 0
+            updated = True
         endIf
         objType += 1
     endWhile
-    eventScript.ResetExcessInventoryTargets()
+    eventScript.ResetExcessInventoryTargets(updated)
 EndFunction
 
 Function InitExcessCraftingItems()
