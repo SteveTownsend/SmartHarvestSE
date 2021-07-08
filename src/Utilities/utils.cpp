@@ -157,6 +157,11 @@ namespace WindowsUtils
 
 	void TakeNap(const double delaySeconds)
 	{
+		constexpr double PragmaticLongestWait = 10.0;
+		if (delaySeconds < 0.0 || delaySeconds > PragmaticLongestWait)
+		{
+			REL_ERROR("Adjust requested wait of {:0.2f} seconds to {:0.2f}", delaySeconds, PragmaticLongestWait);
+		}
 		DBG_MESSAGE("wait for {} milliseconds", static_cast<long long>(delaySeconds * 1000.0));
 
 		// flush log output here
