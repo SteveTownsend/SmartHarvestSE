@@ -128,18 +128,43 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		//  exempt Favorite items
 		if (entry->extraLists)
 		{
-			bool favourite(false);
+			bool isFavourite(false);
+			bool isEnchanted(false);
+			bool isTempered(false);
 			for (RE::ExtraDataList* extraData : *(entry->extraLists))
 			{
+				if (!extraData)
+					continue;
+
 				if (extraData->HasType(RE::ExtraDataType::kHotkey))
 				{
-					favourite = true;
+					isFavourite = true;
+					break;
+				}
+				if (ExtraDataList::GetEnchantment(extraData))
+				{
+					isEnchanted = true;
+					break;
+				}
+				if (extraData->HasType(RE::ExtraDataType::kTextDisplayData))
+				{
+					isTempered = true;
 					break;
 				}
 			}
-			if (favourite)
+			if (isFavourite)
 			{
 				DBG_DMESSAGE("Favourite Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+			if (isEnchanted)
+			{
+				DBG_DMESSAGE("Enchanted Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+			if (isTempered)
+			{
+				DBG_DMESSAGE("Tempered Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
 				continue;
 			}
 		}
@@ -226,15 +251,30 @@ InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* targ
 			return InventoryEntry(target, ExcessInventoryExemption::ItemInUse);
 		}
 
-		//  exempt Favorite items
+		//  exempt Favourite, Tempered and Enchanted Items
+		bool isFavourite(false);
+		bool isEnchanted(false);
+		bool isTempered(false);
 		if (entry->extraLists)
 		{
 			for (RE::ExtraDataList* extraData : *(entry->extraLists))
 			{
+				if (!extraData)
+					continue;
 				if (extraData->HasType(RE::ExtraDataType::kHotkey))
-					return InventoryEntry(target, ExcessInventoryExemption::IsFavouriteItem);
+					isFavourite = true;
+				if (ExtraDataList::GetEnchantment(extraData))
+					isEnchanted = true;
+				if (extraData->HasType(RE::ExtraDataType::kTextDisplayData))
+					isTempered = true;
 			}
 		}
+		if (isFavourite)
+			return InventoryEntry(target, ExcessInventoryExemption::IsFavourite);
+		if (isTempered)
+			return InventoryEntry(target, ExcessInventoryExemption::IsTempered);
+		if (isEnchanted)
+			return InventoryEntry(target, ExcessInventoryExemption::IsPlayerEnchanted);
 
 		return InventoryEntry(itemObject, count);
 	}

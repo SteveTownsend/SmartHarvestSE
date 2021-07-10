@@ -240,9 +240,14 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 		// skip disabled collections
 		if (!nextCollection->IsActive())
 			return;
+		bool inScope;
 		bool repeat;
 		bool observed;
-		std::tie(repeat, observed) = nextCollection->InScopeAndCollectibleFor(matcher);
+		std::tie(inScope, repeat, observed) = nextCollection->InScopeAndCollectibleFor(matcher);
+		// skip if item out of scope for this collection
+		if (!inScope)
+			return;
+
 		// If we already saw this item on this scan, this is a repeat observation. m_observed is not updated
 		// until Collection add, which happens later on after item is in inventory.
 		observed = observed || m_collectedOnThisScan.contains(formID);

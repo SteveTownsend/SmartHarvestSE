@@ -120,8 +120,12 @@ std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excess
 		return "QuestItem";
 	case ExcessInventoryExemption::ItemInUse:
 		return "ItemInUse";
-	case ExcessInventoryExemption::IsFavouriteItem:
-		return "IsFavouriteItem";
+	case ExcessInventoryExemption::IsFavourite:
+		return "IsFavourite";
+	case ExcessInventoryExemption::IsPlayerEnchanted:
+		return "IsPlayerEnchanted";
+	case ExcessInventoryExemption::IsTempered:
+		return "IsTempered";
 	case ExcessInventoryExemption::CountIsZero:
 		return "CountIsZero";
 	case ExcessInventoryExemption::Ineligible:
