@@ -48,7 +48,7 @@ uint32_t IHasValueWeight::GetWorth(void) const
 bool IHasValueWeight::ValueWeightTooLowToLoot() const
 {
 	uint32_t worth(GetWorth());
-	DBG_VMESSAGE("Checking value: {}", worth);
+	DBG_VMESSAGE("V/W check for value: {}", worth);
 
 	// valuable objects overrides V/W checks
 	if (IsValuable())

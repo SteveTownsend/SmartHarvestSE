@@ -62,43 +62,81 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 			m_ref->GetFormID(), m_lootable->GetName(), m_lootable->GetFormID(), GetObjectTypeName(m_objectType));
 	}
 	m_typeName = GetObjectTypeName(m_objectType);
-}
-
-bool LootableREFR::IsQuestItem() const
-{
-	if (!m_ref)
-		return false;
-	// check REFR vs pre-populated Quest Targets
-	if (QuestTargets::Instance().ReferencedQuestTargetLootability(m_ref) == Lootability::CannotLootQuestTarget)
-		return true;
-
-	RE::RefHandle handle;
-	RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR*>(m_ref));
-
-	RE::NiPointer<RE::TESObjectREFR> targetRef;
-	RE::LookupReferenceByHandle(handle, targetRef);
-
-	if (!targetRef)
-		targetRef.reset(const_cast<RE::TESObjectREFR*>(m_ref));
-
-	return ExtraDataList::IsREFRQuestObject(targetRef.get(), &targetRef->extraList);
+	m_critter = m_objectType == ObjectType::critter;
+	m_flora = !m_critter && HasIngredient();
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
+	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
 	static const bool recordDups(true);		// final decision to loot the item happens here
 	return itemEx.TreatAsCollectible(recordDups);
 }
 
 bool LootableREFR::IsValuable() const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
+	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
 	return itemEx.IsValuable();
+}
+
+bool LootableREFR::IsHarvestable() const
+{
+	bool canHarvest(m_critter || m_flora);
+#if _DEBUG
+	auto target(GetTarget());
+	DBG_VMESSAGE("check bound object {}/0x{:08x} with type {} harvestable={}",
+		target->GetName(), target->GetFormID(), target->GetFormType(), canHarvest);
+#endif
+	return canHarvest;
+}
+
+bool LootableREFR::IsCritter() const
+{
+	return m_critter;
+}
+
+bool LootableREFR::HasIngredient() const
+{
+	// flora, but not those that produce cash money
+	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
+	auto target(GetTarget());
+	bool hasIngredient(false);
+	if (m_typeName != septimsName && (target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>()))
+	{
+		hasIngredient = true;
+	}
+	DBG_VMESSAGE("{} object {}/0x{:08x} has-ingredient={}", m_typeName, target->GetName(), target->GetFormID(), hasIngredient);
+	return hasIngredient;
+}
+
+bool LootableREFR::HarvestForbiddenForForm() const
+{
+	// flora, but not those that produce cash money
+	if (m_flora)
+	{
+		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
+	}
+	else if (m_critter)
+	{
+		return SettingsCache::Instance().ObjectLootingType(ObjectType::critter) == LootingType::LeaveBehind;
+	}
+	return false;
+}
+
+bool LootableREFR::IsItemLootableInPopulationCenter(ObjectType objectType) const
+{
+	// Config setting overrides
+	if (!SettingsCache::Instance().LootAllowedItemsInSettlement())
+		return false;
+	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
+	// Harvestables are fine too. We mostly don't want to clear the shelves of every building we walk into here.
+	return IsValueWeightExempt(objectType) || IsHarvestable();
 }
 
 void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
 {
+	DBG_VMESSAGE("Update 0x{:08x} from {} to {}", GetTarget()->GetFormID(),
+		GetObjectTypeName(m_objectType), GetObjectTypeName(effectiveType));
 	m_objectType = effectiveType;
 	m_typeName = GetObjectTypeName(m_objectType);
 }
@@ -108,6 +146,11 @@ const RE::TESBoundObject* LootableREFR::GetLootable() const
 	return m_lootable;
 }
 
+const RE::TESBoundObject* LootableREFR::GetTarget() const
+{
+	return m_lootable ? m_lootable : m_ref->GetBaseObject();
+}
+
 void LootableREFR::SetLootable(const RE::TESBoundObject* lootable)
 {
 	m_lootable = lootable;
@@ -115,13 +158,13 @@ void LootableREFR::SetLootable(const RE::TESBoundObject* lootable)
 
 uint32_t LootableREFR::CalculateWorth(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
+	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
 	return itemEx.GetWorth();
 }
 
 double LootableREFR::GetWeight(void) const
 {
-	TESFormHelper itemEx(m_lootable ? m_lootable : m_ref->GetBaseObject(), m_objectType, m_scope);
+	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
 	return itemEx.GetWeight();
 }
 

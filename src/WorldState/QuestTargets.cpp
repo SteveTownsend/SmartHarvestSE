@@ -138,6 +138,7 @@ void QuestTargets::Analyze()
 					// Check for specific instance of item created-in another alias
 					uint16_t createdIn(refAlias->fillData.created.alias.alias);
 					const RE::TESBoundObject* targetItem(refAlias->fillData.created.object);
+					m_questTargetAllItems.insert(targetItem->GetFormID());
 					if (refAlias->fillData.created.alias.create == RE::BGSRefAlias::CreatedFillData::Alias::Create::kIn)
 					{
 						const auto target(aliasByID.find(createdIn));
@@ -222,6 +223,7 @@ void QuestTargets::Analyze()
 						RE::TESObjectREFR* refr(refAlias->fillData.forced.forcedRef.get().get());
 						if (refr && refr->GetBaseObject())
 						{
+							m_questTargetAllItems.insert(refr->GetBaseObject()->GetFormID());
 							size_t itemCount(PlacedObjects::Instance().NumberOfInstances(refr->GetBaseObject()));
 							// record this specific REFR as the QUST target
 							if ((isQuest || (IsLootableInanimateReference(refr) && itemCount <= RareQuestTargetThreshold)) && BlacklistQuestTargetREFR(refr))
@@ -328,7 +330,8 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const 
 {
 	if (!form)
 		return Lootability::NoBaseObject;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
+	// Dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic.
+	// User-created ALCH may trigger this though.
 	if (form->IsDynamicForm())
 		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_questLock);
@@ -351,21 +354,13 @@ bool QuestTargets::AllowsExcessHandling(const RE::TESForm* form) const
 {
 	if (!form)
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic
+	// Dynamic forms must never be recorded as their FormID may be reused - this may never fire, since list was built in startup logic.
+	// User-created ALCH may trigger this though.
 	if (form->IsDynamicForm())
 		return true;
 	RecursiveLockGuard guard(m_questLock);
-	// check for universal item match with no stored explicit  REFR
-	if (m_questTargetItems.contains(form->GetFormID()))
-	{
-		return false;
-	}
-	// check for any reference to base: this may have been sourced from a specific REFR and we have no way to tell that here
-	if (m_questTargetReferenced.contains(form->GetFormID()))
-	{
-		return false;
-	}
-	return true;
+	// check for universal item match
+	return !m_questTargetAllItems.contains(form->GetFormID());
 }
 
 bool QuestTargets::UserCannotPermission(const RE::TESForm* form) const

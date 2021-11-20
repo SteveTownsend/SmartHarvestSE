@@ -68,7 +68,7 @@ public:
 	OwnershipRule CrimeCheckSneaking() const;
 	OwnershipRule CrimeCheckNotSneaking() const;
 	SpecialObjectHandling PlayerBelongingsLoot() const;
-	SpecialObjectHandling LockedChestLoot() const;
+	LockedContainerHandling LockedChestLoot() const;
 	SpecialObjectHandling BossChestLoot() const;
 	SpecialObjectHandling ValuableItemLoot() const;
 	ContainerAnimationHandling PlayContainerAnimation() const;
@@ -109,7 +109,7 @@ private:
 	OwnershipRule m_crimeCheckSneaking;
 	OwnershipRule m_crimeCheckNotSneaking;
 	SpecialObjectHandling m_playerBelongingsLoot;
-	SpecialObjectHandling m_lockedChestLoot;
+	LockedContainerHandling m_lockedChestLoot;
 	SpecialObjectHandling m_bossChestLoot;
 	SpecialObjectHandling m_valuableItemLoot;
 	ContainerAnimationHandling m_playContainerAnimation;

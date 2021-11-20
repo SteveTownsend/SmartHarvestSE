@@ -47,6 +47,7 @@ void TESFormHelper::init()
 	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
 	m_objectType = m_matcher.GetObjectType();
 	m_typeName = GetObjectTypeName(m_objectType);
+	DBG_VMESSAGE("TESFormHelper for {}/0x{:08x} set as {}", m_form->GetName(), m_form->GetFormID(), m_typeName);
 }
 
 RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
@@ -155,13 +156,18 @@ uint32_t TESFormHelper::GetGoldValue() const
 	case RE::FormType::Book:
 		break;
 	default:
+		DBG_VMESSAGE("No value for {}/0x{:08x}", m_form->GetName(), m_form->GetFormID());
 		return 0;
 	}
 
 	const RE::TESValueForm* pValue(m_form->As<RE::TESValueForm>());
 	if (!pValue)
+	{
+		DBG_VMESSAGE("No TESValueForm for {}/0x{:08x}", m_form->GetName(), m_form->GetFormID());
 		return 0;
+	}
 
+	DBG_VMESSAGE("TESValueForm for {}/0x{:08x} has {}", m_form->GetName(), m_form->GetFormID(), pValue->value);
 	return static_cast<uint32_t>(pValue->value);
 }
 
@@ -174,12 +180,16 @@ std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const boo
 double TESFormHelper::GetWeight() const
 {
 	if (!m_form)
-	return 0.0;
+		return 0.0;
 
 	const RE::TESWeightForm* pWeight(m_form->As<RE::TESWeightForm>());
 	if (!pWeight)
+	{
+		DBG_VMESSAGE("No TESWeightForm for {}/0x{:08x}", m_form->GetName(), m_form->GetFormID());
 		return 0.0;
+	}
 
+	DBG_VMESSAGE("TESWeightForm for {}/0x{:08x} has {}", m_form->GetName(), m_form->GetFormID(), pWeight->weight);
 	return pWeight->weight;
 }
 
@@ -209,11 +219,7 @@ uint32_t TESFormHelper::CalculateWorth(void) const
 		{
 			result = TESObjectARMOHelper(m_form->As<RE::TESObjectARMO>()).GetGoldValue();
 		}
-		else if (m_form->formType == RE::FormType::Enchantment ||
-			m_form->formType == RE::FormType::Spell ||
-			m_form->formType == RE::FormType::Scroll ||
-			m_form->formType == RE::FormType::Ingredient ||
-			m_form->formType == RE::FormType::AlchemyItem)
+		else if (m_form->formType == RE::FormType::AlchemyItem)
 		{
 			result = AlchemyItemHelper(m_form->As<RE::AlchemyItem>()).GetGoldValue();
 		}

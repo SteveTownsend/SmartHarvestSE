@@ -76,6 +76,7 @@ public:
 	void RefreshKnownIngredients();
 	bool IsIngredientKnown(const RE::TESForm* form) const;
 
+	bool IsEphemeralForm(const RE::TESForm* form) const;
 	bool BlockForm(const RE::TESForm* form, const Lootability reason);
 	Lootability IsFormBlocked(const RE::TESForm* form) const;
 	void ResetBlockedForms();
@@ -139,6 +140,8 @@ public:
 		return typedForm;
 	}
 
+	void RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable);
+
 	// special case statics
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
@@ -162,6 +165,8 @@ private:
 
 	std::unordered_map<RE::FormType, ObjectType> m_objectTypeByFormType;
 	std::unordered_map<RE::FormID, ObjectType> m_objectTypeByForm;
+	mutable RecursiveLock m_formToTypeLock;
+
 	mutable std::unordered_map<RE::FormID, bool> m_ingredientEffectsKnown;
 	std::unordered_map<const RE::TESProduceForm*, const RE::TESBoundObject*> m_produceFormContents;
 	std::unordered_set<RE::FormID> m_glowableBookKeywords;
@@ -370,6 +375,7 @@ private:
 				std::optional<RE::BGSKeyword*> keyword(keywordForm->GetKeywordAt(index));
 				if (!keyword)
 					continue;
+				// lock not needed during initialization
 				const auto matched(m_objectTypeByForm.find(keyword.value()->GetFormID()));
 				if (matched != m_objectTypeByForm.cend())
 				{

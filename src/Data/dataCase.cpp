@@ -260,9 +260,13 @@ void DataCase::FindCraftingItems(void)
 		unsigned int total(0);
 		unsigned int added(0);
 		cobj->requiredItems.ForEachContainerObject([&] (RE::ContainerObject& item) -> bool {
-			if (CraftingItems::Instance().AddIfNew(item.obj))
-				++added;
-			++total;
+			// Do not add Gold to crafting item list
+			if (item.obj->GetFormID() != Gold)
+			{
+				if (CraftingItems::Instance().AddIfNew(item.obj))
+					++added;
+				++total;
+			}
 			return true;
 		});
 		DBG_MESSAGE("Added {} of {} items for COBJ 0x{:08x}", added, total, cobj->GetFormID());
@@ -862,12 +866,17 @@ bool DataCase::AllEffectsKnown(const RE::IngredientItem* ingredient) const
 	return known;
 }
 
+bool DataCase::IsEphemeralForm(const RE::TESForm* form) const
+{ 
+	return form->GetFormType() != RE::FormType::AlchemyItem && form->IsDynamicForm();
+}
+
 bool DataCase::BlockForm(const RE::TESForm* form, const Lootability reason)
 {
 	if (!form)
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (form->IsDynamicForm())
+	// ephemeral dynamic forms must never be recorded as their FormID may be reused
+	if (IsEphemeralForm(form))
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
 	return (m_blockForm.insert({ form, reason })).second;
@@ -877,8 +886,8 @@ Lootability DataCase::IsFormBlocked(const RE::TESForm* form) const
 {
 	if (!form)
 		return Lootability::NullReference;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (form->IsDynamicForm())
+	// ephemeral dynamic forms must never be recorded as their FormID may be reused
+	if (IsEphemeralForm(form))
 		return Lootability::Lootable;
 	RecursiveLockGuard guard(m_blockListLock);
 	const auto matched(m_blockForm.find(form));
@@ -901,7 +910,7 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 {
 	if (!form)
 		return false;
-	// dynamic forms must never be recorded as their FormID may be reused
+	// dynamic forms must never be recorded as they are not consistent across games, or FormID may be reused if ephemeral
 	if (form->IsDynamicForm())
 		return false;
 	RecursiveLockGuard guard(m_blockListLock);
@@ -911,6 +920,7 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 
 ObjectType DataCase::GetFormObjectType(const RE::FormID formID) const
 {
+	RecursiveLockGuard guard(m_formToTypeLock);
 	const auto entry(m_objectTypeByForm.find(formID));
 	if (entry != m_objectTypeByForm.cend())
 		return entry->second;
@@ -926,9 +936,21 @@ bool DataCase::SetObjectTypeForFormID(const RE::FormID formID, const ObjectType 
 	}
 	else
 	{
-		REL_WARNING("FormID 0x{:08x} cannot be loaded, ignoring attmempt to categorize as {}", formID, GetObjectTypeName(objectType));
+		REL_WARNING("FormID 0x{:08x} cannot be loaded, ignoring attempt to categorize as {}", formID, GetObjectTypeName(objectType));
 		return false;
 	}
+}
+
+void DataCase::RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable)
+{
+	if (!consumable)
+		return;
+	RecursiveLockGuard guard(m_formToTypeLock);
+	if (m_objectTypeByForm.contains(consumable->GetFormID()))
+		return;
+	ObjectType objectType(ConsumableObjectType<RE::AlchemyItem>(consumable));
+	REL_MESSAGE("Register player-created ALCH {}/0x{:08x} as {}", consumable->GetFullName(), consumable->GetFormID(), GetObjectTypeName(objectType));
+	SetObjectTypeForForm(consumable, objectType);
 }
 
 bool DataCase::SetObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType)
@@ -1362,12 +1384,10 @@ template <> ObjectType DataCase::OverrideIfBadChoice<RE::TESObjectWEAP>(const RE
 template <> ObjectType DataCase::ConsumableObjectType<RE::AlchemyItem>(RE::AlchemyItem* consumable)
 {
 	const static RE::FormID drinkSound = 0x0B6435;
-	ObjectType objectType(ObjectType::unknown);
 	if (consumable->IsFood())
-		objectType = (consumable->data.consumptionSound && consumable->data.consumptionSound->formID == drinkSound) ? ObjectType::drink : ObjectType::food;
+		return (consumable->data.consumptionSound && consumable->data.consumptionSound->formID == drinkSound) ? ObjectType::drink : ObjectType::food;
 	else
-		objectType = (consumable->IsPoison()) ? ObjectType::poison : ObjectType::potion;
-	return objectType;
+		return (consumable->IsPoison()) ? ObjectType::poison : ObjectType::potion;
 }
 
 template <> ObjectType DataCase::ConsumableObjectType<RE::IngredientItem>(RE::IngredientItem*)

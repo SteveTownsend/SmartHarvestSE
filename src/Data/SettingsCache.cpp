@@ -40,6 +40,55 @@ SettingsCache& SettingsCache::Instance()
 
 SettingsCache::SettingsCache()
 {
+	// set new game defaults pending data load and refresh
+	m_outdoorsRadius = 45.0 / DistanceUnitInFeet;
+	m_indoorsRadius = 25.0 / DistanceUnitInFeet;
+	m_verticalFactor = 1.0;
+	m_respectDoors = false;
+	m_unencumberedInPlayerHome = false;
+	m_unencumberedIfWeaponDrawn = false;
+	m_unencumberedInCombat = false;
+	m_disableDuringCombat = false;
+	m_disableWhileWeaponIsDrawn = false;
+	m_disableWhileConcealed = false;
+	m_fortuneHuntingEnabled = false;
+	m_fortuneHuntItem = false;
+	m_fortuneHuntNPC = false;
+	m_fortuneHuntContainer = false;
+	m_collectionsEnabled = false;
+	m_notifyLocationChange = false;
+	m_valuableItemThreshold = 500.0;
+	m_valueWeightDefault = 10.0;
+	m_deadBodyLooting = DeadBodyLooting::LootExcludingArmor;
+	m_enchantedObjectHandling = EnchantedObjectHandling::DoLoot;
+	m_delaySeconds = 1.2;
+	m_crimeCheckSneaking = OwnershipRule::DisallowCrime;
+	m_crimeCheckNotSneaking = OwnershipRule::DisallowCrime;
+	m_playerBelongingsLoot = SpecialObjectHandling::DoNotLoot;
+	m_lockedChestLoot = LockedContainerHandling::GlowTarget;
+	m_bossChestLoot = SpecialObjectHandling::GlowTarget;
+	m_valuableItemLoot = SpecialObjectHandling::DoLoot;
+	m_playContainerAnimation = ContainerAnimationHandling::Glow;
+	m_questObjectLoot = QuestObjectHandling::GlowTarget;
+	m_enableLootContainer = true;
+	m_enableHarvest = true;
+	m_lootAllowedItemsInSettlement = true;
+	m_unknownIngredientLoot = false;
+	m_whiteListTargetNotify = false;
+	m_manualLootTargetNotify = true;
+	m_preventPopulationCenterLooting = PopulationCenterSize::Settlements;
+	m_maxMiningItems = 8;
+
+	m_lootingType.fill(LootingType::LootIfValuableEnoughNotify);
+	m_excessHandling.fill(ExcessInventoryHandling::NoLimits);
+	m_excessCount.fill(0);
+	m_excessWeight.fill(0.0);
+	m_valueWeight.fill(0.0);
+	m_saleValuePercentMultiplier = 25.0;
+	m_handleExcessCraftingItems = false;
+	m_craftingItemsExcessHandling = ExcessInventoryHandling::NoLimits;
+	m_craftingItemsExcessCount = 0;
+	m_craftingItemsExcessWeight = 0.0;
 }
 
 void SettingsCache::Refresh(void)
@@ -149,7 +198,7 @@ void SettingsCache::Refresh(void)
 	m_playerBelongingsLoot = SpecialObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "PlayerBelongingsLoot"));
 	REL_VMESSAGE("Player Belongings Loot {}", m_playerBelongingsLoot);
-	m_lockedChestLoot = SpecialObjectHandlingFromIniSetting(
+	m_lockedChestLoot = LockedContainerHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LockedChestLoot"));
 	REL_VMESSAGE("Locked Chest Loot {}", m_lockedChestLoot);
 	m_bossChestLoot = SpecialObjectHandlingFromIniSetting(
@@ -334,7 +383,7 @@ SpecialObjectHandling SettingsCache::PlayerBelongingsLoot() const
 {
 	return m_playerBelongingsLoot;
 }
-SpecialObjectHandling SettingsCache::LockedChestLoot() const
+LockedContainerHandling SettingsCache::LockedChestLoot() const
 {
 	return m_lockedChestLoot;
 }

@@ -76,7 +76,8 @@ bool ScanGovernor::HandleAsDynamicData(RE::TESObjectREFR* refr) const
 	if (LootedDynamicREFRFormID(refr) != InvalidForm)
 		return true;
 
-	// risk exists if REFR or its concrete object is dynamic
+	// risk exists if REFR or its concrete object is dynamic. This is only called for Container or Actor, so check for
+	// Dynamic Base is correct
 	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
 	{
 		DBG_VMESSAGE("dynamic REFR 0x{:08x} or base 0x{:08x} for {}", refr->GetFormID(),
@@ -158,7 +159,7 @@ void ScanGovernor::ResetLootedContainers()
 }
 
 // Remember locked containers so we do not auto-loot after player unlock, if config forbids
-bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) const
+bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr, const LockedContainerHandling lockedChestLoot) const
 {
 	if (!refr)
 		return false;
@@ -173,6 +174,14 @@ bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr) con
 		auto locked(m_lockedContainers.find(refr));
 		if (locked != m_lockedContainers.end())
 		{
+			// if set to loot once unlocked, go ahead
+			if (lockedChestLoot == LockedContainerHandling::LootOnceUnlocked)
+			{
+				DBG_VMESSAGE("Forget REFR 0x{:08x} to now-unlocked container {}/0x{:08x}", refr->GetFormID(),
+					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+				m_lockedContainers.erase(locked);
+				return false;
+			}
 			// if item count has changed, remove from locked container list: manually looted, we assume
 			size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
 				[=](RE::TESBoundObject*) -> bool { return true; }));
@@ -226,7 +235,7 @@ void ScanGovernor::ProgressGlowDemo()
 	{
 		m_nextGlow = CycleGlow(m_nextGlow);
 		std::ostringstream glowText;
-		glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 3 seconds to terminate";
+		glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 1.5 seconds to terminate";
 		RE::DebugNotification(glowText.str().c_str());
 	}
 	else
@@ -237,7 +246,7 @@ void ScanGovernor::ProgressGlowDemo()
 			std::string notificationText("Range: ");
 			notificationText.append(rangeText);
 			StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
-			notificationText.append(", hold Pause key for 3 seconds to terminate");
+			notificationText.append(", hold Pause key for 1.5 seconds to terminate");
 			if (!notificationText.empty())
 			{
 				RE::DebugNotification(notificationText.c_str());
@@ -730,7 +739,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	REL_MESSAGE("Lootability checked for {}", message.c_str());
 	resultStr.str("");
 
-	resultStr << LootabilityName(result) << ' ' << LocationTracker::Instance().PlayerExactLocation();
+	resultStr << LootabilityName(result) << LocationTracker::Instance().PlayerExactLocation();
 	message = resultStr.str();
 	RE::DebugNotification(message.c_str());
 	REL_MESSAGE("Lootability result: {}", message.c_str());

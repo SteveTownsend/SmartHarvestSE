@@ -97,7 +97,7 @@ public:
 	virtual bool IsStaticMatch(const ConditionMatcher& matcher) const = 0;
 	virtual bool IsMemberOf(const ConditionMatcher& matcher) const = 0;
 	virtual std::vector<ObjectType> ObjectTypes(void) const = 0;
-	std::tuple<bool, bool> InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
+	std::tuple<bool, bool, bool> InScopeAndCollectibleFor(const ConditionMatcher& matcher) const;
 	inline const CollectionPolicy& Policy() const { return m_effectivePolicy; }
 	inline CollectionPolicy& Policy() { return m_effectivePolicy; }
 	inline void SetPolicy(const CollectionPolicy& policy) { m_effectivePolicy = policy; }
