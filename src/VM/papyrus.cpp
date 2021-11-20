@@ -89,7 +89,8 @@ namespace papyrus
 		if (!thisForm)
 			return nullptr;
 
-		ObjectType objType = shse::GetEffectiveObjectType(thisForm->As<RE::TESBoundObject>());
+		RE::TESBoundObject* baseObj(thisForm->As<RE::TESBoundObject>());
+		ObjectType objType = baseObj ? shse::GetEffectiveObjectType(baseObj) : ObjectType::unknown;
 		if (objType == ObjectType::unknown)
 			return "NON-CLASSIFIED";
 
@@ -324,19 +325,24 @@ namespace papyrus
 		shse::UIState::Instance().ReportVMGoodToGo(delayed, nonce);
 	}
 
-	constexpr int WhiteList = 1;
-	constexpr int BlackList = 2;
-	constexpr int TransferList = 3;
+	constexpr int White = 1;
+	constexpr int Black = 2;
+	constexpr int Transfer = 3;
+	constexpr int EquippedOrWorn = 4;
 
 	void ResetList(RE::StaticFunctionTag*, const int entryType)
 	{
-		if (entryType == BlackList)
+		if (entryType == Black)
 		{
 			shse::ManagedList::BlackList().Reset();
 		}
-		else if (entryType == WhiteList)
+		else if (entryType == White)
 		{
 			shse::ManagedList::WhiteList().Reset();
+		}
+		else if (entryType == EquippedOrWorn)
+		{
+			shse::ManagedList::EquippedOrWorn().Reset();
 		}
 		else
 		{
@@ -345,18 +351,22 @@ namespace papyrus
 	}
 	void AddEntryToList(RE::StaticFunctionTag*, const int entryType, RE::TESForm* entry)
 	{
-		if (entryType == BlackList)
+		if (entryType == Black)
 		{
 			shse::ManagedList::BlackList().Add(entry);
 		}
-		else if (entryType == WhiteList)
+		else if (entryType == White)
 		{
 			shse::ManagedList::WhiteList().Add(entry);
 		}
-		else
+		else if (entryType == EquippedOrWorn)
 		{
-			shse::ManagedList::TransferList().Add(entry);
+			shse::ManagedList::EquippedOrWorn().Add(entry);
 		}
+	}
+	void AddEntryToTransferList(RE::StaticFunctionTag*, RE::TESForm* entry, const std::string name)
+	{
+		shse::ManagedList::TransferList().AddNamed(entry, name);
 	}
 	// This is the last function called by the scripts when re-syncing state
 	// This is called for game reload, or whitelist/blacklist updates (reload=false)
@@ -406,6 +416,7 @@ namespace papyrus
 		return cannotLoot;
 	}
 
+	// only called for Container or Actor, so check for Dynamic Base is correct
 	bool IsREFRDynamic(RE::TESObjectREFR* refr)
 	{
 		// Do not allow processing of bad REFR or Base
@@ -424,10 +435,16 @@ namespace papyrus
 		// Check if player can designate this REFR as a target for loot transfer
 		// Do not allow processing of bad REFR or Base
 		if (!refr)
+		{
+			REL_ERROR("Blank REFR for ValidTransferTargetLocation");
 			return "";
+		}
 		DBG_VMESSAGE("Check REFR 0x{:08x} as transfer target - linked to chest {}, known good {}", refr->GetFormID(), linksChest, knownGood);
 		if (IsREFRDynamic(refr))
+		{
+			REL_ERROR("Dynamic REFR for ValidTransferTargetLocation");
 			return "";
+		}
 		const RE::TESObjectCONT* container(nullptr);
 		DBG_VMESSAGE("Check REFR 0x{:08x} for container", refr->GetFormID());
 		if (linksChest)
@@ -455,22 +472,25 @@ namespace papyrus
 			container = refr->GetBaseObject()->As<RE::TESObjectCONT>();
 		}
 		if (!container)
+		{
+			REL_ERROR("REFR 0x{:08x} for ValidTransferTargetLocation is not a container", refr->GetFormID());
 			return "";
+		}
 
 		if (container->data.flags.any(RE::CONT_DATA::Flag::kRespawn))
 		{
-			DBG_VMESSAGE("Respawning container {}/0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID());
+			REL_ERROR("Respawning container {}/0x{:08x} for REFR 0x{:08x} not a valid transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
 		if (shse::ManagedList::TransferList().HasContainer(container->GetFormID()))
 		{
-			DBG_VMESSAGE("Multiplexed linked container {}/0x{:08x} is already a transfer target", container->GetFullName(), container->GetFormID());
+			REL_ERROR("Multiplexed linked container {}/0x{:08x} for REFR 0x{:08x} is already a transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
 		// must be in player house to be safe, unless known good
 		if (!knownGood && !shse::LocationTracker::Instance().IsPlayerAtHome())
 		{
-			DBG_VMESSAGE("Player not in their house, cannot target {}/0x{:08x}", container->GetFullName(), container->GetFormID());
+			REL_ERROR("Player not in their house, cannot use {}/0x{:08x} for REFR 0x{:08x} as a transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
 		if (knownGood)
@@ -496,6 +516,30 @@ namespace papyrus
 		return TypeSupportsExcessHandling(ObjectType(index));
 	}
 
+	std::string SellItem(RE::StaticFunctionTag*, RE::TESForm* item, const bool excessOnly)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.SellItem(item->As<RE::TESBoundObject>(), excessOnly);
+	}
+
+	std::string TransferItem(RE::StaticFunctionTag*, RE::TESForm* item, const bool excessOnly)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.TransferItem(item->As<RE::TESBoundObject>(), excessOnly);
+	}
+
+	std::string DeleteItem(RE::StaticFunctionTag*, RE::TESForm* item, const bool excessOnly)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.DeleteItem(item->As<RE::TESBoundObject>(), excessOnly);
+	}
+
+	std::string CheckItemAsExcess(RE::StaticFunctionTag*, RE::TESForm* item)
+	{
+		shse::ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		return lister.CheckItemAsExcess(item->As<RE::TESBoundObject>());
+	}
+
 	bool IsLootableObject(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
 		// Do not allow processing of bad REFR or Base
@@ -508,6 +552,7 @@ namespace papyrus
 			formType == RE::FormType::Hazard ||
 			formType == RE::FormType::IdleMarker ||
 			formType == RE::FormType::MovableStatic ||
+			formType == RE::FormType::Projectile ||			// do not allow whitelist/blacklist - need to do from Inventory
 			formType == RE::FormType::Static)
 		{
 			return false;
@@ -795,6 +840,10 @@ namespace papyrus
 		a_vm->RegisterFunction("IsLootableObject", SHSE_PROXY, papyrus::IsLootableObject);
 		a_vm->RegisterFunction("ValidTransferTargetLocation", SHSE_PROXY, papyrus::ValidTransferTargetLocation);
 		a_vm->RegisterFunction("SupportsExcessHandling", SHSE_PROXY, papyrus::SupportsExcessHandling);
+		a_vm->RegisterFunction("SellItem", SHSE_PROXY, papyrus::SellItem);
+		a_vm->RegisterFunction("TransferItem", SHSE_PROXY, papyrus::TransferItem);
+		a_vm->RegisterFunction("DeleteItem", SHSE_PROXY, papyrus::DeleteItem);
+		a_vm->RegisterFunction("CheckItemAsExcess", SHSE_PROXY, papyrus::CheckItemAsExcess);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
@@ -818,6 +867,7 @@ namespace papyrus
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);
+		a_vm->RegisterFunction("AddEntryToTransferList", SHSE_PROXY, papyrus::AddEntryToTransferList);
 		a_vm->RegisterFunction("SyncDone", SHSE_PROXY, papyrus::SyncDone);
 		a_vm->RegisterFunction("PrintFormID", SHSE_PROXY, papyrus::PrintFormID);
 

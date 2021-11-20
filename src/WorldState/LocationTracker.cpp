@@ -166,17 +166,17 @@ std::string LocationTracker::ConversationalDistance(const double milesAway) cons
 std::string LocationTracker::PlayerExactLocation() const
 {
 	if (m_playerCellID == InvalidForm && !m_playerLocation)
-		return "unknown";
+		return " at unknown location";
 
 	std::ostringstream locationStr;
 	if (m_playerLocation)
 	{
-		locationStr << "at " << m_playerLocation->GetName() << "/0x" << StringUtils::FromFormID(m_playerLocation->GetFormID()) << ' ';
+		locationStr << " at " << m_playerLocation->GetName() << "/0x" << StringUtils::FromFormID(m_playerLocation->GetFormID()) << ' ';
 	}
 	if (m_playerCellID != InvalidForm)
 	{
 		RE::TESObjectCELL* cell(RE::TESForm::LookupByID<RE::TESObjectCELL>(m_playerCellID));
-		locationStr << "in Cell " << FormUtils::SafeGetFormEditorID(cell) << "/0x" << StringUtils::FromFormID(m_playerCellID);
+		locationStr << " in Cell " << FormUtils::SafeGetFormEditorID(cell) << "/0x" << StringUtils::FromFormID(m_playerCellID);
 	}
 	return locationStr.str();
 }

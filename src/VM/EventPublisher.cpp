@@ -151,11 +151,12 @@ void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType r
 	m_onMining.SendEvent(refr, static_cast<int>(resourceType), manualLootNotify, isFirehose);
 }
 
-void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const ObjectType objType, int itemCount, const bool isSilent,
-	const bool collectible, const float ingredientCount, const bool isWhitelisted)
+void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount,
+	const bool isSilent, const bool collectible, const float ingredientCount, const bool isWhitelisted)
 {
 	// We always lock the REFR from more harvesting before firing this
-	m_onHarvest.SendEvent(refr, static_cast<int>(objType), itemCount, isSilent, collectible, ingredientCount, isWhitelisted);
+	m_onHarvest.SendEvent(refr, const_cast<RE::TESBoundObject*>(lootable), lootable->GetName(), static_cast<int>(objType), itemCount,
+		isSilent, collectible, ingredientCount, isWhitelisted);
 }
 
 void EventPublisher::TriggerFlushAddedItems()

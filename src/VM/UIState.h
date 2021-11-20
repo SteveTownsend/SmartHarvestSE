@@ -30,7 +30,7 @@ public:
 	static UIState& Instance();
 	UIState();
 
-	void WaitUntilVMGoodToGo();
+	bool WaitUntilVMGoodToGo();
 	void ReportVMGoodToGo(const bool delayed, const int nonce);
 	void Reset();
 
@@ -44,6 +44,7 @@ private:
 	std::mutex m_uiLock;
 	bool m_vmResponded;
 	bool m_uiDelayed;
+	bool m_waiting;
 };
 
 }

@@ -120,18 +120,19 @@ void PlayerState::CheckExcessInventory(const bool force)
 	m_refreshCache = false;
 
 	constexpr std::chrono::milliseconds ExcessInventoryIntervalMillis(15000LL);
-	const auto nowTime(std::chrono::high_resolution_clock::now());
-	if (nowTime - m_lastExcessCheck >= ExcessInventoryIntervalMillis)
+	const auto timeNow(std::chrono::high_resolution_clock::now());
+	const auto cutoffPoint(timeNow - ExcessInventoryIntervalMillis);
+	if (m_lastExcessCheck <= cutoffPoint)
 	{
 		DBG_MESSAGE("Check Excess Inventory");
-		m_lastExcessCheck = nowTime;
+		m_lastExcessCheck = timeNow;
 		m_currentItems = lister.CacheIfExcessHandlingEnabled();
 		DBG_DMESSAGE("Cached {} inventory items", m_currentItems.size());
 
 		// Transfer or sell items in excess of limits
 		for (auto& item : m_currentItems)
 		{
-			item.second.HandleExcess(item.first);
+			item.second.HandleExcess();
 		}
 	}
 }

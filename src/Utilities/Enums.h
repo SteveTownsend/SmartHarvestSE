@@ -112,6 +112,14 @@ enum class SpecialObjectHandling {
 	MAX
 };
 
+enum class LockedContainerHandling {
+	DoNotLoot = 0,
+	DoLoot,
+	GlowTarget,
+	LootOnceUnlocked,
+	MAX
+};
+
 enum class ContainerAnimationHandling {
 	DoNotPlay = 0,
 	Play,
@@ -134,6 +142,21 @@ enum class QuestObjectHandling {
 	MAX
 };
 
+enum class ExcessInventoryExemption : uint8_t {
+	NotExempt = 0,
+	QuestItem,
+	ItemInUse,
+	IsFavourite,
+	IsPlayerEnchanted,
+	IsTempered,
+	CountIsZero,
+	Ineligible,
+	IsLeveledItem,
+	NotFound
+};
+
+std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excessInventoryExemption);
+
 enum class ExcessInventoryHandling : uint8_t {
 	NoLimits = 0,
 	LeaveBehind,
@@ -154,8 +177,58 @@ enum class ExcessInventoryHandling : uint8_t {
 	Container14,
 	Container15,
 	Container16,
+	Container17,
+	Container18,
+	Container19,
+	Container20,
+	Container21,
+	Container22,
+	Container23,
+	Container24,
+	Container25,
+	Container26,
+	Container27,
+	Container28,
+	Container29,
+	Container30,
+	Container31,
+	Container32,
+	Container33,
+	Container34,
+	Container35,
+	Container36,
+	Container37,
+	Container38,
+	Container39,
+	Container40,
+	Container41,
+	Container42,
+	Container43,
+	Container44,
+	Container45,
+	Container46,
+	Container47,
+	Container48,
+	Container49,
+	Container50,
+	Container51,
+	Container52,
+	Container53,
+	Container54,
+	Container55,
+	Container56,
+	Container57,
+	Container58,
+	Container59,
+	Container60,
+	Container61,
+	Container62,
+	Container63,
+	Container64,
 	MAX
 };
+
+std::string ExcessInventoryHandlingString(const ExcessInventoryHandling excessInventoryHandling);
 
 inline CollectibleHandling UpdateCollectibleHandling(const CollectibleHandling initial, const CollectibleHandling next)
 {
@@ -182,6 +255,11 @@ inline CollectibleHandling UpdateCollectibleHandling(const CollectibleHandling i
 inline bool IsSpecialObjectLootable(const SpecialObjectHandling specialObjectHandling)
 {
 	return specialObjectHandling == SpecialObjectHandling::DoLoot;
+}
+
+inline bool IsLockedContainerLootable(const LockedContainerHandling lockedContainerHandling)
+{
+	return lockedContainerHandling == LockedContainerHandling::DoLoot;
 }
 
 inline bool IsEnchantedObjectLootable(const EnchantedObjectHandling enchantedObjectHandling)
@@ -252,6 +330,16 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 	return static_cast<SpecialObjectHandling>(intSetting);
 }
 
+inline LockedContainerHandling LockedContainerHandlingFromIniSetting(const double iniSetting)
+{
+	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
+	if (intSetting >= static_cast<int32_t>(LockedContainerHandling::MAX))
+	{
+		return LockedContainerHandling::DoNotLoot;
+	}
+	return static_cast<LockedContainerHandling>(intSetting);
+}
+
 inline ContainerAnimationHandling ContainerAnimationHandlingFromIniSetting(const double iniSetting)
 {
 	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
@@ -292,17 +380,14 @@ inline ExcessInventoryHandling ExcessInventoryHandlingFromIniSetting(const doubl
 	return static_cast<ExcessInventoryHandling>(intSetting);
 }
 
-inline bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
+inline bool UseTransferForExcess(const ExcessInventoryHandling handling)
 {
-	if (objectType == ObjectType::septims ||
-		objectType == ObjectType::key ||
-		objectType == ObjectType::oreVein ||
-		objectType == ObjectType::lockpick)
-		return false;
-	if (lootingType != LootingType::LootIfValuableEnoughNotify && lootingType != LootingType::LootIfValuableEnoughSilent)
-		return false;
-	return true;
+	return handling != ExcessInventoryHandling::ConvertToSeptims &&
+		handling != ExcessInventoryHandling::LeaveBehind &&
+		handling != ExcessInventoryHandling::NoLimits;
 }
+
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType);
 
 enum class DeadBodyLooting {
 	DoNotLoot = 0,

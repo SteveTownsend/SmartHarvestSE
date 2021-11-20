@@ -106,6 +106,7 @@ inline bool TypeSupportsExcessHandling(const ObjectType objType)
 		ObjectType::animalHide,
 		ObjectType::oreIngot,
 		ObjectType::soulgem,
+		ObjectType::key,
 		ObjectType::clutter,
 		ObjectType::book,
 		ObjectType::scroll,

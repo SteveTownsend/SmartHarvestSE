@@ -67,29 +67,30 @@ Collection::~Collection()
 
 // first element - does Collection determine disposition?
 // second element - true for one-time Collectible, already processed: defer decision to other rules
-std::tuple<bool, bool> Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
+std::tuple<bool, bool, bool> Collection::InScopeAndCollectibleFor(const ConditionMatcher& matcher) const
 {
+	bool inScope(false);
 	bool repeat(false);
 	bool observed(false);
 	if (!matcher.Form())
-		return { repeat, observed };
+		return { inScope, repeat, observed };
 
 	// check Scope - if Collection is scoped, scope for this autoloot check must be valid
 	if (!m_scopes.empty() && std::find(m_scopes.cbegin(), m_scopes.cend(), matcher.Scope()) == m_scopes.cend())
 	{
 		DBG_VMESSAGE("{}/0x{:08x} has invalid scope {}", matcher.Form()->GetName(), matcher.Form()->GetFormID(), int(matcher.Scope()));
-		return { repeat, observed };
+		return { inScope, repeat, observed };
 	}
-
+	inScope = true;
 	if (IsMemberOf(matcher))
 	{
 		// Collection member always handled if repeats allowed, or as-yet unobserved
 		// If repeats are disallowed, the item is no longer Collectible after first observation
 		// Defer to other rules if repeats are not allowed and this Collection is not dispositive for the item
-		return { m_effectivePolicy.Repeat(), m_observed.contains(matcher.Form()) };
+		return { inScope, m_effectivePolicy.Repeat(), m_observed.contains(matcher.Form()) };
 	}
 	// absolutely not a member of the collection
-	return { repeat, observed };
+	return { inScope, repeat, observed };
 }
 
 bool Collection::IsActive() const

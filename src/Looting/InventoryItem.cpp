@@ -37,7 +37,7 @@ InventoryItem::InventoryItem(
 	DBG_VMESSAGE("{}/0x{:08x} has type {}", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), GetObjectTypeName(m_objectType));
 	if (m_objectType == ObjectType::weapon || m_objectType == ObjectType::armor || m_objectType == ObjectType::jewelry)
 	{
-		// player-created enchantments are always known, so treat as unenchanted unless we collect Known enchangements
+		// player-created enchantments are always known, so treat as unenchanted unless we collect Known enchantments
 		if (IncludeEnchantedObjectIfKnown(enchantedObjectHandling) &&
 			TESFormHelper::ConfirmEnchanted(GetEnchantmentFromExtraLists(m_entry->extraLists), enchantedObjectHandling))
 		{
