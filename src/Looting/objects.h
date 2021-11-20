@@ -36,6 +36,7 @@ bool IsQuestTargetNPC(const RE::Actor* actor);
 bool HasAshPile(const RE::TESObjectREFR* refr);
 RE::TESObjectREFR* GetAshPile(const RE::TESObjectREFR* refr);
 bool IsPlayerOwned(const RE::TESObjectREFR* refr);
+bool IsQuestItem(const RE::TESObjectREFR* refr);
 void PrintManualLootMessage(const std::string& name);
 void ProcessManualLootREFR(const RE::TESObjectREFR* refr);
 void ProcessManualLootItem(const RE::TESBoundObject* item);
@@ -55,30 +56,14 @@ ObjectType GetObjectTypeByTypeName(const std::string& name);
 RE::EnchantmentItem* GetEnchantmentFromExtraLists(RE::BSSimpleList<RE::ExtraDataList*>* extraLists);
 ResourceType ResourceTypeByName(const std::string& name);
 
-inline bool IsHarvestable(RE::TESBoundObject* target, ObjectType objectType)
-{
-	DBG_VMESSAGE("check bound object {}/0x{:08x} with type {}", target->GetName(), target->GetFormID(), target->GetFormType());
-	return objectType == ObjectType::critter || objectType == ObjectType::flora ||
-		target->GetFormType() == RE::FormType::Tree || target->GetFormType() == RE::FormType::Flora;
-}
-
 inline bool IsValueWeightExempt(ObjectType objectType)
 {
-	return objectType == ObjectType::ammo ||
+	return objectType == ObjectType::critter ||
+		objectType == ObjectType::flora ||
 		objectType == ObjectType::lockpick ||
 		objectType == ObjectType::key ||
 		objectType == ObjectType::oreVein ||
 		objectType == ObjectType::septims;
-}
-
-inline bool IsItemLootableInPopulationCenter(RE::TESBoundObject* target, ObjectType objectType)
-{
-	// Config setting overrides
-	if (!SettingsCache::Instance().LootAllowedItemsInSettlement())
-		return false;
-	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
-	// Harvestables are fine too. We don't want to clear the shelves of every building we walk into.
-	return IsValueWeightExempt(objectType) || IsHarvestable(target, objectType);
 }
 
 bool FormTypeIsLootableObject(const RE::FormType formType);

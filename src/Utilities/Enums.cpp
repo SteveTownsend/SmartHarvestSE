@@ -19,6 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "Utilities/Enums.h"
+#include "Looting/objects.h"
+#include "Looting/ManagedLists.h"
 
 namespace shse
 {
@@ -90,6 +92,66 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::InventoryLimitsEnforced: return "InventoryLimitsEnforced";
 	case Lootability::OutOfScope: return "OutOfScope";
 	default: return "";
+	}
+}
+
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
+{
+	if (IsValueWeightExempt(objectType))
+	{
+		DBG_VMESSAGE("No V/W check for objType {}", GetObjectTypeName(objectType));
+		return false;
+	}
+	if (lootingType != LootingType::LootIfValuableEnoughNotify && lootingType != LootingType::LootIfValuableEnoughSilent)
+	{
+		DBG_VMESSAGE("No V/W check for LootingType {}", lootingType);
+		return false;
+	}
+	DBG_VMESSAGE("V/W check required for LootingType {}, objType {}", lootingType, GetObjectTypeName(objectType));
+	return true;
+}
+
+std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excessInventoryExemption)
+{
+	switch (excessInventoryExemption) {
+	case ExcessInventoryExemption::NotExempt:
+		return "NotExempt";
+	case ExcessInventoryExemption::QuestItem:
+		return "QuestItem";
+	case ExcessInventoryExemption::ItemInUse:
+		return "ItemInUse";
+	case ExcessInventoryExemption::IsFavourite:
+		return "IsFavourite";
+	case ExcessInventoryExemption::IsPlayerEnchanted:
+		return "IsPlayerEnchanted";
+	case ExcessInventoryExemption::IsTempered:
+		return "IsTempered";
+	case ExcessInventoryExemption::CountIsZero:
+		return "CountIsZero";
+	case ExcessInventoryExemption::Ineligible:
+		return "Ineligible";
+	case ExcessInventoryExemption::IsLeveledItem:
+		return "IsLeveledItem";
+	case ExcessInventoryExemption::NotFound:
+		return "NotFound";
+	default:
+		return "OutOfRange";
+	}
+}
+
+std::string ExcessInventoryHandlingString(const ExcessInventoryHandling excessInventoryHandling)
+{
+	switch (excessInventoryHandling) {
+	case ExcessInventoryHandling::NoLimits:
+		return "NoLimits";
+	case ExcessInventoryHandling::LeaveBehind:
+		return "LeaveBehind";
+	case ExcessInventoryHandling::ConvertToSeptims:
+		return "ConvertToSeptims";
+	default:
+		// get container name
+		return ManagedList::TransferList().ByIndex(
+			static_cast<size_t>(excessInventoryHandling) - static_cast<size_t>(ExcessInventoryHandling::Container1)).second;
 	}
 }
 

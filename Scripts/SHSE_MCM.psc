@@ -40,6 +40,8 @@ int objType_Clutter
 int objType_Potion
 int objType_Poison
 int objType_Scroll
+int objType_Food
+int objType_Drink
 
 bool enableHarvest
 bool enableLootContainer
@@ -81,10 +83,14 @@ int crimeCheckSneaking
 string[] s_crimeCheckSneakingArray
 int playerBelongingsLoot
 string[] s_specialObjectHandlingArray
+string[] s_lockedContainerHandlingArray
 string[] s_enchantedObjectHandlingArray
 string[] s_questObjectHandlingArray
 string[] s_behaviorToggleArray
 string[] s_excessDisposalArray
+; handle mapping between compact UI list of transfer options and sparse plugin list
+int[] s_excessDisposalEnumToChoice
+int[] s_excessDisposalChoiceToEnum
 int excessDisposalOptions
 int excessDisposalSell
 int saleValuePercent
@@ -177,6 +183,7 @@ float[] valueWeightSettingArray
 
 String[] s_behaviorArray
 String[] s_ammoBehaviorArray
+String[] s_harvestBehaviorArray
 String[] s_objectTypeNameArray
 
 int[] id_whiteList_array
@@ -195,6 +202,7 @@ int[] id_transferList_array
 Form[] transferList_form_array
 int transferListEntries
 String[] transferList_name_array
+int[] transferList_index_array
 bool[] transferList_flag_array
 
 int[] id_glowReasonArray
@@ -216,6 +224,18 @@ int Function CycleInt(int num, int max)
         result = 0
     endif
     return result
+endFunction
+
+; handles cross-reference from compact MCM list to sparse plugin list
+; num is an enum value - we need to cycle though the other choices
+int Function CycleExcess(int num, int max)
+    ; find the choice that was used to select this enum
+    int result = s_excessDisposalEnumToChoice[num]
+    result += 1
+    if result >= max
+        result = 0
+    endif
+    return s_excessDisposalChoiceToEnum[result]
 endFunction
 
 function updateMaxMiningItems(int maxItems)
@@ -256,10 +276,11 @@ float[] function GetSettingToExcessHandlingArray(int section1, int section2)
     while (index < 30)
         if SupportsExcessHandling(objType)
             float setting = GetSettingObjectArrayEntry(section1, section2, objType)
-            int targets = eventScript.GetTransferListSize()
-            if setting > (1 + targets) as float
+            ; 64 containers, plus leave/sell/no-limit - 0 based
+            if setting > (2 + 64) as float
+                AlwaysTrace("Out of range excess handling " + setting + " for objType" + objType)
                 ; references unknown transfer target - pick highest valid value
-                setting = (1 + targets) as float
+                setting = (2 + 64) as float
             endif
             result[index] = setting
         else
@@ -512,8 +533,8 @@ Function SetOreVeinChoices()
 EndFunction
 
 Function DefaultExcessDisposalChoices()
-    ; No Action/Leave/Sell/Container Max (16)
-    s_excessDisposalArray = New String[19]
+    ; No Action/Leave/Sell/Container Max (64)
+    s_excessDisposalArray = New String[67]
     s_excessDisposalArray[0] = "$SHSE_NO_LIMITS"
     s_excessDisposalArray[1] = "$SHSE_LEAVE_BEHIND"
     s_excessDisposalArray[2] = "$SHSE_AUTO_SELL"
@@ -522,15 +543,29 @@ Function DefaultExcessDisposalChoices()
 EndFunction
 
 Function AugmentExcessDisposalChoices()
-    ; Leave/Sell/Container - max length 3 + 16
+    ; Leave/Sell/Container - max length 3 + 64
     int index = 0
     int choice = 3
+    
+    ; mappings of fixed entries, augmented by sparse array xref
+    s_excessDisposalEnumToChoice = Utility.CreateIntArray(3 + 64, -1)
+    s_excessDisposalEnumToChoice[0] = 0
+    s_excessDisposalEnumToChoice[1] = 1
+    s_excessDisposalEnumToChoice[2] = 2
+
+    s_excessDisposalChoiceToEnum = Utility.CreateIntArray(3 + transferListEntries)
+    s_excessDisposalChoiceToEnum[0] = 0
+    s_excessDisposalChoiceToEnum[1] = 1
+    s_excessDisposalChoiceToEnum[2] = 2
+
     while index < transferListEntries
         s_excessDisposalArray[choice] = transferList_name_array[index]
+        s_excessDisposalEnumToChoice[3 + transferList_index_array[index]] = choice
+        s_excessDisposalChoiceToEnum[choice] = 3 + transferList_index_array[index]
         index += 1
         choice += 1
     endWhile
-    excessDisposalOptions = 3 + index
+    excessDisposalOptions = choice
 EndFunction
 
 Function SetDeadBodyChoices()
@@ -781,6 +816,20 @@ Function InstallDamageLootOptions()
     s_ammoBehaviorArray[4] = "$SHSE_PICK_UP_DAMAGE_W/MSG"
 EndFunction
 
+Function InstallAestheticLootOptions()
+    s_harvestBehaviorArray = New String[2]
+    s_harvestBehaviorArray[0] = "$SHSE_DONT_PICK_UP"
+    s_harvestBehaviorArray[1] = "$SHSE_PICK_UP"
+EndFunction
+
+Function InstallLockedContainerOptions()
+    s_lockedContainerHandlingArray = New String[4]
+    s_lockedContainerHandlingArray[0] = "$SHSE_DONT_PICK_UP"
+    s_lockedContainerHandlingArray[1] = "$SHSE_PICK_UP"
+    s_lockedContainerHandlingArray[2] = "$SHSE_CONTAINER_GLOW_PERSISTENT"
+    s_lockedContainerHandlingArray[3] = "$SHSE_PICK_UP_AFTER_UNLOCK"
+EndFunction
+
 Function InitPages()
     Pages = New String[10]
     Pages[0] = "$SHSE_RULES_DEFAULTS_PAGENAME"
@@ -817,6 +866,30 @@ Function InitExcessInventoryHandling()
     type_Handling = 7
     type_MaxItems = 8
     type_MaxWeight = 9
+EndFunction
+
+Function ExpandExcessInventoryTargets()
+    eventScript.MigrateTransferListArrays(16, 64)
+EndFunction
+
+Function ResetExcessInventoryTargets()
+    ; reset handling if set to container
+    bool updated = False
+    if craftingItemsExcessHandling > excessDisposalSell
+        AlwaysTrace("Reset target container for crafting items")
+        craftingItemsExcessHandling = 0
+        updated = True
+    endIf
+    int objType = 0
+    while objType < excessHandlingArray.Length
+        if excessHandlingArray[objType] > excessDisposalSell
+            AlwaysTrace("Reset target container for " + GetObjectTypeNameByType(objType) + " items")
+            excessHandlingArray[objType] = 0
+            updated = True
+        endIf
+        objType += 1
+    endWhile
+    eventScript.ResetExcessInventoryTargets(updated)
 EndFunction
 
 Function InitExcessCraftingItems()
@@ -920,6 +993,13 @@ Function RemoveLightCategory()
 
 EndFunction
 
+Function AddConsumableObjectTypes()
+    objType_Food = GetObjectTypeByName("food")
+    objType_Drink = GetObjectTypeByName("drink")
+
+    eventScript.SyncUpdatedNativeDataTypes()
+EndFunction
+
 Function InitEnchantedObjects()
     s_enchantedObjectHandlingArray = New String[5]
     s_enchantedObjectHandlingArray[0] = "$SHSE_DONT_PICK_UP"
@@ -973,6 +1053,8 @@ Event OnConfigInit()
     s_behaviorArray[4] = "$SHSE_PICK_UP_V/W_W/MSG"
 
     InstallDamageLootOptions()
+    InstallAestheticLootOptions()
+    InstallLockedContainerOptions()
 
     eventScript.whitelist_form = Game.GetFormFromFile(0x801, "SmartHarvestSE.esp") as Formlist
     eventScript.blacklist_form = Game.GetFormFromFile(0x802, "SmartHarvestSE.esp") as Formlist
@@ -988,7 +1070,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 47
+    return 52
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1112,6 +1194,24 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 49 && CurrentVersion < 49
         InitExcessCraftingItems()
     endif
+    if a_version >= 50 && CurrentVersion < 50
+        ;aesthetics loot options - critter/flora
+        InstallAestheticLootOptions()
+        if objectSettingArray[objType_Critter - 1] > 1
+            objectSettingArray[objType_Critter - 1] = 1
+        endIf
+        if objectSettingArray[objType_Flora - 1] > 1
+            objectSettingArray[objType_Flora - 1] = 1
+        endIf
+    endIf
+    if a_version >= 51 && CurrentVersion < 51
+        ExpandExcessInventoryTargets()
+        InstallLockedContainerOptions()
+    endIf
+    if a_version >= 52 && CurrentVersion < 52
+	ResetExcessInventoryTargets()
+        AddConsumableObjectTypes()
+    endIf
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -1223,55 +1323,54 @@ Function PopulateLists()
         blackListEntries = 0
     endif
 
-    max_size = eventScript.GetTransferListSize()
-    if max_size > 0
-        ; assume max size initially, resize if bad entries are found
-        Form[] currentList = eventScript.GetTransferList()
-        string[] currentNames = eventScript.GetTransferNames()
-        int validSize = 0
-        int index = max_size
-        while index > 0
-            index -= 1
-            Form nextEntry = currentList[index]
-            string name = GetNameForListForm(nextEntry)
-            if nextEntry && StringUtil.GetLength(name) > 0
-                validSize += 1
-            else
-                AlwaysTrace("Skip bad TransferList Form (" + nextEntry + ")")
-            endIf
-        endWhile
-        ; copy in only the valid forms
-        if validSize > 0
-            transferList_form_array = Utility.CreateFormArray(validSize)
-            id_transferList_array = Utility.CreateIntArray(validSize)
-            transferList_name_array = Utility.CreateStringArray(validSize)
-            transferList_flag_array = Utility.CreateBoolArray(validSize)
-            ; iterate forwards, order must be preserved to ensure correct linkage to target
-            index = 0
-            int entry = 0
-            while index < max_size
-                Form nextEntry = currentList[index]
-                if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
-                    transferList_form_array[entry] = nextEntry
-                    transferList_name_array[entry] = currentNames[index]
-                    transferList_flag_array[entry] = true
-                    entry += 1
-                endIf
-                index += 1
-            endWhile
+    ; Transfer List can be sparse
+    Form[] currentList = eventScript.GetTransferList()
+    string[] currentNames = eventScript.GetTransferNames()
+    int validSize = 0
+    int index = 0
+    max_size = 64
+    while index < max_size
+        Form nextEntry = currentList[index]
+        if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
+            ;DebugTrace("TransferList Form index " + index + " for " + currentNames[index])
+            validSize += 1
+        else
+            ;DebugTrace("Skip empty TransferList Form index " + index)
         endIf
-        AlwaysTrace("TransferList has " + validSize + " valid entries, " + max_size + " in Form[]")
-        transferListEntries = validSize
-    else
-        AlwaysTrace("TransferList is empty")
-        transferListEntries = 0
-    endif
+        index += 1
+    endWhile
+    ; copy in only the valid forms
+    if validSize > 0
+        transferList_form_array = Utility.CreateFormArray(validSize)
+        id_transferList_array = Utility.CreateIntArray(validSize)
+        transferList_name_array = Utility.CreateStringArray(validSize)
+        transferList_index_array = Utility.CreateIntArray(validSize)
+        transferList_flag_array = Utility.CreateBoolArray(validSize)
+        ; iterate forwards, order must be preserved to ensure correct linkage to target
+        index = 0
+        int entry = 0
+        while index < max_size
+            Form nextEntry = currentList[index]
+            if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
+                transferList_form_array[entry] = nextEntry
+                transferList_name_array[entry] = currentNames[index]
+                transferList_index_array[entry] = index
+                transferList_flag_array[entry] = True
+                ;DebugTrace("TransferList entry #" + entry + " name " + currentNames[index] + " xrefindex " + index)
+                entry += 1
+            endIf
+            index += 1
+        endWhile
+    endIf
+    AlwaysTrace("TransferList has " + validSize + " valid entries, " + max_size + " in Form[]")
+    transferListEntries = validSize
 EndFunction
 
 Event OnConfigOpen()
     ;DebugTrace("OnConfigOpen")
     InitPages()
     PopulateLists()
+    eventScript.OnMCMOpen()
 endEvent
 
 Function PopulateCollectionGroups()
@@ -1400,20 +1499,42 @@ Event OnConfigClose()
     eventScript.UpdateBlackList(blackListEntries, blackList_form_array, blackList_flag_array, "$SHSE_BLACKLIST_REMOVED")
     UpdateTransferTargets()
     eventScript.SyncLists(False, True)
+    eventScript.OnMCMClose()
 endEvent
 
 Function UpdateTransferTargets()
     ; Need to avoid hotkey deletion of in-use targets
     bool[] transferListInUse = Utility.CreateBoolArray(transferListEntries)
     int index = 0
-    int handlerId = 3
     while index < transferListEntries
-        transferListInUse[index] = TargetInUse(handlerId)
+        transferListInUse[index] = TargetInUse(3 + transferList_index_array[index])
         index += 1
-        handlerId += 1
     endWhile
 
-    eventScript.UpdateTransferList(transferListEntries, transferListInUse, transferList_form_array, transferList_name_array, transferList_flag_array, "$SHSE_TRANSFERLIST_REMOVED")
+    eventScript.UpdateTransferList(transferListEntries, transferListInUse, transferList_form_array, transferList_index_array, transferList_name_array, transferList_flag_array, "$SHSE_TRANSFERLIST_REMOVED")
+EndFunction
+
+Bool Function IsVWRelevant(int objType)
+    if objType == objType_Mine || objType == objType_Septim  || objType == objType_Key
+        return False
+    elseIf objType == objType_LockPick || objType == objType_Critter || objType == objType_Flora
+        return False
+    endIf
+    return True
+EndFunction
+
+Function SetVWOptionStatus(int index)
+    int objType = index + 1
+    if !IsVWRelevant(objType)
+        return
+    endIf
+    int handling = objectSettingArray[index] as int    
+    ; V/W slider only valid if option is set to require it
+    if handling == 3 || handling == 4
+        SetOptionFlags(id_valueWeightArray[index], OPTION_FLAG_NONE)
+    else
+        SetOptionFlags(id_valueWeightArray[index], OPTION_FLAG_DISABLED)
+    endIf
 EndFunction
 
 event OnPageReset(string currentPage)
@@ -1466,7 +1587,7 @@ event OnPageReset(string currentPage)
 
         AddHeaderOption("$SHSE_SPECIAL_OBJECT_BEHAVIOR_HEADER")
         AddTextOptionST("questObjectLoot", "$SHSE_QUESTOBJECT_LOOT", s_questObjectHandlingArray[questObjectLoot])
-        AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_specialObjectHandlingArray[lockedChestLoot])
+        AddTextOptionST("lockedChestLoot", "$SHSE_LOCKEDCHEST_LOOT", s_lockedContainerHandlingArray[lockedChestLoot])
         AddTextOptionST("bossChestLoot", "$SHSE_BOSSCHEST_LOOT", s_specialObjectHandlingArray[bossChestLoot])
         AddTextOptionST("playerBelongingsLoot", "$SHSE_PLAYER_BELONGINGS_LOOT", s_specialObjectHandlingArray[playerBelongingsLoot])
         AddTextOptionST("enchantedItemLootState", "$SHSE_ENCHANTED_ITEM_LOOT", s_enchantedObjectHandlingArray[enchantedItemLoot])
@@ -1497,6 +1618,8 @@ event OnPageReset(string currentPage)
         while index < s_objectTypeNameArray.length ; oreVein is the last
             if (objType == objType_Mine)
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_behaviorToggleArray[(objectSettingArray[index] as int)])
+            elseif (objType == objType_Critter || objType == objType_Flora)
+                id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_harvestBehaviorArray[(objectSettingArray[index] as int)])
             elseif (objType == objType_Ammo)
                 id_objectSettingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_ammoBehaviorArray[(objectSettingArray[index] as int)])
             else
@@ -1515,13 +1638,21 @@ event OnPageReset(string currentPage)
         objType = 1
         while index < s_objectTypeNameArray.length ; oreVein is the last
             ; do not request V/W for weightless or unhandleable item types
-            if (objType == objType_Mine || objType == objType_Septim  || objType == objType_Key || objType == objType_LockPick)
+            if !IsVWRelevant(objType)
                 AddEmptyOption()
-            elseif objType == objType_Ammo
-                ; absolute damage
-                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_DAMAGE")
             else
-                id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W")
+                int flags = OPTION_FLAG_NONE
+                int handling = objectSettingArray[index] as int    
+                ; V/W slider only valid if option is set to require it
+                if handling != 3 && handling != 4
+                    flags = OPTION_FLAG_DISABLED
+                endIf
+                if objType == objType_Ammo
+                    ; absolute damage
+                    id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_DAMAGE", flags)
+                else
+                    id_valueWeightArray[index] = AddSliderOption(s_objectTypeNameArray[index], valueWeightSettingArray[index], "$SHSE_V/W", flags)
+                endif
             endif
             index += 1
             objType += 1 
@@ -1658,7 +1789,7 @@ event OnPageReset(string currentPage)
         int supported = 0
         while index < s_objectTypeNameArray.length && supported < 10 ; put the other half on RHS
             if SupportsExcessHandling(objType)
-                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[(excessHandlingArray[index] as int)])
+                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)]])
                 id_excessCountArray[index] = AddSliderOption("", excessCountArray[index], "$SHSE_ITEMS")
                 id_excessWeightArray[index] = AddSliderOption("", excessWeightArray[index], "$SHSE_WEIGHT")
                 supported += 1
@@ -1675,13 +1806,13 @@ event OnPageReset(string currentPage)
         if handleExcessCraftingItems
             craftingItemFlags = OPTION_FLAG_NONE
         endIf
-        AddTextOptionST("craftingItemsExcessHandlingState", "$SHSE_CRAFTING_ITEMS", s_excessDisposalArray[craftingItemsExcessHandling], craftingItemFlags)
+        AddTextOptionST("craftingItemsExcessHandlingState", "$SHSE_CRAFTING_ITEMS", s_excessDisposalArray[s_excessDisposalEnumToChoice[craftingItemsExcessHandling]], craftingItemFlags)
         AddSliderOptionST("craftingItemsExcessCountState", "", craftingItemsExcessCount as float, "$SHSE_ITEMS", craftingItemFlags)
         AddSliderOptionST("craftingItemsExcessWeightState", "", craftingItemsExcessWeight as float, "$SHSE_WEIGHT", craftingItemFlags)
 
         while index < s_objectTypeNameArray.length ; oreVein is the last
             if SupportsExcessHandling(objType)
-                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[(excessHandlingArray[index] as int)])
+                id_excessHandlingArray[index] = AddTextOption(s_objectTypeNameArray[index], s_excessDisposalArray[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)]])
                 id_excessCountArray[index] = AddSliderOption("", excessCountArray[index], "$SHSE_ITEMS")
                 id_excessWeightArray[index] = AddSliderOption("", excessWeightArray[index], "$SHSE_WEIGHT")
             endif
@@ -1695,16 +1826,14 @@ event OnPageReset(string currentPage)
         endif
 
         int index = 0
-        int handlerId = 3
         while index < transferListEntries
             int flags = OPTION_FLAG_NONE
             ; grey this out if it is in use as a loot transfer target
-            if TargetInUse(handlerId)
+            if TargetInUse(3 + transferList_index_array[index])
                 flags = OPTION_FLAG_DISABLED
             endif
             id_transferList_array[index] = AddToggleOption(transferList_name_array[index], transferList_flag_array[index], flags)
             index += 1
-            handlerId += 1
         endWhile
     endif
 endEvent
@@ -1734,6 +1863,10 @@ Event OnOptionSelect(int a_option)
             int size = s_behaviorToggleArray.length
             objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
             SetTextOptionValue(a_option, s_behaviorToggleArray[(objectSettingArray[index] as int)])
+        elseif (objType == objType_Critter || objType == objType_Flora)
+            int size = s_harvestBehaviorArray.length
+            objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
+            SetTextOptionValue(a_option, s_harvestBehaviorArray[(objectSettingArray[index] as int)])
         elseif (objType == objType_Ammo)
             int size = s_ammoBehaviorArray.length
             objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
@@ -1743,6 +1876,7 @@ Event OnOptionSelect(int a_option)
             objectSettingArray[index] = CycleInt(objectSettingArray[index] as int, size)
             SetTextOptionValue(a_option, s_behaviorArray[(objectSettingArray[index] as int)])
         endif
+        SetVWOptionStatus(index)
         return
     endif
 
@@ -1751,15 +1885,15 @@ Event OnOptionSelect(int a_option)
         int objType = index + 1
         bool foundValid = false
         while !foundValid
-            excessHandlingArray[index] = CycleInt(excessHandlingArray[index] as int, excessDisposalOptions)
+            excessHandlingArray[index] = CycleExcess(excessHandlingArray[index] as int, excessDisposalOptions)
             ; do not try to sell septims, for obvious reasons
             if objType == objType_Septim && (excessHandlingArray[index] as int) == excessDisposalSell
             ; skip any target that user has unchecked on the Transfer List page
-            elseif (excessHandlingArray[index] as int) <= excessDisposalSell || transferList_flag_array[(excessHandlingArray[index] as int)- 3]
+            elseif (excessHandlingArray[index] as int) <= excessDisposalSell || transferList_flag_array[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)] - 3]
                 foundValid = True
             endif
         endwhile
-        SetTextOptionValue(a_option, s_excessDisposalArray[(excessHandlingArray[index] as int)])
+        SetTextOptionValue(a_option, s_excessDisposalArray[s_excessDisposalEnumToChoice[(excessHandlingArray[index] as int)]])
         return
     endif
 
@@ -1816,24 +1950,27 @@ event OnOptionSliderOpen(int a_option)
         int objType = index+1
         if objType == objType_Septim
             ; only useful if they have weight
-            SetSliderDialogInterval(200)
-            SetSliderDialogRange(0, 10000)
+            SetSliderDialogInterval(500)
+            SetSliderDialogRange(0, 100000)
         elseif objType == objType_Ammo || objType == objType_LockPick
             ; light consumables
-            SetSliderDialogInterval(5)
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 250)
-        elseif objType == objType_Soulgem || objType == objType_Gem || objType == objType_Ingredient
-            ; medium weight crafting
-            SetSliderDialogInterval(2)
+        elseif objType == objType_Soulgem || objType == objType_Gem || objType == objType_Ingredient || objType == objType_Food || objType == objType_Drink
+            ; medium weight crafting, mundane consumables - high for needs mods
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 100)
-        elseif objType == objType_Weapon || objType == objType_Armor || objType == objType_Jewelry
-            ; apparel
+        elseif objType == objType_Weapon || objType == objType_Armor || objType == objType_Key
+            ; apparel or keys
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 5)
         elseif objType == objType_Potion || objType == objType_Poison || objType == objType_Scroll
             ; consumables with effects
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 50)
         else
-            ; clutter, animalHide, oreIngot, food, drink, book
+            ; clutter, animalHide, oreIngot, book, jewelry
+            SetSliderDialogInterval(1)
             SetSliderDialogRange(0, 20)
         endif
         return
@@ -1879,7 +2016,12 @@ event OnOptionHighlight(int a_option)
     
     index = id_objectSettingArray.find(a_option)
     if (index > -1)
-        SetInfoText(s_objectTypeNameArray[index])
+        int objType = index + 1
+        if objType == objType_Critter || objType == objType_Flora
+            SetInfoText(GetTranslation("$SHSE_DESC_HARVESTABLE_TOGGLE"))
+        else
+            SetInfoText(s_objectTypeNameArray[index])
+        endIf
         return
     endif
 
@@ -2316,18 +2458,18 @@ state craftingItemsExcessHandlingState
     event OnSelectST()
         bool foundValid = false
         while !foundValid
-            craftingItemsExcessHandling = CycleInt(craftingItemsExcessHandling, excessDisposalOptions)
+            craftingItemsExcessHandling = CycleExcess(craftingItemsExcessHandling, excessDisposalOptions)
             ; disallow targets unchecked by user
-            if (craftingItemsExcessHandling as int) <= excessDisposalSell || transferList_flag_array[(craftingItemsExcessHandling as int) - 3]
+            if (craftingItemsExcessHandling as int) <= excessDisposalSell || transferList_flag_array[s_excessDisposalEnumToChoice[(craftingItemsExcessHandling as int)] - 3]
                 foundValid = True
             endif
         endwhile
-        SetTextOptionValueST(s_excessDisposalArray[craftingItemsExcessHandling])
+        SetTextOptionValueST(s_excessDisposalArray[s_excessDisposalEnumToChoice[craftingItemsExcessHandling]])
     endEvent
 
     event OnDefaultST()
         craftingItemsExcessHandling = 0
-        SetTextOptionValueST(s_excessDisposalArray[craftingItemsExcessHandling])
+        SetTextOptionValueST(s_excessDisposalArray[s_excessDisposalEnumToChoice[craftingItemsExcessHandling]])
     endEvent
 endState
 
@@ -2640,14 +2782,14 @@ endState
 
 state lockedChestLoot
     event OnSelectST()
-        int size = s_specialObjectHandlingArray.length
+        int size = s_lockedContainerHandlingArray.length
         lockedChestLoot = CycleInt(lockedChestLoot, size)
-        SetTextOptionValueST(s_specialObjectHandlingArray[lockedChestLoot])
+        SetTextOptionValueST(s_lockedContainerHandlingArray[lockedChestLoot])
     endEvent
 
     event OnDefaultST()
         lockedChestLoot = 2
-        SetTextOptionValueST(s_specialObjectHandlingArray[lockedChestLoot])
+        SetTextOptionValueST(s_lockedContainerHandlingArray[lockedChestLoot])
     endEvent
 
     event OnHighlightST()

@@ -34,6 +34,7 @@ public:
 	void OnGameLoaded();
 	void OnSettingsPushed(void);
 	bool ScanAllowed() const;
+	bool IsSynced() const;
 
 	// give the debug message time to catch up during calibration
 	static constexpr double CalibrationThreadDelaySeconds = 5.0;
@@ -42,7 +43,6 @@ private:
 	bool OneTimeLoad(void);
 	bool Load();
 	void Start();
-	bool IsSynced() const;
 	static void ScanThread(void);
 	inline bool Loaded() const { return m_loadProgress == LoadProgress::Complete; }
 

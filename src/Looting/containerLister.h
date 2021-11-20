@@ -42,6 +42,10 @@ public:
 	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
 	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
 	InventoryCache CacheIfExcessHandlingEnabled() const;
+	std::string SellItem(RE::TESBoundObject* target, const bool excessOnly);
+	std::string TransferItem(RE::TESBoundObject* target, const bool excessOnly);
+	std::string DeleteItem(RE::TESBoundObject* target, const bool excessOnly);
+	std::string CheckItemAsExcess(RE::TESBoundObject* target);
 	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
 	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
 	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }
@@ -49,6 +53,7 @@ public:
 
 private:
 	void RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter);
+	InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject* target) const;
 
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;

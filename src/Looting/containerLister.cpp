@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/ExtraDataListHelper.h"
 #include "Utilities/utils.h"
 #include "Looting/containerLister.h"
+#include "Looting/ManagedLists.h"
 #include "Looting/objects.h"
 #include "WorldState/QuestTargets.h"
 
@@ -102,7 +103,71 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 
 		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
+		{
+			DBG_DMESSAGE("Quest Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
 			continue;
+		}
+
+		// register any new user-created Ingestible
+		if (itemObject->IsDynamicForm())
+		{
+			if (itemObject->GetFormType() == RE::FormType::AlchemyItem)
+			{
+				// User created potion or poison
+				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
+			}
+		}
+
+		// exempt Equipped and Worn items
+		if (ManagedList::EquippedOrWorn().Contains(itemObject))
+		{
+			DBG_DMESSAGE("Equipped/Worn Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+			continue;
+		}
+
+		//  exempt Favorite items
+		if (entry->extraLists)
+		{
+			bool isFavourite(false);
+			bool isEnchanted(false);
+			bool isTempered(false);
+			for (RE::ExtraDataList* extraData : *(entry->extraLists))
+			{
+				if (!extraData)
+					continue;
+
+				if (extraData->HasType(RE::ExtraDataType::kHotkey))
+				{
+					isFavourite = true;
+					break;
+				}
+				if (ExtraDataList::GetEnchantment(extraData))
+				{
+					isEnchanted = true;
+					break;
+				}
+				if (extraData->HasType(RE::ExtraDataType::kTextDisplayData))
+				{
+					isTempered = true;
+					break;
+				}
+			}
+			if (isFavourite)
+			{
+				DBG_DMESSAGE("Favourite Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+			if (isEnchanted)
+			{
+				DBG_DMESSAGE("Enchanted Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+			if (isTempered)
+			{
+				DBG_DMESSAGE("Tempered Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+		}
 
 		InventoryEntry itemEntry(itemObject, count);
 		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
@@ -112,6 +177,110 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 	}
 	return cache;
 }
+
+std::string ContainerLister::SellItem(RE::TESBoundObject* target, const bool excessOnly)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		std::string err(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_CANNOT_SELL"));
+		StringUtils::Replace(err, "{ITEMNAME}", target->GetName());
+		return err;
+	}
+	return entry.Sell(excessOnly);
+}
+std::string ContainerLister::TransferItem(RE::TESBoundObject* target, const bool excessOnly)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		std::string err(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_CANNOT_TRANSFER"));
+		StringUtils::Replace(err, "{ITEMNAME}", target->GetName());
+		return err;
+	}
+	return entry.Transfer(excessOnly);
+}
+std::string ContainerLister::DeleteItem(RE::TESBoundObject* target, const bool excessOnly)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	if (entry.Count() <= 0)
+	{
+		std::string err(DataCase::GetInstance()->GetTranslation("$SHSE_ITEM_CANNOT_DELETE"));
+		StringUtils::Replace(err, "{ITEMNAME}", target->GetName());
+		return err;
+	}
+	return entry.Delete(excessOnly);
+}
+
+std::string ContainerLister::CheckItemAsExcess(RE::TESBoundObject* target)
+{
+	InventoryEntry entry(GetSingleInventoryEntry(target));
+	return entry.Disposition();
+}
+
+InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* target) const
+{
+	// refactored following QuickLookRE
+	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
+	for (auto& item : inv) {
+		auto& [count, entry] = item.second;
+		RE::TESBoundObject* itemObject = entry->GetObject();
+		if (target != itemObject)
+			continue;
+		if (count <= 0)
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::CountIsZero);
+		}
+		if (!FormUtils::IsConcrete(itemObject))
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::Ineligible);
+		}
+		if (itemObject->formType == RE::FormType::LeveledItem)
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::IsLeveledItem);
+		}
+		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
+		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::QuestItem);
+		}
+
+		// exempt Equipped and Worn items
+		if (ManagedList::EquippedOrWorn().Contains(itemObject))
+		{
+			return InventoryEntry(target, ExcessInventoryExemption::ItemInUse);
+		}
+
+		//  exempt Favourite, Tempered and Enchanted Items
+		bool isFavourite(false);
+		bool isEnchanted(false);
+		bool isTempered(false);
+		if (entry->extraLists)
+		{
+			for (RE::ExtraDataList* extraData : *(entry->extraLists))
+			{
+				if (!extraData)
+					continue;
+				if (extraData->HasType(RE::ExtraDataType::kHotkey))
+					isFavourite = true;
+				if (ExtraDataList::GetEnchantment(extraData))
+					isEnchanted = true;
+				if (extraData->HasType(RE::ExtraDataType::kTextDisplayData))
+					isTempered = true;
+			}
+		}
+		if (isFavourite)
+			return InventoryEntry(target, ExcessInventoryExemption::IsFavourite);
+		if (isTempered)
+			return InventoryEntry(target, ExcessInventoryExemption::IsTempered);
+		if (isEnchanted)
+			return InventoryEntry(target, ExcessInventoryExemption::IsPlayerEnchanted);
+
+		return InventoryEntry(itemObject, count);
+	}
+	return InventoryEntry(target, ExcessInventoryExemption::NotFound);
+}
+
 size_t ContainerLister::AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling)
 {
 	if (!m_refr)
