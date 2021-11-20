@@ -104,6 +104,67 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
 			continue;
 
+		// register any new user-created Ingestible
+		if (itemObject->IsDynamicForm())
+		{
+			if (itemObject->GetFormType() == RE::FormType::AlchemyItem)
+			{
+				// User created potion or poison
+				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
+			}
+		}
+
+		// exempt Equipped and Worn items
+		if (ManagedList::EquippedOrWorn().Contains(itemObject))
+		{
+			DBG_DMESSAGE("Equipped/Worn Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+			continue;
+		}
+
+		//  exempt Favorite items
+		if (entry->extraLists)
+		{
+			bool isFavourite(false);
+			bool isEnchanted(false);
+			bool isTempered(false);
+			for (RE::ExtraDataList* extraData : *(entry->extraLists))
+			{
+				if (!extraData)
+					continue;
+
+				if (extraData->HasType(RE::ExtraDataType::kHotkey))
+				{
+					isFavourite = true;
+					break;
+				}
+				if (ExtraDataList::GetEnchantment(extraData))
+				{
+					isEnchanted = true;
+					break;
+				}
+				if (extraData->HasType(RE::ExtraDataType::kTextDisplayData))
+				{
+					isTempered = true;
+					break;
+				}
+			}
+			if (isFavourite)
+			{
+				DBG_DMESSAGE("Favourite Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+			if (isEnchanted)
+			{
+				DBG_DMESSAGE("Player-enchanted Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+			if (isTempered)
+			{
+				DBG_DMESSAGE("Tempered Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+				continue;
+			}
+		}
+
 		InventoryEntry itemEntry(itemObject, count);
 		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
 			continue;
