@@ -254,6 +254,27 @@
       }
     },
     {
+      "$comment": "Auto-collect bugs in a jar",
+      "name": "Don't Bottle It Up",
+      "description": "Bugs in a Jar are easy to miss, so don't",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "signature": [ "MISC" ],
+          "nameMatch": {
+            "isNPC": false,
+            "matchIf": "contains",
+            "names": [ "in a Jar" ]
+          }
+        }
+      }
+    },
+    {
       "$comment": "Test named NPC loot prevention",
       "name": "Arachnophobia",
       "description": "Do not loot spiders, they are too creepy to touch",
