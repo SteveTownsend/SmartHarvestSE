@@ -264,6 +264,57 @@ void QuestTargets::Analyze()
 			}
 		}
 	}
+	BlacklistOutliers();
+}
+
+void QuestTargets::BlacklistOutliers()
+{
+	// https://github.com/SteveTownsend/SmartHarvestSE/issues/322
+	// MQ106DragonMapRef [REFR:000FF228] (places MQ106DragonParchment "Map of Dragon Burials" [MISC:000BBCD5]
+	//   in GRUP Cell Persistent Children of RiverwoodSleepingGiantInn "Sleeping Giant Inn" [CELL:000133C6])
+	const RE::TESObjectREFR* refr(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectREFR>(0xff228, "Skyrim.esm"));
+	const RE::TESObjectMISC* item(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectMISC>(0xbbcd5, "Skyrim.esm"));
+	if (item && refr)
+	{
+		REL_VMESSAGE("Blacklist REFR {}/0x{:08x} to outlier Quest Target Item {}/0x{:08x}",
+			refr->GetName(), refr->GetFormID(), item->GetName(), item->GetFormID());
+		BlacklistQuestTargetReferencedItem(item, refr);
+	}
+	const std::vector<std::pair<std::string, RE::FormID>> offLimitsNPCs = {
+		// Ysgramor's Tomb Companion Ghosts
+		{"Skyrim.esm", 0xab102},
+		{"Skyrim.esm", 0xab104},
+		{"Skyrim.esm", 0xde516},
+		{"Skyrim.esm", 0xde517},
+		{"Skyrim.esm", 0xde518},
+		{"Skyrim.esm", 0xde519},
+		// Ysgramor's Tomb Wolf Spirits
+		{"Skyrim.esm", 0x58303},	// Kodlak
+		{"Skyrim.esm", 0xf6087},	// Farkas
+		{"Skyrim.esm", 0xf6089}		// Vilkas
+	};
+	for (const auto barredNPC : offLimitsNPCs)
+	{
+		const RE::TESNPC* npc(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESNPC>(barredNPC.second, barredNPC.first));
+		if (npc)
+		{
+			REL_VMESSAGE("Blacklist outlier Quest Target NPC {}/0x{:08x}", npc->GetName(), npc->GetFormID());
+			BlacklistQuestTargetNPC(npc);
+		}
+	}
+	const RE::IngredientItem* ingredient(RE::TESDataHandler::GetSingleton()->LookupForm<RE::IngredientItem>(0x3ad61, "Skyrim.esm"));
+	RE::BGSPerk* perk(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSPerk>(0x1c05b, "Dragonborn.esm"));
+	auto player(RE::PlayerCharacter::GetSingleton());
+	QuestTargetPredicate predicate([=]() -> bool {return player->HasPerk(perk); });
+	// Conditionally blacklisted items
+	if (ingredient && perk && player)
+	{
+		if (BlacklistConditionalQuestTargetItem(ingredient, predicate))
+		{
+			REL_VMESSAGE("Blacklist Quest Target {}/0x{:08x} conditional on Perk {}/0x{:08x}",
+				ingredient->GetName(), ingredient->GetFormID(), perk->GetName(), perk->GetFormID());
+		}
+	}
 }
 
 // used for Quest Target Items with no specific REFR. Blocks autoloot of the item everywhere,
@@ -279,6 +330,14 @@ bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 	}
 	return false;
 }
+
+bool QuestTargets::BlacklistConditionalQuestTargetItem(const RE::TESBoundObject* item, QuestTargetPredicate predicate)
+{
+	if (!FormUtils::IsConcrete(item))
+		return false;
+	return m_conditionalQuestTargetItems.insert({ item->GetFormID(), predicate }).second;
+}
+
 
 // used for Quest Target Items with specific REFR. Blocks autoloot of the item for this REFR (or any if REFR blank),
 // to preserve immersion and avoid breaking Quests.
@@ -343,6 +402,12 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const 
 	// check for specific reference to base
 	const auto referenced(m_questTargetReferenced.find(form->GetFormID()));
 	if (referenced != m_questTargetReferenced.cend() && referenced->second.find(refr->GetFormID()) != referenced->second.cend())
+	{
+		return Lootability::CannotLootQuestTarget;
+	}
+	// check for items that can be conditionally excluded
+	const auto condition(m_conditionalQuestTargetItems.find(form->GetFormID()));
+	if (condition != m_conditionalQuestTargetItems.cend() && (condition->second)())
 	{
 		return Lootability::CannotLootQuestTarget;
 	}
