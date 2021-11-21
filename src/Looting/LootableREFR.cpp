@@ -33,6 +33,7 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 {
 	// Projectile REFRs need to be mapped to lootable Ammo
 	const RE::Projectile* projectile(ref->As<RE::Projectile>());
+	bool hasIngredient(false);
 	if (projectile && projectile->ammoSource)
 	{
 		m_lootable = projectile->ammoSource;
@@ -44,6 +45,8 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 	else if (scope == INIFile::SecondaryType::itemObjects)
 	{
 		DataCase* data = DataCase::GetInstance();
+		// check for ingredient handling before resolving possible LVLI
+		hasIngredient = HasIngredient();
 		m_lootable = data->ConvertIfLeveledItem(m_ref->GetBaseObject());
 		if (m_ref->formType == RE::FormType::ActorCharacter)
 		{
@@ -63,7 +66,7 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 	}
 	m_typeName = GetObjectTypeName(m_objectType);
 	m_critter = m_objectType == ObjectType::critter;
-	m_flora = !m_critter && HasIngredient();
+	m_flora = !m_critter && (hasIngredient || HasIngredient());
 }
 
 std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
@@ -93,6 +96,11 @@ bool LootableREFR::IsHarvestable() const
 bool LootableREFR::IsCritter() const
 {
 	return m_critter;
+}
+
+bool LootableREFR::IsFlora() const
+{
+	return m_flora;
 }
 
 bool LootableREFR::HasIngredient() const

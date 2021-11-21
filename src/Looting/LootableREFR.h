@@ -38,6 +38,7 @@ public:
 	bool HasIngredient() const;
 	bool IsHarvestable() const;
 	bool IsCritter() const;
+	bool IsFlora() const;
 	bool HarvestForbiddenForForm() const;
 
 	const RE::TESBoundObject* GetLootable() const;

@@ -59,9 +59,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
-				objType = GetBaseObjectType(lootable);
-				refrEx.SetLootable(lootable);
-				refrEx.SetEffectiveObjectType(objType);
 				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
 					lootable->GetName(), lootable->formID, GetObjectTypeName(objType));
 			}
@@ -76,6 +73,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
 				}
 				return Lootability::PendingProducerIngredient;
+			}
+			else if (refrEx.IsFlora())
+			{
+				DBG_VMESSAGE("flora {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
+					refrEx.GetTarget()->GetName(), refrEx.GetTarget()->formID, refrEx.GetObjectType());
 			}
 			else
 			{
