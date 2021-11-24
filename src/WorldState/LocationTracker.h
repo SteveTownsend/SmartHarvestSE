@@ -49,7 +49,7 @@ private:
 	RE::TESForm* GetCellOwner(const RE::TESObjectCELL* cell) const;
 	std::string PlaceName(const RE::TESForm*) const;
 	bool IsPlacePlayerHome(const RE::FormID cellID, const RE::BGSLocation* location) const;
-	bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted);
+	bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted, const bool allowIfRestrictedHome);
 	bool IsPlaceWhitelisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const;
 
@@ -85,7 +85,7 @@ public:
 	bool Refresh();
 	bool IsPlayerAtHome() const;
 	void RecordCurrentPlace(const float gameTime);
-	bool IsPlayerInLootablePlace(const bool lootableIfRestricted);
+	bool IsPlayerInLootablePlace(const bool lootableIfRestricted, const bool lootableIfRestrictedHome);
 	decltype(m_adjacentCells) AdjacentCells() const;
 	bool IsPlayerIndoors() const;
 	bool IsPlayerInRestrictedLootSettlement() const;

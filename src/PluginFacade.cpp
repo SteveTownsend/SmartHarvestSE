@@ -189,7 +189,7 @@ bool PluginFacade::ScanAllowed() const {
 	RecursiveLockGuard guard(m_pluginLock);
 	// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 	static const bool allowIfRestricted(true);
-	if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
+	if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted, allowIfRestricted))
 	{
 		DBG_MESSAGE("Location cannot be looted");
 		return false;

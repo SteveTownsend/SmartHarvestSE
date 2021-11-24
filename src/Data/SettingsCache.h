@@ -77,6 +77,7 @@ public:
 	bool EnableLootContainer() const;
 	bool EnableHarvest() const;
 	bool LootAllowedItemsInSettlement() const;
+	bool LootAllowedItemsInPlayerHouse() const;
 	bool UnknownIngredientLoot() const;
 	bool WhiteListTargetNotify() const;
 	bool ManualLootTargetNotify() const;
@@ -117,6 +118,7 @@ private:
 	bool m_enableLootContainer;
 	bool m_enableHarvest;
 	bool m_lootAllowedItemsInSettlement;
+	bool m_lootAllowedItemsInPlayerHouse;
 	bool m_unknownIngredientLoot;
 	bool m_whiteListTargetNotify;
 	bool m_manualLootTargetNotify;

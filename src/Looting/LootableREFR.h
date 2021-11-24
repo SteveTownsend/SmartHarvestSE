@@ -34,6 +34,7 @@ public:
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
 	bool IsValuable(void) const;
 	bool IsItemLootableInPopulationCenter(ObjectType objectType) const;
+	bool IsItemLootableInPlayerHouse(ObjectType objectType) const;
 	void SetEffectiveObjectType(const ObjectType effectiveType);
 	bool HasIngredient() const;
 	bool IsHarvestable() const;

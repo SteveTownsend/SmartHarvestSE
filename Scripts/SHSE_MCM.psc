@@ -74,6 +74,7 @@ float verticalRadiusFactor
 int defaultDoorsPreventLooting
 int doorsPreventLooting
 bool lootAllowedItemsInSettlement
+bool lootAllowedItemsInPlayerHouse
 
 int iniSaveLoad
 string[] s_iniSaveLoadArray
@@ -374,6 +375,7 @@ function LoadSettingsFromNative()
     verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor")
     doorsPreventLooting = GetSetting(type_Harvest, type_Config, "DoorsPreventLooting") as int
     lootAllowedItemsInSettlement = GetSetting(type_Harvest, type_Config, "LootAllowedItemsInSettlement") as bool
+    lootAllowedItemsInPlayerHouse = GetSetting(type_Harvest, type_Config, "LootAllowedItemsInPlayerHouse") as bool
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
@@ -461,6 +463,7 @@ Function SaveSettingsToNative()
     PutSetting(type_Harvest, type_Config, "VerticalRadiusFactor", verticalRadiusFactor)
     PutSetting(type_Harvest, type_Config, "DoorsPreventLooting", doorsPreventLooting as float)
     PutSetting(type_Harvest, type_Config, "LootAllowedItemsInSettlement", lootAllowedItemsInSettlement as float)
+    PutSetting(type_Harvest, type_Config, "LootAllowedItemsInPlayerHouse", lootAllowedItemsInPlayerHouse as float)
 
     PutSettingObjectArray(type_Harvest, type_ItemObject, 30, objectSettingArray)
     PutSettingToExcessHandlingArray(type_Harvest, type_Handling, 30, excessHandlingArray)
@@ -680,6 +683,7 @@ Function SetMiscDefaults(bool firstTime)
     valuableItemLoot = 1
     valuableItemThreshold = 500
     lootAllowedItemsInSettlement = true
+    lootAllowedItemsInPlayerHouse = false
 
     InstallCollections()
     InstallCollectionGroupPolicy()
@@ -1070,7 +1074,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 52
+    return 53
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1211,6 +1215,9 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 52 && CurrentVersion < 52
 	ResetExcessInventoryTargets()
         AddConsumableObjectTypes()
+    endIf
+    if a_version >= 53 && CurrentVersion < 53
+        lootAllowedItemsInPlayerHouse = false
     endIf
 endEvent
 
@@ -1605,6 +1612,7 @@ event OnPageReset(string currentPage)
         AddSliderOptionST("VerticalRadiusFactorState", "$SHSE_VERTICAL_RADIUS_FACTOR", verticalRadiusFactor as float, "{2}")
         AddToggleOptionST("DoorsPreventLootingState", "$SHSE_DOORS_PREVENT_LOOTING", doorsPreventLooting as bool)
         AddToggleOptionST("LootAllowedItemsInSettlementState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT", lootAllowedItemsInSettlement as bool)
+        AddToggleOptionST("LootAllowedItemsInPlayerHouseState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_PLAYER_HOUSE", lootAllowedItemsInPlayerHouse as bool)
 
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -2352,6 +2360,22 @@ state LootAllowedItemsInSettlementState
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT"))
+    endEvent
+endState
+
+state LootAllowedItemsInPlayerHouseState
+    event OnSelectST()
+        lootAllowedItemsInPlayerHouse = (!(lootAllowedItemsInPlayerHouse as bool)) as int
+        SetToggleOptionValueST(lootAllowedItemsInPlayerHouse as bool)
+    endEvent
+
+    event OnDefaultST()
+        lootAllowedItemsInPlayerHouse = false
+        SetToggleOptionValueST(lootAllowedItemsInPlayerHouse as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_LOOT_ALLOWED_ITEMS_IN_PLAYER_HOUSE"))
     endEvent
 endState
 

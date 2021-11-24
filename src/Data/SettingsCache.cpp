@@ -73,6 +73,7 @@ SettingsCache::SettingsCache()
 	m_enableLootContainer = true;
 	m_enableHarvest = true;
 	m_lootAllowedItemsInSettlement = true;
+	m_lootAllowedItemsInPlayerHouse = true;
 	m_unknownIngredientLoot = false;
 	m_whiteListTargetNotify = false;
 	m_manualLootTargetNotify = true;
@@ -222,6 +223,9 @@ void SettingsCache::Refresh(void)
 	m_lootAllowedItemsInSettlement = ini->GetSetting(
 		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInSettlement") != 0;
 	REL_VMESSAGE("Loot Allowed Items In Settlement {}", m_lootAllowedItemsInSettlement);
+	m_lootAllowedItemsInPlayerHouse = ini->GetSetting(
+		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInPlayerHouse") != 0;
+	REL_VMESSAGE("Loot Allowed Items In Player House {}", m_lootAllowedItemsInPlayerHouse);
 	m_unknownIngredientLoot = ini->GetSetting(
 		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "UnknownIngredientLoot") != 0;
 	REL_VMESSAGE("Unknown Ingredient Loot {}", m_unknownIngredientLoot);
@@ -414,6 +418,10 @@ bool SettingsCache::EnableHarvest() const
 bool SettingsCache::LootAllowedItemsInSettlement() const
 {
 	return m_lootAllowedItemsInSettlement;
+}
+bool SettingsCache::LootAllowedItemsInPlayerHouse() const
+{
+	return m_lootAllowedItemsInPlayerHouse;
 }
 bool SettingsCache::UnknownIngredientLoot() const
 {

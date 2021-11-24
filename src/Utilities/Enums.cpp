@@ -91,6 +91,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerIsLootTransferTarget: return "ContainerIsLootTransferTarget";
 	case Lootability::InventoryLimitsEnforced: return "InventoryLimitsEnforced";
 	case Lootability::OutOfScope: return "OutOfScope";
+	case Lootability::PlayerHouseRestrictsLooting: return "PlayerHouseRestrictsLooting";
 	default: return "";
 	}
 }

@@ -141,6 +141,16 @@ bool LootableREFR::IsItemLootableInPopulationCenter(ObjectType objectType) const
 	return IsValueWeightExempt(objectType) || IsHarvestable();
 }
 
+bool LootableREFR::IsItemLootableInPlayerHouse(ObjectType objectType) const
+{
+	// Config setting overrides
+	if (!SettingsCache::Instance().LootAllowedItemsInPlayerHouse())
+		return false;
+	// Allow auto-mining in player houses, ignoring item ownership.
+	// Harvestables are fine too. We mostly don't want to clear the shelves of every building we walk into here.
+	return IsValueWeightExempt(objectType) || IsHarvestable();
+}
+
 void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
 {
 	DBG_VMESSAGE("Update 0x{:08x} from {} to {}", GetTarget()->GetFormID(),

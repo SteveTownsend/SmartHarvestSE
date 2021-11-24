@@ -558,6 +558,7 @@ enum class Lootability {
 	ContainerIsLootTransferTarget,
 	InventoryLimitsEnforced,
 	OutOfScope,
+	PlayerHouseRestrictsLooting,
 	MAX
 };
 

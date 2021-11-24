@@ -767,8 +767,6 @@ void CollectionManager::ResolveMembership(void)
 void CollectionManager::Clear(void)
 {
 	REL_MESSAGE("Reset Collections");
-	// Flush membership state to allow testing
-	m_collectionsByFormID.clear();
 	// m_collectionsByObjectType is not cleared - it is based on one-time load of JSON files and therefore invariant
 	for (auto collection : m_allCollectionsByLabel)
 	{
@@ -785,6 +783,10 @@ void CollectionManager::Clear(void)
 void CollectionManager::OnGameReload(void)
 {
 	RecursiveLockGuard guard(m_collectionLock);
+	// Flush membership state to allow testing
+	m_collectionsByFormID.clear();
+	m_activeCollectionsByGroupName.clear();
+
 	// resolve and print effective membership - no members for new game, cosave state may include members so print reconciled version
 	ResolveMembership();
 	PrintMembership();
