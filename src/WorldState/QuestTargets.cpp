@@ -280,27 +280,52 @@ void QuestTargets::BlacklistOutliers()
 			refr->GetName(), refr->GetFormID(), item->GetName(), item->GetFormID());
 		BlacklistQuestTargetReferencedItem(item, refr);
 	}
-	const std::vector<std::pair<std::string, RE::FormID>> offLimitsNPCs = {
+	const std::unordered_set<RE::FormID> offLimitsNPCs = {
 		// Ysgramor's Tomb Companion Ghosts
-		{"Skyrim.esm", 0xab102},
-		{"Skyrim.esm", 0xab104},
-		{"Skyrim.esm", 0xde516},
-		{"Skyrim.esm", 0xde517},
-		{"Skyrim.esm", 0xde518},
-		{"Skyrim.esm", 0xde519},
+		0xafb94,
+		0xdcb42,
+		0xab18f,
+		0xdcb11,
+		0xdcb40,
+		0xff133,
+		0xff132,
+		0xafb9a,
+		0xdcb2b,
+		0xdcb41,
+		0xff130,
+		0xafba0,
+		0xafba1,
+		0xdcb19,
+		0xdcb30,
+		0xdcb0e,
+		0xdcb1a,
+		0xff131,
+		0xab190,
+		0xdcb94,
+		0xafb9b,
 		// Ysgramor's Tomb Wolf Spirits
-		{"Skyrim.esm", 0x58303},	// Kodlak
-		{"Skyrim.esm", 0xf6087},	// Farkas
-		{"Skyrim.esm", 0xf6089}		// Vilkas
+		0x58304,	// Kodlak
+		0xf6088,	// Farkas
+		0xf608a		// Vilkas
 	};
+	std::unordered_set<RE::FormID> baseNPCs;
 	for (const auto barredNPC : offLimitsNPCs)
 	{
-		const RE::TESNPC* npc(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESNPC>(barredNPC.second, barredNPC.first));
-		if (npc)
+		REL_VMESSAGE("Blacklist persistent outlier Quest Target NPC 0x{:08x}", barredNPC);
+		m_questTargetREFRs.insert(barredNPC);
+	}
+	const auto* tombCell(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectCELL>(0xafb94, "Skyrim.esm"));
+	if (tombCell)
+	{
+		tombCell->ForEachReference([&] (const auto& tombRefr) -> bool
 		{
-			REL_VMESSAGE("Blacklist outlier Quest Target NPC {}/0x{:08x}", npc->GetName(), npc->GetFormID());
-			BlacklistQuestTargetNPC(npc);
-		}
+			if (offLimitsNPCs.contains(tombRefr.GetFormID()))
+			{
+				REL_VMESSAGE("Blacklist temporary outlier Quest Target NPC {}/0x{:08x} with Base 0x{:08x}",
+					tombRefr.GetName(), tombRefr.GetFormID(), tombRefr.GetBaseObject()->GetFormID());
+			}
+			return true;
+		});
 	}
 	const RE::IngredientItem* ingredient(RE::TESDataHandler::GetSingleton()->LookupForm<RE::IngredientItem>(0x3ad61, "Skyrim.esm"));
 	RE::BGSPerk* perk(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSPerk>(0x1c05b, "Dragonborn.esm"));

@@ -735,9 +735,7 @@ Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return Lootability::NullReference;
-	// dynamic forms must never be recorded as their FormID may be reused
-	if (refr->IsDynamicForm())
-		return Lootability::Lootable;
+	// dynamic forms may be recorded even though their FormID may be reused
 	RecursiveLockGuard guard(m_blockListLock);
 	const auto blocked(m_blockRefr.find(refr->GetFormID()));
 	return blocked == m_blockRefr.cend() ? Lootability::Lootable : blocked->second;
