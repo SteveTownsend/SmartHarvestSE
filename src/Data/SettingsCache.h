@@ -65,6 +65,7 @@ public:
 	EnchantedObjectHandling EnchantedObjectHandlingType() const;
 
 	double DelaySeconds() const;
+
 	OwnershipRule CrimeCheckSneaking() const;
 	OwnershipRule CrimeCheckNotSneaking() const;
 	SpecialObjectHandling PlayerBelongingsLoot() const;
@@ -106,7 +107,12 @@ private:
 	double m_valueWeightDefault;
 	DeadBodyLooting m_deadBodyLooting;
 	EnchantedObjectHandling m_enchantedObjectHandling;
+
+	// Worker thread loop smallest possible delay
+	static constexpr double MinThreadDelaySeconds = 0.1;
+
 	double m_delaySeconds;
+	double m_delaySecondsIndoors;
 	OwnershipRule m_crimeCheckSneaking;
 	OwnershipRule m_crimeCheckNotSneaking;
 	SpecialObjectHandling m_playerBelongingsLoot;

@@ -311,6 +311,20 @@ void DataCase::AnalyzePerks(void)
 			}
 		}
 	}
+	// List MGEF with Slow Time archetype, save the ones with Value Modifier on Bow Speed Bonus
+	for (RE::EffectSetting* effect : dhnd->GetFormArray<RE::EffectSetting>())
+	{
+		if (effect->HasArchetype(RE::EffectSetting::Archetype::kSlowTime))
+		{
+			REL_VMESSAGE("SlowTime Magic Effect : {}({:08x})", effect->GetName(), effect->GetFormID());
+		}
+		else if (effect->HasArchetype(RE::EffectSetting::Archetype::kValueModifier) &&
+			effect->data.primaryAV == RE::ActorValue::kBowSpeedBonus)
+		{
+			REL_VMESSAGE("ValueModifier-BowSpeedBonus Magic Effect : {}({:08x})", effect->GetName(), effect->GetFormID());
+			m_slowTimeEffects.insert(effect);
+		}
+	}
 }
 
 void DataCase::ExcludeFactionContainers()
@@ -1072,10 +1086,6 @@ void DataCase::ListsClear(const bool gameReload)
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 {
-	// Moving arrows must be skipped if they are in flight. Bobbing on water or rolling around does not count.
-	// Assume in-flight movement rate at least N feet per loot scan interval.
-	constexpr double ArrowInFlightUnits(5. / DistanceUnitInFeet);
-
 	bool skip(false);
 	RE::NiPoint3 pos = refr->GetPosition();
 	if (pos == RE::NiPoint3())
@@ -1095,18 +1105,32 @@ bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
 	else
 	{
 		RE::NiPoint3 prev = m_arrowCheck.at(refr);
-		float dx(pos.x - prev.x);
-		float dy(pos.y - prev.y);
-		float dz(pos.z - prev.z);
-		if (fabs(dx) > ArrowInFlightUnits || fabs(dy) > ArrowInFlightUnits || fabs(dz) > ArrowInFlightUnits)
+		if (prev != pos)
 		{
-			DBG_VMESSAGE("In flight, change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f}", dx, dy, dz);
-			m_arrowCheck[refr] = pos;
-			skip = true;
+			float dx(pos.x - prev.x);
+			float dy(pos.y - prev.y);
+			float dz(pos.z - prev.z);
+			// check for in-flight arrow movement speed is scaled if player is current experiencing Slow Time
+			const double ArrowInFlightUnitsPerScan(PlayerState::Instance().ArrowMovingThreshold());
+			if (fabs(dx) > ArrowInFlightUnitsPerScan || fabs(dy) > ArrowInFlightUnitsPerScan || fabs(dz) > ArrowInFlightUnitsPerScan)
+			{
+				DBG_VMESSAGE("In flight: change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f} vs {:0.2f}",
+					dx, dy, dz, ArrowInFlightUnitsPerScan);
+				m_arrowCheck[refr] = pos;
+				skip = true;
+			}
+			else
+			{
+				DBG_VMESSAGE("OK, not in flight, change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f} vs {:0.2f}",
+					dx, dy, dz, ArrowInFlightUnitsPerScan);
+			}
 		}
 		else
 		{
-			DBG_VMESSAGE("OK, not in flight, change in arrow position dx={:0.2f},dy={:0.2f},dz={:0.2f}", dx, dy, dz);
+			DBG_VMESSAGE("Arrow is stationary");
+		}
+		if (!skip)
+		{
 			m_arrowCheck.erase(refr);
 		}
 	}
@@ -1427,6 +1451,16 @@ float DataCase::PerkIngredientMultiplier(const RE::Actor* actor) const
 		}
 	});
 	return result;
+}
+
+bool DataCase::IsSlowTimeEffectActive() const
+{
+	for (const auto effect : m_slowTimeEffects)
+	{
+		if (RE::PlayerCharacter::GetSingleton()->HasMagicEffect(effect))
+			return true;
+	}
+	return false;
 }
 
 std::string DataCase::GetModelPath(const RE::TESForm* thisForm) const

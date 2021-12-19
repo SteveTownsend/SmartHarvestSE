@@ -52,6 +52,7 @@ private:
 	bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted, const bool allowIfRestrictedHome);
 	bool IsPlaceWhitelisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const;
+	const RE::TESForm* CurrentPlayerPlaceCached() const;
 
 	static std::unique_ptr<LocationTracker> m_instance;
 	// 3x3 CELL adjacency check - 8 nearest CELLs are treated as adjacent to player's CELL, if exterior
@@ -90,7 +91,7 @@ public:
 	bool IsPlayerIndoors() const;
 	bool IsPlayerInRestrictedLootSettlement() const;
 	bool IsPlayerInFriendlyCell() const;
-	const RE::TESForm* CurrentPlayerPlace() const;
+	const RE::TESForm* CurrentPlayerPlace();
 	const RE::TESWorldSpace* CurrentPlayerWorld() const;
 	bool IsPlayerInWhitelistedPlace() const;
 

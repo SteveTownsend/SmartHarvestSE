@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "Data/iniSettings.h"
 #include "Looting/Objects.h"
+#include "WorldState/LocationTracker.h"
 #include "Utilities/utils.h"
 
 namespace shse
@@ -62,6 +63,7 @@ SettingsCache::SettingsCache()
 	m_deadBodyLooting = DeadBodyLooting::LootExcludingArmor;
 	m_enchantedObjectHandling = EnchantedObjectHandling::DoLoot;
 	m_delaySeconds = 1.2;
+	m_delaySecondsIndoors = 0.6;
 	m_crimeCheckSneaking = OwnershipRule::DisallowCrime;
 	m_crimeCheckNotSneaking = OwnershipRule::DisallowCrime;
 	m_playerBelongingsLoot = SpecialObjectHandling::DoNotLoot;
@@ -189,6 +191,8 @@ void SettingsCache::Refresh(void)
 
 	m_delaySeconds = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds");
 	REL_VMESSAGE("Scan interval {:0.2f} seconds", m_delaySeconds);
+	m_delaySecondsIndoors = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IndoorsIntervalSeconds");
+	REL_VMESSAGE("Scan interval indoors {:0.2f} seconds", m_delaySecondsIndoors);
 
 	m_crimeCheckSneaking = OwnershipRuleFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CrimeCheckSneaking"));
@@ -373,7 +377,8 @@ EnchantedObjectHandling SettingsCache::EnchantedObjectHandlingType() const
 }
 double SettingsCache::DelaySeconds() const
 {
-	return m_delaySeconds;
+	double delay(LocationTracker::Instance().IsPlayerIndoors() ? m_delaySecondsIndoors : m_delaySeconds);
+	return std::max(MinThreadDelaySeconds, delay);
 }
 OwnershipRule SettingsCache::CrimeCheckSneaking() const
 {

@@ -215,7 +215,6 @@ void PluginFacade::ScanThread()
 	{
 		// Delay the scan for each loop
 		double delaySeconds(SettingsCache::Instance().DelaySeconds());
-		delaySeconds = std::max(MinThreadDelaySeconds, delaySeconds);
 		if (ScanGovernor::Instance().Calibrating())
 		{
 			// use hard-coded delay to make UX comprehensible

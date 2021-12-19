@@ -610,7 +610,7 @@ bool LocationTracker::Refresh()
 		static const bool allowIfRestricted(false);
 		bool couldLootInPrior(LocationTracker::Instance().IsPlaceLootable(originalCellID, originalLocation, allowIfRestricted, allowIfRestricted));
 		m_playerLocation = playerLocation;
-		m_playerPlaceName = PlaceName(CurrentPlayerPlace());
+		m_playerPlaceName = PlaceName(CurrentPlayerPlaceCached());
 		DBG_MESSAGE("Player was at {}, lootable = {}, now at {}", originalPlaceName,
 			couldLootInPrior ? "true" : "false", m_playerPlaceName);
 
@@ -871,13 +871,21 @@ bool LocationTracker::IsPlayerInFriendlyCell() const
 	return isFriendly;
 }
 
-const RE::TESForm* LocationTracker::CurrentPlayerPlace() const
+// Assumes lock held on entry
+const RE::TESForm* LocationTracker::CurrentPlayerPlaceCached() const
 {
 	// Prefer location, cell only if in wilderness
-	RecursiveLockGuard guard(m_locationLock);
 	if (m_playerLocation)
 		return m_playerLocation;
 	return PlayerCell();
+}
+
+const RE::TESForm* LocationTracker::CurrentPlayerPlace()
+{
+	// Ensure current info is accurate and return the cached value
+	RecursiveLockGuard guard(m_locationLock);
+	Refresh();
+	return CurrentPlayerPlaceCached();
 }
 
 std::string LocationTracker::PlaceName(const RE::TESForm* place) const
