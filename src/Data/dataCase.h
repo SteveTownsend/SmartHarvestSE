@@ -122,6 +122,7 @@ public:
 	{
 		return m_offLimitsContainers.contains(containerRef->GetFormID());
 	}
+	bool IsSlowTimeEffectActive() const;
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
@@ -155,6 +156,7 @@ private:
 
 	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
+	std::unordered_set<RE::EffectSetting*> m_slowTimeEffects;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;

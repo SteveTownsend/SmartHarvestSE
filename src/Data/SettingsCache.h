@@ -65,6 +65,7 @@ public:
 	EnchantedObjectHandling EnchantedObjectHandlingType() const;
 
 	double DelaySeconds() const;
+
 	OwnershipRule CrimeCheckSneaking() const;
 	OwnershipRule CrimeCheckNotSneaking() const;
 	SpecialObjectHandling PlayerBelongingsLoot() const;
@@ -77,6 +78,7 @@ public:
 	bool EnableLootContainer() const;
 	bool EnableHarvest() const;
 	bool LootAllowedItemsInSettlement() const;
+	bool LootAllowedItemsInPlayerHouse() const;
 	bool UnknownIngredientLoot() const;
 	bool WhiteListTargetNotify() const;
 	bool ManualLootTargetNotify() const;
@@ -105,7 +107,12 @@ private:
 	double m_valueWeightDefault;
 	DeadBodyLooting m_deadBodyLooting;
 	EnchantedObjectHandling m_enchantedObjectHandling;
+
+	// Worker thread loop smallest possible delay
+	static constexpr double MinThreadDelaySeconds = 0.1;
+
 	double m_delaySeconds;
+	double m_delaySecondsIndoors;
 	OwnershipRule m_crimeCheckSneaking;
 	OwnershipRule m_crimeCheckNotSneaking;
 	SpecialObjectHandling m_playerBelongingsLoot;
@@ -117,6 +124,7 @@ private:
 	bool m_enableLootContainer;
 	bool m_enableHarvest;
 	bool m_lootAllowedItemsInSettlement;
+	bool m_lootAllowedItemsInPlayerHouse;
 	bool m_unknownIngredientLoot;
 	bool m_whiteListTargetNotify;
 	bool m_manualLootTargetNotify;

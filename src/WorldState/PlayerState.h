@@ -49,6 +49,8 @@ public:
 	void UpdateGameTime(const float gameTime);
 	inline float CurrentGameTime() const { return m_gameTime; }
 	int ItemHeadroom(RE::TESBoundObject* form, const int delta) const;
+	bool IsTimeSlowed() const { return m_slowedTime; }
+	double ArrowMovingThreshold() const;
 
 private:
 	void CheckPerks(const bool force);
@@ -78,6 +80,7 @@ private:
 	int m_currentCarryWeightChange;
 
 	bool m_sneaking;
+	bool m_slowedTime;
 	OwnershipRule m_ownershipRule;
 	SpecialObjectHandling m_belongingsCheck;
 	bool m_disableWhileMounted;

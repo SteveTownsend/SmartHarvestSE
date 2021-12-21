@@ -264,6 +264,82 @@ void QuestTargets::Analyze()
 			}
 		}
 	}
+	BlacklistOutliers();
+}
+
+void QuestTargets::BlacklistOutliers()
+{
+	{
+		// https://github.com/SteveTownsend/SmartHarvestSE/issues/336
+		// [REFR:00082A43] "SoulGemGreaterFilled" [MISC:0002E4FB] is Transient
+		const RE::FormID refrID(0x82a43);
+		const RE::FormID itemID(0x2e4fb);
+		REL_VMESSAGE("Blacklist REFR 0x{:08x} to outlier Quest Target Soul Gem 0x{:08x}", refrID, itemID);
+		BlacklistQuestTargetReferencedItemByID(itemID, refrID);
+	}
+	{
+		// https://github.com/SteveTownsend/SmartHarvestSE/issues/322
+		// MQ106DragonMapRef [REFR:000FF228] (places MQ106DragonParchment "Map of Dragon Burials" [MISC:000BBCD5]
+		//   in GRUP Cell Persistent Children of RiverwoodSleepingGiantInn "Sleeping Giant Inn" [CELL:000133C6])
+		const RE::TESObjectREFR* refr(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectREFR>(0xff228, "Skyrim.esm"));
+		const RE::TESObjectMISC* item(RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectMISC>(0xbbcd5, "Skyrim.esm"));
+		if (item && refr)
+		{
+			REL_VMESSAGE("Blacklist REFR {}/0x{:08x} to outlier Quest Target Item {}/0x{:08x}",
+				refr->GetName(), refr->GetFormID(), item->GetName(), item->GetFormID());
+			BlacklistQuestTargetReferencedItem(item, refr);
+		}
+	}
+	const std::unordered_set<RE::FormID> offLimitsNPCs = {
+		// Ysgramor's Tomb Companion Ghosts
+		0xafb94,
+		0xdcb42,
+		0xab18f,
+		0xdcb11,
+		0xdcb40,
+		0xff133,
+		0xff132,
+		0xafb9a,
+		0xdcb2b,
+		0xdcb41,
+		0xff130,
+		0xafba0,
+		0xafba1,
+		0xdcb19,
+		0xdcb30,
+		0xdcb0e,
+		0xdcb1a,
+		0xff131,
+		0xab190,
+		0xdcb94,
+		0xafb9b,
+		// Ysgramor's Tomb Wolf Spirits
+		0x58304,	// Kodlak
+		0xf6088,	// Farkas
+		0xf608a,	// Vilkas
+		// Halldir Clones
+		0x642c4,	// Frost
+		0x642c5,	// Fire
+		0x642c6		// Storm
+	};
+	for (const auto barredNPC : offLimitsNPCs)
+	{
+		REL_VMESSAGE("Blacklist persistent outlier Quest Target NPC 0x{:08x}", barredNPC);
+		m_questTargetREFRs.insert(barredNPC);
+	}
+	const RE::IngredientItem* ingredient(RE::TESDataHandler::GetSingleton()->LookupForm<RE::IngredientItem>(0x3ad61, "Skyrim.esm"));
+	RE::BGSPerk* perk(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSPerk>(0x1c05b, "Dragonborn.esm"));
+	auto player(RE::PlayerCharacter::GetSingleton());
+	QuestTargetPredicate predicate([=]() -> bool {return player->HasPerk(perk); });
+	// Conditionally blacklisted items
+	if (ingredient && perk && player)
+	{
+		if (BlacklistConditionalQuestTargetItem(ingredient, predicate))
+		{
+			REL_VMESSAGE("Blacklist Quest Target {}/0x{:08x} conditional on Perk {}/0x{:08x}",
+				ingredient->GetName(), ingredient->GetFormID(), perk->GetName(), perk->GetFormID());
+		}
+	}
 }
 
 // used for Quest Target Items with no specific REFR. Blocks autoloot of the item everywhere,
@@ -280,13 +356,27 @@ bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 	return false;
 }
 
+bool QuestTargets::BlacklistConditionalQuestTargetItem(const RE::TESBoundObject* item, QuestTargetPredicate predicate)
+{
+	if (!FormUtils::IsConcrete(item))
+		return false;
+	return m_conditionalQuestTargetItems.insert({ item->GetFormID(), predicate }).second;
+}
+
 // used for Quest Target Items with specific REFR. Blocks autoloot of the item for this REFR (or any if REFR blank),
 // to preserve immersion and avoid breaking Quests.
 bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* item, const RE::TESObjectREFR* refr)
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
-	return m_questTargetReferenced[item->GetFormID()].insert(refr->GetFormID()).second;
+	return BlacklistQuestTargetReferencedItemByID(item->GetFormID(), refr->GetFormID());
+}
+
+// used for Quest Target Items with specific REFR. Blocks autoloot of the item for this REFR (or any if REFR blank),
+// to preserve immersion and avoid breaking Quests.
+bool QuestTargets::BlacklistQuestTargetReferencedItemByID(const RE::FormID itemID, const RE::FormID refrID)
+{
+	return m_questTargetReferenced[itemID].insert(refrID).second;
 }
 
 // used for Quest Target Items. Blocks autoloot of the item, to preserve immersion and avoid breaking Quests.
@@ -343,6 +433,12 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const 
 	// check for specific reference to base
 	const auto referenced(m_questTargetReferenced.find(form->GetFormID()));
 	if (referenced != m_questTargetReferenced.cend() && referenced->second.find(refr->GetFormID()) != referenced->second.cend())
+	{
+		return Lootability::CannotLootQuestTarget;
+	}
+	// check for items that can be conditionally excluded
+	const auto condition(m_conditionalQuestTargetItems.find(form->GetFormID()));
+	if (condition != m_conditionalQuestTargetItems.cend() && (condition->second)())
 	{
 		return Lootability::CannotLootQuestTarget;
 	}

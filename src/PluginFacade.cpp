@@ -189,7 +189,8 @@ bool PluginFacade::ScanAllowed() const {
 	RecursiveLockGuard guard(m_pluginLock);
 	// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
 	static const bool allowIfRestricted(true);
-	if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
+	static const bool allowIfRestrictedHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse());
+	if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted, allowIfRestrictedHome))
 	{
 		DBG_MESSAGE("Location cannot be looted");
 		return false;
@@ -214,7 +215,6 @@ void PluginFacade::ScanThread()
 	{
 		// Delay the scan for each loop
 		double delaySeconds(SettingsCache::Instance().DelaySeconds());
-		delaySeconds = std::max(MinThreadDelaySeconds, delaySeconds);
 		if (ScanGovernor::Instance().Calibrating())
 		{
 			// use hard-coded delay to make UX comprehensible
