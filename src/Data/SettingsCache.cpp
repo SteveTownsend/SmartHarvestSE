@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "Data/iniSettings.h"
 #include "Looting/Objects.h"
+#include "WorldState/LocationTracker.h"
 #include "Utilities/utils.h"
 
 namespace shse
@@ -62,6 +63,7 @@ SettingsCache::SettingsCache()
 	m_deadBodyLooting = DeadBodyLooting::LootExcludingArmor;
 	m_enchantedObjectHandling = EnchantedObjectHandling::DoLoot;
 	m_delaySeconds = 1.2;
+	m_delaySecondsIndoors = 0.6;
 	m_crimeCheckSneaking = OwnershipRule::DisallowCrime;
 	m_crimeCheckNotSneaking = OwnershipRule::DisallowCrime;
 	m_playerBelongingsLoot = SpecialObjectHandling::DoNotLoot;
@@ -73,6 +75,7 @@ SettingsCache::SettingsCache()
 	m_enableLootContainer = true;
 	m_enableHarvest = true;
 	m_lootAllowedItemsInSettlement = true;
+	m_lootAllowedItemsInPlayerHouse = true;
 	m_unknownIngredientLoot = false;
 	m_whiteListTargetNotify = false;
 	m_manualLootTargetNotify = true;
@@ -188,6 +191,8 @@ void SettingsCache::Refresh(void)
 
 	m_delaySeconds = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds");
 	REL_VMESSAGE("Scan interval {:0.2f} seconds", m_delaySeconds);
+	m_delaySecondsIndoors = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IndoorsIntervalSeconds");
+	REL_VMESSAGE("Scan interval indoors {:0.2f} seconds", m_delaySecondsIndoors);
 
 	m_crimeCheckSneaking = OwnershipRuleFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CrimeCheckSneaking"));
@@ -222,6 +227,9 @@ void SettingsCache::Refresh(void)
 	m_lootAllowedItemsInSettlement = ini->GetSetting(
 		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInSettlement") != 0;
 	REL_VMESSAGE("Loot Allowed Items In Settlement {}", m_lootAllowedItemsInSettlement);
+	m_lootAllowedItemsInPlayerHouse = ini->GetSetting(
+		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LootAllowedItemsInPlayerHouse") != 0;
+	REL_VMESSAGE("Loot Allowed Items In Player House {}", m_lootAllowedItemsInPlayerHouse);
 	m_unknownIngredientLoot = ini->GetSetting(
 		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "UnknownIngredientLoot") != 0;
 	REL_VMESSAGE("Unknown Ingredient Loot {}", m_unknownIngredientLoot);
@@ -369,7 +377,8 @@ EnchantedObjectHandling SettingsCache::EnchantedObjectHandlingType() const
 }
 double SettingsCache::DelaySeconds() const
 {
-	return m_delaySeconds;
+	double delay(LocationTracker::Instance().IsPlayerIndoors() ? m_delaySecondsIndoors : m_delaySeconds);
+	return std::max(MinThreadDelaySeconds, delay);
 }
 OwnershipRule SettingsCache::CrimeCheckSneaking() const
 {
@@ -414,6 +423,10 @@ bool SettingsCache::EnableHarvest() const
 bool SettingsCache::LootAllowedItemsInSettlement() const
 {
 	return m_lootAllowedItemsInSettlement;
+}
+bool SettingsCache::LootAllowedItemsInPlayerHouse() const
+{
+	return m_lootAllowedItemsInPlayerHouse;
 }
 bool SettingsCache::UnknownIngredientLoot() const
 {

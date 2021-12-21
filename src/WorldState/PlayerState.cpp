@@ -107,6 +107,17 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 		m_ownershipRule = sneaking ? SettingsCache::Instance().CrimeCheckSneaking() : SettingsCache::Instance().CrimeCheckNotSneaking();
 		m_belongingsCheck = SettingsCache::Instance().PlayerBelongingsLoot();
 	}
+	m_slowedTime = RE::PlayerCharacter::GetSingleton()->HasEffectWithArchetype(RE::EffectSetting::Archetype::kSlowTime);
+	if (m_slowedTime)
+	{
+		DBG_DMESSAGE("Player subject to SlowTime archetype effect");
+	}
+	// Check for any other SlowTime lookalikes
+	else if (DataCase::GetInstance()->IsSlowTimeEffectActive())
+	{
+		DBG_DMESSAGE("Player subject to indirect SlowTime effect");
+		m_slowedTime = true;
+	}
 }
 
 void PlayerState::CheckExcessInventory(const bool force)
@@ -377,6 +388,15 @@ void PlayerState::UpdateGameTime(const float gameTime)
 	RecursiveLockGuard guard(m_playerLock);
 	DBG_MESSAGE("GameTime is now {:0.3f}/{}", gameTime, GameCalendar::Instance().DateTimeString(gameTime));
 	m_gameTime = gameTime;
+}
+
+double PlayerState::ArrowMovingThreshold() const
+{
+	// Moving arrows must be skipped if they are in flight. Bobbing on water or rolling around does not count.
+	// Assume in-flight movement rate at least N=5 feet per second, scaled to in-game distance units and for loot scan interval.
+	// https://github.com/SteveTownsend/SmartHarvestSE/issues/333 reduced this by a factor of 5 when time is slowed
+	const double footUnitsPerDelay = SettingsCache::Instance().DelaySeconds() / DistanceUnitInFeet;	// 1 foot per second in units, for slow time
+	return IsTimeSlowed() ? footUnitsPerDelay : 5.0 * footUnitsPerDelay;
 }
 
 // returns -1 if items are marked to be left behind and inventory is full, or the number allowed before limits are breached

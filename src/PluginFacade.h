@@ -46,9 +46,6 @@ private:
 	static void ScanThread(void);
 	inline bool Loaded() const { return m_loadProgress == LoadProgress::Complete; }
 
-	// Worker thread loop smallest possible delay
-	static constexpr double MinThreadDelaySeconds = 0.1;
-
 	static std::unique_ptr<PluginFacade> m_instance;
 	mutable RecursiveLock m_pluginLock;
 	enum class LoadProgress : uint8_t {

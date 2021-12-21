@@ -141,7 +141,8 @@ void ProcessManualLootREFR(const RE::TESObjectREFR* refr)
 	// notify about these, just once
 	PrintManualLootMessage(refr->GetName());
 	DBG_VMESSAGE("notify, then block objType == ObjectType::manualLoot for REFR 0x{:08x}", refr->GetFormID());
-	DataCase::GetInstance()->BlockReference(refr, Lootability::ManualLootTarget);
+	// this may be a dynamic Form
+	DataCase::GetInstance()->BlockReferenceByID(refr->GetFormID(), Lootability::ManualLootTarget);
 }
 
 void ProcessManualLootItem(const RE::TESBoundObject* item)

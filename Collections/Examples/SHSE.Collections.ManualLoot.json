@@ -24,6 +24,21 @@
       }
     },
     {
+      "name": "Ysgramor's Statue",
+      "description": "Ysgramor's Statue (Wuuthrad)",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "Skyrim.esm",
+              "form": [ "000B626C", "000956B5" ]
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "Canticle Bark",
       "description": "Canticle Bark",
       "rootFilter": {

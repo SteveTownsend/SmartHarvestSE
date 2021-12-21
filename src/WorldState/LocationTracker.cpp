@@ -608,9 +608,9 @@ bool LocationTracker::Refresh()
 
 		// Output messages for any looting-restriction place change
 		static const bool allowIfRestricted(false);
-		bool couldLootInPrior(LocationTracker::Instance().IsPlaceLootable(originalCellID, originalLocation, allowIfRestricted));
+		bool couldLootInPrior(LocationTracker::Instance().IsPlaceLootable(originalCellID, originalLocation, allowIfRestricted, allowIfRestricted));
 		m_playerLocation = playerLocation;
-		m_playerPlaceName = PlaceName(CurrentPlayerPlace());
+		m_playerPlaceName = PlaceName(CurrentPlayerPlaceCached());
 		DBG_MESSAGE("Player was at {}, lootable = {}, now at {}", originalPlaceName,
 			couldLootInPrior ? "true" : "false", m_playerPlaceName);
 
@@ -652,7 +652,7 @@ bool LocationTracker::Refresh()
 			}
 			// Check if location is excluded from looting and if so, notify we entered it
 			if ((couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) &&
-				!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
+				!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted, allowIfRestricted))
 			{
 				DBG_MESSAGE("Player Location {} no-loot message", m_playerPlaceName);
 				static RE::BSFixedString restrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_POPULATED_CHECK")));
@@ -670,7 +670,7 @@ bool LocationTracker::Refresh()
 		{
 			// check if we moved from a non-lootable place to a lootable place
 			if ((!couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) &&
-				LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted))
+				LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted, allowIfRestricted))
 			{
 				DBG_MESSAGE("Player Location {} OK-loot message", originalPlaceName);
 				static RE::BSFixedString unrestrictedPlaceMsg(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_UNPOPULATED_CHECK")));
@@ -711,14 +711,14 @@ void LocationTracker::RecordCurrentPlace(const float gameTime)
 		PlayerState::Instance().GetPosition(), gameTime);
 }
 
-bool LocationTracker::IsPlayerInLootablePlace(const bool lootableIfRestricted)
+bool LocationTracker::IsPlayerInLootablePlace(const bool lootableIfRestricted, const bool lootableIfRestrictedHome)
 {
 	RecursiveLockGuard guard(m_locationLock);
-	return IsPlaceLootable(m_playerCellID, m_playerLocation, lootableIfRestricted);
+	return IsPlaceLootable(m_playerCellID, m_playerLocation, lootableIfRestricted, lootableIfRestrictedHome);
 }
 
 bool LocationTracker::IsPlaceLootable(
-	const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted)
+	const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted, const bool lootableIfRestrictedHome)
 {
 	RecursiveLockGuard guard(m_locationLock);
 	// whitelist overrides all other considerations
@@ -729,7 +729,7 @@ bool LocationTracker::IsPlaceLootable(
 		DBG_DMESSAGE("Player location is on WhiteList");
 		return true;
 	}
-	if (IsPlacePlayerHome(cellID, location))
+	if (!lootableIfRestrictedHome && IsPlacePlayerHome(cellID, location))
 	{
 		DBG_DMESSAGE("Player House: no looting");
 		return false;
@@ -871,13 +871,21 @@ bool LocationTracker::IsPlayerInFriendlyCell() const
 	return isFriendly;
 }
 
-const RE::TESForm* LocationTracker::CurrentPlayerPlace() const
+// Assumes lock held on entry
+const RE::TESForm* LocationTracker::CurrentPlayerPlaceCached() const
 {
 	// Prefer location, cell only if in wilderness
-	RecursiveLockGuard guard(m_locationLock);
 	if (m_playerLocation)
 		return m_playerLocation;
 	return PlayerCell();
+}
+
+const RE::TESForm* LocationTracker::CurrentPlayerPlace()
+{
+	// Ensure current info is accurate and return the cached value
+	RecursiveLockGuard guard(m_locationLock);
+	Refresh();
+	return CurrentPlayerPlaceCached();
 }
 
 std::string LocationTracker::PlaceName(const RE::TESForm* place) const

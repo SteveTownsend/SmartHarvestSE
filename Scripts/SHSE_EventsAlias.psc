@@ -1187,19 +1187,20 @@ int Function SupportedCritterActivateCount(ObjectReference target)
 EndFunction
 
 
-Event OnHarvest(ObjectReference akTarget, Form baseForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
+Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
     int baseID = akTarget.GetBaseObject().GetFormID()
+    Form baseForm = akTarget.GetBaseObject()
 
-    ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + baseForm) 
+    ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + itemForm) 
     ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ")
 
     if (IsBookObject(itemType))
         player.AddItem(akTarget, count, true)
         if collectible
-            RecordItem(baseForm, itemSourceLoose, itemType)
+            RecordItem(itemForm, itemSourceLoose, itemType)
         endIf
 
         notify = !silent
@@ -1221,7 +1222,7 @@ Event OnHarvest(ObjectReference akTarget, Form baseForm, string baseName, int it
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
             ;DebugTrace("Player has ingredient count " + ingredientCount)
             bool suppressMessage = silent || ingredientCount as int > 1
-            ;DebugTrace("Flora/Tree original base form " + baseForm.GetName())
+            ;DebugTrace("Flora/Tree original base form " + itemForm.GetName())
             if ActivateEx(akTarget, player, suppressMessage, 1)
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
@@ -1231,7 +1232,7 @@ Event OnHarvest(ObjectReference akTarget, Form baseForm, string baseName, int it
         else
             int critterActivations = SupportedCritterActivateCount(akTarget)
             if critterActivations > 0
-                ;DebugTrace("Critter " + baseForm.GetName())
+                ;DebugTrace("Critter " + itemForm.GetName())
                 ActivateEx(akTarget, player, silent, critterActivations)
             elseif ActivateEx(akTarget, player, true, 1)
                 notify = !silent
@@ -1239,13 +1240,13 @@ Event OnHarvest(ObjectReference akTarget, Form baseForm, string baseName, int it
                     ; work round for ObjectReference.Activate() known issue
                     ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
                     int toGet = count - 1
-                    player.AddItem(baseForm, toGet, true)
-                    ;DebugTrace("Add extra count " + toGet + " of " + baseForm)
+                    player.AddItem(itemForm, toGet, true)
+                    ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
                 endIf
             endIf
         endif
         if collectible
-            RecordItem(baseForm, itemSourceLoose, itemType)
+            RecordItem(itemForm, itemSourceLoose, itemType)
         endIf
         ;DebugTrace("OnHarvest:Activated:" + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
     endif

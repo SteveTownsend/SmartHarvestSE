@@ -59,9 +59,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
-				objType = GetBaseObjectType(lootable);
-				refrEx.SetLootable(lootable);
-				refrEx.SetEffectiveObjectType(objType);
 				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
 					lootable->GetName(), lootable->formID, GetObjectTypeName(objType));
 			}
@@ -76,6 +73,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
 				}
 				return Lootability::PendingProducerIngredient;
+			}
+			else if (refrEx.IsFlora())
+			{
+				DBG_VMESSAGE("flora {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
+					refrEx.GetTarget()->GetName(), refrEx.GetTarget()->formID, refrEx.GetObjectType());
 			}
 			else
 			{
@@ -254,8 +256,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
+
+		// Check if this is an item harvestable in player home - this setting ignores player-ownership for flora, critters etc
+		bool atHome(LocationTracker::Instance().IsPlayerAtHome());
+		bool allowHarvestAtHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse() &&
+			refrEx.IsItemLootableInPlayerHouse(objType));
+
 		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
-		Lootability forbidden(ItemLootingLegality(collectible.first, m_targetType));
+		Lootability forbidden(atHome && allowHarvestAtHome ?
+			Lootability::Lootable : ItemLootingLegality(collectible.first, m_targetType));
 		if (forbidden != Lootability::Lootable)
 		{
 			skipLooting = true;
@@ -274,12 +283,20 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
-		if (!LocationTracker::Instance().IsPlayerInWhitelistedPlace() &&
+		// Harvesting in player house is a special-case.
+		bool whitelistedPlace(LocationTracker::Instance().IsPlayerInWhitelistedPlace());
+		if ((!atHome || !allowHarvestAtHome) && !whitelistedPlace &&
 			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
 			!refrEx.IsItemLootableInPopulationCenter(objType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
 			result = Lootability::PopulousLocationRestrictsLooting;
+			skipLooting = true;
+		}
+		if (atHome && !allowHarvestAtHome && !whitelistedPlace)
+		{
+			DBG_VMESSAGE("Player House is excluded for this item");
+			result = Lootability::PlayerHouseRestrictsLooting;
 			skipLooting = true;
 		}
 
@@ -408,7 +425,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		}
 		else
 		{
-			bool isSilent = !LootingRequiresNotification(lootingType);
+			bool isSilent = !LootingRequiresNotification(lootingType) ||
+				ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit;
 			// don't let the backlog of messages get too large, it's about 1 per second
 			// Event handler in Papyrus script unlocks the task - do not issue multiple concurrent events on the same REFR
 			if (!ScanGovernor::Instance().LockHarvest(m_candidate, isSilent))
@@ -421,11 +439,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
 				return Lootability::InventoryLimitsEnforced;
 			}
-			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}", m_candidate->GetBaseObject()->GetName(),
-				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false");
+			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+				GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
 			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
 			EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
-				isSilent || ScanGovernor::Instance().PendingHarvestNotifications() > ScanGovernor::HarvestSpamLimit,
+				isSilent,
 				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
 			if (isFirehose)
 			{

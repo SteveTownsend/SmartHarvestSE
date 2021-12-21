@@ -493,9 +493,9 @@ namespace papyrus
 			REL_ERROR("Player not in their house, cannot use {}/0x{:08x} for REFR 0x{:08x} as a transfer target", container->GetFullName(), container->GetFormID(), refr->GetFormID());
 			return "";
 		}
+		std::string placeName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
 		if (knownGood)
 		{
-			std::string placeName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
 			if (placeName.empty())
 			{
 				placeName = "Unknown";
@@ -505,9 +505,8 @@ namespace papyrus
 		}
 		else
 		{
-			std::string houseName(shse::LocationTracker::Instance().CurrentPlayerPlace()->GetName());
-			DBG_VMESSAGE("Player house {} -> Transfer target {}/0x{:08x}", houseName, container->GetFullName(), container->GetFormID());
-			return houseName;
+			DBG_VMESSAGE("Player house {} -> Transfer target {}/0x{:08x}", placeName, container->GetFullName(), container->GetFormID());
+			return placeName;
 		}
 	}
 
