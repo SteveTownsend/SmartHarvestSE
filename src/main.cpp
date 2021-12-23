@@ -34,6 +34,8 @@ http://www.fsf.org/licensing/licenses
 
 #include <spdlog/sinks/basic_file_sink.h>
 
+#define DLLEXPORT __declspec(dllexport)
+
 std::shared_ptr<spdlog::logger> SHSELogger;
 const std::string LoggerName = "SHSE_Logger";
 const std::string LogLevelVariable = "SmartHarvestSELogLevel";
@@ -97,29 +99,27 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 	}
 }
 
-extern "C"
-{
 #if _DEBUG
-	int MyCrtReportHook(int, char*, int*)
-	{
-		__try {
-			RaiseException(EXCEPTION_NONCONTINUABLE_EXCEPTION, EXCEPTION_NONCONTINUABLE, 0, NULL);
-		}
-		__except (LogStackWalker::LogStack(GetExceptionInformation())) {
-			REL_FATALERROR("JSON Collection Definitions threw structured exception");
-		}
-		return 0;
+int MyCrtReportHook(int, char*, int*)
+{
+	__try {
+		RaiseException(EXCEPTION_NONCONTINUABLE_EXCEPTION, EXCEPTION_NONCONTINUABLE, 0, NULL);
 	}
+	__except (LogStackWalker::LogStack(GetExceptionInformation())) {
+		REL_FATALERROR("JSON Collection Definitions threw structured exception");
+	}
+	return 0;
+}
 #endif
 
-bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_info)
+void InitializeDiagnostics()
 {
 #if _DEBUG
 	_CrtSetReportHook(MyCrtReportHook);
-	// default log level is ERROR
+	// default Debug log level is TRACE
 	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #else
-	// default log level is ERROR
+	// default Release log level is ERROR
 	spdlog::level::level_enum logLevel(spdlog::level::err);
 #endif
 	char* levelValue;
@@ -160,8 +160,7 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	}
 	catch (const spdlog::spdlog_ex&)
 	{
-		return false;
-	}	
+	}
 	spdlog::set_level(logLevel); // Set global log level
 	spdlog::flush_on(logLevel);	// always flush
 #if 0
@@ -169,27 +168,50 @@ bool SKSEPlugin_Query(const SKSE::QueryInterface * a_skse, SKSE::PluginInfo * a_
 	SKSE::add_papyrus_sink();	// TODO what goes in here now
 #endif
 #endif
-	REL_MESSAGE("{} v{}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
 
-	a_info->infoVersion = SKSE::PluginInfo::kVersion;
-	a_info->name = SHSE_NAME;
-	a_info->version = VersionInfo::Instance().GetVersionMajor();
+	REL_MESSAGE("{} v{}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
+}
+
+extern "C"
+{
+
+#ifndef SKYRIM_AE
+bool DLLEXPORT SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+{
+	InitializeDiagnostics();
 
 	if (a_skse->IsEditor()) {
 		REL_FATALERROR("Loaded in editor, marking as incompatible");
 		return false;
 	}
+
+	a_info->infoVersion = SKSE::PluginInfo::kVersion;
+	a_info->name = SHSE_NAME;
+	a_info->version = VersionInfo::Instance().GetVersionMajor();
+
 	REL::Version runtimeVer(a_skse->RuntimeVersion());
-	if (runtimeVer < SKSE::RUNTIME_1_5_73)
+	if (runtimeVer < SKSE::RUNTIME_1_5_73 || runtimeVer > SKSE::RUNTIME_1_5_97)
 	{
 		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.string());
 		return false;
 	}
 	return true;
 }
+#endif
 
-bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
+bool DLLEXPORT SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 {
+#ifdef SKYRIM_AE
+	InitializeDiagnostics();
+
+	REL::Version runtimeVer(skse->RuntimeVersion());
+	if (runtimeVer < SKSE::RUNTIME_1_6_317)
+	{
+		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.string());
+		return false;
+	}
+#endif
+
 	REL_MESSAGE("{} plugin loaded", SHSE_NAME);
 	SKSE::Init(skse);
 	SKSE::GetMessagingInterface()->RegisterListener("SKSE", SKSEMessageHandler);
@@ -202,4 +224,18 @@ bool SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 	return true;
 }
 
-};
+#ifdef SKYRIM_AE
+extern "C" DLLEXPORT const auto SKSEPlugin_Version = []() { {
+		SKSE::PluginVersionData v;
+
+		v.PluginVersion(VersionInfo::Instance().GetVersion());
+		v.PluginName(SHSE_NAME);
+
+		v.UsesAddressLibrary(true);
+		v.CompatibleVersions({ SKSE::RUNTIME_1_5_97, SKSE::RUNTIME_LATEST });
+
+		return v;
+	}
+}();
+#endif
+}

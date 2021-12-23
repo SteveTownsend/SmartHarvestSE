@@ -31,6 +31,7 @@ public:
 	static VersionInfo& Instance();
 	std::string GetPluginVersionString() const;
 	uint32_t GetVersionMajor() const;
+	REL::Version GetVersion() const;
 
 private:
 	VersionInfo() : m_majorVersion(0) {}
@@ -38,4 +39,5 @@ private:
 	void GetPluginVersionInfo();
 	std::string m_versionString;
 	uint32_t m_majorVersion;
+	REL::Version m_version;
 };

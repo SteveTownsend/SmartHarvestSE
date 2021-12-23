@@ -424,9 +424,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="exports.def">
-      <Filter>resources</Filter>
-    </None>
     <None Include="Config\SmartHarvestSE.ini">
       <Filter>Config</Filter>
     </None>
@@ -479,6 +476,9 @@
       <Filter>Filters</Filter>
     </None>
     <None Include="Batch\build-artifacts-rar.bat">
+      <Filter>Batch</Filter>
+    </None>
+    <None Include="Batch\build-AE-artifacts-rar.bat">
       <Filter>Batch</Filter>
     </None>
   </ItemGroup>

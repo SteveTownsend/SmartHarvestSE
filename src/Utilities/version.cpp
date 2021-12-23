@@ -44,6 +44,11 @@ uint32_t VersionInfo::GetVersionMajor() const
 	return m_majorVersion;
 }
 
+REL::Version VersionInfo::GetVersion() const
+{
+	return m_version;
+}
+
 void VersionInfo::GetPluginVersionInfo()
 {
 	m_versionString = "unknown";
@@ -79,6 +84,11 @@ void VersionInfo::GetPluginVersionInfo()
 	std::ostringstream version;
 	version << m_majorVersion << '.' << LOWORD(fileInfo->dwFileVersionMS) << '.' <<
 		HIWORD(fileInfo->dwFileVersionLS) << '.' << LOWORD(fileInfo->dwFileVersionLS);
-	m_majorVersion = HIWORD(fileInfo->dwFileVersionMS);
 	m_versionString = version.str().c_str();
+	m_version = {
+		HIWORD(fileInfo->dwFileVersionMS),
+		LOWORD(fileInfo->dwFileVersionMS),
+		HIWORD(fileInfo->dwFileVersionLS),
+		HIWORD(fileInfo->dwFileVersionLS)
+	};
 }
