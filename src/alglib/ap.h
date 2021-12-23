@@ -1,5 +1,5 @@
 /*************************************************************************
-ALGLIB 3.17.0 (source code generated 2020-12-27)
+ALGLIB 3.18.0 (source code generated 2021-10-25)
 Copyright (c) Sergey Bochkanov (ALGLIB project).
 
 >>> SOURCE LICENSE >>>
@@ -125,37 +125,99 @@ http://www.fsf.org/licensing/licenses
 #endif
 
 /*
- * SSE2 intrinsics
+ * Intel SIMD intrinsics
  *
  * Preprocessor directives below:
- * - include headers for SSE2 intrinsics
- * - define AE_HAS_SSE2_INTRINSICS definition
+ * - include headers for SSE2/AVX2/AVX2+FMA3 intrinsics
+ * - defines _ALGLIB_HAS_SSE2_INTRINSICS, _ALGLIB_HAS_AVX2_INTRINSICS and _ALGLIB_HAS_FMA_INTRINSICS definitions
  *
  * These actions are performed when we have:
  * - x86 architecture definition (AE_CPU==AE_INTEL)
  * - compiler which supports intrinsics
  *
- * Presence of AE_HAS_SSE2_INTRINSICS does NOT mean that our CPU
- * actually supports SSE2 - such things should be determined at runtime
- * with ae_cpuid() call. It means that we are working under Intel and
- * out compiler can issue SSE2-capable code.
+ * Presence of _ALGLIB_HAS_???_INTRINSICS does NOT mean that our CPU
+ * actually supports these intrinsics - such things should be determined
+ * at runtime with ae_cpuid() call. It means that we are working under
+ * Intel and out compiler can issue SIMD-capable code.
  *
  */
 #if defined(AE_CPU)
 #if AE_CPU==AE_INTEL
-#if AE_COMPILER==AE_MSVC
-#include <emmintrin.h>
-#define AE_HAS_SSE2_INTRINSICS
-#endif
-#if AE_COMPILER==AE_GNUC
-#include <xmmintrin.h>
-#define AE_HAS_SSE2_INTRINSICS
-#endif
-#if AE_COMPILER==AE_SUNC
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#define AE_HAS_SSE2_INTRINSICS
-#endif
+    /*
+     * Intel definitions
+     */
+    #if AE_COMPILER==AE_MSVC
+        /*
+         * MSVC is detected.
+         * We assume that compiler supports all instruction sets
+         * unless something is explicitly turned off.
+         */
+        #if !defined(AE_NO_SSE2)
+            #include <emmintrin.h>
+            #define AE_HAS_SSE2_INTRINSICS
+            #define _ALGLIB_HAS_SSE2_INTRINSICS
+            #if !defined(AE_NO_AVX2)
+                #include <intrin.h>
+                #define _ALGLIB_HAS_AVX2_INTRINSICS
+                #if !defined(AE_NO_FMA)
+                    #define _ALGLIB_HAS_FMA_INTRINSICS
+                #endif
+            #endif
+        #endif
+    #elif AE_COMPILER==AE_GNUC
+        /*
+         * GCC/CLANG/ICC is detected.
+         * We assume that compiler supports all instruction sets
+         * unless something is explicitly turned off.
+         */
+        #if !defined(AE_NO_SSE2)
+            #include <xmmintrin.h>
+            #define AE_HAS_SSE2_INTRINSICS
+            #define _ALGLIB_HAS_SSE2_INTRINSICS
+            #if !defined(AE_NO_AVX2)
+                #include <immintrin.h>
+                #define _ALGLIB_HAS_AVX2_INTRINSICS
+                #if !defined(AE_NO_FMA)
+                    #define _ALGLIB_HAS_FMA_INTRINSICS
+                #endif
+            #endif
+        #endif
+    #elif AE_COMPILER==AE_SUNC
+        /*
+         * Sun studio
+         */
+        #include <xmmintrin.h>
+        #include <emmintrin.h>
+        #define AE_HAS_SSE2_INTRINSICS
+        #define _ALGLIB_HAS_SSE2_INTRINSICS
+        #include <immintrin.h>
+        #define _ALGLIB_HAS_AVX2_INTRINSICS
+        #define _ALGLIB_HAS_FMA_INTRINSICS
+    #else
+        /*
+         * Unknown compiler
+         */
+        #if !defined(AE_NO_SSE2)
+            #include <immintrin.h>
+            #define AE_HAS_SSE2_INTRINSICS
+            #define _ALGLIB_HAS_SSE2_INTRINSICS
+            #if !defined(AE_NO_AVX2)
+                #define _ALGLIB_HAS_AVX2_INTRINSICS
+                #if !defined(AE_NO_FMA)
+                    #define _ALGLIB_HAS_FMA_INTRINSICS
+                #endif
+            #endif
+        #endif
+    #endif
+
+    /*
+     * Intel integrity checks
+     */
+    #if defined(_ALGLIB_INTEGRITY_CHECKS_ONCE)
+        #if defined(_ALGLIB_FAIL_WITHOUT_FMA_INTRINSICS) && !defined(_ALGLIB_HAS_FMA_INTRINSICS)
+#error ALGLIB was requested to fail without FMA intrinsics
+        #endif
+    #endif
 #endif
 #endif
 
@@ -259,7 +321,7 @@ typedef ae_int_t ae_datatype;
 enum { OWN_CALLER=1, OWN_AE=2 };
 enum { ACT_UNCHANGED=1, ACT_SAME_LOCATION=2, ACT_NEW_LOCATION=3 };
 enum { DT_BOOL=1, DT_BYTE=1, DT_INT=2, DT_REAL=3, DT_COMPLEX=4 };
-enum { CPU_SSE2=1 };
+enum { CPU_SSE2=0x1, CPU_AVX2=0x2, CPU_FMA=0x4 };
 
 /************************************************************************
 x-string (zero-terminated):
@@ -1098,6 +1160,118 @@ debug functions (must be turned on by preprocessor definitions):
 #endif
 #ifdef AE_DEBUG4POSIX
 #define flushconsole(s) fflush(stdout)
+#endif
+
+/************************************************************************
+Internal macros, defined only when _ALGLIB_IMPL_DEFINES is defined before
+inclusion of this header file
+************************************************************************/
+#if defined(_ALGLIB_IMPL_DEFINES)
+    #define _ALGLIB_SIMD_ALIGNMENT_DOUBLES 8
+    #define _ALGLIB_SIMD_ALIGNMENT_BYTES   (_ALGLIB_SIMD_ALIGNMENT_DOUBLES*8)
+    /*
+     * SIMD kernel dispatchers
+     */
+    #if defined(_ALGLIB_HAS_SSE2_INTRINSICS)
+        #define _ALGLIB_KKK_VOID_SSE2(fname,params)   if( cached_cpuid&CPU_SSE2 ) { fname##_sse2 params; return; }
+        #define _ALGLIB_KKK_RETURN_SSE2(fname,params) if( cached_cpuid&CPU_SSE2 ) { return fname##_sse2 params; }
+    #else
+        #define _ALGLIB_KKK_VOID_SSE2(fname,params)
+        #define _ALGLIB_KKK_RETURN_SSE2(fname,params)
+    #endif
+    #if defined(_ALGLIB_HAS_AVX2_INTRINSICS)
+        #define _ALGLIB_KKK_VOID_AVX2(fname,params)   if( cached_cpuid&CPU_AVX2 ) { fname##_avx2 params; return; }
+        #define _ALGLIB_KKK_RETURN_AVX2(fname,params) if( cached_cpuid&CPU_AVX2 ) { return fname##_avx2 params; }
+    #else
+        #define _ALGLIB_KKK_VOID_AVX2(fname,params)
+        #define _ALGLIB_KKK_RETURN_AVX2(fname,params)
+    #endif
+    #if defined(_ALGLIB_HAS_FMA_INTRINSICS)
+        #define _ALGLIB_KKK_VOID_FMA(fname,params)    if( cached_cpuid&CPU_FMA )  { fname##_fma params; return; }
+        #define _ALGLIB_KKK_RETURN_FMA(fname,params)  if( cached_cpuid&CPU_FMA )  { return fname##_fma params; }
+    #else
+        #define _ALGLIB_KKK_VOID_FMA(fname,params)
+        #define _ALGLIB_KKK_RETURN_FMA(fname,params)
+    #endif
+    
+    #if defined(_ALGLIB_HAS_SSE2_INTRINSICS) || defined(_ALGLIB_HAS_AVX2_INTRINSICS)
+        #define _ALGLIB_KERNEL_VOID_SSE2_AVX2(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_VOID_AVX2(fname,params)\
+            _ALGLIB_KKK_VOID_SSE2(fname,params)\
+        }
+        #define _ALGLIB_KERNEL_RETURN_SSE2_AVX2(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_RETURN_AVX2(fname,params)\
+            _ALGLIB_KKK_RETURN_SSE2(fname,params)\
+        }
+    #else
+        #define _ALGLIB_KERNEL_VOID_SSE2_AVX2(fname,params)   {}
+        #define _ALGLIB_KERNEL_RETURN_SSE2_AVX2(fname,params) {}
+    #endif
+    
+    #if defined(_ALGLIB_HAS_SSE2_INTRINSICS) || defined(_ALGLIB_HAS_AVX2_INTRINSICS) || defined(_ALGLIB_HAS_FMA_INTRINSICS)
+        #define _ALGLIB_KERNEL_VOID_SSE2_AVX2_FMA(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_VOID_FMA(fname,params)\
+            _ALGLIB_KKK_VOID_AVX2(fname,params)\
+            _ALGLIB_KKK_VOID_SSE2(fname,params)\
+        }
+        #define _ALGLIB_KERNEL_RETURN_SSE2_AVX2_FMA(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_RETURN_FMA(fname,params)\
+            _ALGLIB_KKK_RETURN_AVX2(fname,params)\
+            _ALGLIB_KKK_RETURN_SSE2(fname,params)\
+        }
+    #else
+        #define _ALGLIB_KERNEL_VOID_SSE2_AVX2_FMA(fname,params)   {}
+        #define _ALGLIB_KERNEL_RETURN_SSE2_AVX2_FMA(fname,params) {}
+    #endif
+    
+    #if defined(_ALGLIB_HAS_AVX2_INTRINSICS) || defined(_ALGLIB_HAS_FMA_INTRINSICS)
+        #define _ALGLIB_KERNEL_VOID_AVX2_FMA(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_VOID_FMA(fname,params)\
+            _ALGLIB_KKK_VOID_AVX2(fname,params)\
+        }
+        #define _ALGLIB_KERNEL_RETURN_AVX2_FMA(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_RETURN_FMA(fname,params)\
+            _ALGLIB_KKK_RETURN_AVX2(fname,params)\
+        }
+    #else
+        #define _ALGLIB_KERNEL_VOID_AVX2_FMA(fname,params) {}
+        #define _ALGLIB_KERNEL_RETURN_AVX2_FMA(fname,params) {}
+    #endif
+    
+    #if defined(_ALGLIB_HAS_AVX2_INTRINSICS)
+        #define _ALGLIB_KERNEL_VOID_AVX2(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_VOID_AVX2(fname,params)\
+        }
+        #define _ALGLIB_KERNEL_RETURN_AVX2(fname,params) \
+        {\
+            ae_int_t cached_cpuid = ae_cpuid();\
+            _ALGLIB_KKK_RETURN_AVX2(fname,params)\
+        }
+    #else
+        #define _ALGLIB_KERNEL_VOID_AVX2(fname,params) {}
+        #define _ALGLIB_KERNEL_RETURN_AVX2(fname,params) {}
+    #endif
+    
+    #ifdef FP_FAST_FMA
+        #define APPROX_FMA(x, y, z) fma((x), (y), (z))
+    #else
+        #define APPROX_FMA(x, y, z) ((x)*(y) + (z))
+    #endif
+    
 #endif
 
 
@@ -1999,6 +2173,8 @@ void clear_error_flag();
 //
 /////////////////////////////////////////////////////////////////////////
 
+
+
 namespace alglib_impl
 {
 #define ALGLIB_INTERCEPTS_ABLAS
@@ -2143,6 +2319,330 @@ ae_bool _ialglib_i_rmatrixgerf(ae_int_t m,
 
 
 
+#if !defined(ALGLIB_NO_FAST_KERNELS)
+
+#if defined(_ALGLIB_IMPL_DEFINES)
+    /*
+     * Arrays shorter than that will be processed with generic C implementation
+     */
+    #if !defined(_ABLASF_KERNEL_SIZE1)
+    #define _ABLASF_KERNEL_SIZE1 16
+    #endif
+    #if !defined(_ABLASF_KERNEL_SIZE2)
+    #define _ABLASF_KERNEL_SIZE2 16
+    #endif
+    #define _ABLASF_BLOCK_SIZE 32
+    #define _ABLASF_MICRO_SIZE  2
+    #if defined(_ALGLIB_HAS_AVX2_INTRINSICS) || defined(_ALGLIB_HAS_FMA_INTRINSICS)
+        #define ULOAD256PD(x) _mm256_loadu_pd((const double*)(&x))
+    #endif
+#endif
+
+/*
+ * ABLASF kernels
+ */
+double rdotv(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     /* Real    */ ae_vector* y,
+     ae_state *_state);
+double rdotvr(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     /* Real    */ ae_matrix* a,
+     ae_int_t i,
+     ae_state *_state);
+double rdotrr(ae_int_t n,
+     /* Real    */ ae_matrix* a,
+     ae_int_t ia,
+     /* Real    */ ae_matrix* b,
+     ae_int_t ib,
+     ae_state *_state);
+double rdotv2(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rcopyv(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     /* Real    */ ae_vector* y,
+     ae_state *_state);
+void rcopyvr(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     /* Real    */ ae_matrix* a,
+     ae_int_t i,
+     ae_state *_state);
+void rcopyrv(ae_int_t n,
+     /* Real    */ ae_matrix* a,
+     ae_int_t i,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rcopyrr(ae_int_t n,
+     /* Real    */ ae_matrix* a,
+     ae_int_t i,
+     /* Real    */ ae_matrix* b,
+     ae_int_t k,
+     ae_state *_state);
+void rcopymulv(ae_int_t n,
+     double v,
+     /* Real    */ ae_vector* x,
+     /* Real    */ ae_vector* y,
+     ae_state *_state);
+void rcopymulvr(ae_int_t n,
+     double v,
+     /* Real    */ ae_vector* x,
+     /* Real    */ ae_matrix* y,
+     ae_int_t ridx,
+     ae_state *_state);
+void icopyv(ae_int_t n,
+     /* Integer */ ae_vector* x,
+     /* Integer */ ae_vector* y,
+     ae_state *_state);
+void bcopyv(ae_int_t n,
+     /* Boolean */ ae_vector* x,
+     /* Boolean */ ae_vector* y,
+     ae_state *_state);
+void rsetv(ae_int_t n,
+     double v,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rsetr(ae_int_t n,
+     double v,
+     /* Real    */ ae_matrix* a,
+     ae_int_t i,
+     ae_state *_state);
+void rsetvx(ae_int_t n,
+     double v,
+     /* Real    */ ae_vector* x,
+     ae_int_t offsx,
+     ae_state *_state);
+void rsetm(ae_int_t m,
+     ae_int_t n,
+     double v,
+     /* Real    */ ae_matrix* a,
+     ae_state *_state);
+void isetv(ae_int_t n,
+     ae_int_t v,
+     /* Integer */ ae_vector* x,
+     ae_state *_state);
+void bsetv(ae_int_t n,
+     ae_bool v,
+     /* Boolean */ ae_vector* x,
+     ae_state *_state);
+void rmulv(ae_int_t n,
+     double v,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rmulr(ae_int_t n,
+     double v,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+void rmulvx(ae_int_t n,
+     double v,
+     /* Real    */ ae_vector* x,
+     ae_int_t offsx,
+     ae_state *_state);
+void raddv(ae_int_t n,
+     double alpha,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void raddvr(ae_int_t n,
+     double alpha,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+void raddrv(ae_int_t n,
+     double alpha,
+     /* Real    */ ae_matrix* y,
+     ae_int_t ridx,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void raddrr(ae_int_t n,
+     double alpha,
+     /* Real    */ ae_matrix* y,
+     ae_int_t ridxsrc,
+     /* Real    */ ae_matrix* x,
+     ae_int_t ridxdst,
+     ae_state *_state);
+void raddvx(ae_int_t n,
+     double alpha,
+     /* Real    */ ae_vector* y,
+     ae_int_t offsy,
+     /* Real    */ ae_vector* x,
+     ae_int_t offsx,
+     ae_state *_state);
+void rmergemulv(ae_int_t n,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rmergemulvr(ae_int_t n,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+void rmergemulrv(ae_int_t n,
+     /* Real    */ ae_matrix* y,
+     ae_int_t rowidx,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rmergemaxv(ae_int_t n,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rmergemaxvr(ae_int_t n,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+void rmergemaxrv(ae_int_t n,
+     /* Real    */ ae_matrix* y,
+     ae_int_t rowidx,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rmergeminv(ae_int_t n,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+void rmergeminvr(ae_int_t n,
+     /* Real    */ ae_vector* y,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+void rmergeminrv(ae_int_t n,
+     /* Real    */ ae_matrix* y,
+     ae_int_t rowidx,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+double rmaxv(ae_int_t n,
+    /* Real    */ ae_vector* x,
+    ae_state *_state);
+double rmaxr(ae_int_t n,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+double rmaxabsv(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     ae_state *_state);
+double rmaxabsr(ae_int_t n,
+     /* Real    */ ae_matrix* x,
+     ae_int_t rowidx,
+     ae_state *_state);
+void rcopyvx(ae_int_t n,
+     /* Real    */ ae_vector* x,
+     ae_int_t offsx,
+     /* Real    */ ae_vector* y,
+     ae_int_t offsy,
+     ae_state *_state);
+void icopyvx(ae_int_t n,
+     /* Integer */ ae_vector* x,
+     ae_int_t offsx,
+     /* Integer */ ae_vector* y,
+     ae_int_t offsy,
+     ae_state *_state);
+ 
+void rgemv(ae_int_t m,
+     ae_int_t n,
+     double alpha,
+     /* Real    */ ae_matrix* a,
+     ae_int_t opa,
+     /* Real    */ ae_vector* x,
+     double beta,
+     /* Real    */ ae_vector* y,
+     ae_state *_state);
+void rgemvx(ae_int_t m,
+     ae_int_t n,
+     double alpha,
+     /* Real    */ ae_matrix* a,
+     ae_int_t ia,
+     ae_int_t ja,
+     ae_int_t opa,
+     /* Real    */ ae_vector* x,
+     ae_int_t ix,
+     double beta,
+     /* Real    */ ae_vector* y,
+     ae_int_t iy,
+     ae_state *_state);
+void rger(ae_int_t m,
+     ae_int_t n,
+     double alpha,
+     /* Real    */ ae_vector* u,
+     /* Real    */ ae_vector* v,
+     /* Real    */ ae_matrix* a,
+     ae_state *_state);
+void rtrsvx(ae_int_t n,
+     /* Real    */ ae_matrix* a,
+     ae_int_t ia,
+     ae_int_t ja,
+     ae_bool isupper,
+     ae_bool isunit,
+     ae_int_t optype,
+     /* Real    */ ae_vector* x,
+     ae_int_t ix,
+     ae_state *_state);
+
+ae_bool ablasf_rgemm32basecase(
+     ae_int_t m,
+     ae_int_t n,
+     ae_int_t k,
+     double alpha,
+     /* Real    */ ae_matrix* a,
+     ae_int_t ia,
+     ae_int_t ja,
+     ae_int_t optypea,
+     /* Real    */ ae_matrix* b,
+     ae_int_t ib,
+     ae_int_t jb,
+     ae_int_t optypeb,
+     double beta,
+     /* Real    */ ae_matrix* c,
+     ae_int_t ic,
+     ae_int_t jc,
+     ae_state *_state);
+ 
+/*
+ * Sparse supernodal Cholesky kernels
+ */
+ae_int_t spchol_spsymmgetmaxsimd(ae_state *_state);
+void spchol_propagatefwd(/* Real    */ ae_vector* x,
+     ae_int_t cols0,
+     ae_int_t blocksize,
+     /* Integer */ ae_vector* superrowidx,
+     ae_int_t rbase,
+     ae_int_t offdiagsize,
+     /* Real    */ ae_vector* rowstorage,
+     ae_int_t offss,
+     ae_int_t sstride,
+     /* Real    */ ae_vector* simdbuf,
+     ae_int_t simdwidth,
+     ae_state *_state);
+ae_bool spchol_updatekernelabc4(/* Real    */ ae_vector* rowstorage,
+     ae_int_t offss,
+     ae_int_t twidth,
+     ae_int_t offsu,
+     ae_int_t uheight,
+     ae_int_t urank,
+     ae_int_t urowstride,
+     ae_int_t uwidth,
+     /* Real    */ ae_vector* diagd,
+     ae_int_t offsd,
+     /* Integer */ ae_vector* raw2smap,
+     /* Integer */ ae_vector* superrowidx,
+     ae_int_t urbase,
+     ae_state *_state);
+ae_bool spchol_updatekernel4444(/* Real    */ ae_vector* rowstorage,
+     ae_int_t offss,
+     ae_int_t sheight,
+     ae_int_t offsu,
+     ae_int_t uheight,
+     /* Real    */ ae_vector* diagd,
+     ae_int_t offsd,
+     /* Integer */ ae_vector* raw2smap,
+     /* Integer */ ae_vector* superrowidx,
+     ae_int_t urbase,
+     ae_state *_state);
+     
+/* ALGLIB_NO_FAST_KERNELS */
+#endif
+
 }
 
 
@@ -2163,24 +2663,8 @@ namespace alglib_impl
 // THIS SECTION CONTAINS DEFINITIONS FOR PARTIAL COMPILATION
 //
 /////////////////////////////////////////////////////////////////////////
-#ifdef AE_COMPILE_SCODES
-#define AE_PARTIAL_BUILD
-#endif
-
 #ifdef AE_COMPILE_APSERV
 #define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_TSORT
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#endif
-
-#ifdef AE_COMPILE_NEARESTNEIGHBOR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_SCODES
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
 #endif
 
 #ifdef AE_COMPILE_ABLASF
@@ -2193,11 +2677,15 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #endif
 
-#ifdef AE_COMPILE_XDEBUG
+#ifdef AE_COMPILE_HBLAS
 #define AE_PARTIAL_BUILD
 #endif
 
-#ifdef AE_COMPILE_ODESOLVER
+#ifdef AE_COMPILE_CREFLECTIONS
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_SBLAS
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #endif
@@ -2206,20 +2694,97 @@ namespace alglib_impl
 #define AE_PARTIAL_BUILD
 #endif
 
+#ifdef AE_COMPILE_ABLAS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#endif
+
+#ifdef AE_COMPILE_ORTFAC
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#endif
+
+#ifdef AE_COMPILE_MATGEN
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#endif
+
+#ifdef AE_COMPILE_SCODES
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_TSORT
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#endif
+
 #ifdef AE_COMPILE_SPARSE
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #endif
 
-#ifdef AE_COMPILE_ABLAS
+#ifdef AE_COMPILE_BLAS
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_ROTATIONS
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_HSSCHUR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLAS
+#endif
+
+#ifdef AE_COMPILE_BASICSTATOPS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#endif
+
+#ifdef AE_COMPILE_EVD
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
 #define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_HSSCHUR
+#define AE_COMPILE_BASICSTATOPS
 #endif
 
 #ifdef AE_COMPILE_DLU
@@ -2236,6 +2801,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -2248,6 +2814,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -2259,28 +2826,11 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_AMDORDERING
-#endif
-
-#ifdef AE_COMPILE_CREFLECTIONS
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_MATGEN
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#endif
-
-#ifdef AE_COMPILE_ROTATIONS
-#define AE_PARTIAL_BUILD
 #endif
 
 #ifdef AE_COMPILE_TRFAC
@@ -2289,6 +2839,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -2301,67 +2852,7 @@ namespace alglib_impl
 #define AE_COMPILE_ROTATIONS
 #endif
 
-#ifdef AE_COMPILE_TRLINSOLVE
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_SAFESOLVE
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_RCOND
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#endif
-
-#ifdef AE_COMPILE_MATINV
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#endif
-
-#ifdef AE_COMPILE_HBLAS
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_SBLAS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#endif
-
-#ifdef AE_COMPILE_ORTFAC
+#ifdef AE_COMPILE_POLYNOMIALSOLVER
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
@@ -2371,52 +2862,21 @@ namespace alglib_impl
 #define AE_COMPILE_SBLAS
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
-#endif
-
-#ifdef AE_COMPILE_FBLS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
 #define AE_COMPILE_ORTFAC
-#endif
-
-#ifdef AE_COMPILE_CQMODELS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_HSSCHUR
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_EVD
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
 #define AE_COMPILE_AMDORDERING
 #define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
 #define AE_COMPILE_TRFAC
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_FBLS
-#endif
-
-#ifdef AE_COMPILE_OPTGUARDAPI
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#endif
-
-#ifdef AE_COMPILE_BLAS
-#define AE_PARTIAL_BUILD
 #endif
 
 #ifdef AE_COMPILE_BDSVD
@@ -2445,6 +2905,227 @@ namespace alglib_impl
 #define AE_COMPILE_BDSVD
 #endif
 
+#ifdef AE_COMPILE_TRLINSOLVE
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_SAFESOLVE
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_RCOND
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#endif
+
+#ifdef AE_COMPILE_XBLAS
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_DIRECTDENSESOLVERS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_XBLAS
+#endif
+
+#ifdef AE_COMPILE_DIRECTSPARSESOLVERS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#endif
+
+#ifdef AE_COMPILE_FBLS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#endif
+
+#ifdef AE_COMPILE_ITERATIVESPARSE
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_DIRECTSPARSESOLVERS
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_FBLS
+#endif
+
+#ifdef AE_COMPILE_LINCG
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#endif
+
+#ifdef AE_COMPILE_NORMESTIMATOR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#endif
+
+#ifdef AE_COMPILE_LINLSQR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#endif
+
+#ifdef AE_COMPILE_LINMIN
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_NLEQ
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_FBLS
+#endif
+
+#ifdef AE_COMPILE_MATINV
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#endif
+
+#ifdef AE_COMPILE_OPTGUARDAPI
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#endif
+
 #ifdef AE_COMPILE_OPTSERV
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
@@ -2456,6 +3137,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -2475,12 +3157,82 @@ namespace alglib_impl
 #define AE_COMPILE_SVD
 #endif
 
+#ifdef AE_COMPILE_MINLBFGS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_FBLS
+#endif
+
+#ifdef AE_COMPILE_CQMODELS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_FBLS
+#endif
+
+#ifdef AE_COMPILE_LPQPSERV
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#endif
+
 #ifdef AE_COMPILE_SNNLS
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -2504,6 +3256,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -2534,6 +3287,7 @@ namespace alglib_impl
 #ifdef AE_COMPILE_QQPSOLVER
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
@@ -2566,200 +3320,10 @@ namespace alglib_impl
 #define AE_COMPILE_SACTIVESETS
 #endif
 
-#ifdef AE_COMPILE_LINMIN
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_XBLAS
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_DIRECTDENSESOLVERS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_XBLAS
-#endif
-
-#ifdef AE_COMPILE_MINLBFGS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
-#define AE_COMPILE_FBLS
-#endif
-
-#ifdef AE_COMPILE_LPQPSERV
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#endif
-
-#ifdef AE_COMPILE_VIPMSOLVER
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_XBLAS
-#define AE_COMPILE_DIRECTDENSESOLVERS
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_OPTSERV
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_MINLBFGS
-#define AE_COMPILE_CQMODELS
-#define AE_COMPILE_LPQPSERV
-#endif
-
-#ifdef AE_COMPILE_NLCSQP
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
-#define AE_COMPILE_XBLAS
-#define AE_COMPILE_DIRECTDENSESOLVERS
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_MINLBFGS
-#define AE_COMPILE_CQMODELS
-#define AE_COMPILE_LPQPSERV
-#define AE_COMPILE_VIPMSOLVER
-#endif
-
-#ifdef AE_COMPILE_NORMESTIMATOR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#endif
-
-#ifdef AE_COMPILE_LINLSQR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#endif
-
 #ifdef AE_COMPILE_QPDENSEAULSOLVER
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
@@ -2812,6 +3376,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -2839,6 +3404,7 @@ namespace alglib_impl
 #ifdef AE_COMPILE_QPBLEICSOLVER
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
@@ -2873,9 +3439,49 @@ namespace alglib_impl
 #define AE_COMPILE_MINBLEIC
 #endif
 
+#ifdef AE_COMPILE_VIPMSOLVER
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_XBLAS
+#define AE_COMPILE_DIRECTDENSESOLVERS
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_MINLBFGS
+#define AE_COMPILE_CQMODELS
+#define AE_COMPILE_LPQPSERV
+#endif
+
 #ifdef AE_COMPILE_MINQP
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
@@ -2920,10 +3526,133 @@ namespace alglib_impl
 #define AE_COMPILE_VIPMSOLVER
 #endif
 
+#ifdef AE_COMPILE_MINLM
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_XBLAS
+#define AE_COMPILE_DIRECTDENSESOLVERS
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_LINLSQR
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_MINLBFGS
+#define AE_COMPILE_CQMODELS
+#define AE_COMPILE_LPQPSERV
+#define AE_COMPILE_SNNLS
+#define AE_COMPILE_SACTIVESETS
+#define AE_COMPILE_QQPSOLVER
+#define AE_COMPILE_QPDENSEAULSOLVER
+#define AE_COMPILE_MINBLEIC
+#define AE_COMPILE_QPBLEICSOLVER
+#define AE_COMPILE_VIPMSOLVER
+#define AE_COMPILE_MINQP
+#endif
+
+#ifdef AE_COMPILE_MINCG
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
+#endif
+
+#ifdef AE_COMPILE_NLCSQP
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_XBLAS
+#define AE_COMPILE_DIRECTDENSESOLVERS
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_MINLBFGS
+#define AE_COMPILE_CQMODELS
+#define AE_COMPILE_LPQPSERV
+#define AE_COMPILE_VIPMSOLVER
+#endif
+
 #ifdef AE_COMPILE_LPQPPRESOLVE
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
@@ -2936,6 +3665,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -2953,6 +3683,7 @@ namespace alglib_impl
 #ifdef AE_COMPILE_MINLP
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
@@ -3003,6 +3734,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -3037,6 +3769,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -3071,38 +3804,6 @@ namespace alglib_impl
 #define AE_COMPILE_NLCSQP
 #endif
 
-#ifdef AE_COMPILE_MINBC
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
-#endif
-
 #ifdef AE_COMPILE_MINNS
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_LINMIN
@@ -3115,6 +3816,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -3152,6 +3854,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -3178,7 +3881,7 @@ namespace alglib_impl
 #define AE_COMPILE_MINBLEIC
 #endif
 
-#ifdef AE_COMPILE_MINCG
+#ifdef AE_COMPILE_MINBC
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_LINMIN
 #define AE_COMPILE_APSERV
@@ -3190,6 +3893,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -3210,101 +3914,70 @@ namespace alglib_impl
 #define AE_COMPILE_OPTSERV
 #endif
 
-#ifdef AE_COMPILE_MINLM
+#ifdef AE_COMPILE_OPTS
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_ABLASF
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_ABLASF
 #define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
+#define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
+#define AE_COMPILE_ABLAS
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
 #define AE_COMPILE_AMDORDERING
 #define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
 #define AE_COMPILE_ROTATIONS
 #define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
+#define AE_COMPILE_LPQPPRESOLVE
+#define AE_COMPILE_REVISEDDUALSIMPLEX
 #define AE_COMPILE_HBLAS
 #define AE_COMPILE_SBLAS
 #define AE_COMPILE_ORTFAC
 #define AE_COMPILE_BLAS
 #define AE_COMPILE_BDSVD
 #define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
 #define AE_COMPILE_XBLAS
 #define AE_COMPILE_DIRECTDENSESOLVERS
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_LINLSQR
 #define AE_COMPILE_LINMIN
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_OPTSERV
 #define AE_COMPILE_FBLS
 #define AE_COMPILE_MINLBFGS
 #define AE_COMPILE_CQMODELS
 #define AE_COMPILE_LPQPSERV
-#define AE_COMPILE_SNNLS
-#define AE_COMPILE_SACTIVESETS
-#define AE_COMPILE_QQPSOLVER
-#define AE_COMPILE_QPDENSEAULSOLVER
-#define AE_COMPILE_MINBLEIC
-#define AE_COMPILE_QPBLEICSOLVER
 #define AE_COMPILE_VIPMSOLVER
-#define AE_COMPILE_MINQP
+#define AE_COMPILE_MINLP
 #endif
 
-#ifdef AE_COMPILE_HSSCHUR
+#ifdef AE_COMPILE_XDEBUG
 #define AE_PARTIAL_BUILD
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLAS
 #endif
 
-#ifdef AE_COMPILE_BASICSTATOPS
+#ifdef AE_COMPILE_NEARESTNEIGHBOR
 #define AE_PARTIAL_BUILD
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_TSORT
 #endif
 
-#ifdef AE_COMPILE_EVD
+#ifdef AE_COMPILE_ODESOLVER
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_HSSCHUR
-#define AE_COMPILE_BASICSTATOPS
 #endif
 
-#ifdef AE_COMPILE_BASESTAT
+#ifdef AE_COMPILE_INVERSEUPDATE
 #define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
 #endif
 
-#ifdef AE_COMPILE_PCA
+#ifdef AE_COMPILE_SCHUR
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
@@ -3317,355 +3990,62 @@ namespace alglib_impl
 #define AE_COMPILE_ORTFAC
 #define AE_COMPILE_BLAS
 #define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
 #define AE_COMPILE_HSSCHUR
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_EVD
-#define AE_COMPILE_BASESTAT
 #endif
 
-#ifdef AE_COMPILE_BDSS
+#ifdef AE_COMPILE_SPDGEVD
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#endif
-
-#ifdef AE_COMPILE_HPCCORES
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_MLPBASE
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_BDSS
-#define AE_COMPILE_HPCCORES
 #define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
-#define AE_COMPILE_SPARSE
-#endif
-
-#ifdef AE_COMPILE_LDA
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_MATGEN
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_HSSCHUR
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_EVD
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
 #define AE_COMPILE_AMDORDERING
 #define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
 #define AE_COMPILE_TRFAC
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_BLAS
 #define AE_COMPILE_TRLINSOLVE
 #define AE_COMPILE_SAFESOLVE
 #define AE_COMPILE_RCOND
 #define AE_COMPILE_MATINV
-#endif
-
-#ifdef AE_COMPILE_SSA
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
 #define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
 #define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
 #define AE_COMPILE_HSSCHUR
 #define AE_COMPILE_BASICSTATOPS
 #define AE_COMPILE_EVD
+#endif
+
+#ifdef AE_COMPILE_MATDET
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
 #endif
 
 #ifdef AE_COMPILE_GAMMAFUNC
 #define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_NORMALDISTR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#endif
-
-#ifdef AE_COMPILE_IGAMMAF
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#endif
-
-#ifdef AE_COMPILE_LINREG
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IGAMMAF
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#endif
-
-#ifdef AE_COMPILE_FILTERS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IGAMMAF
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_LINREG
-#endif
-
-#ifdef AE_COMPILE_LOGIT
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_BDSS
-#define AE_COMPILE_HPCCORES
-#define AE_COMPILE_SCODES
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_MLPBASE
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_XBLAS
-#define AE_COMPILE_DIRECTDENSESOLVERS
-#endif
-
-#ifdef AE_COMPILE_MCPD
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_CQMODELS
-#define AE_COMPILE_SNNLS
-#define AE_COMPILE_SACTIVESETS
-#define AE_COMPILE_MINBLEIC
-#endif
-
-#ifdef AE_COMPILE_MLPE
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_BDSS
-#define AE_COMPILE_HPCCORES
-#define AE_COMPILE_SCODES
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_MLPBASE
-#endif
-
-#ifdef AE_COMPILE_MLPTRAIN
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_BDSS
-#define AE_COMPILE_HPCCORES
-#define AE_COMPILE_SCODES
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_MLPBASE
-#define AE_COMPILE_MLPE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_MINLBFGS
-#define AE_COMPILE_XBLAS
-#define AE_COMPILE_DIRECTDENSESOLVERS
-#endif
-
-#ifdef AE_COMPILE_CLUSTERING
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_BASESTAT
-#endif
-
-#ifdef AE_COMPILE_DFOREST
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_SCODES
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_BDSS
-#endif
-
-#ifdef AE_COMPILE_KNN
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_SCODES
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NEARESTNEIGHBOR
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_BDSS
-#endif
-
-#ifdef AE_COMPILE_DATACOMP
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_BASESTAT
-#define AE_COMPILE_CLUSTERING
 #endif
 
 #ifdef AE_COMPILE_GQ
@@ -3680,6 +4060,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLAS
 #define AE_COMPILE_ORTFAC
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_BLAS
@@ -3703,6 +4084,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLAS
 #define AE_COMPILE_ORTFAC
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_BLAS
 #define AE_COMPILE_ROTATIONS
@@ -3726,6 +4108,7 @@ namespace alglib_impl
 #define AE_COMPILE_ABLAS
 #define AE_COMPILE_ORTFAC
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_BLAS
 #define AE_COMPILE_ROTATIONS
@@ -3737,46 +4120,158 @@ namespace alglib_impl
 #define AE_COMPILE_GKQ
 #endif
 
-#ifdef AE_COMPILE_NTHEORY
+#ifdef AE_COMPILE_NORMALDISTR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#endif
+
+#ifdef AE_COMPILE_IBETAF
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#endif
+
+#ifdef AE_COMPILE_STUDENTTDISTR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
+#endif
+
+#ifdef AE_COMPILE_BASESTAT
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#endif
+
+#ifdef AE_COMPILE_CORRELATIONTESTS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
+#define AE_COMPILE_STUDENTTDISTR
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#endif
+
+#ifdef AE_COMPILE_JARQUEBERA
 #define AE_PARTIAL_BUILD
 #endif
 
-#ifdef AE_COMPILE_FTBASE
+#ifdef AE_COMPILE_FDISTR
 #define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_NTHEORY
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
 #endif
 
-#ifdef AE_COMPILE_FFT
+#ifdef AE_COMPILE_IGAMMAF
 #define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_NTHEORY
-#define AE_COMPILE_FTBASE
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
 #endif
 
-#ifdef AE_COMPILE_FHT
+#ifdef AE_COMPILE_CHISQUAREDISTR
 #define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_NTHEORY
-#define AE_COMPILE_FTBASE
-#define AE_COMPILE_FFT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IGAMMAF
 #endif
 
-#ifdef AE_COMPILE_CONV
+#ifdef AE_COMPILE_VARIANCETESTS
 #define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_NTHEORY
-#define AE_COMPILE_FTBASE
-#define AE_COMPILE_FFT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
+#define AE_COMPILE_FDISTR
+#define AE_COMPILE_IGAMMAF
+#define AE_COMPILE_CHISQUAREDISTR
 #endif
 
-#ifdef AE_COMPILE_CORR
+#ifdef AE_COMPILE_WSR
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_NTHEORY
-#define AE_COMPILE_FTBASE
-#define AE_COMPILE_FFT
-#define AE_COMPILE_CONV
+#endif
+
+#ifdef AE_COMPILE_MANNWHITNEYU
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#endif
+
+#ifdef AE_COMPILE_NEARUNITYUNIT
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_BINOMIALDISTR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
+#define AE_COMPILE_NEARUNITYUNIT
+#endif
+
+#ifdef AE_COMPILE_STEST
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
+#define AE_COMPILE_NEARUNITYUNIT
+#define AE_COMPILE_BINOMIALDISTR
+#endif
+
+#ifdef AE_COMPILE_STUDENTTTESTS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IBETAF
+#define AE_COMPILE_STUDENTTDISTR
+#endif
+
+#ifdef AE_COMPILE_RATINT
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
 #endif
 
 #ifdef AE_COMPILE_IDW
@@ -3791,72 +4286,13 @@ namespace alglib_impl
 #define AE_COMPILE_ABLAS
 #endif
 
-#ifdef AE_COMPILE_RATINT
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#endif
-
-#ifdef AE_COMPILE_FITSPHERE
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_LINMIN
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_OPTGUARDAPI
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_TRLINSOLVE
-#define AE_COMPILE_SAFESOLVE
-#define AE_COMPILE_RCOND
-#define AE_COMPILE_MATINV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_OPTSERV
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_CQMODELS
-#define AE_COMPILE_SNNLS
-#define AE_COMPILE_SACTIVESETS
-#define AE_COMPILE_MINBLEIC
-#define AE_COMPILE_XBLAS
-#define AE_COMPILE_DIRECTDENSESOLVERS
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_LINLSQR
-#define AE_COMPILE_MINLBFGS
-#define AE_COMPILE_LPQPSERV
-#define AE_COMPILE_QQPSOLVER
-#define AE_COMPILE_QPDENSEAULSOLVER
-#define AE_COMPILE_QPBLEICSOLVER
-#define AE_COMPILE_VIPMSOLVER
-#define AE_COMPILE_MINQP
-#define AE_COMPILE_MINLM
-#define AE_COMPILE_LPQPPRESOLVE
-#define AE_COMPILE_REVISEDDUALSIMPLEX
-#define AE_COMPILE_NLCSLP
-#define AE_COMPILE_NLCSQP
-#define AE_COMPILE_MINNLC
-#endif
-
 #ifdef AE_COMPILE_INTFITSERV
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -3868,102 +4304,6 @@ namespace alglib_impl
 #define AE_COMPILE_MATGEN
 #define AE_COMPILE_ROTATIONS
 #define AE_COMPILE_TRFAC
-#endif
-
-#ifdef AE_COMPILE_SPLINE1D
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_INTFITSERV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_LINLSQR
-#endif
-
-#ifdef AE_COMPILE_PARAMETRIC
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_INTFITSERV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_LINLSQR
-#define AE_COMPILE_SPLINE1D
-#define AE_COMPILE_HSSCHUR
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_EVD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_GQ
-#define AE_COMPILE_GKQ
-#define AE_COMPILE_AUTOGK
-#endif
-
-#ifdef AE_COMPILE_SPLINE3D
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#define AE_COMPILE_INTFITSERV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_FBLS
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_BDSVD
-#define AE_COMPILE_SVD
-#define AE_COMPILE_LINLSQR
-#define AE_COMPILE_SPLINE1D
 #endif
 
 #ifdef AE_COMPILE_POLINT
@@ -3973,12 +4313,43 @@ namespace alglib_impl
 #define AE_COMPILE_RATINT
 #endif
 
+#ifdef AE_COMPILE_SPLINE1D
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_INTFITSERV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_LINLSQR
+#endif
+
 #ifdef AE_COMPILE_LSFIT
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
 #define AE_COMPILE_ABLASF
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_SPARSE
@@ -4026,7 +4397,100 @@ namespace alglib_impl
 #define AE_COMPILE_MINLM
 #endif
 
-#ifdef AE_COMPILE_RBFV2
+#ifdef AE_COMPILE_FITSPHERE
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_CQMODELS
+#define AE_COMPILE_SNNLS
+#define AE_COMPILE_SACTIVESETS
+#define AE_COMPILE_MINBLEIC
+#define AE_COMPILE_XBLAS
+#define AE_COMPILE_DIRECTDENSESOLVERS
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_LINLSQR
+#define AE_COMPILE_MINLBFGS
+#define AE_COMPILE_LPQPSERV
+#define AE_COMPILE_QQPSOLVER
+#define AE_COMPILE_QPDENSEAULSOLVER
+#define AE_COMPILE_QPBLEICSOLVER
+#define AE_COMPILE_VIPMSOLVER
+#define AE_COMPILE_MINQP
+#define AE_COMPILE_MINLM
+#define AE_COMPILE_LPQPPRESOLVE
+#define AE_COMPILE_REVISEDDUALSIMPLEX
+#define AE_COMPILE_NLCSLP
+#define AE_COMPILE_NLCSQP
+#define AE_COMPILE_MINNLC
+#endif
+
+#ifdef AE_COMPILE_PARAMETRIC
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_INTFITSERV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_LINLSQR
+#define AE_COMPILE_SPLINE1D
+#define AE_COMPILE_HSSCHUR
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_EVD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_GQ
+#define AE_COMPILE_GKQ
+#define AE_COMPILE_AUTOGK
+#endif
+
+#ifdef AE_COMPILE_RBFV1
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_SCODES
 #define AE_COMPILE_APSERV
@@ -4113,7 +4577,7 @@ namespace alglib_impl
 #define AE_COMPILE_SPLINE1D
 #endif
 
-#ifdef AE_COMPILE_RBFV1
+#ifdef AE_COMPILE_RBFV2
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_SCODES
 #define AE_COMPILE_APSERV
@@ -4167,6 +4631,95 @@ namespace alglib_impl
 #define AE_COMPILE_MINQP
 #define AE_COMPILE_MINLM
 #define AE_COMPILE_LSFIT
+#endif
+
+#ifdef AE_COMPILE_SPLINE3D
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_INTFITSERV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_LINLSQR
+#define AE_COMPILE_SPLINE1D
+#endif
+
+#ifdef AE_COMPILE_INTCOMP
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_LINMIN
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_OPTGUARDAPI
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
+#define AE_COMPILE_FBLS
+#define AE_COMPILE_CQMODELS
+#define AE_COMPILE_SNNLS
+#define AE_COMPILE_SACTIVESETS
+#define AE_COMPILE_MINBLEIC
+#define AE_COMPILE_XBLAS
+#define AE_COMPILE_DIRECTDENSESOLVERS
+#define AE_COMPILE_NORMESTIMATOR
+#define AE_COMPILE_LINLSQR
+#define AE_COMPILE_MINLBFGS
+#define AE_COMPILE_LPQPSERV
+#define AE_COMPILE_QQPSOLVER
+#define AE_COMPILE_QPDENSEAULSOLVER
+#define AE_COMPILE_QPBLEICSOLVER
+#define AE_COMPILE_VIPMSOLVER
+#define AE_COMPILE_MINQP
+#define AE_COMPILE_MINLM
+#define AE_COMPILE_LPQPPRESOLVE
+#define AE_COMPILE_REVISEDDUALSIMPLEX
+#define AE_COMPILE_NLCSLP
+#define AE_COMPILE_NLCSQP
+#define AE_COMPILE_MINNLC
+#define AE_COMPILE_FITSPHERE
+#define AE_COMPILE_INTFITSERV
+#define AE_COMPILE_SPLINE1D
 #endif
 
 #ifdef AE_COMPILE_RBF
@@ -4227,10 +4780,321 @@ namespace alglib_impl
 #define AE_COMPILE_RBFV2
 #endif
 
-#ifdef AE_COMPILE_INTCOMP
+#ifdef AE_COMPILE_NTHEORY
 #define AE_PARTIAL_BUILD
-#define AE_COMPILE_LINMIN
+#endif
+
+#ifdef AE_COMPILE_FTBASE
+#define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
+#define AE_COMPILE_NTHEORY
+#endif
+
+#ifdef AE_COMPILE_FFT
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_NTHEORY
+#define AE_COMPILE_FTBASE
+#endif
+
+#ifdef AE_COMPILE_FHT
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_NTHEORY
+#define AE_COMPILE_FTBASE
+#define AE_COMPILE_FFT
+#endif
+
+#ifdef AE_COMPILE_CONV
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_NTHEORY
+#define AE_COMPILE_FTBASE
+#define AE_COMPILE_FFT
+#endif
+
+#ifdef AE_COMPILE_CORR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_NTHEORY
+#define AE_COMPILE_FTBASE
+#define AE_COMPILE_FFT
+#define AE_COMPILE_CONV
+#endif
+
+#ifdef AE_COMPILE_EXPINTEGRALS
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_JACOBIANELLIPTIC
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_TRIGINTEGRALS
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_CHEBYSHEV
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_POISSONDISTR
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IGAMMAF
+#endif
+
+#ifdef AE_COMPILE_BETAF
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_GAMMAFUNC
+#endif
+
+#ifdef AE_COMPILE_FRESNEL
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_PSIF
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_AIRYF
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_DAWSON
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_HERMITE
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_LEGENDRE
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_BESSEL
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_LAGUERRE
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_ELLIPTIC
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_PCA
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_HSSCHUR
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_EVD
+#define AE_COMPILE_BASESTAT
+#endif
+
+#ifdef AE_COMPILE_BDSS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#endif
+
+#ifdef AE_COMPILE_HPCCORES
+#define AE_PARTIAL_BUILD
+#endif
+
+#ifdef AE_COMPILE_MLPBASE
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_BDSS
+#define AE_COMPILE_HPCCORES
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_SPARSE
+#endif
+
+#ifdef AE_COMPILE_MLPE
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_BDSS
+#define AE_COMPILE_HPCCORES
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_MLPBASE
+#endif
+
+#ifdef AE_COMPILE_CLUSTERING
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_BASESTAT
+#endif
+
+#ifdef AE_COMPILE_DFOREST
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_BDSS
+#endif
+
+#ifdef AE_COMPILE_LINREG
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IGAMMAF
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#endif
+
+#ifdef AE_COMPILE_FILTERS
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_GAMMAFUNC
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NORMALDISTR
+#define AE_COMPILE_IGAMMAF
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_LINREG
+#endif
+
+#ifdef AE_COMPILE_SSA
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_HSSCHUR
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_EVD
+#endif
+
+#ifdef AE_COMPILE_LDA
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_HSSCHUR
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_EVD
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
+#define AE_COMPILE_MATINV
+#endif
+
+#ifdef AE_COMPILE_MCPD
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_LINMIN
 #define AE_COMPILE_TSORT
 #define AE_COMPILE_OPTGUARDAPI
 #define AE_COMPILE_ABLASF
@@ -4239,6 +5103,7 @@ namespace alglib_impl
 #define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_HQRND
 #define AE_COMPILE_MATGEN
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_SPARSE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
@@ -4262,242 +5127,75 @@ namespace alglib_impl
 #define AE_COMPILE_SNNLS
 #define AE_COMPILE_SACTIVESETS
 #define AE_COMPILE_MINBLEIC
+#endif
+
+#ifdef AE_COMPILE_LOGIT
+#define AE_PARTIAL_BUILD
+#define AE_COMPILE_APSERV
+#define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_BDSS
+#define AE_COMPILE_HPCCORES
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_SPARSE
+#define AE_COMPILE_MLPBASE
+#define AE_COMPILE_HBLAS
+#define AE_COMPILE_CREFLECTIONS
+#define AE_COMPILE_SBLAS
+#define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_ROTATIONS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_DLU
+#define AE_COMPILE_SPTRF
+#define AE_COMPILE_AMDORDERING
+#define AE_COMPILE_SPCHOL
+#define AE_COMPILE_MATGEN
+#define AE_COMPILE_TRFAC
+#define AE_COMPILE_TRLINSOLVE
+#define AE_COMPILE_SAFESOLVE
+#define AE_COMPILE_RCOND
 #define AE_COMPILE_XBLAS
 #define AE_COMPILE_DIRECTDENSESOLVERS
-#define AE_COMPILE_NORMESTIMATOR
-#define AE_COMPILE_LINLSQR
-#define AE_COMPILE_MINLBFGS
-#define AE_COMPILE_LPQPSERV
-#define AE_COMPILE_QQPSOLVER
-#define AE_COMPILE_QPDENSEAULSOLVER
-#define AE_COMPILE_QPBLEICSOLVER
-#define AE_COMPILE_VIPMSOLVER
-#define AE_COMPILE_MINQP
-#define AE_COMPILE_MINLM
-#define AE_COMPILE_LPQPPRESOLVE
-#define AE_COMPILE_REVISEDDUALSIMPLEX
-#define AE_COMPILE_NLCSLP
-#define AE_COMPILE_NLCSQP
-#define AE_COMPILE_MINNLC
-#define AE_COMPILE_FITSPHERE
-#define AE_COMPILE_INTFITSERV
-#define AE_COMPILE_SPLINE1D
 #endif
 
-#ifdef AE_COMPILE_ELLIPTIC
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_HERMITE
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_DAWSON
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_TRIGINTEGRALS
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_POISSONDISTR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IGAMMAF
-#endif
-
-#ifdef AE_COMPILE_BESSEL
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_IBETAF
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#endif
-
-#ifdef AE_COMPILE_FDISTR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#endif
-
-#ifdef AE_COMPILE_FRESNEL
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_JACOBIANELLIPTIC
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_PSIF
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_EXPINTEGRALS
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_LAGUERRE
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_CHISQUAREDISTR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IGAMMAF
-#endif
-
-#ifdef AE_COMPILE_LEGENDRE
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_BETAF
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#endif
-
-#ifdef AE_COMPILE_CHEBYSHEV
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_STUDENTTDISTR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#endif
-
-#ifdef AE_COMPILE_NEARUNITYUNIT
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_BINOMIALDISTR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#define AE_COMPILE_NEARUNITYUNIT
-#endif
-
-#ifdef AE_COMPILE_AIRYF
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_WSR
+#ifdef AE_COMPILE_KNN
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#endif
-
-#ifdef AE_COMPILE_STEST
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#define AE_COMPILE_NEARUNITYUNIT
-#define AE_COMPILE_BINOMIALDISTR
-#endif
-
-#ifdef AE_COMPILE_CORRELATIONTESTS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#define AE_COMPILE_STUDENTTDISTR
+#define AE_COMPILE_SCODES
 #define AE_COMPILE_TSORT
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_NEARESTNEIGHBOR
 #define AE_COMPILE_BASICSTATOPS
 #define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
 #define AE_COMPILE_BASESTAT
+#define AE_COMPILE_BDSS
 #endif
 
-#ifdef AE_COMPILE_STUDENTTTESTS
+#ifdef AE_COMPILE_MLPTRAIN
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#define AE_COMPILE_STUDENTTDISTR
-#endif
-
-#ifdef AE_COMPILE_MANNWHITNEYU
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#endif
-
-#ifdef AE_COMPILE_JARQUEBERA
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_VARIANCETESTS
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_GAMMAFUNC
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_NORMALDISTR
-#define AE_COMPILE_IBETAF
-#define AE_COMPILE_FDISTR
-#define AE_COMPILE_IGAMMAF
-#define AE_COMPILE_CHISQUAREDISTR
-#endif
-
-#ifdef AE_COMPILE_SCHUR
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_HSSCHUR
-#endif
-
-#ifdef AE_COMPILE_SPDGEVD
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_ABLASF
+#define AE_COMPILE_ABLASMKL
+#define AE_COMPILE_ABLAS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_BDSS
+#define AE_COMPILE_HPCCORES
+#define AE_COMPILE_SCODES
+#define AE_COMPILE_HQRND
 #define AE_COMPILE_SPARSE
+#define AE_COMPILE_MLPBASE
+#define AE_COMPILE_MLPE
 #define AE_COMPILE_DLU
 #define AE_COMPILE_SPTRF
 #define AE_COMPILE_AMDORDERING
@@ -4506,114 +5204,37 @@ namespace alglib_impl
 #define AE_COMPILE_MATGEN
 #define AE_COMPILE_ROTATIONS
 #define AE_COMPILE_TRFAC
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_BLAS
 #define AE_COMPILE_TRLINSOLVE
 #define AE_COMPILE_SAFESOLVE
 #define AE_COMPILE_RCOND
 #define AE_COMPILE_MATINV
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_HSSCHUR
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_EVD
-#endif
-
-#ifdef AE_COMPILE_INVERSEUPDATE
-#define AE_PARTIAL_BUILD
-#endif
-
-#ifdef AE_COMPILE_MATDET
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#endif
-
-#ifdef AE_COMPILE_POLYNOMIALSOLVER
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_SBLAS
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ORTFAC
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_BLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_HSSCHUR
-#define AE_COMPILE_BASICSTATOPS
-#define AE_COMPILE_EVD
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_TRFAC
-#endif
-
-#ifdef AE_COMPILE_NLEQ
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
 #define AE_COMPILE_LINMIN
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_HQRND
+#define AE_COMPILE_OPTGUARDAPI
 #define AE_COMPILE_HBLAS
-#define AE_COMPILE_CREFLECTIONS
 #define AE_COMPILE_SBLAS
 #define AE_COMPILE_ORTFAC
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BDSVD
+#define AE_COMPILE_SVD
+#define AE_COMPILE_OPTSERV
 #define AE_COMPILE_FBLS
+#define AE_COMPILE_MINLBFGS
+#define AE_COMPILE_XBLAS
+#define AE_COMPILE_DIRECTDENSESOLVERS
 #endif
 
-#ifdef AE_COMPILE_DIRECTSPARSESOLVERS
+#ifdef AE_COMPILE_DATACOMP
 #define AE_PARTIAL_BUILD
 #define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASMKL
-#define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
 #define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
-#define AE_COMPILE_ABLAS
-#define AE_COMPILE_DLU
-#define AE_COMPILE_SPTRF
-#define AE_COMPILE_AMDORDERING
-#define AE_COMPILE_SPCHOL
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
-#define AE_COMPILE_ROTATIONS
-#define AE_COMPILE_TRFAC
-#endif
-
-#ifdef AE_COMPILE_LINCG
-#define AE_PARTIAL_BUILD
-#define AE_COMPILE_APSERV
-#define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLASF
-#define AE_COMPILE_HQRND
-#define AE_COMPILE_TSORT
-#define AE_COMPILE_SPARSE
+#define AE_COMPILE_ABLASMKL
 #define AE_COMPILE_ABLAS
-#define AE_COMPILE_CREFLECTIONS
-#define AE_COMPILE_MATGEN
+#define AE_COMPILE_HQRND
+#define AE_COMPILE_BLAS
+#define AE_COMPILE_BASICSTATOPS
+#define AE_COMPILE_BASESTAT
+#define AE_COMPILE_CLUSTERING
 #endif
 
 #ifdef AE_COMPILE_ALGLIBBASICS
