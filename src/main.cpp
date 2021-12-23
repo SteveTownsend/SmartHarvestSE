@@ -232,7 +232,13 @@ extern "C" DLLEXPORT const auto SKSEPlugin_Version = []() { {
 		v.PluginName(SHSE_NAME);
 
 		v.UsesAddressLibrary(true);
-		v.CompatibleVersions({ SKSE::RUNTIME_1_5_97, SKSE::RUNTIME_LATEST });
+		v.CompatibleVersions({ 
+			SKSE::RUNTIME_1_5_97,
+			SKSE::RUNTIME_1_6_317,
+			SKSE::RUNTIME_1_6_318,
+			SKSE::RUNTIME_1_6_323,
+			SKSE::RUNTIME_1_6_342,
+			SKSE::RUNTIME_LATEST });
 
 		return v;
 	}
