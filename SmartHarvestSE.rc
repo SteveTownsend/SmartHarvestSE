@@ -51,8 +51,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 4,0,0,2
- PRODUCTVERSION 4,0,0,2
+ FILEVERSION 4,0,0,4
+ PRODUCTVERSION 4,0,0,4
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -69,12 +69,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "towawot, SteveTownsend"
             VALUE "FileDescription", "Skyrim mod Smart Harvest SE"
-            VALUE "FileVersion", "4.0.0.2"
+            VALUE "FileVersion", "4.0.0.4"
             VALUE "InternalName", "SmartHarvestSE"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "SmartHarvestSE.dll"
             VALUE "ProductName", "SmartHarvestSE"
-            VALUE "ProductVersion", "4.0.0.2"
+            VALUE "ProductVersion", "4.0.0.4"
         END
     END
     BLOCK "VarFileInfo"
