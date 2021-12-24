@@ -225,72 +225,15 @@ bool DLLEXPORT SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 }
 
 #ifdef SKYRIM_AE
-#if 1
-// desperation tactic - hack in SKSE instead of using CLSSE syntactic sugar
-struct SKSEPluginVersionData
-{
-	enum
-	{
-		kVersion = 1,
-	};
-
-	enum
-	{
-		// set this if you are using a (potential at this time of writing) post-AE version of the Address Library
-		kVersionIndependent_AddressLibraryPostAE = 1 << 0,
-		// set this if you exclusively use signature matching to find your addresses and have NO HARDCODED ADDRESSES
-		kVersionIndependent_Signatures = 1 << 1,
-	};
-
-	uint32_t	dataVersion;			// set to kVersion
-
-	uint32_t	pluginVersion;			// version number of your plugin
-	char	name[256];				// null-terminated ASCII plugin name
-
-	char	author[256];			// null-terminated ASCII plugin author name (can be empty)
-	char	supportEmail[256];		// null-terminated ASCII support email address (can be empty)
-
-	// version compatibility
-	uint32_t	versionIndependence;	// set to one of the kVersionIndependent_ enums or zero
-	uint32_t	compatibleVersions[16];	// zero-terminated list of RUNTIME_VERSION_ defines your plugin is compatible with
-
-	uint32_t	seVersionRequired;		// minimum version of the script extender required, compared against PACKED_SKSE_VERSION
-									// you probably should just set this to 0 unless you know what you are doing
-};
-
-static_assert(offsetof(SKSEPluginVersionData, dataVersion) == 0x000);
-static_assert(offsetof(SKSEPluginVersionData, pluginVersion) == 0x004);
-static_assert(offsetof(SKSEPluginVersionData, name) == 0x008);
-static_assert(offsetof(SKSEPluginVersionData, author) == 0x108);
-static_assert(offsetof(SKSEPluginVersionData, supportEmail) == 0x208);
-static_assert(offsetof(SKSEPluginVersionData, compatibleVersions) == 0x30C);
-static_assert(offsetof(SKSEPluginVersionData, seVersionRequired) == 0x34C);
-static_assert(sizeof(SKSEPluginVersionData) == 0x350);
-
-extern "C" DLLEXPORT const SKSEPluginVersionData SKSEPlugin_Version =
-{
-	SKSEPluginVersionData::kVersion,
-
-	VersionInfo::Instance().GetVersion().pack(),
-	"SmartHarvestSE",
-	"Steve Townsend",
-	"SteveTownsend0@gmail.com",
-	0,	// not version independent
-	{ SKSE::RUNTIME_1_5_97.pack(),
-			SKSE::RUNTIME_1_6_317.pack(),
-			SKSE::RUNTIME_1_6_318.pack(),
-			SKSE::RUNTIME_1_6_323.pack(),
-			SKSE::RUNTIME_1_6_342.pack(),
-			SKSE::RUNTIME_LATEST.pack(),
-		0 },
-	0	// works with any version of the script extender. you probably do not need to put anything here
-};
-#else
-extern "C" DLLEXPORT const auto SKSEPlugin_Version = []() { {
+// constinit essential because SKSE uses LoadLibraryEX(LOAD_LIBRARY_AS_IMAGE_RESOURCE) - only compile time values work
+extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() { {
 		SKSE::PluginVersionData v;
 
-		v.PluginVersion(VersionInfo::Instance().GetVersion());
+		// WET WET WET but less work than injecting Version in the build a la Quick Loot RE
+		v.PluginVersion({ 4, 0, 0, 5 });
 		v.PluginName(SHSE_NAME);
+		v.AuthorName(MOD_AUTHOR);
+		v.AuthorEmail(MOD_SUPPORT);
 
 		v.UsesAddressLibrary(true);
 		v.CompatibleVersions({ 
@@ -304,6 +247,5 @@ extern "C" DLLEXPORT const auto SKSEPlugin_Version = []() { {
 		return v;
 	}
 }();
-#endif
 #endif
 }
