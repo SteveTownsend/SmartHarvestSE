@@ -214,7 +214,7 @@ bool DLLEXPORT SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 
 	REL_MESSAGE("{} plugin loaded", SHSE_NAME);
 	SKSE::Init(skse);
-	SKSE::GetMessagingInterface()->RegisterListener("SKSE", SKSEMessageHandler);
+	SKSE::GetMessagingInterface()->RegisterListener(SKSEMessageHandler);
 
 	auto serialization = SKSE::GetSerializationInterface();
 	serialization->SetUniqueID('SHSE');
@@ -230,7 +230,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() { {
 		SKSE::PluginVersionData v;
 
 		// WET WET WET but less work than injecting Version in the build a la Quick Loot RE
-		v.PluginVersion({ 4, 0, 0, 5 });
+		v.PluginVersion({ 4, 0, 0, 7 });
 		v.PluginName(SHSE_NAME);
 		v.AuthorName(MOD_AUTHOR);
 		v.AuthorEmail(MOD_SUPPORT);

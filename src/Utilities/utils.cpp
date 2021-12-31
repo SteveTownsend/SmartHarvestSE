@@ -292,14 +292,14 @@ namespace CompressionUtils
 			return false;
 		}
 		size_t inputSize(compressed.length());
-		size_t* length(reinterpret_cast<size_t*>(const_cast<char*>(compressed.c_str())));
-		std::string inflated(*length, 0);
-		size_t outputSize;
+		size_t sizeHint(*reinterpret_cast<size_t*>(const_cast<char*>(compressed.c_str())));
+		size_t outputSize(sizeHint);
+		std::string inflated(outputSize, 0);
 		BrotliDecoderResult result(BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str() + sizeof(size_t)),
 			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))));
 		if (result == BROTLI_DECODER_RESULT_SUCCESS)
 		{
-			REL_MESSAGE("Inflated {} bytes to {} vs size-hint of {}", inputSize, outputSize, *length);
+			REL_MESSAGE("Inflated {} bytes to {} vs size-hint of {}", inputSize, outputSize, sizeHint);
 			inflated.resize(outputSize);
 			try {
 				output = nlohmann::json::parse(inflated);

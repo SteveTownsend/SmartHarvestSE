@@ -75,7 +75,7 @@ double PlayerState::SneakDistanceExterior() const
 void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 {
 	// re-evaluate perks if timer has popped - force after game reload or settings update
-	static const bool force(onGameReload || onMCMPush);
+	const bool force(onGameReload || onMCMPush);
 	CheckPerks(force);
 
 	if (onGameReload || onMCMPush)
