@@ -345,6 +345,10 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				{
 					exclusionType = Lootability::DeadBodyIsSummoned;
 				}
+				else if (IsGhost(actor))
+				{
+					exclusionType = Lootability::NPCIsAGhost;
+				}
 				else if (IsQuestTargetNPC(actor))
 				{
 					exclusionType = Lootability::CannotLootQuestTarget;

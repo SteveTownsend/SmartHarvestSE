@@ -290,42 +290,29 @@ void QuestTargets::BlacklistOutliers()
 			BlacklistQuestTargetReferencedItem(item, refr);
 		}
 	}
-	const std::unordered_set<RE::FormID> offLimitsNPCs = {
-		// Ysgramor's Tomb Companion Ghosts
-		0xafb94,
-		0xdcb42,
-		0xab18f,
-		0xdcb11,
-		0xdcb40,
-		0xff133,
-		0xff132,
-		0xafb9a,
-		0xdcb2b,
-		0xdcb41,
-		0xff130,
-		0xafba0,
-		0xafba1,
-		0xdcb19,
-		0xdcb30,
-		0xdcb0e,
-		0xdcb1a,
-		0xff131,
-		0xab190,
-		0xdcb94,
-		0xafb9b,
-		// Ysgramor's Tomb Wolf Spirits
-		0x58304,	// Kodlak
-		0xf6088,	// Farkas
-		0xf608a,	// Vilkas
+	const std::unordered_set<RE::FormID> offLimitsREFRs = {
 		// Halldir Clones
 		0x642c4,	// Frost
 		0x642c5,	// Fire
-		0x642c6		// Storm
+		0x642c6,	// Storm
+		0xececd,	// dunGeirmundSigdis
+		0xececc		// dunFolgunthur_MikrulGauldurson
+	};
+	for (const auto barredREFR : offLimitsREFRs)
+	{
+		REL_VMESSAGE("Blacklist persistent outlier Quest Target NPC REFR 0x{:08x}", barredREFR);
+		m_questTargetREFRs.insert(barredREFR);
+	}
+	const std::unordered_set<RE::FormID> offLimitsNPCs = {
+		0xa6848,	// dunGeirmundSigdisDuplicate
+		0xecf13,	// dunReachwaterRockSigdisDuplicate
+		// Morokei, for Staff of Magnus to work - https://github.com/SteveTownsend/SmartHarvestSE/issues/348
+		0xf496c		// MG07LabyrinthianDragonPriest
 	};
 	for (const auto barredNPC : offLimitsNPCs)
 	{
 		REL_VMESSAGE("Blacklist persistent outlier Quest Target NPC 0x{:08x}", barredNPC);
-		m_questTargetREFRs.insert(barredNPC);
+		m_questTargetItems.insert(barredNPC);
 	}
 	const RE::IngredientItem* ingredient(RE::TESDataHandler::GetSingleton()->LookupForm<RE::IngredientItem>(0x3ad61, "Skyrim.esm"));
 	RE::BGSPerk* perk(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSPerk>(0x1c05b, "Dragonborn.esm"));

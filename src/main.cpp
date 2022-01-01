@@ -119,8 +119,13 @@ void InitializeDiagnostics()
 	// default Debug log level is TRACE
 	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #else
+#ifdef _FULL_LOGGING
+	// default Full Logging log level is TRACE
+	spdlog::level::level_enum logLevel(spdlog::level::trace);
+#else
 	// default Release log level is ERROR
 	spdlog::level::level_enum logLevel(spdlog::level::err);
+#endif
 #endif
 	char* levelValue;
 	size_t requiredSize;
@@ -230,7 +235,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() { {
 		SKSE::PluginVersionData v;
 
 		// WET WET WET but less work than injecting Version in the build a la Quick Loot RE
-		v.PluginVersion({ 4, 0, 0, 7 });
+		v.PluginVersion({ 4, 0, 0, 8 });
 		v.PluginName(SHSE_NAME);
 		v.AuthorName(MOD_AUTHOR);
 		v.AuthorEmail(MOD_SUPPORT);

@@ -143,6 +143,8 @@ public:
 
 	void RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable);
 
+	inline const RE::BGSKeyword* GhostKeyword() const { return m_ghostNpcKeyword; }
+
 	// special case statics
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
@@ -176,6 +178,7 @@ private:
 	// assume simple setters for now, like vanilla Green Thumb
 	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
 	RE::BGSKeyword* m_spellTomeKeyword;
+	RE::BGSKeyword* m_ghostNpcKeyword;
 
 	mutable RecursiveLock m_blockListLock;
 

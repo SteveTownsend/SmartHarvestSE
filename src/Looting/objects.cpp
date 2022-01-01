@@ -187,6 +187,15 @@ bool IsSummoned(const RE::Actor* actor)
 }
 
 // applies only if NPC
+bool IsGhost(const RE::Actor* actor)
+{
+	const RE::TESNPC* npc(actor->GetActorBase());
+	const bool result(npc && npc->HasKeyword(DataCase::GetInstance()->GhostKeyword()));
+	DBG_DMESSAGE("Actor is a ghost = {}", result ? "true" : "false");
+	return result;
+}
+
+// applies only if NPC
 bool IsQuestTargetNPC(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
