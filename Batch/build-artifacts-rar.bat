@@ -1,4 +1,4 @@
-@del "j:\github\x64\release\Smart Harvest SE-x.x.x.x.rar"
+@if exist "S:\github\x64\release\Smart Harvest SE-x.x.x.x.rar" (del "S:\github\x64\release\Smart Harvest SE-x.x.x.x.rar")
 
 @"C:\Program Files\WinRAR\rar.exe" a -ep -apSKSE/Plugins "s:/github/x64/release/Smart Harvest SE-x.x.x.x.rar" s:/github/x64/release/SmartHarvestSE.dll
 @"C:\Program Files\WinRAR\rar.exe" a -ep -apSKSE/Plugins "s:/github/x64/release/Smart Harvest SE-x.x.x.x.rar" s:/github/SmartHarvestSE/Collections/Examples/SHSE.Collections.BlackList.json

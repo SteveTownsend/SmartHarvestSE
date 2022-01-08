@@ -100,6 +100,7 @@ private:
 	void TrackActors();
 
 	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly);
+	static Lootability CanLootActor(const RE::Actor* actor);
 	void MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const;
 
 	void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);

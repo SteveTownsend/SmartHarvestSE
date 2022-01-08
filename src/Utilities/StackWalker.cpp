@@ -307,7 +307,7 @@ public:
                     }
                 }
 #elif _M_X64
-                if ((m_hDbhHelp == NULL) && (GetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
+                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::CLSSEGetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
                 {
                     _tcscat_s(szTemp, _T("\\Debugging Tools for Windows (x64)\\dbghelp.dll"));
                     // now check if the file exists:
@@ -328,7 +328,7 @@ public:
                 }
 #endif
                 // If still not found, try the old directories...
-                if ((m_hDbhHelp == NULL) && (GetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
+                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::CLSSEGetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
                 {
                     _tcscat_s(szTemp, _T("\\Debugging Tools for Windows\\dbghelp.dll"));
                     // now check if the file exists:
@@ -339,7 +339,7 @@ public:
                 }
 #if defined _M_X64 || defined _M_IA64
                 // Still not found? Then try to load the (old) 64-Bit version:
-                if ((m_hDbhHelp == NULL) && (GetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
+                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::CLSSEGetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
                 {
                     _tcscat_s(szTemp, _T("\\Debugging Tools for Windows 64-Bit\\dbghelp.dll"));
                     if (GetFileAttributes(szTemp) != INVALID_FILE_ATTRIBUTES)
@@ -967,19 +967,19 @@ BOOL StackWalker::LoadModules()
                 strcat_s(szSymPath, nSymPathLen, ";");
             }
         }
-        if (GetEnvironmentVariableA("_NT_SYMBOL_PATH", szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("_NT_SYMBOL_PATH", szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             strcat_s(szSymPath, nSymPathLen, szTemp);
             strcat_s(szSymPath, nSymPathLen, ";");
         }
-        if (GetEnvironmentVariableA("_NT_ALTERNATE_SYMBOL_PATH", szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("_NT_ALTERNATE_SYMBOL_PATH", szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             strcat_s(szSymPath, nSymPathLen, szTemp);
             strcat_s(szSymPath, nSymPathLen, ";");
         }
-        if (GetEnvironmentVariableA("SYSTEMROOT", szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("SYSTEMROOT", szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             strcat_s(szSymPath, nSymPathLen, szTemp);
@@ -992,7 +992,7 @@ BOOL StackWalker::LoadModules()
 
         if ((this->m_options & SymUseSymSrv) != 0)
         {
-            if (GetEnvironmentVariableA("SYSTEMDRIVE", szTemp, nTempLen) > 0)
+            if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("SYSTEMDRIVE", szTemp, nTempLen) > 0)
             {
                 szTemp[nTempLen - 1] = 0;
                 strcat_s(szSymPath, nSymPathLen, "SRV*");
