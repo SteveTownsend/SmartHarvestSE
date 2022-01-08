@@ -61,7 +61,7 @@ namespace shse
 
 DataCase* DataCase::s_pInstance = nullptr;
 
-DataCase::DataCase() : m_spellTomeKeyword(nullptr)
+DataCase::DataCase() : m_spellTomeKeyword(nullptr), m_ghostNpcKeyword(nullptr)
 {
 }
 
@@ -1339,6 +1339,12 @@ void DataCase::SetObjectTypeByKeywords()
 		{
 			REL_VMESSAGE("Found Spell Tome KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			m_spellTomeKeyword = keywordDef;
+		}
+		// Do not loot ghost NPCs
+		if (keywordName == "ActorTypeGhost")
+		{
+			REL_VMESSAGE("Found Ghost NPC KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
+			m_ghostNpcKeyword = keywordDef;
 		}
 		// SPERG mining resource types
 		if (keywordName == "VendorItemOreIngot" || keywordName == "VendorItemGem")

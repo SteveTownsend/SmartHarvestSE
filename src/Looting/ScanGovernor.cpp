@@ -278,6 +278,51 @@ void ScanGovernor::ProgressGlowDemo()
 	}
 }
 
+Lootability ScanGovernor::CanLootActor(const RE::Actor* actor)
+{
+	Lootability exclusionType(Lootability::Lootable);
+	const PlayerAffinity playerAffinity(GetPlayerAffinity(actor));
+	if (playerAffinity != PlayerAffinity::Unaffiliated && playerAffinity != PlayerAffinity::Player)
+	{
+		exclusionType = Lootability::DeadBodyIsPlayerAlly;
+	}
+	else if (actor->IsEssential())
+	{
+		exclusionType = Lootability::DeadBodyIsEssential;
+	}
+	else if (IsSummoned(actor))
+	{
+		exclusionType = Lootability::DeadBodyIsSummoned;
+	}
+	else if (IsGhost(actor))
+	{
+		exclusionType = Lootability::NPCIsAGhost;
+	}
+	else if (IsQuestTargetNPC(actor))
+	{
+		exclusionType = Lootability::CannotLootQuestTarget;
+	}
+	else if (!NPCFilter::Instance().IsLootable(actor->GetActorBase()))
+	{
+		exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
+	}
+	else
+	{
+		static const bool recordDups(false);
+		const auto collectible(CollectionManager::Instance().TreatAsCollectible(
+			ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor), recordDups));
+		if (collectible.first)
+		{
+			CollectibleHandling collectibleAction(collectible.second);
+			if (!CanLootCollectible(collectibleAction))
+			{
+				exclusionType = Lootability::NPCIsInBlacklistCollection;
+			}
+		}
+	}
+	return exclusionType;
+}
+
 // input may get updated for ashpile
 Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly)
 {
@@ -331,42 +376,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 			RE::Actor* actor(refr->As<RE::Actor>());
 			if (actor)
 			{
-				Lootability exclusionType(Lootability::Lootable);
-				PlayerAffinity playerAffinity(GetPlayerAffinity(actor));
-				if (playerAffinity != PlayerAffinity::Unaffiliated && playerAffinity != PlayerAffinity::Player)
-				{
-					exclusionType = Lootability::DeadBodyIsPlayerAlly;
-				}
-				else if (actor->IsEssential())
-				{
-					exclusionType = Lootability::DeadBodyIsEssential;
-				}
-				else if (IsSummoned(actor))
-				{
-					exclusionType = Lootability::DeadBodyIsSummoned;
-				}
-				else if (IsQuestTargetNPC(actor))
-				{
-					exclusionType = Lootability::CannotLootQuestTarget;
-				}
-				else if (!NPCFilter::Instance().IsLootable(actor->GetActorBase()))
-				{
-					exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
-				}
-				else
-				{
-					static const bool recordDups(false);
-					const auto collectible(CollectionManager::Instance().TreatAsCollectible(
-						ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor), recordDups));
-					if (collectible.first)
-					{
-						CollectibleHandling collectibleAction(collectible.second);
-						if (!CanLootCollectible(collectibleAction))
-						{
-							exclusionType = Lootability::NPCIsInBlacklistCollection;
-						}
-					}
-				}
+				Lootability exclusionType(CanLootActor(actor));
 				if (exclusionType != Lootability::Lootable)
 				{
 					if (!dryRun)
@@ -462,6 +472,23 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				return Lootability::CannotGetAshPile;
 			}
 			DBG_MESSAGE("Got ash-pile REFR 0x{:08x} from REFR 0x{:08x}", refr->GetFormID(), original->GetFormID());
+			// per https://github.com/SteveTownsend/SmartHarvestSE/issues/354 this can be a summoned NPC_ linked to its
+			// ash-pile in defaultGhostScript.psc - do Actor checks again here to avoid looting NPC_ inventory illegally
+			RE::Actor* actor(refr->As<RE::Actor>());
+			if (actor)
+			{
+				Lootability exclusionType(CanLootActor(actor));
+				if (exclusionType != Lootability::Lootable)
+				{
+					if (!dryRun)
+					{
+						DBG_VMESSAGE("Block ineligible Actor linked via ash-pile 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
+							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+						DataCase::GetInstance()->BlockReference(refr, exclusionType);
+					}
+					return exclusionType;
+				}
+			}
 
 			// avoid double dipping for immediate-loot case
 			if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())

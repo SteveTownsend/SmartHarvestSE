@@ -92,6 +92,8 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::InventoryLimitsEnforced: return "InventoryLimitsEnforced";
 	case Lootability::OutOfScope: return "OutOfScope";
 	case Lootability::PlayerHouseRestrictsLooting: return "PlayerHouseRestrictsLooting";
+	case Lootability::ReferenceActivationBlocked: return "ReferenceActivationBlocked";
+	case Lootability::NPCIsAGhost: return "NPCIsAGhost";
 	default: return "";
 	}
 }

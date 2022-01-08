@@ -251,11 +251,11 @@ namespace StringUtils
 	std::string FromUnicode(const std::wstring& input) {
 		if (input.empty()) return std::string();
 
-		int size_needed = WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
+		int size_needed = WideCharToMultiByte(SKSE::WinAPI::CLSSE_CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
 		if (size_needed == 0) return std::string();
 
 		std::string output(static_cast<size_t>(size_needed), 0);
-		int result(WideCharToMultiByte(CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
+		int result(WideCharToMultiByte(SKSE::WinAPI::CLSSE_CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
 		if (result == 0) return std::string();
 
 		return output;
@@ -292,14 +292,14 @@ namespace CompressionUtils
 			return false;
 		}
 		size_t inputSize(compressed.length());
-		size_t* length(reinterpret_cast<size_t*>(const_cast<char*>(compressed.c_str())));
-		std::string inflated(*length, 0);
-		size_t outputSize;
+		size_t sizeHint(*reinterpret_cast<size_t*>(const_cast<char*>(compressed.c_str())));
+		size_t outputSize(sizeHint);
+		std::string inflated(outputSize, 0);
 		BrotliDecoderResult result(BrotliDecoderDecompress(inputSize, reinterpret_cast<const uint8_t*>(compressed.c_str() + sizeof(size_t)),
 			&outputSize, reinterpret_cast<uint8_t*>(const_cast<char*>(inflated.c_str()))));
 		if (result == BROTLI_DECODER_RESULT_SUCCESS)
 		{
-			REL_MESSAGE("Inflated {} bytes to {} vs size-hint of {}", inputSize, outputSize, *length);
+			REL_MESSAGE("Inflated {} bytes to {} vs size-hint of {}", inputSize, outputSize, sizeHint);
 			inflated.resize(outputSize);
 			try {
 				output = nlohmann::json::parse(inflated);

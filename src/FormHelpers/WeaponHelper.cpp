@@ -32,9 +32,9 @@ uint32_t TESObjectWEAPHelper::GetGoldValue(void) const
 		return 0;
 
 	static RE::BSFixedString fEnchantmentPointsMult = "fEnchantmentPointsMult";
-	static const double fEPM = utils::GetGameSettingFloat(fEnchantmentPointsMult);
+	const double fEPM = utils::GetGameSettingFloat(fEnchantmentPointsMult);
 	static RE::BSFixedString fEnchantmentEffectPointsMult = "fEnchantmentEffectPointsMult";
-	static const double fEEPM = utils::GetGameSettingFloat(fEnchantmentEffectPointsMult);
+	const double fEEPM = utils::GetGameSettingFloat(fEnchantmentEffectPointsMult);
 
 	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
 	if (!ench)

@@ -455,6 +455,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
+		if (m_candidate->IsActivationBlocked())
+		{
+			DBG_MESSAGE("skip activation-blocked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
+			return Lootability::ReferenceActivationBlocked;
+		}
 		if (DataCase::GetInstance()->ReferencesBlacklistedContainer(m_candidate))
 		{
 			DBG_MESSAGE("skip blacklisted container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);

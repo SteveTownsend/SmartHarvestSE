@@ -559,6 +559,8 @@ enum class Lootability {
 	InventoryLimitsEnforced,
 	OutOfScope,
 	PlayerHouseRestrictsLooting,
+	ReferenceActivationBlocked,
+	NPCIsAGhost,
 	MAX
 };
 
