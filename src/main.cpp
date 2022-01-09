@@ -235,7 +235,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() { {
 		SKSE::PluginVersionData v;
 
 		// WET WET WET but less work than injecting Version in the build a la Quick Loot RE
-		v.PluginVersion({ 4, 0, 0, 9 });
+		v.PluginVersion({ 4, 1, 0, 0 });
 		v.PluginName(SHSE_NAME);
 		v.AuthorName(MOD_AUTHOR);
 		v.AuthorEmail(MOD_SUPPORT);
@@ -247,6 +247,7 @@ extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() { {
 			SKSE::RUNTIME_1_6_318,
 			SKSE::RUNTIME_1_6_323,
 			SKSE::RUNTIME_1_6_342,
+			SKSE::RUNTIME_1_6_343,
 			SKSE::RUNTIME_LATEST });
 
 		return v;

@@ -47,6 +47,7 @@ UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_wai
 // Returns True iff there was a UI-induced delay
 bool UIState::WaitUntilVMGoodToGo()
 {
+	// TODO add CLSSE checking here, only fire if UI is actually open
 	const auto startTime(std::chrono::high_resolution_clock::now());
 	++m_nonce;
 	int nonce(m_nonce);

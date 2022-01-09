@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/IHasValueWeight.h"
 #include "Looting/ScanGovernor.h"
 #include "Looting/ManagedLists.h"
+#include "Looting/TryLootREFR.h"
 #include "WorldState/LocationTracker.h"
 #include "WorldState/AdventureTargets.h"
 #include "Looting/ProducerLootables.h"
@@ -35,9 +36,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
-#include "WorldState/LocationTracker.h"
 #include "WorldState/PlayerState.h"
-#include "WorldState/PopulationCenters.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
 
@@ -70,6 +69,18 @@ namespace papyrus
 	void AlwaysTrace(RE::StaticFunctionTag*, RE::BSFixedString str)
 	{
 		REL_MESSAGE("{}", str.c_str());
+	}
+
+	// Plumb Papyrus trace into Debug and Logging DLLs so don't have to futz with scripts all the time
+	bool LoggingEnabled(RE::StaticFunctionTag*)
+	{
+#if _DEBUG || defined(_FULL_LOGGING)
+		REL_MESSAGE("Script logging active");
+		return true;
+#else
+		REL_MESSAGE("Script logging inactive");
+		return false;
+#endif
 	}
 
 	RE::BSFixedString GetPluginName(RE::StaticFunctionTag*, RE::TESForm* thisForm)
@@ -401,6 +412,11 @@ namespace papyrus
 	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
 		shse::CollectionManager::Instance().CollectFromContainer(refr);
+	}
+
+	void TryForceHarvest(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		shse::TryLootREFR::TryForceHarvest(refr);
 	}
 
 	void NotifyManualLootItem(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -828,6 +844,7 @@ namespace papyrus
 	{
 		a_vm->RegisterFunction("DebugTrace", SHSE_PROXY, papyrus::DebugTrace);
 		a_vm->RegisterFunction("AlwaysTrace", SHSE_PROXY, papyrus::AlwaysTrace);
+		a_vm->RegisterFunction("LoggingEnabled", SHSE_PROXY, papyrus::LoggingEnabled);
 		a_vm->RegisterFunction("GetPluginName", SHSE_PROXY, papyrus::GetPluginName);
 		a_vm->RegisterFunction("GetPluginVersion", SHSE_PROXY, papyrus::GetPluginVersion);
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
@@ -844,6 +861,7 @@ namespace papyrus
 		a_vm->RegisterFunction("DeleteItem", SHSE_PROXY, papyrus::DeleteItem);
 		a_vm->RegisterFunction("CheckItemAsExcess", SHSE_PROXY, papyrus::CheckItemAsExcess);
 		a_vm->RegisterFunction("ProcessContainerCollectibles", SHSE_PROXY, papyrus::ProcessContainerCollectibles);
+		a_vm->RegisterFunction("TryForceHarvest", SHSE_PROXY, papyrus::TryForceHarvest);
 
 		a_vm->RegisterFunction("GetSetting", SHSE_PROXY, papyrus::GetSetting);
 		a_vm->RegisterFunction("GetSettingObjectArrayEntry", SHSE_PROXY, papyrus::GetSettingObjectArrayEntry);

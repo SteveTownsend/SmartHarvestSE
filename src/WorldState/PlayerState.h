@@ -57,7 +57,7 @@ private:
 	void ResetCarryWeight();
 	void AdjustCarryWeight();
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
-	void CheckExcessInventory(const bool force);
+	void ReviewExcessInventory(bool force);
 	bool FortuneHuntOnly() const;
 
 	static std::unique_ptr<PlayerState> m_instance;
@@ -72,7 +72,7 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
 	// specialized cache of inventory items
 	mutable InventoryCache m_currentItems;
-	mutable bool m_refreshCache;
+	mutable InventoryUpdates m_updates;
 
 	bool m_carryAdjustedForCombat;
 	bool m_carryAdjustedForPlayerHome;

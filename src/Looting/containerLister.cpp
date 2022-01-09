@@ -85,20 +85,45 @@ size_t ContainerLister::CountLootableItems(std::function<bool(RE::TESBoundObject
 	return items;
 }
 
-InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
+InventoryCache ContainerLister::CacheIfExcessHandlingEnabled(const bool force, const InventoryUpdates& updates) const
 {
 	// refactored following QuickLookRE
+	// return value contains all eligible Inventory items for full scan, or current Inventory item data for deltas
 	InventoryCache cache;
 	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
 	for (auto& item : inv) {
 		auto& [count, entry] = item.second;
+		RE::TESBoundObject* itemObject = entry->GetObject();
+
+		// very quick no-brainer tests first
 		if (count <= 0)
 			continue;
-		RE::TESBoundObject* itemObject = entry->GetObject();
 		if (!FormUtils::IsConcrete(itemObject))
 			continue;
 
 		if (itemObject->formType == RE::FormType::LeveledItem)
+			continue;
+
+		// register any new user-created Ingestible on full scan as early as possible
+		if (itemObject->IsDynamicForm())
+		{
+			if (itemObject->GetFormType() == RE::FormType::AlchemyItem)
+			{
+				// User created potion or poison
+				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
+			}
+		}
+
+		// if this is a delta review, ignore untouched items
+		if (!force && !updates.contains(itemObject))
+		{
+			DBG_DMESSAGE("Item {}/0x{:08x} not touched since last review", itemObject->GetName(), itemObject->GetFormID());
+			continue;
+		}
+
+		// do not bother with other checks if excess-handling is not in effect for the item
+		InventoryEntry itemEntry(itemObject, count);
+		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
 			continue;
 
 		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
@@ -106,77 +131,6 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 		{
 			DBG_DMESSAGE("Quest Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
 			continue;
-		}
-
-		// register any new user-created Ingestible
-		if (itemObject->IsDynamicForm())
-		{
-			if (itemObject->GetFormType() == RE::FormType::AlchemyItem)
-			{
-				// User created potion or poison
-				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
-			}
-		}
-
-		// exempt Equipped and Worn items
-		if (ManagedList::EquippedOrWorn().Contains(itemObject))
-		{
-			DBG_DMESSAGE("Equipped/Worn Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
-			continue;
-		}
-
-		//  exempt Favorite items
-		if (entry->extraLists)
-		{
-			bool isFavourite(false);
-			bool isEnchanted(false);
-			bool isTempered(false);
-			for (RE::ExtraDataList* extraData : *(entry->extraLists))
-			{
-				if (!extraData)
-					continue;
-
-				if (extraData->HasType(RE::ExtraDataType::kHotkey))
-				{
-					isFavourite = true;
-					break;
-				}
-				if (ExtraDataList::GetEnchantment(extraData))
-				{
-					isEnchanted = true;
-					break;
-				}
-				if (extraData->HasType(RE::ExtraDataType::kTextDisplayData))
-				{
-					isTempered = true;
-					break;
-				}
-			}
-			if (isFavourite)
-			{
-				DBG_DMESSAGE("Favourite Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
-				continue;
-			}
-			if (isEnchanted)
-			{
-				DBG_DMESSAGE("Enchanted Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
-				continue;
-			}
-			if (isTempered)
-			{
-				DBG_DMESSAGE("Tempered Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
-				continue;
-			}
-		}
-
-		// register any new user-created Ingestible
-		if (itemObject->IsDynamicForm())
-		{
-			if (itemObject->GetFormType() == RE::FormType::AlchemyItem)
-			{
-				// User created potion or poison
-				DataCase::GetInstance()->RegisterPlayerCreatedALCH(itemObject->As<RE::AlchemyItem>());
-			}
 		}
 
 		// exempt Equipped and Worn items
@@ -230,10 +184,9 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled() const
 			}
 		}
 
-		InventoryEntry itemEntry(itemObject, count);
-		if (itemEntry.HandlingType() == ExcessInventoryHandling::NoLimits)
-			continue;
+		// Transfer or sell items in excess of limits, record as eligible
 		itemEntry.Populate();
+		itemEntry.HandleExcess();
 		cache.insert({ itemObject, itemEntry });
 	}
 	return cache;

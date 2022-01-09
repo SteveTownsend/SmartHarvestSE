@@ -41,7 +41,7 @@ public:
 	inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
 	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
 	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
-	InventoryCache CacheIfExcessHandlingEnabled() const;
+	InventoryCache CacheIfExcessHandlingEnabled(const bool force, const InventoryUpdates& updates) const;
 	std::string SellItem(RE::TESBoundObject* target, const bool excessOnly);
 	std::string TransferItem(RE::TESBoundObject* target, const bool excessOnly);
 	std::string DeleteItem(RE::TESBoundObject* target, const bool excessOnly);

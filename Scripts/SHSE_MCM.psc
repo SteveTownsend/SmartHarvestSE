@@ -218,6 +218,7 @@ int currentSagaDayPage
 int sagaDayPageCount
 
 Actor player
+bool logMCM
 
 int Function CycleInt(int num, int max)
     int result = num + 1
@@ -507,8 +508,9 @@ Function ApplySetting()
 
     ; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
     ; Do this before plugin becomes aware of player home list
+    logMCM = LoggingEnabled()
     player = Game.GetPlayer()
-    eventScript.SetPlayer(player)
+    eventScript.Prepare(player, logMCM)
     ; Only adjust weight if we are in any way responsible for it
     if ManagesCarryWeight()
         eventScript.RemoveCarryWeightDelta()

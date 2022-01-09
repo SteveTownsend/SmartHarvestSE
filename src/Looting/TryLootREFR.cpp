@@ -36,9 +36,21 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly)
-	: m_stolen(stolen), m_glowOnly(glowOnly), m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None)
+TryLootREFR::TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType,
+	const bool stolen, const bool glowOnly, const bool forceHarvest)
+	: m_stolen(stolen), m_glowOnly(glowOnly), m_forceHarvest(forceHarvest),
+	m_candidate(target), m_targetType(targetType), m_glowReason(GlowReason::None)
 {
+}
+
+void TryLootREFR::TryForceHarvest(RE::TESObjectREFR* refr)
+{
+	static const bool stolen(false);
+	static const bool glowOnly(false);
+	// Bypass Quest Target checking at user's option, for loose items e.g Books so they are not opened when taken
+	static const bool forceHarvest(true);
+	static const bool dryRun(false);
+	TryLootREFR(refr, INIFile::SecondaryType::itemObjects, stolen, glowOnly, forceHarvest).Process(dryRun);
 }
 
 Lootability TryLootREFR::Process(const bool dryRun)
@@ -167,6 +179,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			skipLooting = true;
+
 			// ignore collectibility from here on, since we've determined it is unlootable as a Quest Target
 			collectible.first = false;
 			result = Lootability::CannotLootQuestTarget;
@@ -226,7 +239,6 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				DBG_VMESSAGE("glow valuable object {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				UpdateGlowReason(GlowReason::Valuable);
 			}
-
 			if (!IsSpecialObjectLootable(valuableLoot))
 			{
 				skipLooting = true;
@@ -271,7 +283,8 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			result = forbidden;
 		}
 
-		if (!dryRun && m_glowReason != GlowReason::None)
+		// Force-Harvest hotkey is used to pick up loose Quest Targets, at user's discretion and own risk
+		if (!dryRun && !m_forceHarvest && m_glowReason != GlowReason::None)
 		{
 			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
 			// further checks redundant if we have a glowable target
@@ -383,25 +396,33 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-		if (skipLooting || dryRun)
-			return result;
-
-		// we would loot this - glow and exit if we are using Loot Sense
-		if (m_glowOnly)
+		// Force-Harvest hotkey is used to pick up loose Quest Targets, at user's discretion and own risk
+		if (m_forceHarvest)
 		{
-			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
-			return result;
+			DBG_VMESSAGE("Item force-harvest by user {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 		}
-
-		// Check if we should attempt to steal the item. If we skip it due to looting rules, it's immune from stealing.
-		// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
-		// is the delayed autoloot operation after we find we are undetected, don't trigger that check again here.
-		if (!m_stolen && m_candidate->IsOffLimits() &&
-			PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
+		else
 		{
-			DBG_VMESSAGE("REFR to be stolen if undetected");
-			TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
-			return Lootability::ItemTheftTriggered;
+			if (skipLooting || dryRun)
+				return result;
+
+			// we would loot this - glow and exit if we are using Loot Sense
+			if (m_glowOnly)
+			{
+				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+				return result;
+			}
+
+			// Check if we should attempt to steal the item. If we skip it due to looting rules, it's immune from stealing.
+			// If we wish to auto-steal an item we must check we are not detected, which requires a scripted check. If this
+			// is the delayed autoloot operation after we find we are undetected, don't trigger that check again here.
+			if (!m_stolen && m_candidate->IsOffLimits() &&
+				PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
+			{
+				DBG_VMESSAGE("REFR to be stolen if undetected");
+				TheftCoordinator::Instance().DelayStealableItem(m_candidate, m_targetType);
+				return Lootability::ItemTheftTriggered;
+			}
 		}
 
 		const bool isFirehose(DataCase::GetInstance()->IsFirehose(m_candidate->GetBaseObject()));

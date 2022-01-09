@@ -27,13 +27,15 @@ namespace shse
 class TryLootREFR
 {
 public:
-	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly);
+	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly, const bool forceHarvest);
+	static void TryForceHarvest(RE::TESObjectREFR* refr);
 	Lootability Process(const bool dryRun);
 	inline std::string ObjectTypeName() const { return m_typeName; }
 
 private:
 	bool m_stolen;
 	bool m_glowOnly;
+	bool m_forceHarvest;
 	RE::TESObjectREFR* m_candidate;
 	INIFile::SecondaryType m_targetType;
 	std::string m_typeName;

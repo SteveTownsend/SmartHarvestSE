@@ -586,7 +586,8 @@ void ScanGovernor::LootAllEligible()
 		}
 
 		static const bool stolen(false);
-		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
+		static const bool forceHarvest(false);
+		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
 	}
 }
 
@@ -711,7 +712,8 @@ void ScanGovernor::InvokeLootSense(void)
 		}
 
 		static const bool stolen(false);
-		TryLootREFR(refr, m_targetType, stolen, glowOnly).Process(dryRun);
+		static const bool forceHarvest(false);
+		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
 	}
 	if (!m_fhiRunning.compare_exchange_strong(running, false))
 	{
@@ -728,6 +730,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	Lootability result(ReferenceFilter::CheckLootable(refr));
 	static const bool dryRun(true);
 	static const bool glowOnly(false);
+	static const bool forceHarvest(false);
 	std::string typeName;
 	if (result == Lootability::Lootable)
 	{
@@ -737,7 +740,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	if (refr && result == Lootability::Lootable)
 	{
 		// flag to prevent mutation of state when just checking the rules
-		TryLootREFR runner(refr, m_targetType, false, glowOnly);
+		TryLootREFR runner(refr, m_targetType, false, glowOnly, forceHarvest);
 		result = runner.Process(dryRun);
 		typeName = runner.ObjectTypeName();
 	}

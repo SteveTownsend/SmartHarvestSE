@@ -156,7 +156,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -193,7 +193,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -231,7 +231,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -267,7 +267,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -294,7 +294,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)binary_io\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_FULL_LOGGING;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_FULL_LOGGING;_PROFILING;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -303,7 +303,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -332,7 +332,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)binary_io\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_FULL_LOGGING;SKYRIM_AE;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_FULL_LOGGING;_PROFILING;SKYRIM_AE;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -341,7 +341,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -379,7 +379,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
