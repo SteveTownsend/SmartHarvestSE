@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/DataCase.h"
 #include "Looting/ManagedLists.h"
+#include "Utilities/utils.h"
 
 namespace shse
 {
@@ -66,6 +67,94 @@ ManagedTargets& ManagedList::TransferList()
 	return *m_transferList;
 }
 
+// ported to CommonLibSSE from SKSE, to get GetWornForm by slot
+class MatchBySlot
+{
+	uint32_t m_mask;
+public:
+	MatchBySlot(uint32_t slot) :
+		m_mask(slot)
+	{
+	}
+
+	bool Matches(RE::TESForm* pForm) const {
+		if (pForm) {
+			auto* pBip = pForm->As<RE::BGSBipedObjectForm>();
+			if (pBip) {
+				return (pBip->bipedModelData.bipedObjectSlots.any(static_cast<RE::BIPED_MODEL::BipedObjectSlot>(m_mask)));
+			}
+		}
+		return false;
+	}
+};
+
+struct GetMatchingEquipped
+{
+	MatchBySlot&	m_matcher;
+	RE::TESBoundObject*	m_found;
+	bool			m_isWorn;
+	bool			m_isWornLeft;
+
+	GetMatchingEquipped(MatchBySlot& matcher, bool isWorn = true, bool isWornLeft = true) : m_matcher(matcher), m_isWorn(isWorn), m_isWornLeft(isWornLeft)
+	{
+	}
+
+	bool Accept(RE::InventoryEntryData* pEntryData)
+	{
+		if (pEntryData)
+		{
+			// quick check - needs an extendData or can't be equipped
+			auto pExtendList = pEntryData->extraLists;
+			if (pExtendList && m_matcher.Matches(pEntryData->object))
+			{
+				for (const auto extraData : *pExtendList)
+				{
+					if (extraData)
+					{
+						if ((m_isWorn && extraData->HasType(RE::ExtraDataType::kWorn)) || (m_isWornLeft && extraData->HasType(RE::ExtraDataType::kWornLeft)))
+						{
+							m_found = pEntryData->object;
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	[[nodiscard]] RE::TESBoundObject* Found() const
+	{
+		return m_found;
+	}
+};
+
+RE::TESBoundObject* FindEquipped(const RE::ExtraContainerChanges* pContainerChanges, MatchBySlot& matcher, bool isWorn, bool isWornLeft)
+{
+	if (pContainerChanges->changes && pContainerChanges->changes->entryList) {
+		GetMatchingEquipped getEquipped(matcher, isWorn, isWornLeft);
+		for (const auto itemEntry : *pContainerChanges->changes->entryList)
+		{
+			if (getEquipped.Accept(itemEntry))
+				return getEquipped.Found();
+		}
+	}
+	return nullptr;
+}
+
+template <typename T>
+T* GetWornForm(RE::Actor* thisActor, uint32_t mask)
+{
+	MatchBySlot matcher(mask);
+	auto* pContainerChanges =
+		static_cast<RE::ExtraContainerChanges*>(thisActor->extraList.GetByType(RE::ExtraDataType::kContainerChanges));
+	if (pContainerChanges) {
+		RE::TESBoundObject* eqD = FindEquipped(pContainerChanges, matcher, true, true);
+		return eqD ? eqD->As<T>() : nullptr;
+	}
+	return nullptr;
+}
+
 void ManagedList::Reset()
 {
 	// No baseline for whitelist or transfer-list. Blacklist has a list of known no-loot places.
@@ -78,6 +167,9 @@ void ManagedList::Reset()
 	}
 	else if (this == m_equippedOrWorn.get())
 	{
+#ifdef _PROFILING
+		WindowsUtils::ScopedTimer elapsed("Find Equipped/Worn Items");
+#endif
 		// seed with current equipped ammo
 		m_members.clear();
 		RE::TESAmmo* ammo(RE::PlayerCharacter::GetSingleton()->GetCurrentAmmo());
@@ -85,10 +177,58 @@ void ManagedList::Reset()
 		{
 			Add(ammo);
 		}
+
+		// check actor slots for worn items - SKSE logic, ported to CommonLibSSE
+		// based on https://www.creationkit.com/index.php?title=Slot_Masks_-_Armor, ported to CommonLibSSE
+		std::unordered_set<RE::TESForm*> wornEquipped;
+		uint32_t currentSlot(0x1);
+
+		// do not iterate beyond last valid slot
+		while (currentSlot <= static_cast<uint32_t>(RE::BIPED_MODEL::BipedObjectSlot::kEars))
+		{
+			auto* armor(GetWornForm<RE::TESObjectARMO>(RE::PlayerCharacter::GetSingleton(), currentSlot));
+			if (armor)
+			{
+				DBG_DMESSAGE("Worn armor {}/0x{:08x} at slot 0x{:08x}", armor->GetName(), armor->GetFormID(), currentSlot);
+				wornEquipped.insert(armor);
+			}
+			currentSlot <<= 1;
+		}
+		
+		// check for equipped weapon(s) and shield
+		RE::TESForm* equippedRight(RE::PlayerCharacter::GetSingleton()->GetEquippedObject(false));
+		RE::TESObjectARMO* shield(equippedRight ? equippedRight->As<RE::TESObjectARMO>() : nullptr);
+		RE::TESObjectWEAP* weaponRight(equippedRight ? equippedRight->As<RE::TESObjectWEAP>() : nullptr);
+		RE::TESForm* equippedLeft(RE::PlayerCharacter::GetSingleton()->GetEquippedObject(true));
+		if (!shield && equippedLeft)
+		{
+			shield = equippedLeft->As<RE::TESObjectARMO>();
+		}
+		// 2H weapon seen in LH and RH here
+		RE::TESObjectWEAP* weaponLeft(equippedLeft && equippedLeft != equippedRight ? equippedLeft->As<RE::TESObjectWEAP>() : nullptr);
+		if (weaponRight)
+		{
+			DBG_DMESSAGE("RHS weapon {}/0x{:08x}", weaponRight->GetName(), weaponRight->GetFormID());
+			wornEquipped.insert(weaponRight);
+		}
+		if (weaponLeft)
+		{
+			DBG_DMESSAGE("LHS weapon {}/0x{:08x}", weaponLeft->GetName(), weaponLeft->GetFormID());
+			wornEquipped.insert(weaponLeft);
+		}
+		if (shield)
+		{
+			DBG_DMESSAGE("Shield equipped {}/0x{:08x}", shield->GetName(), shield->GetFormID());
+			wornEquipped.insert(shield);
+		}
+		for (const auto item : wornEquipped)
+		{
+			Add(item);
+		}
 	}
 	else
 	{
-		// whitelist and transferlist are rebuilt from scratch
+		// whitelist and transferlist are rebuilt from scratch | 
 		m_members.clear();
 	}
 }

@@ -262,45 +262,6 @@ Function SyncList(int listNum, Form[] forms, int formCount)
     endwhile
 endFunction
 
-; inform plugin of player's current worn and equipped items
-Function UpdateInUseItems()
-    ResetList(list_type_in_use_items)
-    ; check actor slots for worn items
-    ; based on https://www.creationkit.com/index.php?title=Slot_Masks_-_Armor
-    ;ignore reserved slots
-    int slotsChecked = 0x00100000
-    slotsChecked += 0x00200000 
-    slotsChecked += 0x80000000
- 
-    int index = 0
-    int thisSlot = 0x1
-    while (thisSlot < 0x80000000)
-        if (Math.LogicalAnd(slotsChecked, thisSlot) != thisSlot) ;only check slots we haven't found anything equipped on already
-            Armor nextWorn = player.GetWornForm(thisSlot) as Armor
-            if nextWorn
-                slotsChecked += nextWorn.GetSlotMask() ;add all slots this item covers to our slotsChecked variable
-                AddEntryToList(list_type_in_use_items, nextWorn)
-            else ;no armor was found on this slot
-                slotsChecked += thisSlot
-            endif
-        endif
-        thisSlot *= 2 ;double the number to move on to the next slot
-    endWhile
-
-    Armor shield = player.GetEquippedShield() as Armor
-    if shield
-        AddEntryToList(list_type_in_use_items, shield)
-    endIf
-    Weapon rhWeapon = player.GetEquippedWeapon() as Weapon
-    if rhWeapon
-        AddEntryToList(list_type_in_use_items, rhWeapon)
-    endIf
-    Weapon lhWeapon = player.GetEquippedWeapon(True) as Weapon
-    if lhWeapon
-        AddEntryToList(list_type_in_use_items, lhWeapon)
-    endIf
-EndFunction
-
 ; merge FormList with plugin data
 Function SyncTransferList(Form[] forms, string[] names, int formCount)
     ; plugin resets to empty baseline
@@ -400,7 +361,8 @@ EndFunction
 ;push updated lists to plugin
 Function SyncLists(bool reload, bool updateLists)
     if updateLists
-        UpdateInUseItems()
+        ; force plugin refresh of player's current worn and equipped items
+        ResetList(list_type_in_use_items)
         SyncTransferList(transferList, transferNames, 64)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
@@ -1480,7 +1442,8 @@ Function CheckReportUIState()
     if goodToGo
         ; if UI was detected open, refresh player's equipped/worn items in case they changed
         if pluginDelayed
-            UpdateInUseItems()
+            ; force plugin refresh of player's current worn and equipped items
+            ResetList(list_type_in_use_items)
         endIf
         ReportOKToScan(pluginDelayed, pluginNonce)
         pluginNonce = 0
