@@ -336,6 +336,11 @@ namespace papyrus
 		shse::UIState::Instance().ReportVMGoodToGo(delayed, nonce);
 	}
 
+	void SetMCMState(RE::StaticFunctionTag*, const bool isOpen)
+	{
+		shse::UIState::Instance().SetMCMState(isOpen);
+	}
+
 	constexpr int White = 1;
 	constexpr int Black = 2;
 	constexpr int Transfer = 3;
@@ -892,6 +897,7 @@ namespace papyrus
 		a_vm->RegisterFunction("DisallowSearch", SHSE_PROXY, papyrus::DisallowSearch);
 		a_vm->RegisterFunction("SyncScanActive", SHSE_PROXY, papyrus::SyncScanActive);
 		a_vm->RegisterFunction("ReportOKToScan", SHSE_PROXY, papyrus::ReportOKToScan);
+		a_vm->RegisterFunction("SetMCMState", SHSE_PROXY, papyrus::SetMCMState);
 		a_vm->RegisterFunction("GameIsReady", SHSE_PROXY, papyrus::GameIsReady);
 		a_vm->RegisterFunction("GetPlayerPlace", SHSE_PROXY, papyrus::GetPlayerPlace);
 

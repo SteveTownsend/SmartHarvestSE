@@ -118,11 +118,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug AE|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -134,15 +132,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Logging AE|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -175,10 +172,12 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Create artifacts RAR file</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug AE|x64'">
@@ -212,10 +211,12 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Create artifacts RAR file</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -322,7 +323,7 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>$(ProjectDir)Batch\build-logging-artifacts-rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Create artifacts RAR file</Message>
@@ -360,7 +361,7 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>$(ProjectDir)Batch\build-AE-Logging-artifacts-rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Create artifacts RAR file</Message>
@@ -398,10 +399,12 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Create artifacts RAR file</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -570,7 +573,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Batch\build-AE-artifacts-rar.bat" />
+    <None Include="Batch\build-AE-Logging-artifacts-rar.bat" />
     <None Include="Batch\build-artifacts-rar.bat" />
+    <None Include="Batch\build-Logging-artifacts-rar.bat" />
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="Collections\Examples\SHSE.Collections.BlackList.json" />
     <None Include="Collections\Examples\SHSE.Collections.Errors.json" />

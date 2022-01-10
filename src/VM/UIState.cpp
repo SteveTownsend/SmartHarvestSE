@@ -39,28 +39,54 @@ UIState& UIState::Instance()
 	return *m_instance;
 }
 
-UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_waiting(false)
+UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_waiting(false), m_mcmOpen(false)
 {
+}
+
+bool UIState::OKToScan() const
+{
+	if (m_mcmOpen)
+	{
+		DBG_VMESSAGE("MCM is Open");
+		return false;
+	}
+	if (RE::UI::GetSingleton()->GameIsPaused())
+	{
+		DBG_VMESSAGE("GameIsPaused true");
+		return false;
+	}
+	if (!RE::ControlMap::GetSingleton()->IsActivateControlsEnabled())
+	{
+		DBG_VMESSAGE("IsActivateControlsEnabled false");
+		return false;
+	}
+	return true;
 }
 
 // Check VM is not handling UI - blocks if so, to avoid problems in-game and at game shutdown
 // Returns True iff there was a UI-induced delay
 bool UIState::WaitUntilVMGoodToGo()
 {
-	// TODO add CLSSE checking here, only fire if UI is actually open
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed("VM Status check");
+#endif
+	// perform UI state checking here, only fire handshake with scripts if UI is open
+	if (OKToScan())
+		return true;
+
 	const auto startTime(std::chrono::high_resolution_clock::now());
 	++m_nonce;
 	int nonce(m_nonce);
 	REL_MESSAGE("UI status request # {}", nonce);
 	EventPublisher::Instance().TriggerCheckOKToScan(nonce);
 
-	// wait for async result from script
 	std::unique_lock<std::mutex> guard(m_uiLock);
 	m_vmResponded = false;
 	m_uiDelayed = false;
 	m_waiting = true;
 	m_uiReport.wait(guard, [&] { return m_vmResponded; });
 	m_waiting = false;
+
 	const auto endTime(std::chrono::high_resolution_clock::now());
 	REL_MESSAGE("Script reported UI ready for request {} after {} microseconds",
 		nonce, std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count());
@@ -117,6 +143,13 @@ void UIState::Reset()
 		REL_MESSAGE("VM check released for request {}", nonce);
 		m_uiReport.notify_one();
 	}
+}
+
+
+void UIState::SetMCMState(const bool isOpen)
+{
+	REL_MESSAGE("MCM open = {}", isOpen);
+	m_mcmOpen = isOpen;
 }
 
 }

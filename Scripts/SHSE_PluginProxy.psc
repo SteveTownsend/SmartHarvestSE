@@ -3,6 +3,7 @@ scriptname SHSE_PluginProxy
 Function DebugTrace(string str) global native
 Function AlwaysTrace(string str) global native
 bool Function LoggingEnabled() global native
+Function SetMCMState(bool isOpen) global native
 string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native

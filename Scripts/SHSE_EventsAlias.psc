@@ -370,6 +370,7 @@ Function SyncLists(bool reload, bool updateLists)
     if reload
         ; reset UI State checking nonce in case saved game left us with a bum value
         pluginNonce = 0
+        SetMCMState(false)
         mcmOpen = False
     endIf
     SyncDone(reload)
@@ -1414,9 +1415,11 @@ EndEvent
 
 Function OnMCMOpen()
     mcmOpen = True
+    SetMCMState(True)
 EndFunction
 
 Function OnMCMClose()
+    SetMCMState(False)
     mcmOpen = False
 EndFunction
 
@@ -1450,8 +1453,7 @@ Function CheckReportUIState()
         pluginDelayed = false
     else
         pluginDelayed = true
-        ; TODO revisit this - 2 seconds is a long time to delay auto-looting
-        RegisterForSingleUpdate(2.0)
+        RegisterForSingleUpdate(0.25)
     endIf
 EndFunction
 
