@@ -481,6 +481,12 @@
     <None Include="Batch\build-AE-artifacts-rar.bat">
       <Filter>Batch</Filter>
     </None>
+    <None Include="Batch\build-AE-Logging-artifacts-rar.bat">
+      <Filter>Batch</Filter>
+    </None>
+    <None Include="Batch\build-Logging-artifacts-rar.bat">
+      <Filter>Batch</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Interface\translations\SmartHarvestSE_czech.txt">

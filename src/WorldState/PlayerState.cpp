@@ -47,7 +47,6 @@ PlayerState& PlayerState::Instance()
 PlayerState::PlayerState() :
 	m_perksAddLeveledItemsOnDeath(false),
 	m_harvestedIngredientMultiplier(1.),
-	m_refreshCache(false),
 	m_carryAdjustedForCombat(false),
 	m_carryAdjustedForPlayerHome(false),
 	m_carryAdjustedForDrawnWeapon(false),
@@ -89,13 +88,13 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 		AdjustCarryWeight();
 	}
 
-	// Check excess inventory every so often, and on possible state changes
+	// Check excess inventory - always check known item updates, full review periodically and on possible state changes
 	// Do not process excess inventory if scanning is not allowed for any reason
 	// Player may be trying to manually sell items or doing other stuff that does not favour inventory manipulation
 	// per https://github.com/SteveTownsend/SmartHarvestSE/issues/252
 	if (PluginFacade::Instance().ScanAllowed())
 	{
-		CheckExcessInventory(onGameReload || onMCMPush);
+		ReviewExcessInventory(onGameReload || onMCMPush);
 	}
 
 	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
@@ -120,30 +119,62 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	}
 }
 
-void PlayerState::CheckExcessInventory(const bool force)
+void PlayerState::ReviewExcessInventory(bool force)
 {
-	ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+#ifdef _PROFILING
+	WindowsUtils::ScopedTimer elapsed(force ? "Review Excess Inventory Full" : "Review Excess Inventory Delta");
+#endif
 	RecursiveLockGuard guard(m_playerLock);
-	if (force || m_refreshCache)
-	{
-		m_lastExcessCheck = std::chrono::steady_clock::time_point();
-	}
-	m_refreshCache = false;
 
+	// full resync if forced or last full scan was long enough ago that we want to sync up, otherwise check deltas
 	constexpr std::chrono::milliseconds ExcessInventoryIntervalMillis(15000LL);
-	const auto timeNow(std::chrono::high_resolution_clock::now());
-	const auto cutoffPoint(timeNow - ExcessInventoryIntervalMillis);
+	const decltype(m_lastExcessCheck) cutoffPoint(std::chrono::high_resolution_clock::now() - ExcessInventoryIntervalMillis);
 	if (m_lastExcessCheck <= cutoffPoint)
 	{
-		DBG_MESSAGE("Check Excess Inventory");
-		m_lastExcessCheck = timeNow;
-		m_currentItems = lister.CacheIfExcessHandlingEnabled();
+		force = true;
+	}
+	// prepare delta updates for processing on this pass - local copy is ignored on full review (force = true)
+	InventoryUpdates updates;
+	if (force)
+	{
+		m_updates.clear();
+	}
+	else
+	{
+		updates.swap(m_updates);
+	}
+
+	if (force || !updates.empty())
+	{
+		const ContainerLister lister(INIFile::SecondaryType::deadbodies, RE::PlayerCharacter::GetSingleton());
+		DBG_MESSAGE("Check Excess Inventory force={}, {} deltas", force, m_updates.size());
+		InventoryCache validItems = lister.CacheIfExcessHandlingEnabled(force, updates);
+		if (force)
+		{
+			m_currentItems.swap(validItems);
+		}
+		else
+		{
+			// validItems contains current data for each item - upsert to rolling cache
+			std::for_each(validItems.cbegin(), validItems.cend(), [&] (const auto& current) {
+				auto insertion = m_currentItems.insert(current);
+				if (!insertion.second)
+				{
+					DBG_MESSAGE("Update existing cache for {}/0x{:08x}", current.first->GetName(), current.first->GetFormID());
+					insertion.first->second = current.second;
+				}
+				else
+				{
+					DBG_MESSAGE("Added cache entry for {}/0x{:08x}", current.first->GetName(), current.first->GetFormID());
+				}
+			});
+		}
 		DBG_DMESSAGE("Cached {} inventory items", m_currentItems.size());
 
-		// Transfer or sell items in excess of limits
-		for (auto& item : m_currentItems)
+		// record time if this is a full scan
+		if (updates.empty())
 		{
-			item.second.HandleExcess();
+			m_lastExcessCheck = std::chrono::high_resolution_clock::now();
 		}
 	}
 }
@@ -408,15 +439,16 @@ int PlayerState::ItemHeadroom(RE::TESBoundObject* form, const int delta) const
 		return InventoryEntry::UnlimitedItems;
 
 	// Inventory limit is configured - check if item is already being tracked
-	// Trigger reconciliation before next loot scan whenever we loot an item with inventory limits
-	m_refreshCache = true;
 	auto cached(m_currentItems.find(form));
 	if (cached == m_currentItems.end())
 	{
 		itemEntry.Populate();
-		// add to cache if limited and not found
+		// add to cache if limited and not found, to keep cache accurate until next full review
 		cached = m_currentItems.insert({ form, itemEntry }).first;
 	}
+
+	// Trigger delta reconciliation before next loot scan whenever we loot an item with inventory limits
+	m_updates.insert(form);
 	return cached->second.Headroom(delta);
 }
 

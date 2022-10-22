@@ -40,6 +40,8 @@ int objType_Book
 int objType_skillBookRead
 
 Actor player
+bool logEvent
+
 Form[] addedItems
 int[] addedItemScope
 int[] addedItemType
@@ -111,7 +113,8 @@ int glowReasonSimpleTarget
 
 Perk spergProspector
 
-Function SetPlayer(Actor playerref)
+Function Prepare(Actor playerref, bool useLog)
+    logEvent = useLog
     player = playerref
     ;check for SPERG being active and set up the Prospector Perk to check
     int spergModIndex = Game.GetModByName("SPERG-SSE.esp")
@@ -259,45 +262,6 @@ Function SyncList(int listNum, Form[] forms, int formCount)
     endwhile
 endFunction
 
-; inform plugin of player's current worn and equipped items
-Function UpdateInUseItems()
-    ResetList(list_type_in_use_items)
-    ; check actor slots for worn items
-    ; based on https://www.creationkit.com/index.php?title=Slot_Masks_-_Armor
-    ;ignore reserved slots
-    int slotsChecked = 0x00100000
-    slotsChecked += 0x00200000 
-    slotsChecked += 0x80000000
- 
-    int index = 0
-    int thisSlot = 0x1
-    while (thisSlot < 0x80000000)
-        if (Math.LogicalAnd(slotsChecked, thisSlot) != thisSlot) ;only check slots we haven't found anything equipped on already
-            Armor nextWorn = player.GetWornForm(thisSlot) as Armor
-            if nextWorn
-                slotsChecked += nextWorn.GetSlotMask() ;add all slots this item covers to our slotsChecked variable
-                AddEntryToList(list_type_in_use_items, nextWorn)
-            else ;no armor was found on this slot
-                slotsChecked += thisSlot
-            endif
-        endif
-        thisSlot *= 2 ;double the number to move on to the next slot
-    endWhile
-
-    Armor shield = player.GetEquippedShield() as Armor
-    if shield
-        AddEntryToList(list_type_in_use_items, shield)
-    endIf
-    Weapon rhWeapon = player.GetEquippedWeapon() as Weapon
-    if rhWeapon
-        AddEntryToList(list_type_in_use_items, rhWeapon)
-    endIf
-    Weapon lhWeapon = player.GetEquippedWeapon(True) as Weapon
-    if lhWeapon
-        AddEntryToList(list_type_in_use_items, lhWeapon)
-    endIf
-EndFunction
-
 ; merge FormList with plugin data
 Function SyncTransferList(Form[] forms, string[] names, int formCount)
     ; plugin resets to empty baseline
@@ -397,7 +361,8 @@ EndFunction
 ;push updated lists to plugin
 Function SyncLists(bool reload, bool updateLists)
     if updateLists
-        UpdateInUseItems()
+        ; force plugin refresh of player's current worn and equipped items
+        ResetList(list_type_in_use_items)
         SyncTransferList(transferList, transferNames, 64)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
@@ -405,6 +370,7 @@ Function SyncLists(bool reload, bool updateLists)
     if reload
         ; reset UI State checking nonce in case saved game left us with a bum value
         pluginNonce = 0
+        SetMCMState(false)
         mcmOpen = False
     endIf
     SyncDone(reload)
@@ -835,8 +801,11 @@ Function HandleCrosshairItemHotKey(ObjectReference targetedRefr, bool isWhiteKey
         if isWhiteKey
             if targetedRefr.GetBaseObject() as Container
                 ProcessContainerCollectibles(targetedRefr)
+            elseif targetedRefr.GetBaseObject() as Book
+                ; special-case to force-harvest Quest Targets
+                TryForceHarvest(targetedRefr)
             else
-                Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER")
+                Debug.Notification("$SHSE_HOTKEY_NOT_A_CONTAINER_OR_FORCE_HARVEST")
             endif
         else ; BlackList Key
             ; object lootability introspection
@@ -1045,8 +1014,10 @@ bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, 
 endFunction
 
 Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify, bool isFirehose)
-    ;DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
-    ;DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
+    if logEvent
+        DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
+        DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
+    endIf
     int miningStrikes = 0
     int targetResourceTotal = 0
     int strikesToCollect = 0
@@ -1054,7 +1025,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     int FOSStrikesBeforeFossil
     bool handled = false
     if (oreScript)
-        ;DebugTrace("Detected ore vein")
+        if logEvent
+            DebugTrace("Detected ore vein")
+        endIf            
         ; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
         targetResourceTotal = oreScript.ResourceCountTotal
         strikesToCollect = oreScript.StrikesBeforeCollection
@@ -1064,26 +1037,34 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         if useSperg
             PrepareSPERGMining()
         endif
-        if (available == -1)
-            ;DebugTrace("Vein not yet initialized, start mining")
-        else
-            ;DebugTrace("Vein has ore available: " + available)
+        if logEvent
+            if (available == -1)
+                DebugTrace("Vein not yet initialized, start mining")
+            else
+                DebugTrace("Vein has ore available: " + available)
+            endIf            
         endif
 
         ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
         ; in ResourceCount and the remaining amount in ResourceCountCurrent 
         while OKToScan() && available != 0 && mined < maxMiningItems
-            ;DebugTrace("Trigger harvesting")
+            if logEvent
+                DebugTrace("Trigger harvesting")
+            endIf            
             oreScript.giveOre()
             mined += oreScript.ResourceCount
-            ;DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
+            if logEvent
+                DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
+            endIf            
             available = oreScript.ResourceCountCurrent
             miningStrikes += 1
         endwhile
         if !OKToScan()
             AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " obtained")
         endIf
-        ;DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+        if logEvent
+            DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+        endIf
         if useSperg
             PostprocessSPERGMining()
         endif
@@ -1094,41 +1075,55 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     if !handled && (CACOModIndex != 255)
         CACO_MineOreScript cacoMinable = akMineable as CACO_MineOreScript
         if (cacoMinable)
-            ;DebugTrace("Detected CACO ore vein")
+            if logEvent
+                DebugTrace("Detected CACO ore vein")
+            endIf
             ; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
             int available = cacoMinable.ResourceCountCurrent
             targetResourceTotal = cacoMinable.ResourceCountTotal
             strikesToCollect = cacoMinable.StrikesBeforeCollection
             int mined = 0
             ; do not harvest firehose unless set in config
-            if (available == -1)
-                ;DebugTrace("CACO ore vein not yet initialized, start mining")
-            else
-                ;DebugTrace("CACO ore vein has ore available: " + available)
+            if logEvent
+                if (available == -1)
+                    DebugTrace("CACO ore vein not yet initialized, start mining")
+                else
+                    DebugTrace("CACO ore vein has ore available: " + available)
+                endIf
             endif
 
             ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
             ; in ResourceCount and the remaining amount in ResourceCountCurrent 
             while OKToScan() && available != 0 && mined < maxMiningItems
-                ;DebugTrace("Trigger CACO ore harvesting")
+                if logEvent
+                    DebugTrace("Trigger CACO ore harvesting")
+                endIf            
                 cacoMinable.giveOre()
                 mined += cacoMinable.ResourceCount
-                ;DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
+                if logEvent
+                    DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
+                endIf            
                 available = cacoMinable.ResourceCountCurrent
                 miningStrikes += 1
             endwhile
             if !OKToScan()
                 AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " obtained")
             endIf
-            ;DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            if logEvent
+                DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            endIf            
             handled = true
         endif
     endif
     if !handled && (FossilMiningModIndex != 255)
-        ;DebugTrace("Check for Fossil Mining Dig Site")
+        if logEvent
+            DebugTrace("Check for Fossil Mining Dig Site")
+        endIf            
         FOS_DigsiteScript FOSMinable = akMineable as FOS_DigsiteScript
         if (FOSMinable)
-            ;DebugTrace("Process Fossil Mining Dig Site")
+            if logEvent
+                DebugTrace("Process Fossil Mining Dig Site")
+            endIf            
             ; brute force fossil gathering to bypass tedious Script/Furniture handshaking
             ; REFR will be blocked ater this call, until we leave the cell
             ; FOS script enables the FURN when we first enter the cell, provided mining is legal
@@ -1155,9 +1150,13 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         ;randomize drop of fossil based on number of strikes and vein characteristics
         FOSStrikesBeforeFossil = strikesToCollect * targetResourceTotal
         int dropFactor = Utility.RandomInt(1, FOSStrikesBeforeFossil)
-        ;DebugTrace("Fossil Mining: strikes = " + miningStrikes + ", required for drop = " + FOSStrikesBeforeFossil)
+        if logEvent
+            DebugTrace("Fossil Mining: strikes = " + miningStrikes + ", required for drop = " + FOSStrikesBeforeFossil)
+        endIf            
         if (dropFactor <= miningStrikes)
-            ;DebugTrace("Fossil Mining: provide loot!")
+            if logEvent
+                DebugTrace("Fossil Mining: provide loot!")
+            endIf            
             if (resourceType == resource_Geode)
                 player.AddItem(FOS_LItemFossilTierOneGeode, 1)
             Elseif (resourceType == resource_Volcanic)
@@ -1209,7 +1208,9 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
         TrapSoulGemController myTrap = akTarget as TrapSoulGemController
         if myTrap
             string baseState = akTarget.GetLinkedRef(None).getState()
-            ;DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
+            if logEvent
+                DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
+            endIf
             if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && ActivateEx(akTarget, player, true, 1)
                 notify = !silent
             endIf
@@ -1414,9 +1415,11 @@ EndEvent
 
 Function OnMCMOpen()
     mcmOpen = True
+    SetMCMState(True)
 EndFunction
 
 Function OnMCMClose()
+    SetMCMState(False)
     mcmOpen = False
 EndFunction
 
@@ -1442,14 +1445,15 @@ Function CheckReportUIState()
     if goodToGo
         ; if UI was detected open, refresh player's equipped/worn items in case they changed
         if pluginDelayed
-            UpdateInUseItems()
+            ; force plugin refresh of player's current worn and equipped items
+            ResetList(list_type_in_use_items)
         endIf
         ReportOKToScan(pluginDelayed, pluginNonce)
         pluginNonce = 0
         pluginDelayed = false
     else
         pluginDelayed = true
-        RegisterForSingleUpdate(2.0)
+        RegisterForSingleUpdate(0.25)
     endIf
 EndFunction
 

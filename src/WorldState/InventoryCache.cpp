@@ -176,7 +176,7 @@ void InventoryEntry::HandleExcess()
 			{
 				m_transferTarget = refr->GetBaseObject()->GetName();
 				RE::PlayerCharacter::GetSingleton()->RemoveItem(
-					const_cast<RE::TESBoundObject*>(m_item), m_handled, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+					m_item, m_handled, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
 				refr->AddObjectToContainer(const_cast<RE::TESBoundObject*>(m_item), nullptr, m_handled, nullptr);
 				DBG_VMESSAGE("Moved excess {} of {}/0x{:08x} to Container {} for REFR 0x{:08x}",
 					m_handled, m_item->GetName(), m_item->GetFormID(), m_transferTarget, refr->GetFormID());

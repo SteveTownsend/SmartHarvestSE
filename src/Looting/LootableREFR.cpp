@@ -120,7 +120,8 @@ bool LootableREFR::HasIngredient() const
 bool LootableREFR::HarvestForbiddenForForm() const
 {
 	// flora, but not those that produce cash money
-	if (m_flora)
+	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
+	if (m_typeName != septimsName && m_flora)
 	{
 		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
 	}
