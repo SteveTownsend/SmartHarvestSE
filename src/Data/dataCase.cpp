@@ -995,6 +995,10 @@ void DataCase::ForceObjectTypeForForm(const RE::TESForm* form, const ObjectType 
 	if (inserted.second)
 	{
 		REL_VMESSAGE("{}/0x{:08x} force-categorized as {}", form->GetName(), form->GetFormID(), GetObjectTypeName(objectType).c_str());
+		if (objectType == ObjectType::ingredient)
+		{
+			m_ingredientEffectsKnown.insert({ form->GetFormID(), false });
+		}
 	}
 	else
 	{

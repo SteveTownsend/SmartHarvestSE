@@ -64,4 +64,5 @@ namespace shse
 	};
 
 	typedef std::unordered_map<const RE::TESBoundObject*, InventoryEntry> InventoryCache;
+	typedef std::unordered_set<const RE::TESBoundObject*> InventoryUpdates;
 }

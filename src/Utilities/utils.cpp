@@ -197,7 +197,13 @@ namespace WindowsUtils
 		return *m_instance;
 	}
 
-	int ScopedTimerFactory::StartTimer(const std::string& context)
+	int ScopedTimerFactory::StartTimer(
+#ifdef _PROFILING
+		const std::string& context
+#else
+		const std::string&
+#endif
+	)
 	{
 #ifdef _PROFILING
 		RecursiveLockGuard guard(m_timerLock);
@@ -210,7 +216,13 @@ namespace WindowsUtils
 	}
 
 	// fails silently if invalid, otherwise stops the timer and records result
-	void ScopedTimerFactory::StopTimer(const int handle)
+	void ScopedTimerFactory::StopTimer(
+#ifdef _PROFILING
+		const int handle
+#else
+		const int
+#endif
+	)
 	{
 #ifdef _PROFILING
 		RecursiveLockGuard guard(m_timerLock);

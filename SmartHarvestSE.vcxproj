@@ -118,11 +118,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug AE|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -134,15 +132,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Logging|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Logging AE|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
+    <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profiling|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -156,7 +153,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -175,10 +172,12 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Create artifacts RAR file</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug AE|x64'">
@@ -193,7 +192,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -212,10 +211,12 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Create artifacts RAR file</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -231,7 +232,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -267,7 +268,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -294,7 +295,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)binary_io\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_FULL_LOGGING;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_FULL_LOGGING;_PROFILING;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -303,7 +304,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -322,7 +323,7 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>$(ProjectDir)Batch\build-logging-artifacts-rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Create artifacts RAR file</Message>
@@ -332,7 +333,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)..;$(SolutionDir)..\..;$(SourceRoot)skse64_2_00_17\src\skse64;$(SourceRoot)jsoncpp;$(SourceRoot)CommonLibSSE\include;$(SourceRoot)binary_io\include;$(SolutionDir)brotli\c\include\;$(SolutionDir)boost_1_76_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_FULL_LOGGING;SKYRIM_AE;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_FULL_LOGGING;_PROFILING;SKYRIM_AE;SPDLOG_WCHAR_FILENAMES;WIN32;_AMD64_;NDEBUG;_WINDOWS;_USRDLL;PLUGIN_EXAMPLE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -341,7 +342,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -360,7 +361,7 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>$(ProjectDir)Batch\build-AE-Logging-artifacts-rar.bat</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Create artifacts RAR file</Message>
@@ -379,7 +380,7 @@
       <ForcedIncludeFiles>%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PrecompiledHeaderFile>PrecompiledHeaders.h</PrecompiledHeaderFile>
-      <DisableSpecificWarnings>4668;4820;6054</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4668;4820;6054;4200</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>
@@ -398,10 +399,12 @@
       </Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>$(ProjectDir)Batch\build-artifacts.rar.bat</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Create artifacts RAR file</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -570,7 +573,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Batch\build-AE-artifacts-rar.bat" />
+    <None Include="Batch\build-AE-Logging-artifacts-rar.bat" />
     <None Include="Batch\build-artifacts-rar.bat" />
+    <None Include="Batch\build-Logging-artifacts-rar.bat" />
     <None Include="Collections\Edit Scripts\SHSE Find Collectible FLSTs.pas" />
     <None Include="Collections\Examples\SHSE.Collections.BlackList.json" />
     <None Include="Collections\Examples\SHSE.Collections.Errors.json" />

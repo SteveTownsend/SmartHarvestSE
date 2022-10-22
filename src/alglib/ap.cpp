@@ -2455,7 +2455,7 @@ void ae_trace_file(const char *tags, const char *filename)
     strncat(alglib_trace_tags, tags, ALGLIB_TRACE_TAGS_LEN);
     strcat(alglib_trace_tags, ",");
     for(int i=0; alglib_trace_tags[i]!=0; i++)
-        alglib_trace_tags[i] = tolower(alglib_trace_tags[i]);
+        alglib_trace_tags[i] = static_cast<char>(tolower(alglib_trace_tags[i]));
     
     /*
      * set up trace
@@ -2494,7 +2494,7 @@ ae_bool ae_is_trace_enabled(const char *tag)
     strncat(buf, tag, ALGLIB_TRACE_TAGS_LEN);
     strcat(buf, "?");
     for(int i=0; buf[i]!=0; i++)
-        buf[i] = tolower(buf[i]);
+        buf[i] = static_cast<char>(tolower(buf[i]));
             
     /* contains tag (followed by comma, which means exact match) */
     buf[strlen(buf)-1] = ',';

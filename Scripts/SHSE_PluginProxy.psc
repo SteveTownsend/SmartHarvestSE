@@ -2,6 +2,8 @@ scriptname SHSE_PluginProxy
 
 Function DebugTrace(string str) global native
 Function AlwaysTrace(string str) global native
+bool Function LoggingEnabled() global native
+Function SetMCMState(bool isOpen) global native
 string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
@@ -18,6 +20,7 @@ string Function TransferItem(Form item, bool excessOnly) global native
 string Function DeleteItem(Form item, bool excessOnly) global native
 string Function CheckItemAsExcess(Form item) global native
 Function ProcessContainerCollectibles(ObjectReference refr) global native
+Function TryForceHarvest(ObjectReference refr) global native
 
 string Function GetObjectTypeNameByType(int num) global native
 int Function GetObjectTypeByName(string name) global native
