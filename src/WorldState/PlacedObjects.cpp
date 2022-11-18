@@ -128,6 +128,8 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 // check again then.
 void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 {
+	if (!cell)
+		return;
 	if (!m_checkedForPlacedObjects.insert(cell).second)
 		return;
 
@@ -137,11 +139,12 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 	if (DataCase::GetInstance()->IsOffLimitsLocation(cell))
 		return;
 #if _DEBUG
-	ptrdiff_t actors(std::count_if(cell->references.cbegin(), cell->references.cend(),
+	ptrdiff_t actors(std::count_if(cell->GetRuntimeData().references.cbegin(), cell->GetRuntimeData().references.cend(),
 		[&](const auto refr) -> bool { return refr->GetFormType() == RE::FormType::ActorCharacter; }));
-	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->references.size(), actors, FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->GetRuntimeData().references.size(), actors,
+		FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
 #endif
-	for (const RE::TESObjectREFRPtr& refptr : cell->references)
+	for (const RE::TESObjectREFRPtr& refptr : cell->GetRuntimeData().references)
 	{
 		const RE::TESObjectREFR* refr(refptr.get());
 		SaveREFRIfPlaced(refr);

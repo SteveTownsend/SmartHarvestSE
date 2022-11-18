@@ -89,7 +89,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			else if (refrEx.IsFlora())
 			{
 				DBG_VMESSAGE("flora {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
-					refrEx.GetTarget()->GetName(), refrEx.GetTarget()->formID, refrEx.GetObjectType());
+					refrEx.GetTarget()->GetName(), refrEx.GetTarget()->formID, GetObjectTypeName(refrEx.GetObjectType()));
 			}
 			else
 			{

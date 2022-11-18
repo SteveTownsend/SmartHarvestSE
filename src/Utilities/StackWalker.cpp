@@ -82,13 +82,12 @@
  *
  **********************************************************************/
 
+#include "PrecompiledHeaders.h"
 #include "StackWalker.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <tchar.h>
-//#include <windows.h>
-#pragma comment(lib, "version.lib") // for "VerQueryValue"
 #pragma warning(disable : 4826)
 
 
@@ -219,6 +218,17 @@ typedef DWORD64(__stdcall* PTRANSLATE_ADDRESS_ROUTINE64)(HANDLE      hProcess,
 #endif // _MSC_VER < 1300
 #pragma pack(pop)
 
+#undef GetEnvironmentVariable
+#undef GetFileVersionInfo
+#undef GetFileVersionInfoSize
+#undef GetModuleFileName
+#undef GetModuleHandle
+#undef LoadLibrary
+#undef MessageBox
+#undef OutputDebugString
+#undef RegQueryValueEx
+#undef VerQueryValue
+
 // Some missing defines (for VC5/6):
 #ifndef INVALID_FILE_ATTRIBUTES
 #define INVALID_FILE_ATTRIBUTES ((DWORD)-1)
@@ -289,7 +299,7 @@ public:
         // First try to load the newest one from
         TCHAR szTemp[4096];
         // But before we do this, we first check if the ".local" file exists
-        if (GetModuleFileName(NULL, szTemp, 4096) > 0)
+        if (SKSE::WinAPI::GetModuleFileName(NULL, szTemp, 4096) > 0)
         {
             _tcscat_s(szTemp, _T(".local"));
             if (GetFileAttributes(szTemp) == INVALID_FILE_ATTRIBUTES)
@@ -307,13 +317,13 @@ public:
                     }
                 }
 #elif _M_X64
-                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::CLSSEGetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
+                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::GetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
                 {
                     _tcscat_s(szTemp, _T("\\Debugging Tools for Windows (x64)\\dbghelp.dll"));
                     // now check if the file exists:
                     if (GetFileAttributes(szTemp) != INVALID_FILE_ATTRIBUTES)
                     {
-                        m_hDbhHelp = LoadLibrary(szTemp);
+                        m_hDbhHelp = SKSE::WinAPI::LoadLibrary(szTemp);
                     }
                 }
 #elif _M_IA64
@@ -328,30 +338,30 @@ public:
                 }
 #endif
                 // If still not found, try the old directories...
-                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::CLSSEGetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
+                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::GetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
                 {
                     _tcscat_s(szTemp, _T("\\Debugging Tools for Windows\\dbghelp.dll"));
                     // now check if the file exists:
                     if (GetFileAttributes(szTemp) != INVALID_FILE_ATTRIBUTES)
                     {
-                        m_hDbhHelp = LoadLibrary(szTemp);
+                        m_hDbhHelp = SKSE::WinAPI::LoadLibrary(szTemp);
                     }
                 }
 #if defined _M_X64 || defined _M_IA64
                 // Still not found? Then try to load the (old) 64-Bit version:
-                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::CLSSEGetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
+                if ((m_hDbhHelp == NULL) && (SKSE::WinAPI::GetEnvironmentVariable(_T("ProgramFiles"), szTemp, 4096) > 0))
                 {
                     _tcscat_s(szTemp, _T("\\Debugging Tools for Windows 64-Bit\\dbghelp.dll"));
                     if (GetFileAttributes(szTemp) != INVALID_FILE_ATTRIBUTES)
                     {
-                        m_hDbhHelp = LoadLibrary(szTemp);
+                        m_hDbhHelp = SKSE::WinAPI::LoadLibrary(szTemp);
                     }
                 }
 #endif
             }
         }
         if (m_hDbhHelp == NULL) // if not already loaded, try to load a default-one
-            m_hDbhHelp = LoadLibrary(_T("dbghelp.dll"));
+            m_hDbhHelp = SKSE::WinAPI::LoadLibrary(_T("dbghelp.dll"));
         if (m_hDbhHelp == NULL)
             return FALSE;
         pSI = (tSI)GetProcAddress(m_hDbhHelp, "SymInitialize");
@@ -409,7 +419,7 @@ public:
 
     StackWalker* m_parent;
 
-    HMODULE m_hDbhHelp;
+    SKSE::WinAPI::HMODULE m_hDbhHelp;
     HANDLE  m_hProcess;
     LPSTR   m_szSymPath;
 
@@ -566,7 +576,7 @@ private:
 
         // try both dlls...
         const TCHAR* dllname[] = { _T("kernel32.dll"), _T("tlhelp32.dll") };
-        HINSTANCE    hToolhelp = NULL;
+        SKSE::WinAPI::HINSTANCE    hToolhelp = NULL;
         tCT32S       pCT32S = NULL;
         tM32F        pM32F = NULL;
         tM32N        pM32N = NULL;
@@ -579,7 +589,7 @@ private:
 
         for (i = 0; i < (sizeof(dllname) / sizeof(dllname[0])); i++)
         {
-            hToolhelp = LoadLibrary(dllname[i]);
+            hToolhelp = SKSE::WinAPI::LoadLibrary(dllname[i]);
             if (hToolhelp == NULL)
                 continue;
             pCT32S = (tCT32S)GetProcAddress(hToolhelp, "CreateToolhelp32Snapshot");
@@ -639,7 +649,7 @@ private:
         // GetModuleInformation()
         typedef BOOL(__stdcall* tGMI)(HANDLE hProcess, HMODULE hModule, LPMODULEINFO pmi, DWORD nSize);
 
-        HINSTANCE hPsapi;
+        SKSE::WinAPI::HINSTANCE hPsapi;
         tEPM      pEPM;
         tGMFNE    pGMFNE;
         tGMBN     pGMBN;
@@ -655,7 +665,7 @@ private:
         const SIZE_T TTBUFLEN = 8096;
         int          cnt = 0;
 
-        hPsapi = LoadLibrary(_T("psapi.dll"));
+        hPsapi = SKSE::WinAPI::LoadLibrary(_T("psapi.dll"));
         if (hPsapi == NULL)
             return FALSE;
 
@@ -748,7 +758,7 @@ private:
                         {
                             UINT  len;
                             TCHAR szSubBlock[] = _T("\\");
-                            if (SKSE::WinAPI::CLSSEVerQueryValue(vData, szSubBlock, (LPVOID*)&fInfo, &len) == 0)
+                            if (SKSE::WinAPI::VerQueryValue(vData, szSubBlock, (LPVOID*)&fInfo, &len) == 0)
                                 fInfo = NULL;
                             else
                             {
@@ -949,7 +959,7 @@ BOOL StackWalker::LoadModules()
         }
 
         // Now add the path for the main-module:
-        if (SKSE::WinAPI::CLSSEGetModuleFileName(NULL, szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::GetModuleFileName(NULL, szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             for (char* p = (szTemp + strlen(szTemp) - 1); p >= szTemp; --p)
@@ -967,19 +977,19 @@ BOOL StackWalker::LoadModules()
                 strcat_s(szSymPath, nSymPathLen, ";");
             }
         }
-        if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("_NT_SYMBOL_PATH", szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::GetEnvironmentVariable("_NT_SYMBOL_PATH", szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             strcat_s(szSymPath, nSymPathLen, szTemp);
             strcat_s(szSymPath, nSymPathLen, ";");
         }
-        if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("_NT_ALTERNATE_SYMBOL_PATH", szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::GetEnvironmentVariable("_NT_ALTERNATE_SYMBOL_PATH", szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             strcat_s(szSymPath, nSymPathLen, szTemp);
             strcat_s(szSymPath, nSymPathLen, ";");
         }
-        if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("SYSTEMROOT", szTemp, nTempLen) > 0)
+        if (SKSE::WinAPI::GetEnvironmentVariable("SYSTEMROOT", szTemp, nTempLen) > 0)
         {
             szTemp[nTempLen - 1] = 0;
             strcat_s(szSymPath, nSymPathLen, szTemp);
@@ -992,7 +1002,7 @@ BOOL StackWalker::LoadModules()
 
         if ((this->m_options & SymUseSymSrv) != 0)
         {
-            if (SKSE::WinAPI::CLSSEGetEnvironmentVariable("SYSTEMDRIVE", szTemp, nTempLen) > 0)
+            if (SKSE::WinAPI::GetEnvironmentVariable("SYSTEMDRIVE", szTemp, nTempLen) > 0)
             {
                 szTemp[nTempLen - 1] = 0;
                 strcat_s(szSymPath, nSymPathLen, "SRV*");

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "smartharvest",
+  "version-string": "5.0.0.0",
+  "port-version": 0,
+  "description": "SKSE plugin for autoloot and related quality of life improvements",
+  "homepage": "https://github.com/SteveTownsend/SmartHarvestSE",
+  "license": "MIT",
+  "features": {
+    "plugin": {
+      "description": "Build the SKSE plugin.",
+      "dependencies": [
+        "commonlibsse-ng-flatrim",
+        "spdlog",
+        "nlohmann-json",
+        "json-schema-validator",
+        "brotli"
+      ]
+    }
+  },
+  "default-features": [
+    "plugin"
+  ],
+  "builtin-baseline": "6f7ffeb18f99796233b958aaaf14ec7bd4fb64b2"
+}

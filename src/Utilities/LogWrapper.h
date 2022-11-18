@@ -26,12 +26,12 @@ extern std::shared_ptr<spdlog::logger> SHSELogger;
 // wrappers for spdLog to make release/debug logging easier
 // Debug build only
 #if _DEBUG || defined(_FULL_LOGGING)
-#define DBG_DMESSAGE(a_fmt, ...) SHSELogger->debug(a_fmt, __VA_ARGS__)
-#define DBG_VMESSAGE(a_fmt, ...) SHSELogger->trace(a_fmt, __VA_ARGS__)
-#define DBG_MESSAGE(a_fmt, ...) SHSELogger->info(a_fmt, __VA_ARGS__)
-#define DBG_WARNING(a_fmt, ...) SHSELogger->warn(a_fmt, __VA_ARGS__)
-#define DBG_ERROR(a_fmt, ...) SHSELogger->error(a_fmt, __VA_ARGS__)
-#define DBG_FATALERROR(a_fmt, ...) SHSELogger->critical(a_fmt, __VA_ARGS__)
+#define DBG_DMESSAGE(a_fmt, ...) SHSELogger->debug(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define DBG_VMESSAGE(a_fmt, ...) SHSELogger->trace(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define DBG_MESSAGE(a_fmt, ...) SHSELogger->info(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define DBG_WARNING(a_fmt, ...) SHSELogger->warn(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define DBG_ERROR(a_fmt, ...) SHSELogger->error(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define DBG_FATALERROR(a_fmt, ...) SHSELogger->critical(a_fmt __VA_OPT__(,) __VA_ARGS__)
 #else
 #define DBG_DMESSAGE(a_fmt, ...)
 #define DBG_VMESSAGE(a_fmt, ...)
@@ -42,9 +42,9 @@ extern std::shared_ptr<spdlog::logger> SHSELogger;
 #endif
 
 // Always log
-#define REL_DMESSAGE(a_fmt, ...) SHSELogger->debug(a_fmt, __VA_ARGS__)
-#define REL_VMESSAGE(a_fmt, ...) SHSELogger->trace(a_fmt, __VA_ARGS__)
-#define REL_MESSAGE(a_fmt, ...) SHSELogger->info(a_fmt, __VA_ARGS__)
-#define REL_WARNING(a_fmt, ...) SHSELogger->warn(a_fmt, __VA_ARGS__)
-#define REL_ERROR(a_fmt, ...) SHSELogger->error(a_fmt, __VA_ARGS__)
-#define REL_FATALERROR(a_fmt, ...) SHSELogger->critical(a_fmt, __VA_ARGS__)
+#define REL_DMESSAGE(a_fmt, ...) SHSELogger->debug(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define REL_VMESSAGE(a_fmt, ...) SHSELogger->trace(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define REL_MESSAGE(a_fmt, ...) SHSELogger->info(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define REL_WARNING(a_fmt, ...) SHSELogger->warn(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define REL_ERROR(a_fmt, ...) SHSELogger->error(a_fmt __VA_OPT__(,) __VA_ARGS__)
+#define REL_FATALERROR(a_fmt, ...) SHSELogger->critical(a_fmt __VA_OPT__(,) __VA_ARGS__)

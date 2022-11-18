@@ -49,7 +49,7 @@ bool AbsoluteRange::IsValid(const RE::TESObjectREFR* refr) const
 	if (dx > m_radius || dy > m_radius || dz > m_zLimit)
 	{
 		// very verbose
-		DBG_DMESSAGE("REFR 0x{:08x} {{:0.2f},{:0.2f},{:0.2f}} trivially too far from player {{:0.2f},{:0.2f},{:0.2f}}",
+		DBG_DMESSAGE("REFR 0x{:08x} ({:0.2f},{:0.2f},{:0.2f}) trivially too far from player ({:0.2f},{:0.2f},{:0.2f})",
 			refr->formID, refr->GetPositionX(), refr->GetPositionY(), refr->GetPositionZ(),
 			m_sourceX, m_sourceY, m_sourceZ);
 		m_distance = std::max({ dx, dy, dz });

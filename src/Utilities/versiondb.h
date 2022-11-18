@@ -26,6 +26,17 @@ http://www.fsf.org/licensing/licenses
 
 #pragma comment(lib, "version.lib")
 
+#undef GetEnvironmentVariable
+#undef GetFileVersionInfo
+#undef GetFileVersionInfoSize
+#undef GetModuleFileName
+#undef GetModuleHandle
+#undef LoadLibrary
+#undef MessageBox
+#undef OutputDebugString
+#undef RegQueryValueEx
+#undef VerQueryValue
+
 class VersionDb
 {
 public:
@@ -120,16 +131,18 @@ public:
 	bool GetExecutableVersion(int& major, int& minor, int& revision, int& build) const
 	{
 		TCHAR szVersionFile[MAX_PATH];
-		GetModuleFileName(NULL, szVersionFile, MAX_PATH);
+		auto result = SKSE::WinAPI::GetModuleFileName(NULL, szVersionFile, MAX_PATH);
+		if (!result)
+			return false;
 
 		std::uint32_t verHandle = 0;
-		DWORD verSize = SKSE::WinAPI::CLSSEGetFileVersionInfoSize(szVersionFile, &verHandle);
+		DWORD verSize = SKSE::WinAPI::GetFileVersionInfoSize(szVersionFile, &verHandle);
 
 		if (verSize != NULL)
 		{
 			LPSTR verData = new char[verSize];
 			verHandle = 0;
-			if (SKSE::WinAPI::CLSSEGetFileVersionInfo(szVersionFile, verHandle, verSize, verData))
+			if (SKSE::WinAPI::GetFileVersionInfo(szVersionFile, verHandle, verSize, verData))
 			{
 				{
 					char * vstr = NULL;

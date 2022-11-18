@@ -340,7 +340,7 @@ ObjectType GetObjectTypeByTypeName(const std::string& name)
 	{
 		if (nextPair.second == lcName)
 		{
-			DBG_VMESSAGE("Mapped name {} to ObjectType {}", name.c_str(), nextPair.first);
+			DBG_VMESSAGE("Mapped name {} to ObjectType {}", name.c_str(), GetObjectTypeName(nextPair.first));
 			return nextPair.first;
 		}
 	}

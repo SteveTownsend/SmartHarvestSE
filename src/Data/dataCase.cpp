@@ -306,7 +306,7 @@ void DataCase::AnalyzePerks(void)
 				else
 				{
 					REL_WARNING("Modify Harvested Ingredients unsupported for perk {}/0x{:08x}, function {}, type {}", perk->GetName(), perk->GetFormID(),
-						entryPoint->entryData.function.get(), entryPoint->functionData ? int(entryPoint->functionData->GetType()) : -1);
+						static_cast<std::uint8_t>(entryPoint->entryData.function.get()), entryPoint->functionData ? int(entryPoint->functionData->GetType()) : -1);
 				}
 			}
 		}
@@ -1467,7 +1467,8 @@ bool DataCase::IsSlowTimeEffectActive() const
 {
 	for (const auto effect : m_slowTimeEffects)
 	{
-		if (RE::PlayerCharacter::GetSingleton()->HasMagicEffect(effect))
+		auto target = RE::PlayerCharacter::GetSingleton()->AsMagicTarget();
+		if (target && target->HasMagicEffect(effect))
 			return true;
 	}
 	return false;

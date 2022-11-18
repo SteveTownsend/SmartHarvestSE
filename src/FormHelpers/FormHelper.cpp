@@ -76,7 +76,8 @@ bool TESFormHelper::ConfirmEnchanted(const RE::EnchantmentItem* item, const Ench
 	// Player may not be interested in known enchantments - treat item with known enchantment as unenchanted
 	if (IncludeEnchantedObjectIfKnown(handling))
 	{
-		DBG_DMESSAGE("Skip Enchantment check for {}/0x{:08x} due to loot handling {}", item->GetName(), item->GetFormID(), handling);
+		DBG_DMESSAGE("Skip Enchantment check for {}/0x{:08x} due to loot handling {}", item->GetName(), item->GetFormID(),
+			EnchantedObjectHandlingString(handling));
 		return true;
 	}
 	if (item->data.baseEnchantment)

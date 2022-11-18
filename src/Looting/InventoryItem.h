@@ -23,6 +23,9 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
+#ifdef GetObject
+#undef GetObject
+#endif
 
 class InventoryItem
 {
