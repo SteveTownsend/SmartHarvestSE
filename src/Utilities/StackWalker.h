@@ -41,6 +41,7 @@
  // so we need not to check the version (because we only support _MSC_VER >= 1100)!
 #pragma once
 
+#include "windows.h"
 #include "SKSE/Impl/PCH.h"
 
 #if _MSC_VER >= 1900

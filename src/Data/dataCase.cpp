@@ -259,7 +259,7 @@ void DataCase::FindCraftingItems(void)
 	{
 		unsigned int total(0);
 		unsigned int added(0);
-		cobj->requiredItems.ForEachContainerObject([&] (RE::ContainerObject& item) -> bool {
+		cobj->requiredItems.ForEachContainerObject([&] (RE::ContainerObject& item) -> RE::BSContainer::ForEachResult {
 			// Do not add Gold to crafting item list
 			if (item.obj->GetFormID() != Gold)
 			{
@@ -267,7 +267,7 @@ void DataCase::FindCraftingItems(void)
 					++added;
 				++total;
 			}
-			return true;
+			return RE::BSContainer::ForEachResult::kContinue;
 		});
 		DBG_MESSAGE("Added {} of {} items for COBJ 0x{:08x}", added, total, cobj->GetFormID());
 	}
@@ -481,14 +481,15 @@ void DataCase::ExcludeVendorContainers()
 		}
 		// does container have VendorGold?
 		bool matched(false);
-		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> bool {
+		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> RE::BSContainer::ForEachResult {
 			auto entryContents(entry.obj);
 			if (vendorGoldForms.find(entryContents->As<RE::TESLevItem>()) != vendorGoldForms.cend())
 			{
 				REL_MESSAGE("Block Vendor Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 				matched = true;
 				// only continue if insert fails, not that this will likely do much good
-				return !m_containerBlackList.insert(container).second;
+				return m_containerBlackList.insert(container).second ?
+					RE::BSContainer::ForEachResult::kStop : RE::BSContainer::ForEachResult::kContinue;
 			}
 			else
 			{
@@ -496,7 +497,7 @@ void DataCase::ExcludeVendorContainers()
 					container->GetName(), container->GetFormID());
 			}
 			// continue the scan
-			return true;
+			return RE::BSContainer::ForEachResult::kContinue;
 		});
 		if (!matched)
 		{

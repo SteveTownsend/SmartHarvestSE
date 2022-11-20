@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/LogWrapper.h"
 #include "Utilities/version.h"
 #include "Utilities/utils.h"
+#include <verrsrc.h>
 
 #undef GetEnvironmentVariable
 #undef GetFileVersionInfo

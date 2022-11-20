@@ -103,7 +103,7 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 			return;
 		}
 		const RE::TESContainer* container(const_cast<RE::TESObjectREFR*>(refr)->GetContainer());
-		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> bool {
+		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> RE::BSContainer::ForEachResult {
 			auto entryContents(entry.obj);
 			if (!SignatureCondition::IsValidFormType(entryContents->GetFormType()))
 			{
@@ -115,7 +115,7 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 				RecordPlacedItem(entryContents, refr);
 			}
 			// continue the scan
-			return true;
+			return RE::BSContainer::ForEachResult::kContinue;
 		});
 	}
 	else

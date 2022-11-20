@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.21)
 # # Define project
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
-set(VERSION 5.0.0)
+set(VERSION 5.0.1)
 
 project(
         ${NAME}

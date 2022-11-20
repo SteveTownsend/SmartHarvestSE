@@ -23,6 +23,7 @@ http://www.fsf.org/licensing/licenses
 #include <fstream>
 #include <stdio.h>
 #include "SKSE/Impl/PCH.h"
+#include <windows.h>
 
 #pragma comment(lib, "version.lib")
 

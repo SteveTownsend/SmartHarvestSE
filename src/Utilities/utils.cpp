@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include <iomanip>
 #include <iostream>
 #include <algorithm> //Trim
+#include <windows.h>
 #include <math.h>	// pow
 #include <locale>
 
