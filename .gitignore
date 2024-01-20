@@ -12,3 +12,4 @@ DeadSKSE
 /.vscode/tasks.json
 *.user
 /Artifacts
+build

@@ -19,7 +19,6 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-#include <shlobj.h>
 #include "Data/LoadOrder.h"
 
 constexpr RE::FormID ClothKeyword = 0x06BBE8;
@@ -31,9 +30,9 @@ constexpr double DistanceUnitInMiles = DistanceUnitInFeet / FeetPerMile;
 
 namespace FileUtils
 {
-	std::string GetGamePath(void);
-	std::string GetPluginFileName(void) noexcept;
-	std::string GetPluginPath(void) noexcept;
+	std::wstring GetGamePath(void);
+	std::wstring GetPluginFileName(void) noexcept;
+	std::wstring GetPluginPath(void) noexcept;
 	inline bool CanOpenFile(const char* fileName)
 	{
 		std::ifstream ifs(fileName);

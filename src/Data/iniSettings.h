@@ -51,47 +51,8 @@ public:
 
 	inline bool IsType(PrimaryType type) { return (type > PrimaryType::NONE && type < PrimaryType::LAST); }
 	inline bool IsType(SecondaryType type) { return (type > SecondaryType::NONE2 && type < SecondaryType::LAST2); }
-	inline std::string PrimaryTypeString(PrimaryType type)
-	{
-		switch (type)
-		{
-		case PrimaryType::common:
-			return "common";
-		case PrimaryType::harvest:
-			return "smartHarvest";;
-		default:
-			break;
-		}
-		return "";
-	}
-
-	inline std::string SecondaryTypeString(SecondaryType type)
-	{
-		switch (type)
-		{
-		case SecondaryType::config:
-			return "config";
-		case SecondaryType::itemObjects:
-			return "itemobjects";
-		case SecondaryType::containers:
-			return "containers";
-		case SecondaryType::deadbodies:
-			return "deadbodies";
-		case SecondaryType::valueWeight:
-			return "valueWeight";
-		case SecondaryType::glow:
-			return "glow";
-		case SecondaryType::excessHandling:
-			return "excessHandling";
-		case SecondaryType::maxItems:
-			return "maxItems";
-		case SecondaryType::maxWeight:
-			return "maxWeight";
-		default:
-			break;
-		}
-		return "";
-	}
+	static std::string PrimaryTypeString(PrimaryType type);
+	static std::string SecondaryTypeString(SecondaryType type);
 
 	static INIFile* GetInstance(void)
 	{

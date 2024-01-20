@@ -262,7 +262,7 @@ std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const
 		else if (!repeat && !actionable)
 		{
 			// The Collection decision is qualified: it's a member, but not collected because repeats are not allowed
-			DBG_VMESSAGE("Item 0x{:08x} in Collection {} with action deferred",
+			DBG_VMESSAGE("Item {}/0x{:08x} in Collection {} with action deferred",
 				matcher.Form()->GetName(), matcher.Form()->GetFormID(), nextCollection->Name());
 			defer = true;
 		}
@@ -348,7 +348,7 @@ bool CollectionManager::LoadData(void)
 {
 	// Validate the schema
 	const std::string schemaFileName("SHSE.SchemaCollections.json");
-	std::string filePath(FileUtils::GetPluginPath() + schemaFileName);
+	std::string filePath(StringUtils::FromUnicode(FileUtils::GetPluginPath()) + schemaFileName);
 	nlohmann::json_schema::json_validator validator;
 	try {
 		std::ifstream schemaFile(filePath);
@@ -391,7 +391,7 @@ bool CollectionManager::LoadData(void)
 		}
 	} catch (const std::exception& e) {
 		REL_ERROR("Collection Definitions not loadable: is the file target at {} inside 'Program Files' or another elevated-privilege location? Error:\n{}",
-			FileUtils::GetPluginPath(), e.what());
+			StringUtils::FromUnicode(FileUtils::GetPluginPath()), e.what());
 		return false;
 	}
 	return true;

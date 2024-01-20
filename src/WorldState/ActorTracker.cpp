@@ -109,13 +109,13 @@ void ActorTracker::RecordIfKilledByParty(const RE::Actor* victim)
 {
 	RecursiveLockGuard guard(m_actorLock);
 	// only record the perpetrator of this heinous crime once
-	if (!victim || !victim->myKiller || !m_checkedBodies.insert(victim).second)
+	if (!victim || !victim->GetActorRuntimeData().myKiller || !m_checkedBodies.insert(victim).second)
 		return;
-	RE::Actor* killer(victim->myKiller.get().get());
+	RE::Actor* killer(victim->GetActorRuntimeData().myKiller.get().get());
 	// it's always the player even if a Follower did the deed
 	if (killer == RE::PlayerCharacter::GetSingleton())
 	{
-		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->GetName(), victim->GetFormID());
+		DBG_MESSAGE("Record killing of {}/0x{:08x}", victim->As<RE::TESObjectREFR>()->GetName(), victim->As<RE::TESObjectREFR>()->GetFormID());
 		const float gameTime(PlayerState::Instance().CurrentGameTime());
 		RecordVictim(PartyVictim(victim, gameTime));
 

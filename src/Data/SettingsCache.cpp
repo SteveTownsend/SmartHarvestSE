@@ -157,10 +157,10 @@ void SettingsCache::Refresh(void)
 		REL_VMESSAGE("Value Weight {:0.2f} for {} items", *vw, typeName);
 		*lootingType = LootingTypeFromIniSetting(
 			ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::itemObjects, typeName));
-		REL_VMESSAGE("Looting Type {} for {} items", *lootingType, typeName);
+		REL_VMESSAGE("Looting Type {} for {} items", LootingTypeString(*lootingType), typeName);
 		*excessHandling = ExcessInventoryHandlingFromIniSetting(
 			ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::excessHandling, typeName));
-		REL_VMESSAGE("Excess Handling {} for {} items", *excessHandling, typeName);
+		REL_VMESSAGE("Excess Handling {} for {} items", ExcessInventoryHandlingString(*excessHandling), typeName);
 		*excessCount = static_cast<int>(
 			ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::maxItems, typeName));
 		REL_VMESSAGE("Excess Count {} for {} items", *excessCount, typeName);
@@ -175,7 +175,7 @@ void SettingsCache::Refresh(void)
 	REL_VMESSAGE("Handle Excess Crafting Items {}", m_handleExcessCraftingItems);
 	m_craftingItemsExcessHandling = ExcessInventoryHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CraftingItemsExcessHandling"));
-	REL_VMESSAGE("Crafting Item Excess Handling {}", m_craftingItemsExcessHandling);
+	REL_VMESSAGE("Crafting Item Excess Handling {}", ExcessInventoryHandlingString(m_craftingItemsExcessHandling));
 	m_craftingItemsExcessCount = static_cast<int>(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CraftingItemsExcessCount"));
 	REL_VMESSAGE("Crafting Items Excess Count {}", m_craftingItemsExcessCount);
@@ -184,10 +184,10 @@ void SettingsCache::Refresh(void)
 
 	m_deadBodyLooting = DeadBodyLootingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootDeadbody"));
-	REL_VMESSAGE("Dead Body Looting Type {}", m_deadBodyLooting);
+	REL_VMESSAGE("Dead Body Looting Type {}", DeadBodyLootingString(m_deadBodyLooting));
 	m_enchantedObjectHandling = EnchantedObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "EnchantedItemLoot"));
-	REL_VMESSAGE("Enchanted Object Handling {}", m_enchantedObjectHandling);
+	REL_VMESSAGE("Enchanted Object Handling {}", EnchantedObjectHandlingString(m_enchantedObjectHandling));
 
 	m_delaySeconds = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "IntervalSeconds");
 	REL_VMESSAGE("Scan interval {:0.2f} seconds", m_delaySeconds);
@@ -196,28 +196,28 @@ void SettingsCache::Refresh(void)
 
 	m_crimeCheckSneaking = OwnershipRuleFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CrimeCheckSneaking"));
-	REL_VMESSAGE("Crime Check Sneaking {}", m_crimeCheckSneaking);
+	REL_VMESSAGE("Crime Check Sneaking {}", OwnershipRuleName(m_crimeCheckSneaking));
 	m_crimeCheckNotSneaking = OwnershipRuleFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "CrimeCheckNotSneaking"));
-	REL_VMESSAGE("Crime Check Not Sneaking {}", m_crimeCheckNotSneaking);
+	REL_VMESSAGE("Crime Check Not Sneaking {}", OwnershipRuleName(m_crimeCheckNotSneaking));
 	m_playerBelongingsLoot = SpecialObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "PlayerBelongingsLoot"));
-	REL_VMESSAGE("Player Belongings Loot {}", m_playerBelongingsLoot);
+	REL_VMESSAGE("Player Belongings Loot {}", SpecialObjectHandlingName(m_playerBelongingsLoot));
 	m_lockedChestLoot = LockedContainerHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "LockedChestLoot"));
-	REL_VMESSAGE("Locked Chest Loot {}", m_lockedChestLoot);
+	REL_VMESSAGE("Locked Chest Loot {}", LockedContainerHandlingName(m_lockedChestLoot));
 	m_bossChestLoot = SpecialObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "BossChestLoot"));
-	REL_VMESSAGE("Boss Chest Loot {}", m_bossChestLoot);
+	REL_VMESSAGE("Boss Chest Loot {}", SpecialObjectHandlingName(m_bossChestLoot));
 	m_valuableItemLoot = SpecialObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemLoot"));
-	REL_VMESSAGE("Valuable Item Loot {}", m_valuableItemLoot);
+	REL_VMESSAGE("Valuable Item Loot {}", SpecialObjectHandlingName(m_valuableItemLoot));
 	m_playContainerAnimation = ContainerAnimationHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "PlayContainerAnimation"));
-	REL_VMESSAGE("Play Container Animation {}", m_playContainerAnimation);
+	REL_VMESSAGE("Play Container Animation {}", ContainerAnimationHandlingName(m_playContainerAnimation));
 	m_questObjectLoot = QuestObjectHandlingFromIniSetting(
 		ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "QuestObjectLoot"));
-	REL_VMESSAGE("Quest Object Loot {}", m_questObjectLoot);
+	REL_VMESSAGE("Quest Object Loot {}", QuestObjectHandlingName(m_questObjectLoot));
 
 	m_enableLootContainer = ini->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "EnableLootContainer") != 0.0;
 	REL_VMESSAGE("Enable Loot Container {}", m_enableLootContainer);
@@ -242,7 +242,7 @@ void SettingsCache::Refresh(void)
 
 	m_preventPopulationCenterLooting = PopulationCenterSizeFromIniSetting(
 		INIFile::GetInstance()->GetSetting(INIFile::PrimaryType::common, INIFile::SecondaryType::config, "PreventPopulationCenterLooting"));
-	REL_VMESSAGE("Prevent Population Center Looting {}", m_preventPopulationCenterLooting);
+	REL_VMESSAGE("Prevent Population Center Looting {}", PopulationCenterSizeName(m_preventPopulationCenterLooting));
 	m_maxMiningItems = static_cast<int16_t>(ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "MaxMiningItems"));
 	REL_VMESSAGE("Max Mining Items {}", m_maxMiningItems);
 }

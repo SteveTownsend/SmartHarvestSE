@@ -24,6 +24,23 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
+std::string LootingTypeString(const LootingType lootingType)
+{
+	switch (lootingType) {
+	case LootingType::LeaveBehind:
+		return "LeaveBehind";
+	case LootingType::LootAlwaysSilent:
+		return "LootAlwaysSilent/LootOreVeinIfNotBYOH";
+	case LootingType::LootAlwaysNotify:
+		return "LootAlwaysNotify/LootOreVeinAlways";
+	case LootingType::LootIfValuableEnoughSilent:
+		return "LootIfValuableEnoughSilent";
+	case LootingType::LootIfValuableEnoughNotify:
+		return "LootIfValuableEnoughNotify";
+	default:
+		return "OutOfRange";
+	}
+}
 
 std::string LootabilityName(const Lootability lootability)
 {
@@ -107,10 +124,10 @@ bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objec
 	}
 	if (lootingType != LootingType::LootIfValuableEnoughNotify && lootingType != LootingType::LootIfValuableEnoughSilent)
 	{
-		DBG_VMESSAGE("No V/W check for LootingType {}", lootingType);
+		DBG_VMESSAGE("No V/W check for LootingType {}", LootingTypeString(lootingType));
 		return false;
 	}
-	DBG_VMESSAGE("V/W check required for LootingType {}, objType {}", lootingType, GetObjectTypeName(objectType));
+	DBG_VMESSAGE("V/W check required for LootingType {}, objType {}", LootingTypeString(lootingType), GetObjectTypeName(objectType));
 	return true;
 }
 
@@ -155,6 +172,24 @@ std::string ExcessInventoryHandlingString(const ExcessInventoryHandling excessIn
 		// get container name
 		return ManagedList::TransferList().ByIndex(
 			static_cast<size_t>(excessInventoryHandling) - static_cast<size_t>(ExcessInventoryHandling::Container1)).second;
+	}
+}
+
+std::string EnchantedObjectHandlingString(const EnchantedObjectHandling enchantedObjectHandling)
+{
+	switch (enchantedObjectHandling) {
+	case EnchantedObjectHandling::DoNotLoot:
+		return "DoNotLoot";
+	case EnchantedObjectHandling::DoLoot:
+		return "DoLoot";
+	case EnchantedObjectHandling::GlowTarget:
+		return "GlowTarget";
+	case EnchantedObjectHandling::DoLootUnknown:
+		return "DoLootUnknown";
+	case EnchantedObjectHandling::GlowTargetUnknown:
+		return "GlowTargetUnknown";
+	default:
+		return "OutOfRange";
 	}
 }
 

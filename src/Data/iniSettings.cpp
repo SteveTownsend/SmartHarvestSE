@@ -24,6 +24,47 @@ http://www.fsf.org/licensing/licenses
 
 INIFile* INIFile::s_instance = nullptr;
 
+std::string INIFile::PrimaryTypeString(PrimaryType type)
+{
+	switch (type)
+	{
+	case PrimaryType::common:
+		return "common";
+	case PrimaryType::harvest:
+		return "smartHarvest";
+	default:
+		break;
+	}
+	return "";
+}
+
+std::string INIFile::SecondaryTypeString(SecondaryType type)
+{
+	switch (type)
+	{
+	case SecondaryType::config:
+		return "config";
+	case SecondaryType::itemObjects:
+		return "itemobjects";
+	case SecondaryType::containers:
+		return "containers";
+	case SecondaryType::deadbodies:
+		return "deadbodies";
+	case SecondaryType::valueWeight:
+		return "valueWeight";
+	case SecondaryType::glow:
+		return "glow";
+	case SecondaryType::excessHandling:
+		return "excessHandling";
+	case SecondaryType::maxItems:
+		return "maxItems";
+	case SecondaryType::maxWeight:
+		return "maxWeight";
+	default:
+		break;
+	}
+	return "";
+}
 INIFile::INIFile()
 {
 }
@@ -67,7 +108,7 @@ bool INIFile::CreateSectionString(PrimaryType m_section_first, SecondaryType m_s
 const std::string INIFile::GetFileName(const bool useDefaults)
 {
 	std::string iniFilePath;
-	std::string RuntimeDir = FileUtils::GetGamePath();
+	std::string RuntimeDir = StringUtils::FromUnicode(FileUtils::GetGamePath());
 	if (RuntimeDir.empty())
 		return "";
 
@@ -89,7 +130,8 @@ double INIFile::GetSetting(PrimaryType m_section_first, SecondaryType m_section_
 	StringUtils::ToLower(key);
 
 	double setting(GetValue<double>(section, key, 0.0));
-	DBG_DMESSAGE("Get config setting {}/{}/{} = {}", m_section_first, m_section_second, key.c_str(), setting);
+	DBG_DMESSAGE("Get config setting {}/{}/{} = {}", INIFile::PrimaryTypeString(m_section_first),
+		INIFile::SecondaryTypeString(m_section_second), key.c_str(), setting);
 	return setting;
 }
 

@@ -206,7 +206,7 @@ void NPCFilter::Load()
 	try {
 		// Validate the schema
 		const std::string schemaFileName("SHSE.SchemaFilters.json");
-		std::string filePath(FileUtils::GetPluginPath() + schemaFileName);
+		std::string filePath(StringUtils::FromUnicode(FileUtils::GetPluginPath()) + schemaFileName);
 		nlohmann::json_schema::json_validator validator;
 		try {
 			std::ifstream schemaFile(filePath);
@@ -224,7 +224,7 @@ void NPCFilter::Load()
 		REL_MESSAGE("JSON Filters Schema {} parsed and validated", filePath.c_str());
 		// check if dead body race filtering file is present
 		const std::string filterFileName("SHSE.Filter.DeadBody.json");
-		filePath = FileUtils::GetPluginPath() + filterFileName;
+		filePath = StringUtils::FromUnicode(FileUtils::GetPluginPath()) + filterFileName;
 		std::ifstream filterFile(filePath);
 		if (filterFile.fail()) {
 			REL_MESSAGE("NPC AutoLoot Filtering not configured in {}", filterFileName);
