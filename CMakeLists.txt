@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.28.1)
 # # Define project
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
-set(VERSION 5.0.2)
+set(VERSION 5.1.0)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -163,91 +163,7 @@ include(GNUInstallDirs)
 # #######################################################################################################################
 # # Find dependencies
 # #######################################################################################################################
-include(FetchContent)
-
-FetchContent_Declare(
-  brotli
-  GIT_REPOSITORY https://github.com/google/brotli
-  GIT_TAG        v1.1.0
-  OVERRIDE_FIND_PACKAGE
-)
-FetchContent_MakeAvailable(brotli)
-
-FetchContent_Declare(
-  nlohmann_json_schema_validator
-  GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
-  GIT_TAG        2.3.0
-  OVERRIDE_FIND_PACKAGE
-)
-FetchContent_MakeAvailable(nlohmann_json_schema_validator)
-
-FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt
-  GIT_TAG        10.2.1
-  OVERRIDE_FIND_PACKAGE
-)
-if (NOT fmt_POPULATED)
-        FetchContent_Populate(fmt)
-        set(FMT_INSTALL ON CACHE INTERNAL "Install SPDLOG for CommonLibSSE")
-        add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR})
-endif()
-
-FetchContent_Declare(
- spdlog
- GIT_REPOSITORY https://github.com/gabime/spdlog
- GIT_TAG        v1.13.0
- OVERRIDE_FIND_PACKAGE
-)
-FetchContent_GetProperties(spdlog)
-if (NOT spdlog_POPULATED)
-        FetchContent_Populate(spdlog)
-        set(SPDLOG_INSTALL ON CACHE INTERNAL "Install SPDLOG for CommonLibSSE")
-# pending update to spdlog v1.13.0 etc        
-#        set(SPDLOG_USE_STD_FORMAT ON CACHE INTERNAL "Use std::format in SPDLOG, not fmt")
-        add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR})
-endif()
-
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.5.2
-  OVERRIDE_FIND_PACKAGE
-  )
-FetchContent_MakeAvailable(Catch2)
-
-FetchContent_Declare(
-  rapidcsv
-  GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG        v8.64
-  OVERRIDE_FIND_PACKAGE
-  )
-FetchContent_MakeAvailable(rapidcsv)
-set(RAPIDCSV_INCLUDE_DIRS ${rapidcsv_SOURCE_DIR}/src)
-
-# VR unsupported pending PlayerCharacter RE, and don't worry about tests
-set(ENABLE_SKYRIM_VR OFF)
-set(BUILD_TESTS OFF)
-FetchContent_Declare(
-  CommonLibSSE
-  GIT_REPOSITORY https://github.com/CharmedBaryon/CommonLibSSE-NG
-  GIT_TAG        v3.7.0
-  OVERRIDE_FIND_PACKAGE
-)
-FetchContent_MakeAvailable(CommonLibSSE)
-
-include_directories(${fmt_SOURCE_DIR}/include)
-target_compile_definitions(spdlog PUBLIC SPDLOG_FMT_EXTERNAL)
-target_compile_options(spdlog PUBLIC "/I${fmt_SOURCE_DIR}/include" "/EHsc")
-# target_compile_options(Catch2 PUBLIC "/EHsc")
-# target_compile_options(fmt PUBLIC "/EHsc")
-# target_compile_options(nlohmann_json_schema_validator PUBLIC "/EHsc")
-target_compile_options(CommonLibSSE PUBLIC "/I${rapidcsv_SOURCE_DIR}/src")
-
-find_package(spdlog CONFIG REQUIRED)
-find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
-find_package(brotli CONFIG REQUIRED)
+include(shseDependencies.cmake)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # #######################################################################################################################
@@ -330,89 +246,8 @@ install(TARGETS ${PROJECT_NAME}
         DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
 # #######################################################################################################################
-# # Build plugin archive for Nexus
+# # Build plugin archive for Nexus, for Release only
 # #######################################################################################################################
-file(GLOB_RECURSE CONFIG_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Config/*.ini")
-file(GLOB_RECURSE OUTPUT_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/SHSE*.pex")
-file(GLOB_RECURSE SOURCE_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/Source/SHSE*.psc")
-file(GLOB_RECURSE EDIT_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Edit Scripts/*.pas")
-file(GLOB_RECURSE JSON_SCHEMAS "${CMAKE_CURRENT_SOURCE_DIR}/**/SHSE.Schema*.json")
-file(GLOB_RECURSE BUILTIN_COLLECTIONS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Builtin/SHSE.Collections*.json")
-file(GLOB_RECURSE EXAMPLE_COLLECTIONS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Examples/SHSE.Collections*.json")
-file(GLOB_RECURSE LOOT_FILTERS "${CMAKE_CURRENT_SOURCE_DIR}/Filters/SHSE.Filter.*.json")
-file(GLOB_RECURSE GLOW_TEXTURES "${CMAKE_CURRENT_SOURCE_DIR}/Textures/**/*.dds")
-file(GLOB_RECURSE TRANSLATION_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Interface/**/SmartHarvestSE_*.txt")
-
-set(ZIP_DIR "${CMAKE_CURRENT_BINARY_DIR}/zip/${CMAKE_BUILD_TYPE}")
-set(ARTIFACTS_DIR "${CMAKE_CURRENT_BINARY_DIR}/zip/${CMAKE_BUILD_TYPE}/artifacts")
-add_custom_target(build-time-make-directory ALL
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-                "${ARTIFACTS_DIR}/SKSE/Plugins/"
-                "${ARTIFACTS_DIR}/Collections/Edit Scripts/"
-                "${ARTIFACTS_DIR}/Collections/Examples/"
-                "${ARTIFACTS_DIR}/Filters/"
-                "${ARTIFACTS_DIR}/Interface/towawot/"
-                "${ARTIFACTS_DIR}/Interface/translations/"
-                "${ARTIFACTS_DIR}/Scripts/Source/"
-                "${ARTIFACTS_DIR}/textures/effects/gradients/"
-                )
-
-message("Copying SKSE Plugin into ${ARTIFACTS_DIR}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${ARTIFACTS_DIR}/SKSE/Plugins/")
-# Symbols (PDB file) not needed for run-of-the-mill downloads
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-#         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${ARTIFACTS_DIR}/SKSE/Plugins/")
-message("Copying JSON  Schemas ${JSON_SCHEMAS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${JSON_SCHEMAS} "${ARTIFACTS_DIR}/SKSE/Plugins/")
-message("Copying default config files ${CONFIG_FILES}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${CONFIG_FILES} "${ARTIFACTS_DIR}/SKSE/Plugins/")
-
-message("Copying Plugin.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Plugin/SmartHarvestSE.esp" "${ARTIFACTS_DIR}")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" "${ARTIFACTS_DIR}")
-        
-message("Copying Builtin Collections ${BUILTIN_COLLECTIONS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${BUILTIN_COLLECTIONS} "${ARTIFACTS_DIR}/SKSE/Plugins/")
-message("Copying xEdit Scripts ${EDIT_SCRIPTS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${EDIT_SCRIPTS} "${ARTIFACTS_DIR}/Collections/Edit Scripts/")
-message("Copying Example Collections ${EXAMPLE_COLLECTIONS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${EXAMPLE_COLLECTIONS} "${ARTIFACTS_DIR}/Collections/Examples/")
-
-message("Copying script source ${SOURCE_SCRIPTS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${SOURCE_SCRIPTS} "${ARTIFACTS_DIR}/Scripts/Source/")
-message("Copying scripts ${OUTPUT_SCRIPTS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${OUTPUT_SCRIPTS} "${ARTIFACTS_DIR}/Scripts/")
-
-message("Copying Example NPC Filters ${LOOT_FILTERS}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${LOOT_FILTERS} "${ARTIFACTS_DIR}/Filters/")
-
-message("Copying Loot Glow Textures ${GLOW_TEXTURES}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${GLOW_TEXTURES} "${ARTIFACTS_DIR}/textures/effects/gradients/")
-
-message("Copying MCM Image.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/Interface/towawot/AutoHarvestSE.dds "${ARTIFACTS_DIR}/interface/towawot/")
-message("Copying Translations ${TRANSLATION_FILES}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${TRANSLATION_FILES} "${ARTIFACTS_DIR}/interface/translations/")
-                        
-set(TARGET_ZIP "${PROJECT_NAME}_${PROJECT_VERSION}.rar")
-message("Zipping ${ARTIFACTS_DIR} to ${ZIP_DIR}/${TARGET_ZIP}.")
-ADD_CUSTOM_COMMAND(
-        TARGET ${PROJECT_NAME}
-        POST_BUILD
-        COMMAND rar.exe u ${ZIP_DIR}/${TARGET_ZIP} -r -- .
-        WORKING_DIRECTORY ${ARTIFACTS_DIR}
-)
+if (${CMAKE_BUILD_TYPE} STREQUAL Release)
+        include(shseBuildArchive.cmake)
+endif()
