@@ -40,7 +40,7 @@ public:
 	inline RE::FormID LocationID() const { return m_locationID; }
 	inline double UnitsAway() const { return m_unitsAway; }
 	static RelativeLocationDescriptor Invalid() { return RelativeLocationDescriptor({ 0.,0.,0. }, { 0.,0.,0. }, 0, 0.0); }
-	inline bool operator==(const RelativeLocationDescriptor& rhs) {
+	inline bool equals(const RelativeLocationDescriptor& rhs) {
 		return m_startPoint == rhs.m_startPoint && m_endPoint == rhs.m_endPoint;
 	}
 

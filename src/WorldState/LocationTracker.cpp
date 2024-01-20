@@ -274,7 +274,7 @@ std::string LocationTracker::LocationRelativeToNearestMapMarker(const AlglibPosi
 {
 	std::string locationStr;
 	RelativeLocationDescriptor nearestMarker(NearestMapMarker(position));
-	if (nearestMarker == RelativeLocationDescriptor::Invalid())
+	if (nearestMarker.equals(RelativeLocationDescriptor::Invalid()))
 	{
 		REL_WARNING("Could not determine nearest map marker to position ({:0.2f}, {:0.2f})", position[0], position[1]);
 		return locationStr;
@@ -417,7 +417,7 @@ const RE::BGSLocation* LocationTracker::PlayerLocationRelativeToAdventureTarget(
 	}
 	AlglibPosition playerPos(PlayerState::Instance().GetAlglibPosition());
 	RelativeLocationDescriptor targetLocation(MarkedLocationPosition(targetPosition, location, playerPos));
-	if (targetLocation == RelativeLocationDescriptor::Invalid())
+	if (targetLocation.equals(RelativeLocationDescriptor::Invalid()))
 	{
 		REL_WARNING("Could not determine adventure target marker");
 		return nullptr;

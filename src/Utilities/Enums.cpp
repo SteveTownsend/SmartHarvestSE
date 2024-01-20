@@ -24,6 +24,22 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
+std::string BrotliDecoderResultString(const BrotliDecoderResult brotliDecoderResult)
+{
+	switch (brotliDecoderResult) {
+	case BROTLI_DECODER_RESULT_ERROR:
+		return "BrotliDecoderResultError";
+	case BROTLI_DECODER_RESULT_SUCCESS:
+		return "BrotliDecoderResultSuccess";
+	case BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT:
+		return "BrotliDecoderResultNeedsMoreInput";
+	case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
+		return "BrotliDecoderResultNeedsMoreOutput";
+	default:
+		return "OutOfRange";
+	}
+}
+
 std::string LootingTypeString(const LootingType lootingType)
 {
 	switch (lootingType) {

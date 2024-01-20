@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "Looting/ObjectType.h"
+#include "brotli/decode.h"
 
 namespace shse
 {
@@ -80,6 +81,7 @@ enum class LootingType {
 	MAX = 5
 };
 std::string LootingTypeString(const LootingType lootingType);
+std::string BrotliDecoderResultString(const BrotliDecoderResult brotliDecoderResult);
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {

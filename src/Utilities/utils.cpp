@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
+#include "Utilities/Enums.h"
 #include "Utilities/utils.h"
 
 #include <psapi.h>
@@ -337,7 +338,7 @@ namespace CompressionUtils
 		}
 		else
 		{
-			REL_ERROR("Inflating {} bytes failed, error {}", inputSize, result);
+			REL_ERROR("Inflating {} bytes failed, error {}", inputSize, shse::BrotliDecoderResultString(result));
 			return false;
 		}
 	}

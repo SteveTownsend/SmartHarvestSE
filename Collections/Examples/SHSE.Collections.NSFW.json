@@ -1,0 +1,26 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "print",
+    "notify": false,
+    "repeat": true
+  },
+  "useMCM": false,
+  "collections": [
+    {
+      "name": "Yuriana Posters",
+      "description": "Captured Wench Posters",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+		  "nameMatch": {
+			"isNPC": false,
+			"matchIf": "startsWith",
+			"names": [ "---Captured" ]
+		  }
+		}
+      }
+    }
+  ]
+}

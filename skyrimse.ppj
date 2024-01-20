@@ -1,0 +1,24 @@
+<?xml version='1.0'?><!-- Game is either sse, tesv, or fo4 -->
+<PapyrusProject xmlns="PapyrusProject.xsd" 
+    Flags="TESV_Papyrus_Flags.flg" 
+    Game="sse" 
+    Output="Scripts" 
+    Optimize="false" 
+    Release="false" 
+    Final="false">
+    <Imports>
+        <Import>.\Scripts\Source</Import>
+        <Import>j:\OmegaLOTD\Tools\mods\SKSE Scripts\Scripts\Source</Import>
+        <Import>J:\SteamLibrary\steamapps\common\Skyrim Special Edition\Data\Source\Scripts</Import>
+        <Import>J:\SkyUI_5.1_SDK\Scripts\Source</Import>
+        <Import>J:\OmegaLoTD\Tools\mods\SkyUI - Resort\scripts\source</Import>
+        <Import>J:\OmegaLoTD\Tools\overwrite\Source\Scripts</Import>
+    </Imports>
+    <Scripts>
+        <Script>SHSE_EventsAlias</Script>
+        <Script>SHSE_LocatePlayer</Script>
+        <Script>SHSE_LootSense</Script>
+        <Script>SHSE_MCM</Script>
+        <Script>SHSE_PluginProxy</Script>
+    </Scripts>
+</PapyrusProject>
