@@ -143,7 +143,7 @@ namespace papyrus
 		StringUtils::ToLower(str);
 
 		float result(static_cast<float>(ini->GetSetting(first, second, str.c_str())));
-		DBG_VMESSAGE("Config setting {}/{}/{} = {}", first, second, str.c_str(), result);
+		DBG_VMESSAGE("Config setting {}/{}/{} = {}", INIFile::PrimaryTypeString(first), INIFile::SecondaryTypeString(second), str.c_str(), result);
 		return result;
 	}
 
@@ -193,7 +193,7 @@ namespace papyrus
 				value = static_cast<float>(tmp_value);
 			}
 		}
-		DBG_VMESSAGE("Config setting {}/{}/{} = {}", first, second, key.c_str(), value);
+		DBG_VMESSAGE("Config setting {}/{}/{} = {}", INIFile::PrimaryTypeString(first), INIFile::SecondaryTypeString(second), key.c_str(), value);
 		return value;
 	}
 
@@ -219,7 +219,8 @@ namespace papyrus
 		{
 			value = tmp_value;
 		}
-		DBG_VMESSAGE("Config setting (glow array) {}/{}/{} = {}", first, second, key.c_str(), value);
+		DBG_VMESSAGE("Config setting (glow array) {}/{}/{} = {}", INIFile::PrimaryTypeString(first),
+			INIFile::SecondaryTypeString(second), key.c_str(), value);
 		return value;
 	}
 
@@ -235,7 +236,8 @@ namespace papyrus
 		std::string str = key.c_str();
 		StringUtils::ToLower(str);
 
-		DBG_VMESSAGE("Config setting (put) {}/{}/{} = {}", first, second, str, value);
+		DBG_VMESSAGE("Config setting (put) {}/{}/{} = {}", INIFile::PrimaryTypeString(first),
+			INIFile::SecondaryTypeString(second), str, value);
 		ini->PutSetting(first, second, str.c_str(), static_cast<double>(value));
 	}
 
@@ -250,7 +252,8 @@ namespace papyrus
 
 		std::string key(shse::GetObjectTypeName(ObjectType(index)));
 		StringUtils::ToLower(key);
-		DBG_VMESSAGE("Put config setting (array) {}/{}/{} = {}", first, second, key.c_str(), value);
+		DBG_VMESSAGE("Put config setting (array) {}/{}/{} = {}", INIFile::PrimaryTypeString(first),
+			INIFile::SecondaryTypeString(second), key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 
@@ -265,7 +268,8 @@ namespace papyrus
 
 		std::string key(shse::GlowName(shse::GlowReason(index)));
 		StringUtils::ToLower(key);
-		DBG_VMESSAGE("Put config setting (glow array) {}/{}/{} = {}", first, second, key.c_str(), value);
+		DBG_VMESSAGE("Put config setting (glow array) {}/{}/{} = {}", INIFile::PrimaryTypeString(first),
+			INIFile::SecondaryTypeString(second), key.c_str(), value);
 		ini->PutSetting(first, second, key.c_str(), static_cast<double>(value));
 	}
 

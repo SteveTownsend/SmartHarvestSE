@@ -79,6 +79,7 @@ enum class LootingType {
 	LootOreVeinAlways = LootAlwaysNotify,
 	MAX = 5
 };
+std::string LootingTypeString(const LootingType lootingType);
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {
@@ -135,6 +136,7 @@ enum class EnchantedObjectHandling {
 	GlowTargetUnknown,
 	MAX
 };
+std::string EnchantedObjectHandlingString(const EnchantedObjectHandling enchantedObjectHandling);
 
 enum class QuestObjectHandling {
 	NoAction = 0,
@@ -320,6 +322,32 @@ inline CollectibleHandling CollectibleHandlingFromIniSetting(const double iniSet
 	return static_cast<CollectibleHandling>(intSetting);
 }
 
+inline std::string QuestObjectHandlingName(const QuestObjectHandling questObjectHandling)
+{
+	switch (questObjectHandling) {
+	case QuestObjectHandling::NoAction:
+		return "NoAction";
+	case QuestObjectHandling::GlowTarget:
+		return "GlowTarget";
+	default:
+		return "Leave";
+	}
+}
+
+inline std::string ContainerAnimationHandlingName(const ContainerAnimationHandling containerAnimationHandling)
+{
+	switch (containerAnimationHandling) {
+	case ContainerAnimationHandling::DoNotPlay:
+		return "DoNotPlay";
+	case ContainerAnimationHandling::Play:
+		return "Play";
+	case ContainerAnimationHandling::Glow:
+		return "Glow";
+	default:
+		return "";
+	}
+}
+
 inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double iniSetting)
 {
 	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
@@ -330,6 +358,20 @@ inline SpecialObjectHandling SpecialObjectHandlingFromIniSetting(const double in
 	return static_cast<SpecialObjectHandling>(intSetting);
 }
 
+inline std::string SpecialObjectHandlingName(const SpecialObjectHandling specialObjectHandling)
+{
+	switch (specialObjectHandling) {
+	case SpecialObjectHandling::DoNotLoot:
+		return "DoNotLoot";
+	case SpecialObjectHandling::DoLoot:
+		return "DoLoot";
+	case SpecialObjectHandling::GlowTarget:
+		return "GlowTarget";
+	default:
+		return "Leave";
+	}
+}
+
 inline LockedContainerHandling LockedContainerHandlingFromIniSetting(const double iniSetting)
 {
 	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
@@ -338,6 +380,22 @@ inline LockedContainerHandling LockedContainerHandlingFromIniSetting(const doubl
 		return LockedContainerHandling::DoNotLoot;
 	}
 	return static_cast<LockedContainerHandling>(intSetting);
+}
+
+inline std::string LockedContainerHandlingName(const LockedContainerHandling lockedContainerHandling)
+{
+	switch (lockedContainerHandling) {
+	case LockedContainerHandling::DoNotLoot:
+		return "DoNotLoot";
+	case LockedContainerHandling::DoLoot:
+		return "DoLoot";
+	case LockedContainerHandling::GlowTarget:
+		return "GlowTarget";
+	case LockedContainerHandling::LootOnceUnlocked:
+		return "LootOnceUnlocked";
+	default:
+		return "Leave";
+	}
 }
 
 inline ContainerAnimationHandling ContainerAnimationHandlingFromIniSetting(const double iniSetting)
@@ -396,6 +454,20 @@ enum class DeadBodyLooting {
 	MAX
 };
 
+inline std::string DeadBodyLootingString(const DeadBodyLooting deadBodyLooting)
+{
+	switch (deadBodyLooting) {
+	case DeadBodyLooting::DoNotLoot:
+		return "DoNotLoot";
+	case DeadBodyLooting::LootExcludingArmor:
+		return "LootExcludingArmor";
+	case DeadBodyLooting::LootAll:
+		return "LootAll";
+	default:
+		return "OutOfRange";
+	}
+}
+
 inline DeadBodyLooting DeadBodyLootingFromIniSetting(const double iniSetting)
 {
 	uint32_t intSetting(static_cast<uint32_t>(iniSetting));
@@ -450,6 +522,20 @@ enum class OwnershipRule {
 	Ownerless,
 	MAX
 };
+
+inline std::string OwnershipRuleName(const OwnershipRule ownershipRule)
+{
+	switch (ownershipRule) {
+	case OwnershipRule::AllowCrimeIfUndetected:
+		return "AllowCrimeIfUndetected";
+	case OwnershipRule::DisallowCrime:
+		return "DisallowCrime";
+	case OwnershipRule::Ownerless:
+		return "Ownerless";
+	default:
+		return "";
+	}
+}
 
 inline OwnershipRule OwnershipRuleFromIniSetting(const double iniSetting)
 {

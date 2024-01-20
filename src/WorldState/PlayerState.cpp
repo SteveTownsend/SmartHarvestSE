@@ -106,7 +106,8 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 		m_ownershipRule = sneaking ? SettingsCache::Instance().CrimeCheckSneaking() : SettingsCache::Instance().CrimeCheckNotSneaking();
 		m_belongingsCheck = SettingsCache::Instance().PlayerBelongingsLoot();
 	}
-	m_slowedTime = RE::PlayerCharacter::GetSingleton()->HasEffectWithArchetype(RE::EffectSetting::Archetype::kSlowTime);
+	auto target(RE::PlayerCharacter::GetSingleton()->As<RE::MagicTarget>());
+	m_slowedTime = target && target->HasEffectWithArchetype(RE::EffectSetting::Archetype::kSlowTime);
 	if (m_slowedTime)
 	{
 		DBG_DMESSAGE("Player subject to SlowTime archetype effect");
@@ -220,7 +221,8 @@ void PlayerState::AdjustCarryWeight()
 
 	if (manageIfWeaponDrawn)
 	{
-	    bool isWeaponDrawn(RE::PlayerCharacter::GetSingleton()->IsWeaponDrawn());
+		auto actorState(RE::PlayerCharacter::GetSingleton()->As<RE::ActorState>());
+	    bool isWeaponDrawn(actorState && actorState->IsWeaponDrawn());
 		// when state changes between drawn/sheathed, adjust carry weight accordingly
 		if (isWeaponDrawn != m_carryAdjustedForDrawnWeapon)
 		{
@@ -267,13 +269,17 @@ bool PlayerState::CanLoot() const
 		return false;
 	}
 
-	if (SettingsCache::Instance().DisableWhileWeaponIsDrawn() && player->IsWeaponDrawn())
+	if (SettingsCache::Instance().DisableWhileWeaponIsDrawn())
 	{
-		DBG_VMESSAGE("Player weapon is drawn, skip");
-		return false;
+		auto actorState(RE::PlayerCharacter::GetSingleton()->As<RE::ActorState>());
+		if (actorState && actorState->IsWeaponDrawn())
+		{
+			DBG_VMESSAGE("Player weapon is drawn, skip");
+			return false;
+		}
 	}
 
-	if (SettingsCache::Instance().DisableWhileConcealed() && IsMagicallyConcealed(player))
+	if (SettingsCache::Instance().DisableWhileConcealed() && IsMagicallyConcealed(player->As<RE::MagicTarget>()))
 	{
 		DBG_MESSAGE("Player is magically concealed, skip");
 		return false;
@@ -362,6 +368,8 @@ void PlayerState::ResetCarryWeight()
 // used for PlayerCharacter
 bool PlayerState::IsMagicallyConcealed(RE::MagicTarget* target) const
 {
+	if (!target)
+		return false;
 	if (target->HasEffectWithArchetype(RE::EffectArchetypes::ArchetypeID::kInvisibility))
 	{
 		DBG_VMESSAGE("player invisible");

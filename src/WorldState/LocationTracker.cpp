@@ -492,7 +492,7 @@ void LocationTracker::Reset()
 
 const RE::TESWorldSpace* LocationTracker::ParentWorld(const RE::TESObjectCELL* cell)
 {
-	const RE::TESWorldSpace* world(cell->worldSpace);
+	const RE::TESWorldSpace* world(cell->GetRuntimeData().worldSpace);
 	const RE::TESWorldSpace* candidate(nullptr);
 	std::vector<const RE::TESWorldSpace*> worlds;
 	while (world)
@@ -600,7 +600,7 @@ bool LocationTracker::Refresh()
 	if (m_playerCellID == InvalidForm)
 		return false;
 
-	const RE::BGSLocation* playerLocation(player->currentLocation);
+	const RE::BGSLocation* playerLocation(player->GetPlayerRuntimeData().currentLocation);
 	if (m_playerCellID != originalCellID || playerLocation != originalLocation || m_tellPlayerIfCanLootAfterLoad)
 	{
         // record all Location changes - Location may be blank now but we want to know we left a Location
@@ -772,10 +772,10 @@ void LocationTracker::RecordAdjacentCells(const RE::TESObjectCELL* current)
 	if (!m_playerIndoors)
 	{
 		DBG_VMESSAGE("Check for adjacent cells to 0x{:08x}", m_playerCellID);
-		if (current->worldSpace)
+		if (current->GetRuntimeData().worldSpace)
 		{
-			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", current->worldSpace->GetName(), current->worldSpace->GetFormID());
-			for (const auto& worldCell : current->worldSpace->cellMap)
+			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", current->GetRuntimeData().worldSpace->GetName(), current->GetRuntimeData().worldSpace->GetFormID());
+			for (const auto& worldCell : current->GetRuntimeData().worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
 				// skip player cell, handled above

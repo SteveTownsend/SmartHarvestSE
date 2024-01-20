@@ -19,8 +19,21 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
+#include "Utilities/LogWrapper.h"
 #include "Utilities/version.h"
 #include "Utilities/utils.h"
+#include <verrsrc.h>
+
+#undef GetEnvironmentVariable
+#undef GetFileVersionInfo
+#undef GetFileVersionInfoSize
+#undef GetModuleFileName
+#undef GetModuleHandle
+#undef LoadLibrary
+#undef MessageBox
+#undef OutputDebugString
+#undef RegQueryValueEx
+#undef VerQueryValue
 
 VersionInfo* VersionInfo::m_instance(nullptr);
 
@@ -54,7 +67,7 @@ void VersionInfo::GetPluginVersionInfo()
 	m_versionString = "unknown";
 	m_majorVersion = 0;
 
-	std::string moduleName = FileUtils::GetPluginFileName();
+	std::wstring moduleName = FileUtils::GetPluginFileName();
 	std::uint32_t zero = 0;		// handle bizarro Win API
 	DWORD verInfoLen = 0;
 	BYTE* verInfo = NULL;
@@ -62,7 +75,7 @@ void VersionInfo::GetPluginVersionInfo()
 	UINT len = 0;
 
 	/* Get the size of FileVersionInfo structure */
-	verInfoLen = SKSE::WinAPI::CLSSEGetFileVersionInfoSize(moduleName.c_str(), &zero);
+	verInfoLen = SKSE::WinAPI::GetFileVersionInfoSize(moduleName.c_str(), &zero);
 	if (verInfoLen == 0) {
 		REL_WARNING("GetFileVersionInfoSize() Failed");
 		return;
@@ -70,13 +83,13 @@ void VersionInfo::GetPluginVersionInfo()
 
 	/* Get FileVersionInfo structure */
 	verInfo = new BYTE[verInfoLen];
-	if (!SKSE::WinAPI::CLSSEGetFileVersionInfo(moduleName.c_str(), 0, verInfoLen, verInfo)) {
+	if (!SKSE::WinAPI::GetFileVersionInfo(moduleName.c_str(), 0, verInfoLen, verInfo)) {
 		REL_WARNING("GetFileVersionInfo() Failed");
 		return;
 	}
 
 	/* Query for File version details. */
-	if (!SKSE::WinAPI::CLSSEVerQueryValue(verInfo, "\\", (LPVOID*)&fileInfo, &len)) {
+	if (!SKSE::WinAPI::VerQueryValue(verInfo, L"\\", (LPVOID*)&fileInfo, &len)) {
 		REL_WARNING("VerQueryValue() Failed");
 		return;
 	}

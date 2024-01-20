@@ -207,7 +207,7 @@ void AdventureTargets::Reset()
 Position AdventureTargets::GetInteriorCellPosition(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const
 {
 	// check for direct CELL linkage to outside world
-	for (const auto cellRefr : cell->references)
+	for (const auto cellRefr : cell->GetRuntimeData().references)
 	{
 		if (cellRefr && cellRefr->GetBaseObject() && cellRefr->GetBaseObject()->GetFormType() == RE::FormType::Door)
 		{

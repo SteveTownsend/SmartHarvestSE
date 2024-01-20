@@ -156,10 +156,10 @@ void InitializeDiagnostics()
 	std::filesystem::path logPath(SKSE::log::log_directory().value());
 	try
 	{
-		std::wstring fileName(logPath.generic_wstring());
-		fileName.append(L"/");
-		fileName.append(L_SHSE_NAME);
-		fileName.append(L".log");
+		std::string fileName(logPath.generic_string());
+		fileName.append("/");
+		fileName.append(SHSE_NAME);
+		fileName.append(".log");
 		SHSELogger = spdlog::basic_logger_mt(LoggerName, fileName, true);
 		SHSELogger->set_pattern("%Y-%m-%d %T.%e %8l %6t %v");
 	}
@@ -177,46 +177,10 @@ void InitializeDiagnostics()
 	REL_MESSAGE("{} v{}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
 }
 
-extern "C"
-{
-
-#ifndef SKYRIM_AE
-bool DLLEXPORT SKSEPlugin_Query(const SKSE::QueryInterface* a_skse, SKSE::PluginInfo* a_info)
+EXTERN_C __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* skse)
 {
 	InitializeDiagnostics();
-
-	if (a_skse->IsEditor()) {
-		REL_FATALERROR("Loaded in editor, marking as incompatible");
-		return false;
-	}
-
-	a_info->infoVersion = SKSE::PluginInfo::kVersion;
-	a_info->name = SHSE_NAME;
-	a_info->version = VersionInfo::Instance().GetVersionMajor();
-
-	REL::Version runtimeVer(a_skse->RuntimeVersion());
-	if (runtimeVer < SKSE::RUNTIME_1_5_73 || runtimeVer > SKSE::RUNTIME_1_5_97)
-	{
-		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.string());
-		return false;
-	}
-	return true;
-}
-#endif
-
-bool DLLEXPORT SKSEPlugin_Load(const SKSE::LoadInterface * skse)
-{
-#ifdef SKYRIM_AE
-	InitializeDiagnostics();
-
-	REL::Version runtimeVer(skse->RuntimeVersion());
-	if (runtimeVer < SKSE::RUNTIME_1_6_317)
-	{
-		REL_FATALERROR("Unsupported runtime version {}", runtimeVer.string());
-		return false;
-	}
-#endif
-
+	
 	REL_MESSAGE("{} plugin loaded", SHSE_NAME);
 	SKSE::Init(skse);
 	SKSE::GetMessagingInterface()->RegisterListener(SKSEMessageHandler);
@@ -227,31 +191,4 @@ bool DLLEXPORT SKSEPlugin_Load(const SKSE::LoadInterface * skse)
 	serialization->SetLoadCallback(LoadCallback);
 
 	return true;
-}
-
-#ifdef SKYRIM_AE
-// constinit essential because SKSE uses LoadLibraryEX(LOAD_LIBRARY_AS_IMAGE_RESOURCE) - only compile time values work
-extern "C" DLLEXPORT constinit auto SKSEPlugin_Version = []() { {
-		SKSE::PluginVersionData v;
-
-		// WET WET WET but less work than injecting Version in the build a la Quick Loot RE
-		v.PluginVersion({ 4, 1, 0, 1 });
-		v.PluginName(SHSE_NAME);
-		v.AuthorName(MOD_AUTHOR);
-		v.AuthorEmail(MOD_SUPPORT);
-
-		v.UsesAddressLibrary(true);
-		v.CompatibleVersions({ 
-			SKSE::RUNTIME_1_5_97,
-			SKSE::RUNTIME_1_6_317,
-			SKSE::RUNTIME_1_6_318,
-			SKSE::RUNTIME_1_6_323,
-			SKSE::RUNTIME_1_6_342,
-			SKSE::RUNTIME_1_6_343,
-			SKSE::RUNTIME_LATEST });
-
-		return v;
-	}
-}();
-#endif
 }

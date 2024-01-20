@@ -34,9 +34,9 @@ LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::Secondar
 	// Projectile REFRs need to be mapped to lootable Ammo
 	const RE::Projectile* projectile(ref->As<RE::Projectile>());
 	bool hasIngredient(false);
-	if (projectile && projectile->ammoSource)
+	if (projectile && projectile->GetProjectileRuntimeData().ammoSource)
 	{
-		m_lootable = projectile->ammoSource;
+		m_lootable = projectile->GetProjectileRuntimeData().ammoSource;
 		m_objectType = ObjectType::ammo;
 		DBG_MESSAGE("Projectile REFR 0x{:08x} with Base {}/0x{:08x} mapped to Ammo {}/0x{:08x}",
 			m_ref->GetFormID(), m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID(),

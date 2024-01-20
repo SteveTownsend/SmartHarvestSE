@@ -21,55 +21,68 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/utils.h"
 
-#include <shlobj.h>
 #include <psapi.h>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
 #include <algorithm> //Trim
+#include <windows.h>
 #include <math.h>	// pow
 #include <locale>
 
 #include <brotli/decode.h>
 #include <brotli/encode.h>
 
+#undef GetEnvironmentVariable
+#undef GetFileVersionInfo
+#undef GetFileVersionInfoSize
+#undef GetModuleFileName
+#undef GetModuleHandle
+#undef LoadLibrary
+#undef MessageBox
+#undef OutputDebugString
+#undef RegQueryValueEx
+#undef VerQueryValue
+#undef WideCharToMultiByte
+#undef CP_UTF8
+
 namespace FileUtils
 {
-	std::string GetGamePath(void)
+	std::wstring GetGamePath(void)
 	{
-		static std::string s_runtimeDirectory;
+		static std::wstring s_runtimeDirectory;
 		if (s_runtimeDirectory.empty())
 		{
-			char	runtimePathBuf[MAX_PATH];
-			uint32_t	runtimePathLength = SKSE::WinAPI::CLSSEGetModuleFileName(
-				SKSE::WinAPI::CLSSEGetModuleHandle((const char *)(NULL)), runtimePathBuf, sizeof(runtimePathBuf));
+			wchar_t	runtimePathBuf[MAX_PATH];
+			uint32_t	runtimePathLength = SKSE::WinAPI::GetModuleFileName(
+				SKSE::WinAPI::GetModuleHandle((const wchar_t *)(NULL)), runtimePathBuf, sizeof(runtimePathBuf));
 			if (runtimePathLength && (runtimePathLength < sizeof(runtimePathBuf)))
 			{
-				std::string	runtimePath(runtimePathBuf, runtimePathLength);
-				std::string::size_type	lastSlash = runtimePath.rfind('\\');
+				std::wstring runtimePath(runtimePathBuf, runtimePathLength);
+				std::wstring::size_type	lastSlash = runtimePath.rfind('\\');
 				if (lastSlash != std::string::npos)
 					s_runtimeDirectory = runtimePath.substr(0, lastSlash + 1);
 			}
-			DBG_MESSAGE("GetGamePath result: {}", s_runtimeDirectory.c_str());
+			REL_MESSAGE("GetGamePath result: {}", StringUtils::FromUnicode(s_runtimeDirectory));
 		}
 		return s_runtimeDirectory;
 	}
 
-	std::string GetPluginFileName() noexcept
+	std::wstring GetPluginFileName() noexcept
 	{
-		static std::string s_pluginFileName;
+		static std::wstring s_pluginFileName;
 		if (s_pluginFileName.empty())
 		{
 			HMODULE hm = NULL;
-			char path[MAX_PATH];
+			wchar_t path[MAX_PATH];
 			if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
 				GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-				(LPCSTR)&GetPluginPath, &hm) == 0)
+				(LPCWSTR)&GetPluginPath, &hm) == 0)
 			{
 				REL_ERROR("GetModuleHandle failed, error = {}\n", GetLastError());
 			}
-			else if (GetModuleFileName(hm, path, sizeof(path)) == 0)
+			else if (SKSE::WinAPI::GetModuleFileName(hm, path, sizeof(path)) == 0)
 			{
 				REL_ERROR("GetModuleFileName failed, error = {}\n", GetLastError());
 			}
@@ -81,26 +94,26 @@ namespace FileUtils
 		return s_pluginFileName;
 	}
 
-	std::string GetPluginPath() noexcept
+	std::wstring GetPluginPath() noexcept
 	{
-		static std::string s_skseDirectory;
+		static std::wstring s_skseDirectory;
 		if (s_skseDirectory.empty())
 		{
-			std::string pluginFileName(GetPluginFileName());
+			std::wstring pluginFileName(GetPluginFileName());
 			if (!pluginFileName.empty())
 			{
-			    char drive[MAX_PATH];
+			    wchar_t drive[MAX_PATH];
 				memset(drive, 0, MAX_PATH);
-				char dir[MAX_PATH];
+				wchar_t dir[MAX_PATH];
 				memset(dir, 0, MAX_PATH);
-				if (_splitpath_s(pluginFileName.c_str(), drive, MAX_PATH, dir, MAX_PATH, nullptr, 0, nullptr, 0) == 0)
+				if (_wsplitpath_s(pluginFileName.c_str(), drive, MAX_PATH, dir, MAX_PATH, nullptr, 0, nullptr, 0) == 0)
 				{
-					char path[MAX_PATH];
+					wchar_t path[MAX_PATH];
 					memset(path, 0, MAX_PATH);
-					if (_makepath_s(path, drive, dir, nullptr, nullptr) == 0)
+					if (_wmakepath_s(path, drive, dir, nullptr, nullptr) == 0)
 					{
 					    s_skseDirectory = path;
-						REL_MESSAGE("GetPluginPath result: {}", s_skseDirectory.c_str());
+						REL_MESSAGE("GetPluginPath result: {}", StringUtils::FromUnicode(s_skseDirectory));
 					}
 				}
 			}
@@ -263,11 +276,11 @@ namespace StringUtils
 	std::string FromUnicode(const std::wstring& input) {
 		if (input.empty()) return std::string();
 
-		int size_needed = WideCharToMultiByte(SKSE::WinAPI::CLSSE_CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
+		int size_needed = SKSE::WinAPI::WideCharToMultiByte(SKSE::WinAPI::CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
 		if (size_needed == 0) return std::string();
 
 		std::string output(static_cast<size_t>(size_needed), 0);
-		int result(WideCharToMultiByte(SKSE::WinAPI::CLSSE_CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
+		int result(SKSE::WinAPI::WideCharToMultiByte(SKSE::WinAPI::CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
 		if (result == 0) return std::string();
 
 		return output;
