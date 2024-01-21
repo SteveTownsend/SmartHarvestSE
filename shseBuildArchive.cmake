@@ -74,7 +74,7 @@ message("Copying Translations ${TRANSLATION_FILES}.")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${TRANSLATION_FILES} "${ARTIFACTS_DIR}/interface/translations/")
                         
-set(TARGET_ZIP "${PROJECT_NAME}_${PROJECT_VERSION}.rar")
+set(TARGET_ZIP "${PRETTY_NAME}-${PROJECT_VERSION}.rar")
 message("Zipping ${ARTIFACTS_DIR} to ${ZIP_DIR}/${TARGET_ZIP}.")
 ADD_CUSTOM_COMMAND(
         TARGET ${PROJECT_NAME}
