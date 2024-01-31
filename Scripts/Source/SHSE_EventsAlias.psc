@@ -990,7 +990,7 @@ function updateMaxMiningItems(int maxItems)
 endFunction
 
 function updateMiningToolsRequired(bool toolsRequired)
-    DebugTrace("miningToolsRequired -> " + toolsRequired)
+    ;DebugTrace("miningToolsRequired -> " + toolsRequired)
     miningToolsRequired = toolsRequired
 endFunction
 
@@ -1035,14 +1035,14 @@ endFunction
 bool Function CanMine(MineOreScript handler, int available)
     ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
     ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-    Debug.Trace("Available ore: " + available)
+    ;DebugTrace("Available ore: " + available)
     if available == 0
         PeriodicReminder(handler.DepletedMessage)
         return False
     endif
     ; Cidhna Mine special case
     If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
-        Debug.Trace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
+        ;DebugTrace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
         CidhnaMinePlayerBedREF.Activate(thisPlayer)
         DialogueCidhnaMine.SetStage(45)
         return False
@@ -1054,7 +1054,7 @@ bool Function LacksRequiredTools(MineOreScript handler)
     ; Vanilla Mining handling for player
     ; We don't recheck on each attack (OnHit, normally sent from FURN record)
     ; Nor do we check that a correct item is being used, as in Advanced Mining: only check player has tool in inventory
-    Debug.Trace("Tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
+    ;DebugTrace("Tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
     if miningToolsRequired && !handler.playerHasTools()
         PeriodicReminder(handler.FailureMessage)
         return True
@@ -1071,7 +1071,7 @@ bool Function CanMineCACO(CACO_MineOreScript handler, int available)
     endif
     ; duplicate vanilla Cidhna Mine processing
     If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
-        ; debug.Trace(self + "Player is in Cidhna Mine, activate the bed to serve time")
+        ;DebugTrace(self + "Player is in Cidhna Mine, activate the bed to serve time")
         CidhnaMinePlayerBedREF.Activate(thisPlayer)
         DialogueCidhnaMine.SetStage(45)
         return False
@@ -1083,7 +1083,7 @@ bool Function LacksRequiredToolsCACO(CACO_MineOreScript handler)
     ; CACO handling for player
     ; We don't recheck each attack since that processing is bypassed
     ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
-    Debug.Trace("CACO tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
+    ;DebugTrace("CACO tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
     if miningToolsRequired && !handler.playerHasTools()
         PeriodicReminder(handler.FailureMessage)
         return True
@@ -1095,7 +1095,7 @@ bool Function LacksRequiredToolsFossils(FOS_DigsiteScript handler)
     ; Fossil Mining handling for player
     ; We don't recheck each attack since that processing is bypassed
     ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
-    Debug.Trace("Fossil tools required: " + miningToolsRequired + ", PlayerHasTools:" + thisPlayer.GetItemCount(handler.mineOreToolsList))
+    ;DebugTrace("Fossil tools required: " + miningToolsRequired + ", PlayerHasTools:" + thisPlayer.GetItemCount(handler.mineOreToolsList))
     if miningToolsRequired && !thisPlayer.GetItemCount(handler.mineOreToolsList)
         PeriodicReminderString("You lack a pick")
         return True
@@ -1130,7 +1130,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             PrepareSPERGMining()
         endif
         if oreScript.ResourceCountTotal == -1
-            DebugTrace("Vein not yet initialized, start mining")
+            ;DebugTrace("Vein not yet initialized, start mining")
             oreScript.ResourceCountCurrent = oreScript.ResourceCountTotal
         endIf            
         targetResourceTotal = oreScript.ResourceCountTotal
@@ -1141,7 +1141,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             strikesToCollect = DefaultStrikesBeforeCollection
         endif
         int available = oreScript.ResourceCountCurrent
-        DebugTrace("Vein has ore available: " + available)
+        ;DebugTrace("Vein has ore available: " + available)
 
         ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
         ; in ResourceCount and the remaining amount in ResourceCountCurrent 
@@ -1209,9 +1209,9 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 targetResourceTotal = cacoMinable.ResourceCountTotal
                 strikesToCollect = cacoMinable.StrikesBeforeCollection
                 available = cacoMinable.ResourceCountCurrent
-                DebugTrace("CACO ore vein has ore available: " + available)
+                ;DebugTrace("CACO ore vein has ore available: " + available)
             else
-                DebugTrace("CACO ore vein not set up yet, need to call giveOre")
+                ;DebugTrace("CACO ore vein not set up yet, need to call giveOre")
             endif
     
             ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
@@ -1223,7 +1223,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 UnblockMineable(akMineable)
             endif
             while (mined < maxMiningItems) && OKToScan() && CanMineCACO(cacoMinable, available) && !toolsFailed
-                    if logEvent
+                if logEvent
                     DebugTrace("Trigger CACO ore harvesting")
                 endIf            
                 if firstTime

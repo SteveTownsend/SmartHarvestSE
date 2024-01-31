@@ -1096,7 +1096,7 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 25 && CurrentVersion < 25)
         ; clean up after release with bad upgrade/install workflow and MCM bugs
         ; logic required to support existing saves, as well as the update per se
-        Debug.Trace(self + ": Updating script to version " + a_version)
+        ;DebugTrace(self + ": Updating script to version " + a_version)
         CheckFirstTimeEver()
         SetOreVeinChoices()
         SetMiscDefaults(false)
