@@ -313,6 +313,26 @@ namespace papyrus
 		shse::ScanGovernor::Instance().SPERGMiningEnd();
 	}
 
+	void PeriodicReminder(RE::StaticFunctionTag*, RE::BGSMessage* mesg)
+	{
+		// bail if MESG missing or requires MessageBox
+		if (!mesg || (mesg->flags & RE::BGSMessage::MessageFlag::kMessageBox))
+			return;
+		RE::BSString description;
+		mesg->GetDescription(description, nullptr);
+		shse::ScanGovernor::Instance().PeriodicReminder(description.c_str());
+	}
+
+	void PeriodicReminderString(RE::StaticFunctionTag*, RE::BSFixedString msg)
+	{
+		shse::ScanGovernor::Instance().PeriodicReminder(msg.c_str());
+	}
+
+	void UnblockMineable(RE::StaticFunctionTag*, RE::TESObjectREFR* mineable)
+	{
+		shse::DataCase::GetInstance()->ForgetFirehoseSource(mineable);
+	}
+
 	void AllowSearch(RE::StaticFunctionTag*)
 	{
 		REL_MESSAGE("Reference Search enabled");
@@ -890,6 +910,9 @@ namespace papyrus
 		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
 		a_vm->RegisterFunction("PrepareSPERGMining", SHSE_PROXY, papyrus::PrepareSPERGMining);
 		a_vm->RegisterFunction("PostprocessSPERGMining", SHSE_PROXY, papyrus::PostprocessSPERGMining);
+		a_vm->RegisterFunction("PeriodicReminder", SHSE_PROXY, papyrus::PeriodicReminder);
+		a_vm->RegisterFunction("PeriodicReminderString", SHSE_PROXY, papyrus::PeriodicReminderString);
+		a_vm->RegisterFunction("UnblockMineable", SHSE_PROXY, papyrus::UnblockMineable);
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);

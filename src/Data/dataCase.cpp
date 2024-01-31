@@ -185,11 +185,18 @@ void DataCase::StoreActivationVerbs()
 	//ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
 }
 
-ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activationText) const
+ObjectType DataCase::GetObjectTypeForActivationText(const std::string& verb) const
 {
-	std::string verb(GetVerbFromActivationText(activationText));
-	const auto verbMatched(m_objectTypeByActivationVerb.find(verb));
-	if (verbMatched != m_objectTypeByActivationVerb.cend())
+	// #436 support Oblivion Interaction Icons alt text by extending logic to match as Posix Basic RE
+	// for use with std::basic_regex
+	auto verbMatched(std::find_if(m_objectTypeByActivationVerb.cbegin(),
+								   m_objectTypeByActivationVerb.cend(),
+								   [&](const decltype(m_objectTypeByActivationVerb)::value_type &vt) -> bool
+								   {
+									   return std::regex_match(verb,
+															   std::basic_regex(vt.first));
+								   }));
+	if (verbMatched != m_objectTypeByActivationVerb.end())
 	{
 		return verbMatched->second;
 	}
@@ -210,12 +217,18 @@ void DataCase::CategorizeByActivationVerb()
 		if (!activator->GetFullNameLength())
 			continue;
 		const char* formName(activator->GetFullName());
-		DBG_VMESSAGE("Categorizing {}/0x{:08x} by activation verb", formName, activator->GetFormID());
 
 		RE::BSString activationText;
 		if (activator->GetActivateText(RE::PlayerCharacter::GetSingleton(), activationText))
 		{
-			ObjectType activatorType(GetObjectTypeForActivationText(activationText));
+			// read Activation Text up to newline - the text we see is the data in the ESP file, plus a newline, plus the target
+			std::istringstream input;
+			input.str(std::string(activationText));
+			std::string verb;
+			std::getline(input, verb);
+			DBG_VMESSAGE("Categorizing {}/0x{:08x} by activation verb {}", formName, activator->GetFormID(), verb);
+			
+			ObjectType activatorType(GetObjectTypeForActivationText(verb));
 			if (activatorType != ObjectType::unknown)
 			{
 				if (SetObjectTypeForForm(activator, activatorType))
@@ -236,7 +249,7 @@ void DataCase::CategorizeByActivationVerb()
 						}
 						else
 						{
-						resourceType = ResourceType::ore;
+							resourceType = ResourceType::ore;
 						}
 						m_resourceTypeByOreVein.insert(std::make_pair(activator, resourceType));
 						REL_VMESSAGE("{}/0x{:08x} has ResourceType {}", formName, activator->GetFormID(), PrintResourceType(resourceType));
@@ -245,7 +258,7 @@ void DataCase::CategorizeByActivationVerb()
 				continue;
 			}
 		}
-		DBG_MESSAGE("{}/0x{:08x} not mappable, uses verb '{}'", formName, activator->GetFormID(), GetVerbFromActivationText(activationText).c_str());
+		DBG_MESSAGE("{}/0x{:08x} not mappable, uses verb '{}'", formName, activator->GetFormID(), std::string(activationText));
 	}
 }
 
@@ -551,6 +564,19 @@ void DataCase::ExcludeMissivesBoards()
 	}
 }
 
+void DataCase::CheckAutoMiningOK()
+{
+	// check for incompatible Mining mods and disable auto-mining if any are active
+	static constexpr const char* modName = "Advanced Mining.esp";
+	m_miningDisabled = LoadOrder::Instance().IncludesMod(modName);
+	REL_MESSAGE("Auto-mining disabled, found incompatible mod {}", modName);
+}
+
+bool DataCase::AutoMiningDisabled() const
+{
+	return m_miningDisabled;
+}
+
 void DataCase::ExcludeBuildYourNobleHouseIncomeChest()
 {
 	// check for best matching candidate in Load Order
@@ -710,6 +736,14 @@ void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
 	// looted REFR was 'blocked while I am in this cell' before the triggering event was fired
 	m_firehoseSources.insert(refr->GetFormID());
 	BlockReference(refr, Lootability::CannotRelootFirehoseSource);
+}
+
+// unblock mineable - may or may not actually be firehose
+void DataCase::ForgetFirehoseSource(const RE::TESObjectREFR* refr)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	m_firehoseSources.erase(refr->GetFormID());
+	m_blockRefr.erase(refr->GetFormID());
 }
 
 void DataCase::ForgetFirehoseSources()
@@ -1235,6 +1269,8 @@ void DataCase::HandleExceptions()
 	// categorize custom Gold forms
 	IncludeBSBruma();
 	IncludeToolsOfKagrenac();
+	// exclude auto-mining if incompatible mods loaded
+	CheckAutoMiningOK();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)

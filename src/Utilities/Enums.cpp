@@ -67,6 +67,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerPermanentlyOffLimits: return "ContainerPermanentlyOffLimits";
 	case Lootability::CorruptArrowPosition: return "CorruptArrowPosition";
 	case Lootability::CannotMineTwiceInSameCellVisit: return "CannotMineTwiceInSameCellVisit";
+	case Lootability::AutoMiningDisabledByIncompatibleMod: return "AutoMiningDisabledByIncompatibleMod";
 	case Lootability::ReferenceBlacklisted : return "ReferenceBlacklisted";
 	case Lootability::UnnamedReference : return "UnnamedReference";
 	case Lootability::ReferenceIsPlayer : return "ReferenceIsPlayer";

@@ -81,6 +81,7 @@ SettingsCache::SettingsCache()
 	m_manualLootTargetNotify = true;
 	m_preventPopulationCenterLooting = PopulationCenterSize::Settlements;
 	m_maxMiningItems = 8;
+	m_miningToolsRequired = false;
 
 	m_lootingType.fill(LootingType::LootIfValuableEnoughNotify);
 	m_excessHandling.fill(ExcessInventoryHandling::NoLimits);
@@ -245,6 +246,9 @@ void SettingsCache::Refresh(void)
 	REL_VMESSAGE("Prevent Population Center Looting {}", PopulationCenterSizeName(m_preventPopulationCenterLooting));
 	m_maxMiningItems = static_cast<int16_t>(ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "MaxMiningItems"));
 	REL_VMESSAGE("Max Mining Items {}", m_maxMiningItems);
+	m_miningToolsRequired = ini->GetSetting(
+		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "MiningToolsRequired") != 0;
+	REL_VMESSAGE("Mining Tools Required {}", m_miningToolsRequired);
 }
 
 double SettingsCache::OutdoorsRadius() const
@@ -448,7 +452,10 @@ int16_t SettingsCache::MaxMiningItems() const
 {
 	return m_maxMiningItems;
 }
-
+bool SettingsCache::MiningToolsRequired() const
+{
+	return m_miningToolsRequired;
+}
 
 }
 

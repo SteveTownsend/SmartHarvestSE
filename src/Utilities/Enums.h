@@ -285,7 +285,9 @@ inline bool CanLootCollectible(const CollectibleHandling collectibleHandling)
 
 inline bool CollectibleHistoryNeeded(const CollectibleHandling collectibleHandling)
 {
-	return collectibleHandling == CollectibleHandling::Take || collectibleHandling == CollectibleHandling::Glow;
+	return collectibleHandling == CollectibleHandling::Take ||
+		   collectibleHandling == CollectibleHandling::Glow ||
+		   collectibleHandling == CollectibleHandling::Print;
 }
 
 inline std::string CollectibleHandlingString(const CollectibleHandling collectibleHandling)
@@ -589,6 +591,7 @@ enum class Lootability {
 	ContainerPermanentlyOffLimits,
 	CorruptArrowPosition,
 	CannotMineTwiceInSameCellVisit,
+	AutoMiningDisabledByIncompatibleMod,
 	ReferenceBlacklisted,
 	UnnamedReference,
 	ReferenceIsPlayer,

@@ -122,6 +122,8 @@ int valueWeightDefault
 int valueWeightDefaultDefault
 int maxMiningItems
 int maxMiningItemsDefault
+bool miningToolsRequired
+bool miningToolsRequiredDefault
 
 int excessLeave
 int excessSell
@@ -217,7 +219,7 @@ string currentSagaDayName
 int currentSagaDayPage
 int sagaDayPageCount
 
-Actor player
+Actor thisPlayer
 bool logMCM
 
 int Function CycleInt(int num, int max)
@@ -243,6 +245,11 @@ endFunction
 function updateMaxMiningItems(int maxItems)
     maxMiningItems = maxItems
     eventScript.updateMaxMiningItems(maxItems)
+endFunction
+
+function updateMiningToolsRequired(bool toolsRequired)
+    miningToolsRequired = toolsRequired
+    eventScript.updateMiningToolsRequired(toolsRequired)
 endFunction
 
 float[] function GetSettingToObjectArray(int section1, int section2)
@@ -371,6 +378,7 @@ function LoadSettingsFromNative()
     whiteListTargetNotify = GetSetting(type_Harvest, type_Config, "WhiteListTargetNotify") as bool
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
+    updateMiningToolsRequired(GetSetting(type_Harvest, type_Config, "MiningToolsRequired") as bool)
     saleValuePercent = GetSetting(type_Harvest, type_Config, "SaleValuePercent") as int
 
     verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor")
@@ -479,6 +487,7 @@ Function SaveSettingsToNative()
     PutSetting(type_Harvest, type_Config, "ValueWeightDefault", valueWeightDefault as float)
     PutSetting(type_Harvest, type_Config, "SaleValuePercent", saleValuePercent as float)
     PutSetting(type_Harvest, type_Config, "MaxMiningItems", maxMiningItems as float)
+    PutSetting(type_Harvest, type_Config, "MiningToolsRequired", miningToolsRequired as float)
     PutSettingObjectArray(type_Harvest, type_ValueWeight, 30, valueWeightSettingArray)
 
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
@@ -509,8 +518,8 @@ Function ApplySetting()
     ; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
     ; Do this before plugin becomes aware of player home list
     logMCM = LoggingEnabled()
-    player = Game.GetPlayer()
-    eventScript.Prepare(player, logMCM)
+    thisPlayer = Game.GetPlayer()
+    eventScript.Prepare(thisPlayer, logMCM)
     ; Only adjust weight if we are in any way responsible for it
     if ManagesCarryWeight()
         eventScript.RemoveCarryWeightDelta()
@@ -677,7 +686,9 @@ Function SetMiscDefaults(bool firstTime)
     valueWeightDefaultDefault = 10
 
     maxMiningItemsDefault = 8
-    eventScript.UpdateMaxMiningItems(maxMiningItems)
+    miningToolsRequiredDefault = false
+    updateMaxMiningItems(maxMiningItemsDefault)
+    updateMiningToolsRequired(miningToolsRequiredDefault)
 
     notifyLocationChange = false
     enchantedItemLoot = 1
@@ -842,7 +853,7 @@ Function InitPages()
     Pages[1] = "$SHSE_SPECIALS_REALISM_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
     Pages[3] = "$SHSE_COLLECTIONS_PAGENAME"
-    Pages[4] = Replace(GetTranslation("$SHSE_PLAYER_SAGA_PAGENAME"), "{PLAYERNAME}", player.GetBaseObject().GetName())
+    Pages[4] = Replace(GetTranslation("$SHSE_PLAYER_SAGA_PAGENAME"), "{PLAYERNAME}", thisPlayer.GetBaseObject().GetName())
     Pages[5] = "$SHSE_LOOT_SENSE_PAGENAME"
     Pages[6] = "$SHSE_WHITELIST_PAGENAME"
     Pages[7] = "$SHSE_BLACKLIST_PAGENAME"
@@ -1076,7 +1087,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 53
+    return 54
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1220,6 +1231,9 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 53 && CurrentVersion < 53
         lootAllowedItemsInPlayerHouse = false
+    endIf
+    if a_version >= 54 && CurrentVersion < 54
+        updateMiningToolsRequired(false)
     endIf
 endEvent
 
@@ -1615,6 +1629,7 @@ event OnPageReset(string currentPage)
         AddToggleOptionST("DoorsPreventLootingState", "$SHSE_DOORS_PREVENT_LOOTING", doorsPreventLooting as bool)
         AddToggleOptionST("LootAllowedItemsInSettlementState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT", lootAllowedItemsInSettlement as bool)
         AddToggleOptionST("LootAllowedItemsInPlayerHouseState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_PLAYER_HOUSE", lootAllowedItemsInPlayerHouse as bool)
+        AddToggleOptionST("MiningToolsRequired", "$SHSE_MINING_TOOLS_REQUIRED", miningToolsRequired)
 
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -2427,6 +2442,22 @@ state MaxMiningItems
     endEvent
 endState
 
+state MiningToolsRequired
+    event OnSelectST()
+        updateMiningToolsRequired(!(miningToolsRequired as bool) as int)
+        SetToggleOptionValueST(miningToolsRequired as bool)
+    endEvent
+
+    event OnDefaultST()
+        updateMiningToolsRequired(miningToolsRequiredDefault)
+        SetToggleOptionValueST(miningToolsRequired as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_MINING_TOOLS_REQUIRED"))
+    endEvent
+endState
+
 state SaleValuePercentState
     event OnSliderOpenST()
         SetSliderDialogStartValue(saleValuePercent)
@@ -3188,13 +3219,13 @@ state itemsCollected
 endState
 
 Function CheckAdventuresPower()
-    if !player
+    if !thisPlayer
         return
     endif
     if adventuresEnabled
-        player.AddSpell(AdventurersInstinctPower)
+        thisPlayer.AddSpell(AdventurersInstinctPower)
     else
-        player.RemoveSpell(AdventurersInstinctPower)
+        thisPlayer.RemoveSpell(AdventurersInstinctPower)
     endIf
 EndFunction
 
@@ -3204,13 +3235,13 @@ Function SetAdventuresStatus(bool inMCM)
 EndFunction
 
 Function CheckFortunePower()
-    if !player
+    if !thisPlayer
         return
     endif
     if fortuneHuntingEnabled
-        player.AddSpell(FortuneHuntersInstinctPower)
+        thisPlayer.AddSpell(FortuneHuntersInstinctPower)
     else
-        player.RemoveSpell(FortuneHuntersInstinctPower)
+        thisPlayer.RemoveSpell(FortuneHuntersInstinctPower)
     endIf
 EndFunction
 

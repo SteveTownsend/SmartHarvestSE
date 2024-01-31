@@ -1024,6 +1024,44 @@ void ScanGovernor::ReconcileSPERGMined(void)
 	m_spergInventory.reset();
 }
 
+// avoid spam for Message display that is now automated
+void ScanGovernor::PeriodicReminder(const std::string& msg)
+{
+	const std::chrono::high_resolution_clock::time_point currentTime(std::chrono::high_resolution_clock::now());
+	// Retrieve last display time if present, and compare to currrent
+	auto lastDisplayed(m_regulatedMessages.insert({msg, currentTime}));
+	bool doDisplay(false);
+	if (lastDisplayed.second)
+	{
+		// first time
+		doDisplay = true;
+	}
+	else
+	{
+		// Arbitraritly choose 30 seconds to regulate display spam
+		constexpr std::chrono::milliseconds delay(30000);
+		const std::chrono::milliseconds elapsed(
+			std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastDisplayed.first->second));
+		if (elapsed > delay)
+		{
+			doDisplay = true;
+			DBG_VMESSAGE("Redisplay of message {} allowed after {} milliseconds, delay is {}",
+						 msg, elapsed.count(), delay.count());
+		}
+		else
+		{
+			DBG_VMESSAGE("Redisplay of message {} disallowed after {} milliseconds, delay is {}",
+						 msg, elapsed.count(), delay.count());
+		}
+	}
+	if (doDisplay)
+	{
+		RE::DebugNotification(msg.c_str());
+		lastDisplayed.first->second = currentTime;
+	}
+}
+
+
 // this triggers/stops loot range calibration cycle
 void ScanGovernor::ToggleCalibration(const bool glowDemo)
 {

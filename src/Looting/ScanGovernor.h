@@ -93,6 +93,7 @@ public:
 	void SPERGMiningStart(void);
 	void SPERGMiningEnd(void);
 	void ReconcileSPERGMined(void);
+	void PeriodicReminder(const std::string& msg);
 
 private:
 	void ProgressGlowDemo();
@@ -129,6 +130,9 @@ private:
 	mutable std::unordered_set<std::pair<RE::FormID, RE::FormID>, pair_hash> m_lootedDynamicREFRs;
 	// Non-dynamic - reset on game reload or MCM settings update. Handle reglow of partially-looted containers
 	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lootedContainers;
+
+	// Delay redisplay of Message Forms that are automated by this mod
+	std::unordered_map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>> m_regulatedMessages;
 
 	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
 	mutable std::unordered_map<const RE::TESObjectREFR*, size_t> m_lockedContainers;

@@ -5,7 +5,12 @@ import SHSE_MCM
 GlobalVariable Property g_LootingEnabled Auto
 
 int CACOModIndex
+int CCORModIndex
+MiscObject stalhrimOre
+bool vanillaMakesNoise = False
 int FossilMiningModIndex
+int NextDig
+
 int HearthfireExtendedModIndex
 int MagicChestModIndex
 int VidanisBagOfHoldingModIndex
@@ -15,10 +20,17 @@ int pluginNonce
 bool pluginDelayed
 bool mcmOpen = False
 
-GlobalVariable StrikesBeforeCollection
+int DefaultStrikesBeforeCollection
 
-Message property whitelist_message auto
-Message property to_list_message auto
+; handle auto mining edge case
+Location Property CidhnaMineLocation Auto
+Quest Property MS02 Auto
+Quest Property DialogueCidhnaMine Auto
+ObjectReference Property CidhnaMinePlayerBedREF Auto
+
+; handle achievement for auto-mining
+AchievementsScript property AchievementsQuest auto
+
 Message property DisposeMsg auto
 Container Property NameToDisplay auto
 
@@ -39,7 +51,7 @@ int objType_Mine
 int objType_Book
 int objType_skillBookRead
 
-Actor player
+Actor thisPlayer
 bool logEvent
 
 Form[] addedItems
@@ -100,6 +112,8 @@ string[] transferNames
 int transferListSize
 
 int maxMiningItems
+bool miningToolsRequired
+
 int infiniteWeight
 
 int glowReasonLockedContainer
@@ -115,7 +129,7 @@ Perk spergProspector
 
 Function Prepare(Actor playerref, bool useLog)
     logEvent = useLog
-    player = playerref
+    thisPlayer = playerref
     ;check for SPERG being active and set up the Prospector Perk to check
     int spergModIndex = Game.GetModByName("SPERG-SSE.esp")
     if spergModIndex != 255
@@ -211,7 +225,7 @@ Function ResetExcessInventoryTargets(bool updated)
     while index < 64
         ; reset transfer target - the old setting could be corrupt
         transferListInUse[index] = False
-	index += 1
+        index += 1
     endWhile
     if updated
         Debug.MessageBox(GetTranslation("$SHSE_MIGRATED_EXCESS_INVENTORY"))
@@ -297,8 +311,8 @@ int Function UpdateListedForms(int totalEntries, Form[] myList, form[] updateLis
     ;clear any removed entries
     index = valid
     while index < totalEntries
-    	myList[index] = None
-    	index += 1
+        myList[index] = None
+        index += 1
     endWhile
     if valid != totalEntries
         AlwaysTrace("Updated Form[] size from (" + totalEntries + ") to (" + valid + ")")
@@ -331,7 +345,7 @@ Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[] up
             transferNames[xrefIndex] = ""
             transferListSize -= 1
             ;DebugTrace("Unused transfer list xref-index " + xrefIndex + " index " + index)
-	    
+        
             string translation = GetTranslation(trans)
             if (translation)
                 translation = Replace(translation, "{ITEMNAME}", updateNames[index])
@@ -458,7 +472,7 @@ function HandlePauseKeyPress(Form target)
     if result != ""
         if ibutton < 6
             ; Poke InventoryMenu to update count        
-            Player.RemoveItem(target, 0, True, None)
+            thisPlayer.RemoveItem(target, 0, True, None)
         endIf
         ; display diagnostic, error or action taken
         Debug.MessageBox(result)
@@ -975,6 +989,11 @@ function updateMaxMiningItems(int maxItems)
     maxMiningItems = maxItems
 endFunction
 
+function updateMiningToolsRequired(bool toolsRequired)
+    DebugTrace("miningToolsRequired -> " + toolsRequired)
+    miningToolsRequired = toolsRequired
+endFunction
+
 bool Function IsBookObject(int type)
     return type >= objType_Book && type <= objType_skillBookRead
 endFunction
@@ -1013,6 +1032,78 @@ bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, 
     return result
 endFunction
 
+bool Function CanMine(MineOreScript handler, int available)
+    ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+    ; in ResourceCount and the remaining amount in ResourceCountCurrent 
+    Debug.Trace("Available ore: " + available)
+    if available == 0
+        PeriodicReminder(handler.DepletedMessage)
+        return False
+    endif
+    ; Cidhna Mine special case
+    If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
+        Debug.Trace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
+        CidhnaMinePlayerBedREF.Activate(thisPlayer)
+        DialogueCidhnaMine.SetStage(45)
+        return False
+    EndIf
+    return True
+endFunction
+
+bool Function LacksRequiredTools(MineOreScript handler)
+    ; Vanilla Mining handling for player
+    ; We don't recheck on each attack (OnHit, normally sent from FURN record)
+    ; Nor do we check that a correct item is being used, as in Advanced Mining: only check player has tool in inventory
+    Debug.Trace("Tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
+    if miningToolsRequired && !handler.playerHasTools()
+        PeriodicReminder(handler.FailureMessage)
+        return True
+    endif
+    return False
+endFunction
+
+bool Function CanMineCACO(CACO_MineOreScript handler, int available)
+    ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
+    ; in ResourceCount and the remaining amount in ResourceCountCurrent 
+    if available == 0
+        PeriodicReminder(handler.DepletedMessage)
+        return False
+    endif
+    ; duplicate vanilla Cidhna Mine processing
+    If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
+        ; debug.Trace(self + "Player is in Cidhna Mine, activate the bed to serve time")
+        CidhnaMinePlayerBedREF.Activate(thisPlayer)
+        DialogueCidhnaMine.SetStage(45)
+        return False
+    EndIf
+    return True
+endFunction
+
+bool Function LacksRequiredToolsCACO(CACO_MineOreScript handler)
+    ; CACO handling for player
+    ; We don't recheck each attack since that processing is bypassed
+    ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
+    Debug.Trace("CACO tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
+    if miningToolsRequired && !handler.playerHasTools()
+        PeriodicReminder(handler.FailureMessage)
+        return True
+    endif
+    return False
+endFunction
+
+bool Function LacksRequiredToolsFossils(FOS_DigsiteScript handler)
+    ; Fossil Mining handling for player
+    ; We don't recheck each attack since that processing is bypassed
+    ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
+    Debug.Trace("Fossil tools required: " + miningToolsRequired + ", PlayerHasTools:" + thisPlayer.GetItemCount(handler.mineOreToolsList))
+    if miningToolsRequired && !thisPlayer.GetItemCount(handler.mineOreToolsList)
+        PeriodicReminderString("You lack a pick")
+        return True
+    endif
+    return False
+endFunction
+
+; brute force mineable resource gathering to bypass immersive but slow MineOreScript/Furniture handshaking and animations
 Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify, bool isFirehose)
     if logEvent
         DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
@@ -1024,46 +1115,79 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     MineOreScript oreScript = akMineable as MineOreScript
     int FOSStrikesBeforeFossil
     bool handled = false
+    int initialOreCount = 0
     if (oreScript)
+        ; This works for Vanilla and CCOR.
+        ; Other versions of oreScript need research. Advanced Mining is not compatible.
         if logEvent
             DebugTrace("Detected ore vein")
         endIf            
-        ; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
-        targetResourceTotal = oreScript.ResourceCountTotal
-        strikesToCollect = oreScript.StrikesBeforeCollection
-        int available = oreScript.ResourceCountCurrent
+        initialOreCount = thisPlayer.GetItemCount(oreScript.ore)
+
         int mined = 0
-        bool useSperg = spergProspector && player.HasPerk(spergProspector)
+        bool useSperg = spergProspector && thisPlayer.HasPerk(spergProspector)
         if useSperg
             PrepareSPERGMining()
         endif
-        if logEvent
-            if (available == -1)
-                DebugTrace("Vein not yet initialized, start mining")
-            else
-                DebugTrace("Vein has ore available: " + available)
-            endIf            
+        if oreScript.ResourceCountTotal == -1
+            DebugTrace("Vein not yet initialized, start mining")
+            oreScript.ResourceCountCurrent = oreScript.ResourceCountTotal
+        endIf            
+        targetResourceTotal = oreScript.ResourceCountTotal
+        ; esoteric CCOR special case
+        if stalhrimOre == oreScript.ore
+            strikesToCollect = 2 * DefaultStrikesBeforeCollection
+        else
+            strikesToCollect = DefaultStrikesBeforeCollection
         endif
+        int available = oreScript.ResourceCountCurrent
+        DebugTrace("Vein has ore available: " + available)
 
         ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
         ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-        while OKToScan() && available != 0 && mined < maxMiningItems
+        bool firstTime = True
+        bool toolsFailed = LacksRequiredTools(oreScript)
+        if toolsFailed
+            ; allow retry, player might acquire tools in the interim
+            UnblockMineable(akMineable)
+        endif
+        while (mined < maxMiningItems) && OKToScan() && CanMine(oreScript, available) && !toolsFailed
+            ; Vanilla resource retrieval.
             if logEvent
-                DebugTrace("Trigger harvesting")
-            endIf            
+                if CCORModIndex != 255
+                    DebugTrace("Trigger CCOR Mining")
+                else
+                    DebugTrace("Trigger Vanilla Mining")
+                endif
+            endIf       
+            if firstTime
+                ; Bug fix from CACO/CCOR
+                ; USKP 1.3.0 FixStart - Deactivate sneaking before mining to prevent sneak issues.
+                    if thisPlayer.IsSneaking()
+                        thisPlayer.StartSneaking()
+                    endif
+                ;USKP 1.3.0 FixEnd
+                if CCORModIndex != 255 && ((Game.GetFormFromFile(0x01CC0508, "Update.esm") As GlobalVariable).GetValue() As Int) == 1 ;MiningMakesNoise_CCO	
+                    oreScript.CreateDetectionEvent(thisPlayer, 250)		;MINING MAKE NOISE by Kryptopyr	
+                endif
+                    firstTime = False
+            endif
+        
+            ; Vanilla and CCOR giveOre() also handle distribution of gems
             oreScript.giveOre()
-            mined += oreScript.ResourceCount
-            if logEvent
-                DebugTrace("Ore amount so far: " + mined + ", this time: " + oreScript.ResourceCount + ", max: " + maxMiningItems)
-            endIf            
+
+            mined = thisPlayer.GetItemCount(oreScript.Ore) - initialOreCount;
             available = oreScript.ResourceCountCurrent
+            if logEvent
+                DebugTrace("Ore amount so far: " + mined + ", max: " + maxMiningItems + ", available: " + available)
+            endIf            
             miningStrikes += 1
         endwhile
         if !OKToScan()
             AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " obtained")
         endIf
         if logEvent
-            DebugTrace("Ore harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+            DebugTrace("Ore harvested amount: " + mined + ", remaining: " + available)
         endIf
         if useSperg
             PostprocessSPERGMining()
@@ -1078,43 +1202,67 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             if logEvent
                 DebugTrace("Detected CACO ore vein")
             endIf
-            ; brute force ore gathering to bypass tedious MineOreScript/Furniture handshaking
-            int available = cacoMinable.ResourceCountCurrent
-            targetResourceTotal = cacoMinable.ResourceCountTotal
-            strikesToCollect = cacoMinable.StrikesBeforeCollection
+            ; we must call giveOre before we can trust ResourceCountCurrent: in CACO, value depends on the resource type
             int mined = 0
-            ; do not harvest firehose unless set in config
-            if logEvent
-                if (available == -1)
-                    DebugTrace("CACO ore vein not yet initialized, start mining")
-                else
-                    DebugTrace("CACO ore vein has ore available: " + available)
-                endIf
+            int available = cacoMinable.ResourceCountCurrent
+            if available != -1
+                targetResourceTotal = cacoMinable.ResourceCountTotal
+                strikesToCollect = cacoMinable.StrikesBeforeCollection
+                available = cacoMinable.ResourceCountCurrent
+                DebugTrace("CACO ore vein has ore available: " + available)
+            else
+                DebugTrace("CACO ore vein not set up yet, need to call giveOre")
             endif
-
+    
             ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
             ; in ResourceCount and the remaining amount in ResourceCountCurrent 
-            while OKToScan() && available != 0 && mined < maxMiningItems
-                if logEvent
+            bool firstTime = True
+            bool toolsFailed = LacksRequiredToolsCACO(cacoMinable)
+            if toolsFailed
+                ; allow retry, player might acquire tools in the interim
+                UnblockMineable(akMineable)
+            endif
+            while (mined < maxMiningItems) && OKToScan() && CanMineCACO(cacoMinable, available) && !toolsFailed
+                    if logEvent
                     DebugTrace("Trigger CACO ore harvesting")
                 endIf            
+                if firstTime
+                    ; Bug fix from CACO
+                    ; USKP 1.3.0 FixStart - Deactivate sneaking before mining to prevent sneak issues.
+                    if thisPlayer.IsSneaking()
+                        thisPlayer.StartSneaking()
+                    endif
+                    ;USKP 1.3.0 FixEnd
+                    if cacoMinable.MiningMakesNoise_CCO.GetValue() == 1
+                        cacoMinable.CreateDetectionEvent(thisPlayer, 250)   ;MINING MAKE NOISE by Kryptopyr	
+                    endif
+                    firstTime = False
+                endif
                 cacoMinable.giveOre()
-                mined += cacoMinable.ResourceCount
-                if logEvent
-                    DebugTrace("CACO ore vein amount so far: " + mined + ", this time: " + cacoMinable.ResourceCount + ", max: " + maxMiningItems)
-                endIf            
+                mined = thisPlayer.GetItemCount(cacoMinable.Ore) - initialOreCount;
+                ; script properties are trusted now 
                 available = cacoMinable.ResourceCountCurrent
+                targetResourceTotal = cacoMinable.ResourceCountTotal
+                strikesToCollect = cacoMinable.StrikesBeforeCollection
+                if logEvent
+                    DebugTrace("CACO ore vein amount so far: " + mined + ", max: " + maxMiningItems + ", available: " + available)
+                endIf           
                 miningStrikes += 1
             endwhile
             if !OKToScan()
                 AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " obtained")
             endIf
             if logEvent
-                DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + oreScript.ResourceCountCurrent)
+                DebugTrace("CACO ore vein harvested amount: " + mined + ", remaining: " + available)
             endIf            
             handled = true
         endif
     endif
+    ; update achievement progress if we mined anything
+    if miningStrikes > 0
+        AchievementsQuest.incHardworker(2)
+    endif
+
     if !handled && (FossilMiningModIndex != 255)
         if logEvent
             DebugTrace("Check for Fossil Mining Dig Site")
@@ -1124,17 +1272,27 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             if logEvent
                 DebugTrace("Process Fossil Mining Dig Site")
             endIf            
-            ; brute force fossil gathering to bypass tedious Script/Furniture handshaking
+            ; housekeeping
+            float now = Utility.GetCurrentGameTime()
+            if FOSMinable.GetLinkedRef().IsDisabled() && now >= NextDig
+                FOSMinable.GetLinkedRef().Enable()
+            endif
+            
             ; REFR will be blocked ater this call, until we leave the cell
             ; FOS script enables the FURN when we first enter the cell, provided mining is legal
             ; If we re-enter the cell we will check again but not be able to mine
-            if !FOSMinable.GetLinkedRef().IsDisabled()
-                player.AddItem(FOS_LItemFossilTierOneVolcanicDigSite, 1)
-                player.AddItem(FOS_LItemFossilTierTwoVolcanic, 1)
-                Debug.Notification("Dig site is exhausted")
+            bool toolsFailed = LacksRequiredToolsFossils(FOSMinable)
+            if toolsFailed
+                ; allow retry, player might acquire tools in the interim
+                UnblockMineable(akMineable)
+            elseif now >= NextDig
+                NextDig = (now + 30) as Int
+                thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanicDigSite, 1)
+                thisPlayer.AddItem(FOS_LItemFossilTierTwoVolcanic, 1)
+                PeriodicReminderString("Dig site is exhausted")
                 FOSMinable.GetLinkedRef().Disable() 
             else
-                Debug.Notification("Dig site is exhausted, check back at a later time.")    
+                PeriodicReminderString("Dig site is exhausted, check back at a later time.")    
             endif
             handled = true
         endif
@@ -1158,11 +1316,11 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 DebugTrace("Fossil Mining: provide loot!")
             endIf            
             if (resourceType == resource_Geode)
-                player.AddItem(FOS_LItemFossilTierOneGeode, 1)
+                thisPlayer.AddItem(FOS_LItemFossilTierOneGeode, 1)
             Elseif (resourceType == resource_Volcanic)
-                player.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
+                thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
             Elseif (resourceType == resource_Ore)
-                player.AddItem(FOS_LItemFossilTierOneyum, 1)
+                thisPlayer.AddItem(FOS_LItemFossilTierOneyum, 1)
             Endif
         Endif
     Endif
@@ -1197,7 +1355,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
     ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ")
 
     if (IsBookObject(itemType))
-        player.AddItem(akTarget, count, true)
+        thisPlayer.AddItem(akTarget, count, true)
         if collectible
             RecordItem(itemForm, itemSourceLoose, itemType)
         endIf
@@ -1211,20 +1369,20 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             if logEvent
                 DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
             endIf
-            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && ActivateEx(akTarget, player, true, 1)
+            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && ActivateEx(akTarget, thisPlayer, true, 1)
                 notify = !silent
             endIf
         endIf
     elseif (!akTarget.IsActivationBlocked())
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
-            ActivateEx(akTarget, player, silent, 1)
+            ActivateEx(akTarget, thisPlayer, silent, 1)
 
         elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
             ;DebugTrace("Player has ingredient count " + ingredientCount)
             bool suppressMessage = silent || ingredientCount as int > 1
             ;DebugTrace("Flora/Tree original base form " + itemForm.GetName())
-            if ActivateEx(akTarget, player, suppressMessage, 1)
+            if ActivateEx(akTarget, thisPlayer, suppressMessage, 1)
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
                 count = count * ingredientCount as int
@@ -1234,14 +1392,14 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             int critterActivations = SupportedCritterActivateCount(akTarget)
             if critterActivations > 0
                 ;DebugTrace("Critter " + itemForm.GetName())
-                ActivateEx(akTarget, player, silent, critterActivations)
-            elseif ActivateEx(akTarget, player, true, 1)
+                ActivateEx(akTarget, thisPlayer, silent, critterActivations)
+            elseif ActivateEx(akTarget, thisPlayer, true, 1)
                 notify = !silent
                 if count >= 2
                     ; work round for ObjectReference.Activate() known issue
                     ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
                     int toGet = count - 1
-                    player.AddItem(itemForm, toGet, true)
+                    thisPlayer.AddItem(itemForm, toGet, true)
                     ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
                 endIf
             endIf
@@ -1292,7 +1450,7 @@ Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int 
         return
     endif
 
-    akContainerRef.RemoveItem(akForm, count, true, player)
+    akContainerRef.RemoveItem(akForm, count, true, thisPlayer)
     if collectible
         RecordItem(akForm, itemSourceNPC, itemType)
     endIf
@@ -1359,7 +1517,7 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     else
         effShader = categoryShaders[glowReasonSimpleTarget]
     endif
-    if effShader && OKToScan()
+    if effShader && OKToScan() && akTargetRef.Is3DLoaded() && !akTargetRef.IsDisabled()        
         ; play for requested duration - C++ code will tidy up when out of range
         ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
         effShader.Play(akTargetRef, duration)
@@ -1372,12 +1530,12 @@ endEvent
 
 ; event should only fire if we are managing carry weight
 Event OnCarryWeightDelta(int weightDelta)
-    player.ModActorValue("CarryWeight", weightDelta as float)
+    thisPlayer.ModActorValue("CarryWeight", weightDelta as float)
     ;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
 EndEvent
 
 Function RemoveCarryWeightDelta()
-    int carryWeight = player.GetActorValue("CarryWeight") as int
+    int carryWeight = thisPlayer.GetActorValue("CarryWeight") as int
     ;DebugTrace("Player carry weight initially " + carryWeight)
 
     int weightDelta = 0
@@ -1391,7 +1549,7 @@ Function RemoveCarryWeightDelta()
     endwhile
 
     if (weightDelta != 0)
-        player.ModActorValue("CarryWeight", weightDelta as float)
+        thisPlayer.ModActorValue("CarryWeight", weightDelta as float)
     endif
     ;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
 endFunction
@@ -1498,7 +1656,7 @@ Event OnStealIfUndetected(int actorCount, bool dryRun)
             detected = True     ; do not steal items while UI is active
         else
             Actor npc = actors[currentActor] as Actor
-            if npc && player.IsDetectedBy(npc)
+            if npc && thisPlayer.IsDetectedBy(npc)
                 msg = "Player detected by " + npc.getActorBase().GetName()
                 detected = True
             else
@@ -1509,7 +1667,7 @@ Event OnStealIfUndetected(int actorCount, bool dryRun)
     endWhile
 
     if dryRun
-    	if !detected
+        if !detected
             msg = "Player is not detected"
         endIf
         Debug.Notification(msg)
@@ -1521,11 +1679,21 @@ EndEvent
 ; Reset state related to new game/load game
 Event OnGameReady()
     ;DebugTrace("SHSE_EventsAlias.OnGameReady")
-    ;update CACO index in load order, to handle custom ore mining
+    ;update CACO and CCOR indices in load order, to handle custom ore mining
+    DefaultStrikesBeforeCollection = 1
     CACOModIndex = Game.GetModByName("Complete Alchemy & Cooking Overhaul.esp")
-    if CACOModIndex != 255
-        AlwaysTrace("CACO mod index: " + CACOModIndex)
-        StrikesBeforeCollection = Game.GetFormFromFile(0xCC0503,"Update.esm") as GlobalVariable
+    CCORModIndex = Game.GetModByName("Complete Crafting Overhaul_Remastered.esp")
+    if CACOModIndex != 255 || CCORModIndex != 255
+        AlwaysTrace("CACO mod index: " + CACOModIndex + ", CCOR mod index: " + CCORModIndex)
+        DefaultStrikesBeforeCollection = ((Game.GetFormFromFile(0x01CC0503, "Update.esm") As GlobalVariable).GetValue() As Int)
+
+        ; CCOR has special case for Stalhrim
+        if CCORModIndex != 255
+            stalhrimOre = Game.GetFormFromFile(0x2B06B, "Dragonborn.esm") As MiscObject
+            if stalhrimOre
+                AlwaysTrace("Stalhrim Ore resolved OK")
+            endif
+        endif
     endif
 
     ;update Fossil Mining index in load order, to handle fossil handout after mining

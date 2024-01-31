@@ -8,6 +8,7 @@
     Final="false">
     <Imports>
         <Import>.\Scripts\Source</Import>
+        <Import>i:\GitHub\source\scripts</Import>
         <Import>j:\OmegaLOTD\Tools\mods\SKSE Scripts\Scripts\Source</Import>
         <Import>J:\SteamLibrary\steamapps\common\Skyrim Special Edition\Data\Source\Scripts</Import>
         <Import>J:\SkyUI_5.1_SDK\Scripts\Source</Import>

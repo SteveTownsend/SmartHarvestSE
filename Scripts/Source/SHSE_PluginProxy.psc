@@ -40,6 +40,9 @@ Function SetLootableForProducer(Form producer, Form lootable) global native
 
 Function PrepareSPERGMining() global native
 Function PostprocessSPERGMining() global native
+Function PeriodicReminder(Message mesg) global native
+Function PeriodicReminderString(String msg) global native
+Function UnblockMineable(ObjectReference mineable) global native
 
 Function AllowSearch() global native
 Function DisallowSearch() global native

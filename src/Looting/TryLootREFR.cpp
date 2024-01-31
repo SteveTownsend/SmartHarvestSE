@@ -429,18 +429,27 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
-			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
-			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
-			const bool manualLootNotify(SettingsCache::Instance().ManualLootTargetNotify());
-			const bool mineAll(SettingsCache::Instance().ObjectLootingType(ObjectType::oreVein) == LootingType::LootOreVeinAlways);
-			if (!isFirehose || mineAll)
+			if (DataCase::GetInstance()->AutoMiningDisabled())
 			{
-				EventPublisher::Instance().TriggerMining(
-					m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify, isFirehose);
-				if (isFirehose)
+				DBG_VMESSAGE("loot oreVein - mining disabled due to conflict with another mod: 0x{:08x}", m_candidate->formID);
+				data->BlockReference(m_candidate, Lootability::AutoMiningDisabledByIncompatibleMod);
+				return Lootability::AutoMiningDisabledByIncompatibleMod;
+			}
+			else 
+			{
+				DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
+				data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
+				const bool manualLootNotify(SettingsCache::Instance().ManualLootTargetNotify());
+				const bool mineAll(SettingsCache::Instance().ObjectLootingType(ObjectType::oreVein) == LootingType::LootOreVeinAlways);
+				if (!isFirehose || mineAll)
 				{
-					// do not revisit over-generous sources any time soon - this is stronger than the oreVein temp block
-					DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+					if (isFirehose)
+					{
+						// do not revisit over-generous sources any time soon - this is stronger than the oreVein temp block
+						DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+					}
+					EventPublisher::Instance().TriggerMining(
+						m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify, isFirehose);
 				}
 			}
 		}

@@ -59,6 +59,7 @@ public:
 	typedef std::unordered_set<const RE::TESForm*> FormCategory;
 
 	void BlockFirehoseSource(const RE::TESObjectREFR* refr);
+	void ForgetFirehoseSource(const RE::TESObjectREFR* refr);
 	void ForgetFirehoseSources();
 	bool IsFirehose(const RE::TESForm* form) const;
 	void AddFirehose(const RE::TESForm* form);
@@ -123,6 +124,7 @@ public:
 		return m_offLimitsContainers.contains(containerRef->GetFormID());
 	}
 	bool IsSlowTimeEffectActive() const;
+	bool AutoMiningDisabled() const;
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
@@ -179,6 +181,7 @@ private:
 	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
 	RE::BGSKeyword* m_spellTomeKeyword;
 	RE::BGSKeyword* m_ghostNpcKeyword;
+	bool m_miningDisabled;
 
 	mutable RecursiveLock m_blockListLock;
 
@@ -330,21 +333,7 @@ private:
 	mutable std::unordered_set<std::string> m_unhandledActivationVerbs;
 	std::unordered_map<const RE::TESObjectACTI*, ResourceType> m_resourceTypeByOreVein;
 
-	ObjectType GetObjectTypeForActivationText(const RE::BSString& activationText) const;
-
-	inline std::string GetVerbFromActivationText(const RE::BSString& activationText) const
-	{
-		std::string strActivation;
-		const char* nextChar(activationText.c_str());
-		size_t index(0);
-		while (!isspace(*nextChar) && index < activationText.size())
-		{
-			strActivation.push_back(*nextChar);
-			++nextChar;
-			++index;
-		}
-		return strActivation;
-	}
+	ObjectType GetObjectTypeForActivationText(const std::string& verb) const;
 
 	template <typename T>
 	void CategorizeByKeyword()
@@ -447,6 +436,7 @@ private:
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();
+	void CheckAutoMiningOK();
 	void ExcludeBuildYourNobleHouseIncomeChest();
 
 	template <typename T>

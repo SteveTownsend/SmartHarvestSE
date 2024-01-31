@@ -84,6 +84,7 @@ public:
 	bool ManualLootTargetNotify() const;
 	PopulationCenterSize PreventPopulationCenterLooting() const;
 	int16_t MaxMiningItems() const;
+	bool MiningToolsRequired() const;
 
 private:
 	static std::unique_ptr<SettingsCache> m_instance;
@@ -130,6 +131,7 @@ private:
 	bool m_manualLootTargetNotify;
 	PopulationCenterSize m_preventPopulationCenterLooting;
 	int16_t m_maxMiningItems;
+	bool m_miningToolsRequired;
 
 	static constexpr size_t TypeCount = size_t(ObjectType::oreVein);
 
