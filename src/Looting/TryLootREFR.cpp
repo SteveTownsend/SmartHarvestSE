@@ -749,7 +749,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			LootingType lootingType(LootingType::LeaveBehind);
 			bool sendWhiteListNotify(false);
 			static const bool recordDups(true);		// final decision to loot the item happens here
-			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
+			const auto collectible(CollectionManager::Collectibles().TreatAsCollectible(
 				ConditionMatcher(target, m_targetType, objType), recordDups));
 			if (collectible.first)
 			{

@@ -158,7 +158,7 @@ FormsCondition::FormsCondition(const std::vector<std::pair<std::string, std::vec
 				REL_ERROR("FormsCondition requires valid Forms, got {}/0x{:08x}", entry.first.c_str(), formID);
 				return;
 			}
-			DBG_VMESSAGE("Resolved Form 0x{:08x}", formID);
+			DBG_VMESSAGE("Resolved Form 0x{:08x}", form->GetFormID());
 			newForms.push_back(form);
 		}
 		m_formsByPlugin.insert({ entry.first, newForms });

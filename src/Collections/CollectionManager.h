@@ -28,10 +28,14 @@ typedef std::tuple<RE::TESBoundObject*, const INIFile::SecondaryType, const Obje
 
 class CollectionManager {
 public:
-	static CollectionManager& Instance();
+	static CollectionManager& Collectibles();
+	static CollectionManager& ExcessInventory();
+	static bool LoadSchema(void);
 
-	CollectionManager();
+	CollectionManager() = delete;
+	CollectionManager(const std::wstring& filePattern);
 	void ProcessDefinitions(void);
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups);
 	void Refresh() const;
 	void CollectFromContainer(const RE::TESObjectREFR* refr);
@@ -78,6 +82,7 @@ public:
 
 private:
 	bool LoadData(void);
+	void LoadCollectionFiles(const std::wstring& pattern, nlohmann::json_schema::json_validator& validator);
 	bool LoadCollectionGroup(
 		const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator);
 	void BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup);
@@ -91,7 +96,10 @@ private:
 	static constexpr size_t CollectedSpamLimit = 10;
 	size_t m_notifications;
 
-	static std::unique_ptr<CollectionManager> m_instance;
+	static std::unique_ptr<CollectionManager> m_collectibles;
+	static std::unique_ptr<CollectionManager> m_excessInventory;
+	static nlohmann::json_schema::json_validator m_validator;
+
 	// data loaded ok?
 	bool m_ready;
 
@@ -108,6 +116,7 @@ private:
 	std::unordered_set<const RE::TESForm*> m_lastInventoryCollectibles;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 	std::unordered_set<RE::FormID> m_collectedOnThisScan;
+	const std::wstring m_filePattern;
 };
 
 void to_json(nlohmann::json& j, const CollectionManager& collectionManager);

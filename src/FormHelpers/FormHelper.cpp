@@ -175,7 +175,7 @@ uint32_t TESFormHelper::GetGoldValue() const
 std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const bool recordDups) const
 {
 	// ignore whitelist - we need the underlying object type
-	return shse::CollectionManager::Instance().TreatAsCollectible(m_matcher, recordDups);
+	return shse::CollectionManager::Collectibles().TreatAsCollectible(m_matcher, recordDups);
 }
 
 double TESFormHelper::GetWeight() const

@@ -29,6 +29,7 @@ namespace shse {
 
 class CollectionGroup;
 class Collection;
+class CollectionManager;
 
 class CollectionPolicy {
 public:
@@ -165,7 +166,8 @@ void to_json(nlohmann::json& j, const Collection& collection);
 
 class CollectionGroup {
 public:
-	CollectionGroup(const std::string& name, const CollectionPolicy& policy, const bool useMCM, const nlohmann::json& collections);
+	CollectionGroup(CollectionManager &manager, const std::string &name, const CollectionPolicy &policy,
+					const bool useMCM, const nlohmann::json &collections);
 	inline const std::vector<std::shared_ptr<Collection>>& Collections() const { return m_collections; }
 	std::shared_ptr<Collection> CollectionByName(const std::string& collectionName) const;
 	inline std::string Name() const { return m_name; }
@@ -174,11 +176,13 @@ public:
 	void AsJSON(nlohmann::json& j) const;
 	void UpdateFrom(const nlohmann::json& group);
 
+	inline CollectionManager& Manager() const { return m_manager; }
 	inline const CollectionPolicy& Policy() const { return m_policy; }
 	inline CollectionPolicy& Policy() { return m_policy; }
 	void SyncDefaultPolicy();
 
 private:
+	CollectionManager& m_manager;
 	std::string m_name;
 	CollectionPolicy m_policy;
 	const bool m_useMCM;

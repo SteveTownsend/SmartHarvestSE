@@ -173,8 +173,13 @@ bool PluginFacade::Load()
 	QuestTargets::Instance().Analyze();
 
 	// Collections are layered on top of categorized and placed objects
+	// Excess Inventory and Collectibles processing share a JSON schema
 	REL_MESSAGE("*** LOAD *** Build Collections");
-	CollectionManager::Instance().ProcessDefinitions();
+	if (CollectionManager::LoadSchema())
+	{
+		CollectionManager::Collectibles().ProcessDefinitions();
+		CollectionManager::ExcessInventory().ProcessDefinitions();
+	}
 
 	REL_MESSAGE("Plugin Data load complete!");
 	return true;
@@ -243,7 +248,7 @@ void PluginFacade::ScanThread()
 		PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 		// process any queued added items since last time
-		CollectionManager::Instance().ProcessAddedItems();
+		CollectionManager::Collectibles().ProcessAddedItems();
 
 		// reconcile SPERG mined items
 		ScanGovernor::Instance().ReconcileSPERGMined();
@@ -303,7 +308,8 @@ void PluginFacade::OnVMSync()
 	// seed state using cosave data
 	CosaveData::Instance().SeedState();
 	// Update Collections State, including saved-game data if present
-	CollectionManager::Instance().OnGameReload();
+	CollectionManager::Collectibles().OnGameReload();
+	CollectionManager::ExcessInventory().OnGameReload();
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
 	REL_MESSAGE("Plugin sync completed");

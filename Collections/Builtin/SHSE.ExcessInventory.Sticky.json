@@ -1,0 +1,44 @@
+{
+  "$comment": "Items that should not be automatically disposed of as Excess Inventory",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "take",
+    "notify": false,
+    "repeat": true
+  },
+  "useMCM": false,
+  "collections": [
+    {
+      "name": "AddItemMenu ESLified",
+      "description": "Items that should not be automatically disposed of as Excess Inventory",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "$comment": "AddItemMenu Gift List",
+              "plugin": "AddItemMenuSE.esp",
+              "form": [ "00000813", "00000818", "00000819", "0000081A", "0000081D" ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "AddItemMenu Original ESP",
+      "description": "Items that should not be automatically disposed of as Excess Inventory",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "$comment": "AddItemMenu Gift List - to handle ESLified patch and OG version",
+              "plugin": "AddItemMenuSE.esp",
+              "form": [ "00005E42", "0000690C", "0000690D", "0000895B", "0000895F" ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

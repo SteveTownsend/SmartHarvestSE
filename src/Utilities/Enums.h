@@ -696,6 +696,7 @@ enum class SerializationRecordType
 	PartyUpdates,
 	Victims,
 	Adventures,
+	ExcessInventory,
 	MAX
 };
 
@@ -714,6 +715,8 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 		return "VCTM";
 	case SerializationRecordType::Adventures:
 		return "ADVN";
+	case SerializationRecordType::ExcessInventory:
+		return "EXCS";
 	default:
 		return "????";
 	}

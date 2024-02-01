@@ -40,18 +40,30 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-std::unique_ptr<CollectionManager> CollectionManager::m_instance;
+std::unique_ptr<CollectionManager> CollectionManager::m_collectibles;
+std::unique_ptr<CollectionManager> CollectionManager::m_excessInventory;
+nlohmann::json_schema::json_validator CollectionManager::m_validator;
 
-CollectionManager& CollectionManager::Instance()
+CollectionManager& CollectionManager::Collectibles()
 {
-	if (!m_instance)
+	if (!m_collectibles)
 	{
-		m_instance = std::make_unique<CollectionManager>();
+		m_collectibles = std::make_unique<CollectionManager>(L"SHSE\\.Collections\\.(.*)\\.json$");
 	}
-	return *m_instance;
+	return *m_collectibles;
 }
 
-CollectionManager::CollectionManager() : m_notifications(0), m_ready(false)
+CollectionManager& CollectionManager::ExcessInventory()
+{
+	if (!m_excessInventory)
+	{
+		m_excessInventory = std::make_unique<CollectionManager>(L"SHSE\\.ExcessInventory\\.(.*)\\.json$");
+	}
+	return *m_excessInventory;
+}
+
+CollectionManager::CollectionManager(const std::wstring& filePattern) :
+m_notifications(0), m_ready(false), m_filePattern(filePattern)
 {
 }
 
@@ -224,6 +236,12 @@ void CollectionManager::AddToRelevantCollections(const ConditionMatcher& matcher
 	}
 }
 
+std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
+{
+	constexpr bool recordDups(true);
+	return TreatAsCollectible(matcher, recordDups);
+}
+
 std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups)
 {
 	if (!IsAvailable() || !matcher.Form())
@@ -329,7 +347,7 @@ bool CollectionManager::LoadCollectionGroup(
 		}
 		nlohmann::json collectionGroupData(nlohmann::json::parse(collectionFile));
 		validator.validate(collectionGroupData);
-		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(collectionGroupData, groupName));
+		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(*this, collectionGroupData, groupName));
 		BuildDecisionTrees(collectionGroup);
 		if (collectionGroup->UseMCM())
 		{
@@ -344,19 +362,44 @@ bool CollectionManager::LoadCollectionGroup(
 	}
 }
 
-bool CollectionManager::LoadData(void)
+void CollectionManager::LoadCollectionFiles(const std::wstring& pattern, nlohmann::json_schema::json_validator& validator)
+{
+	const std::wregex collectionsFilePattern(pattern);
+	for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
+	{
+		if (!std::filesystem::is_regular_file(nextFile))
+		{
+			DBG_MESSAGE("Skip {}, not a regular file", StringUtils::FromUnicode(nextFile.path().generic_wstring()));
+			continue;
+		}
+		std::wstring fileName(nextFile.path().filename().generic_wstring());
+		std::wsmatch matches;
+		if (!std::regex_search(fileName, matches, collectionsFilePattern))
+		{
+			DBG_MESSAGE("Skip {}, does not match Collections filename pattern", StringUtils::FromUnicode(fileName));
+			continue;
+		}
+		// capture string at index 1 is the Collection Name, always present after a regex match
+		REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
+		if (LoadCollectionGroup(nextFile, StringUtils::FromUnicode(matches[1].str()), validator))
+		{
+			REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
+		}
+	}
+}
+
+[[nodiscard]] bool CollectionManager::LoadSchema(void)
 {
 	// Validate the schema
 	const std::string schemaFileName("SHSE.SchemaCollections.json");
 	std::string filePath(StringUtils::FromUnicode(FileUtils::GetPluginPath()) + schemaFileName);
-	nlohmann::json_schema::json_validator validator;
 	try {
 		std::ifstream schemaFile(filePath);
 		if (schemaFile.fail()) {
 			throw FileNotFound(filePath.c_str());
 		}
 		nlohmann::json schema(nlohmann::json::parse(schemaFile));
-		validator.set_root_schema(schema); // insert root-schema
+		m_validator.set_root_schema(schema); // insert root-schema
 	}
 	catch (const std::exception& e) {
 		REL_ERROR("JSON Schema {} not loadable, error:\n{}", filePath.c_str(), e.what());
@@ -364,31 +407,14 @@ bool CollectionManager::LoadData(void)
 	}
 
 	REL_MESSAGE("JSON Schema {} parsed and validated", filePath.c_str());
+	return true;
+}
 
+bool CollectionManager::LoadData(void)
+{
 	try {
 		// Find and Load Collection Definitions using the validated schema
-		const std::wregex collectionsFilePattern(L"SHSE.Collections\\.(.*)\\.json$");
-		for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
-		{
-			if (!std::filesystem::is_regular_file(nextFile))
-			{
-				DBG_MESSAGE("Skip {}, not a regular file", StringUtils::FromUnicode(nextFile.path().generic_wstring()));
-				continue;
-			}
-			std::wstring fileName(nextFile.path().filename().generic_wstring());
-			std::wsmatch matches;
-			if (!std::regex_search(fileName, matches, collectionsFilePattern))
-			{
-				DBG_MESSAGE("Skip {}, does not match Collections filename pattern", StringUtils::FromUnicode(fileName));
-				continue;
-			}
-			// capture string at index 1 is the Collection Name, always present after a regex match
-			REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
-			if (LoadCollectionGroup(nextFile, StringUtils::FromUnicode(matches[1].str()), validator))
-			{
-				REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
-			}
-		}
+		LoadCollectionFiles(m_filePattern, m_validator);
 	} catch (const std::exception& e) {
 		REL_ERROR("Collection Definitions not loadable: is the file target at {} inside 'Program Files' or another elevated-privilege location? Error:\n{}",
 			StringUtils::FromUnicode(FileUtils::GetPluginPath()), e.what());

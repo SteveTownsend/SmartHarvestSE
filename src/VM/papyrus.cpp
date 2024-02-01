@@ -440,7 +440,7 @@ namespace papyrus
 
 	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
-		shse::CollectionManager::Instance().CollectFromContainer(refr);
+		shse::CollectionManager::Collectibles().CollectFromContainer(refr);
 	}
 
 	void TryForceHarvest(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -643,7 +643,7 @@ namespace papyrus
 
 	bool CollectionsInUse(RE::StaticFunctionTag*)
 	{
-		return shse::CollectionManager::Instance().IsAvailable();
+		return shse::CollectionManager::Collectibles().IsAvailable();
 	}
 
 	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<RE::TESForm*> forms,
@@ -658,7 +658,7 @@ namespace papyrus
 		while (current < itemCount)
 		{
 			// checked API
-			shse::CollectionManager::Instance().CheckEnqueueAddedItem(
+			shse::CollectionManager::Collectibles().CheckEnqueueAddedItem(
 				(*form)->As<RE::TESBoundObject>(), INIFile::SecondaryType(*scope), ObjectType(*objectType));
 			++current;
 			++form;
@@ -674,97 +674,97 @@ namespace papyrus
 
 	int CollectionGroups(RE::StaticFunctionTag*)
 	{
-		return shse::CollectionManager::Instance().NumberOfFiles();
+		return shse::CollectionManager::Collectibles().NumberOfFiles();
 	}
 
 	std::string CollectionGroupName(RE::StaticFunctionTag*, const int fileIndex)
 	{
-		return shse::CollectionManager::Instance().GroupNameByIndex(fileIndex);
+		return shse::CollectionManager::Collectibles().GroupNameByIndex(fileIndex);
 	}
 
 	std::string CollectionGroupFile(RE::StaticFunctionTag*, const int fileIndex)
 	{
-		return shse::CollectionManager::Instance().GroupFileByIndex(fileIndex);
+		return shse::CollectionManager::Collectibles().GroupFileByIndex(fileIndex);
 	}
 
 	int CollectionsInGroup(RE::StaticFunctionTag*, const std::string fileName)
 	{
-		return shse::CollectionManager::Instance().NumberOfActiveCollections(fileName);
+		return shse::CollectionManager::Collectibles().NumberOfActiveCollections(fileName);
 	}
 
 	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
 	{
-		return shse::CollectionManager::Instance().NameByIndexInGroup(groupName, collectionIndex);
+		return shse::CollectionManager::Collectibles().NameByIndexInGroup(groupName, collectionIndex);
 	}
 
 	std::string CollectionDescriptionByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
 	{
-		return shse::CollectionManager::Instance().DescriptionByIndexInGroup(groupName, collectionIndex);
+		return shse::CollectionManager::Collectibles().DescriptionByIndexInGroup(groupName, collectionIndex);
 	}
 
 	bool CollectionAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return shse::CollectionManager::Instance().PolicyRepeat(groupName, collectionName);
+		return shse::CollectionManager::Collectibles().PolicyRepeat(groupName, collectionName);
 	}
 	bool CollectionNotifies(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return shse::CollectionManager::Instance().PolicyNotify(groupName, collectionName);
+		return shse::CollectionManager::Collectibles().PolicyNotify(groupName, collectionName);
 	}
 	int CollectionAction(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().PolicyAction(groupName, collectionName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().PolicyAction(groupName, collectionName));
 	}
 	void PutCollectionAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const bool allowRepeats)
 	{
-		shse::CollectionManager::Instance().PolicySetRepeat(groupName, collectionName, allowRepeats);
+		shse::CollectionManager::Collectibles().PolicySetRepeat(groupName, collectionName, allowRepeats);
 	}
 	void PutCollectionNotifies(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const bool notifies)
 	{
-		shse::CollectionManager::Instance().PolicySetNotify(groupName, collectionName, notifies);
+		shse::CollectionManager::Collectibles().PolicySetNotify(groupName, collectionName, notifies);
 	}
 	void PutCollectionAction(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const int action)
 	{
-		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::CollectibleHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Collectibles().PolicySetAction(groupName, collectionName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
 	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return shse::CollectionManager::Instance().GroupPolicyRepeat(groupName);
+		return shse::CollectionManager::Collectibles().GroupPolicyRepeat(groupName);
 	}
 	bool CollectionGroupNotifies(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return shse::CollectionManager::Instance().GroupPolicyNotify(groupName);
+		return shse::CollectionManager::Collectibles().GroupPolicyNotify(groupName);
 	}
 	int CollectionGroupAction(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().GroupPolicyAction(groupName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().GroupPolicyAction(groupName));
 	}
 	void PutCollectionGroupAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const bool allowRepeats)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetRepeat(groupName, allowRepeats);
+		shse::CollectionManager::Collectibles().GroupPolicySetRepeat(groupName, allowRepeats);
 	}
 	void PutCollectionGroupNotifies(RE::StaticFunctionTag*, const std::string groupName, const bool notifies)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetNotify(groupName, notifies);
+		shse::CollectionManager::Collectibles().GroupPolicySetNotify(groupName, notifies);
 	}
 	void PutCollectionGroupAction(RE::StaticFunctionTag*, const std::string groupName, const int action)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::CollectibleHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Collectibles().GroupPolicySetAction(groupName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
 	int CollectionTotal(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().TotalItems(groupName, collectionName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().TotalItems(groupName, collectionName));
 	}
 
 	std::string CollectionStatus(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return shse::CollectionManager::Instance().StatusMessage(groupName, collectionName);
+		return shse::CollectionManager::Collectibles().StatusMessage(groupName, collectionName);
 	}
 
 	int CollectionObtained(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().ItemsObtained(groupName, collectionName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().ItemsObtained(groupName, collectionName));
 	}
 
 	int AdventureTypeCount(RE::StaticFunctionTag*)

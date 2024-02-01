@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Collections/Condition.h"
 #include "Collections/CollectionFactory.h"
+#include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
 
 namespace shse
@@ -187,9 +188,10 @@ std::shared_ptr<Collection> CollectionFactory::ParseCollection(
 	return std::shared_ptr<Collection>();
 }
 
-std::shared_ptr<CollectionGroup> CollectionFactory::ParseGroup(const nlohmann::json& group, const std::string& groupName) const
+std::shared_ptr<CollectionGroup> CollectionFactory::ParseGroup(
+	CollectionManager& manager, const nlohmann::json& group, const std::string& groupName) const
 {
-	return std::make_shared<CollectionGroup>(groupName, ParsePolicy(group["groupPolicy"]), group["useMCM"].get<bool>(), group["collections"]);
+	return std::make_shared<CollectionGroup>(manager, groupName, ParsePolicy(group["groupPolicy"]), group["useMCM"].get<bool>(), group["collections"]);
 }
 
 }

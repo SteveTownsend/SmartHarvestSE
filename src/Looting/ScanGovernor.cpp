@@ -309,7 +309,7 @@ Lootability ScanGovernor::CanLootActor(const RE::Actor* actor)
 	else
 	{
 		static const bool recordDups(false);
-		const auto collectible(CollectionManager::Instance().TreatAsCollectible(
+		const auto collectible(CollectionManager::Collectibles().TreatAsCollectible(
 			ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor), recordDups));
 		if (collectible.first)
 		{
@@ -631,7 +631,7 @@ void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
 	// Refresh player party of followers
 	PartyMembers::Instance().AdjustParty(ActorTracker::Instance().GetFollowers(), PlayerState::Instance().CurrentGameTime());
 	// request added items to be pushed to us while we are sleeping - including items not auto-looted
-	CollectionManager::Instance().Refresh();
+	CollectionManager::Collectibles().Refresh();
 }
 
 // Glow-only, for Immersion enthusiasts

@@ -27,6 +27,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/ManagedLists.h"
 #include "Looting/objects.h"
 #include "WorldState/QuestTargets.h"
+#include "Collections/CollectionManager.h"
 
 namespace shse
 {
@@ -130,6 +131,14 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled(const bool force, c
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))
 		{
 			DBG_DMESSAGE("Quest Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
+			continue;
+		}
+		// Check if item is sticky in inventory, requiring deliberate disposal by Player
+		// Ex. AddItemMenuSE kit
+		const auto isItemSticky(CollectionManager::ExcessInventory().TreatAsCollectible(ConditionMatcher(itemObject)));
+		if (isItemSticky.first)
+		{
+			DBG_DMESSAGE("Sticky Item {}/0x{:08x}, exempt from Excess Inventory", itemObject->GetName(), itemObject->GetFormID());
 			continue;
 		}
 
@@ -249,6 +258,7 @@ InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* targ
 		{
 			return InventoryEntry(target, ExcessInventoryExemption::Ineligible);
 		}
+		// skip check for sticky items here: if player wants to get rid of such items like this, that's OK
 		if (itemObject->formType == RE::FormType::LeveledItem)
 		{
 			return InventoryEntry(target, ExcessInventoryExemption::IsLeveledItem);
