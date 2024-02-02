@@ -237,11 +237,18 @@ std::string ContainerLister::DeleteItem(RE::TESBoundObject* target, const bool e
 
 std::string ContainerLister::CheckItemAsExcess(RE::TESBoundObject* target)
 {
-	InventoryEntry entry(GetSingleInventoryEntry(target));
+	constexpr bool isDestructive(false);
+	InventoryEntry entry(GetSingleInventoryEntry(target, isDestructive));
 	return entry.Disposition();
 }
 
 InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* target) const
+{
+	constexpr bool isDestructive(true);
+	return GetSingleInventoryEntry(target, isDestructive);
+}
+
+InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* target, const bool isDestructive) const
 {
 	// refactored following QuickLookRE
 	auto inv = const_cast<RE::TESObjectREFR*>(m_refr)->GetInventory();
@@ -258,10 +265,20 @@ InventoryEntry ContainerLister::GetSingleInventoryEntry(RE::TESBoundObject* targ
 		{
 			return InventoryEntry(target, ExcessInventoryExemption::Ineligible);
 		}
-		// skip check for sticky items here: if player wants to get rid of such items like this, that's OK
 		if (itemObject->formType == RE::FormType::LeveledItem)
 		{
 			return InventoryEntry(target, ExcessInventoryExemption::IsLeveledItem);
+		}
+		// Mostly skip check for sticky items here: if player wants to get rid of such items like this, that's OK
+		// We do make the check if user is introspecting the item (non-destructive)
+		if (!isDestructive)
+		{
+			const auto isItemSticky(CollectionManager::ExcessInventory().TreatAsCollectible(ConditionMatcher(itemObject)));
+			if (isItemSticky.first)
+			{
+				DBG_DMESSAGE("Item {}/0x{:08x} is anchored in inventory", itemObject->GetName(), itemObject->GetFormID());
+				return InventoryEntry(target, ExcessInventoryExemption::Anchored);
+			}
 		}
 		// Do not auto-sell or otherwise futz with this if it even MIGHT be a Quest Target
 		if (!QuestTargets::Instance().AllowsExcessHandling(itemObject))

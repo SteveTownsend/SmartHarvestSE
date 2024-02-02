@@ -169,6 +169,8 @@ std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excess
 		return "Ineligible";
 	case ExcessInventoryExemption::IsLeveledItem:
 		return "IsLeveledItem";
+	case ExcessInventoryExemption::Anchored:
+		return "Anchored";
 	case ExcessInventoryExemption::NotFound:
 		return "NotFound";
 	default:

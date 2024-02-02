@@ -156,6 +156,7 @@ enum class ExcessInventoryExemption : uint8_t {
 	CountIsZero,
 	Ineligible,
 	IsLeveledItem,
+	Anchored,
 	NotFound
 };
 
