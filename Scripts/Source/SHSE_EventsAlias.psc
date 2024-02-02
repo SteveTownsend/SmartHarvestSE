@@ -8,8 +8,6 @@ int CACOModIndex
 int CCORModIndex
 MiscObject stalhrimOre
 bool vanillaMakesNoise = False
-int FossilMiningModIndex
-int NextDig
 
 int HearthfireExtendedModIndex
 int MagicChestModIndex
@@ -61,10 +59,14 @@ int maxAddedItems
 
 int currentAddedItem
 bool collectionsInUse
+
 int resource_Ore
 int resource_Geode
 int resource_Volcanic
 int resource_VolcanicDigSite
+
+bool hasFossilMining = False
+int NextDig
 LeveledItem FOS_LItemFossilTierOneGeode
 LeveledItem FOS_LItemFossilTierOneVolcanic
 LeveledItem FOS_LItemFossilTierOneyum
@@ -131,15 +133,10 @@ Function Prepare(Actor playerref, bool useLog)
     logEvent = useLog
     thisPlayer = playerref
     ;check for SPERG being active and set up the Prospector Perk to check
-    int spergModIndex = Game.GetModByName("SPERG-SSE.esp")
-    if spergModIndex != 255
-        int perkID = 0x5cc21
-        spergProspector = Game.GetFormFromFile(perkID, "SPERG-SSE.esp") as Perk
-        if !spergProspector || spergProspector.GetName() != "Prospector"
-            AlwaysTrace("SPERG Prospector Perk resolve failed for " + PrintFormID(perkID))
-            spergProspector = None
-        endIf
-    else
+    int spergProspectorPerkID = 0x5cc21
+    spergProspector = Game.GetFormFromFile(spergProspectorPerkID, "SPERG-SSE.esp") as Perk
+    if !spergProspector || spergProspector.GetName() != "Prospector"
+        AlwaysTrace("SPERG Prospector Perk resolve failed for " + PrintFormID(spergProspectorPerkID))
         spergProspector = None
     endIf
 
@@ -1263,7 +1260,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         AchievementsQuest.incHardworker(2)
     endif
 
-    if !handled && (FossilMiningModIndex != 255)
+    if !handled && hasFossilMining
         if logEvent
             DebugTrace("Check for Fossil Mining Dig Site")
         endIf            
@@ -1301,7 +1298,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
     if isFirehose
         ; no-op
 
-    elseif (miningStrikes > 0 && FossilMiningModIndex != 255 && resourceType != resource_VolcanicDigSite)
+    elseif (miningStrikes > 0 && hasFossilMining && resourceType != resource_VolcanicDigSite)
         ; Fossil Mining Drop Logic from oreVein per Fos_AttackMineAlias.psc, bypassing the FURN.
         ; Excludes Hearthfire house materials (by construction) to mimic FOS_IgnoreList filtering.
         ; Excludes Fossil Mining Dig Sites, processed in full above
@@ -1519,12 +1516,42 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     endif
     if effShader && OKToScan() && akTargetRef.Is3DLoaded() && !akTargetRef.IsDisabled()        
         ; play for requested duration - C++ code will tidy up when out of range
-        ;DebugTrace("OnObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
+        ;DebugTrace("DoObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
         effShader.Play(akTargetRef, duration)
     endif
 endFunction
 
 Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
+    ; do not glow ore-vein if it's depleted. Various checks.
+    MineOreScript mineable = akTargetRef as MineOreScript
+    bool oreHandled = False
+    if mineable
+        ; Vanilla or CCOR case
+        if mineable.ResourceCountCurrent == 0
+            ;DebugTrace("Do not glow depleted CCOR/Vanilla ore")
+            return
+        endif
+        oreHandled = True
+    elseif CACOModIndex != 255
+        ; CACO case
+        CACO_MineOreScript cacoMineable = akTargetRef as CACO_MineOreScript
+        if cacoMineable
+            if cacoMineable.ResourceCountCurrent == 0
+                ;DebugTrace("Do not glow depleted CACO ore")
+                return
+            endif
+            oreHandled = True
+        endif
+    endif
+    if hasFossilMining && !oreHandled
+        ; Fossil Mining case
+        FOS_DigsiteScript digSite = akTargetRef as FOS_DigsiteScript
+        if digSite && digsite.GetLinkedRef().IsDisabled()
+            ;DebugTrace("Do not glow depleted Fossil digsite")
+            return
+        endif
+        oreHandled = True
+    endif
     DoObjectGlow(akTargetRef, duration, reason)
 endEvent
 
@@ -1696,11 +1723,11 @@ Event OnGameReady()
         endif
     endif
 
-    ;update Fossil Mining index in load order, to handle fossil handout after mining
-    FossilMiningModIndex = Game.GetModByName("Fossilsyum.esp")
-    if FossilMiningModIndex != 255
-        AlwaysTrace("Fossil Mining mod index: " + FossilMiningModIndex)
-        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
+    ;look for Fossil Mining form IDs, to handle fossil handout after mining
+    FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
+    if FOS_LItemFossilTierOneGeode
+        AlwaysTrace("Fossil Mining found in Load Order")
+        hasFossilMining = True
         FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem

@@ -293,17 +293,6 @@
           }
         }
       }
-    },
-    {
-      "$comment": "Added for Github issue #438",
-      "name": "Highlight Mineable Resources",
-      "description": "Mineable resources glow instead of autoloot",
-      "policy": {
-        "action": "glow",
-        "notify": false,
-        "repeat": true
-      },
-      "category": [ "orevein" ]
     }
   ]
 }
