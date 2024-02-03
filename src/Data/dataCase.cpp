@@ -391,7 +391,7 @@ void DataCase::ExcludeVendorContainers()
 	// because for LVLI records, EDID is not loaded
 	// Check for exact match in Load Order using {plugin file, plugin-relative Form ID} tuple
 	// TODO assumes no merge - core game, probably OK
-	std::vector<std::tuple<std::string, RE::FormID>> vendorGoldLVLI = {
+	std::vector<std::tuple<std::string, RE::FormID>> vendorItemLVLI = {
 		{"Skyrim.esm", 0x17102},	// VendorGoldBlacksmithTown
 		{"Skyrim.esm", 0x72ae7},	// VendorGoldMisc
 		{"Skyrim.esm", 0x72ae8},	// VendorGoldApothecary
@@ -404,10 +404,11 @@ void DataCase::ExcludeVendorContainers()
 		{"Skyrim.esm", 0xd54c0},	// VendorGoldFenceStage01
 		{"Skyrim.esm", 0xd54c1},	// VendorGoldFenceStage02
 		{"Skyrim.esm", 0xd54c2},	// VendorGoldFenceStage03
-		{"Skyrim.esm", 0xd54c3}		// VendorGoldFenceStage04
+		{"Skyrim.esm", 0xd54c3},	// VendorGoldFenceStage04
+		{"Skyrim.esm", 0x9af0f}		// LItemMiscVendorLockpicks75 - catches a lot of mod-added vendor/merchant CONT
 	};
-	std::unordered_set<RE::TESLevItem*> vendorGoldForms;
-	for (const auto& lvliDef : vendorGoldLVLI)
+	std::unordered_set<RE::TESLevItem*> vendorSentinels;
+	for (const auto& lvliDef : vendorItemLVLI)
 	{
 		std::string espName(std::get<0>(lvliDef));
 		RE::FormID formID(std::get<1>(lvliDef));
@@ -415,32 +416,39 @@ void DataCase::ExcludeVendorContainers()
 		if (lvliForm)
 		{
 			REL_MESSAGE("LVLI {}:0x{:08x} found for Vendor Container contents", espName, lvliForm->GetFormID());
-			vendorGoldForms.insert(lvliForm);
+			vendorSentinels.insert(lvliForm);
 		}
 		else
 		{
 			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
-	if (vendorGoldForms.size() != vendorGoldLVLI.size())
+	if (vendorSentinels.size() != vendorItemLVLI.size())
 	{
-		REL_ERROR("LVLI count {} (base game) for Vendor Gold inconsistent with expected {}",
-			vendorGoldLVLI.size(), vendorGoldForms.size());
+		REL_ERROR("LVLI count {} (base game) for Vendor Sentinels inconsistent with expected {}",
+			vendorItemLVLI.size(), vendorSentinels.size());
 	}
 
 	// check mod-specific LVLI
 	// TODO assumes no merge - mods, could be a problem
 	// Trade & Barter.esp is well-behaved, using only core forms
-	std::vector<std::tuple<std::string, RE::FormID>> modVendorGoldLVLI = {
-		{"Wyrmstooth.esp", 0x5D0598},	// WTVendorGoldMudcrabMerchant
+	std::vector<std::tuple<std::string, RE::FormID>> modVendorSentinelLVLI = {
 		{"Midwood Isle.esp", 0x142430},	// VendorGoldHermitMidwoodIsle
-		{"Midwood Isle.esp", 0x19B10A},	// VendorGoldHunterMidwoodIsle
-		{"AAX_Arweden.esp", 0x041DD1},	// AAX_VendorGold
-		{"Complete Alchemy & Cooking Overhaul.esp", 0x97AFE1}	// VendorGoldFarmer
+		{"Midwood Isle.esp", 0x19b10a},	// VendorGoldHunterMidwoodIsle
+		{"AAX_Arweden.esp", 0x041dd1},	// AAX_VendorGold
+		{"Complete Alchemy & Cooking Overhaul.esp", 0x97afe1},	// VendorGoldFarmer
+		{"ccbgssse001-fish.esm", 0x1223de},	// ccBGSSSE001_LItemVendorFishingClothes50
+		{"summersetisles.esp", 0x219171},	// VendorSSICoin
+		{"summersetisles.esp", 0x3ffc4f},	// VendorGoldApothecarySSI
+		{"summersetisles.esp", 0x3ffc50},	// VendorGoldBlacksmithSSI
+		{"summersetisles.esp", 0x3ffc51},	// VendorGoldInnSSI
+		{"summersetisles.esp", 0x3ffc52},	// VendorGoldMiscSSI
+		{"summersetisles.esp", 0x3ffc53},	// VendorGoldSpellsSSI
+		{"MiyapsDungeon.esm", 0x45155b},	// aaaaMDMVendorGoldMisc
+		{"JerallMountainsCitadelPart1.esm", 0x26bef0}	// _JMCVendorGold
 	};
 
-	size_t interimSize(vendorGoldForms.size());
-	for (const auto& lvliDef : modVendorGoldLVLI)
+	for (const auto& lvliDef : modVendorSentinelLVLI)
 	{
 		std::string espName(std::get<0>(lvliDef));
 		RE::FormID formID(std::get<1>(lvliDef));
@@ -448,40 +456,107 @@ void DataCase::ExcludeVendorContainers()
 		if (lvliForm)
 		{
 			REL_MESSAGE("LVLI {}:0x{:08x} found for Vendor Container contents", espName, lvliForm->GetFormID());
-			vendorGoldForms.insert(lvliForm);
+			vendorSentinels.insert(lvliForm);
 		}
 		else
 		{
 			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
-	ptrdiff_t expectedFromMods(std::count_if(modVendorGoldLVLI.cbegin(), modVendorGoldLVLI.cend(),
-		[&](const auto& espForm) -> bool { return shse::LoadOrder::Instance().IncludesMod(std::get<0>(espForm)); }));
-	if (vendorGoldForms.size() - interimSize != static_cast<size_t>(expectedFromMods))
-	{
-		REL_ERROR("LVLI count {} (mods) for Vendor Gold inconsistent with expected {}",
-			vendorGoldForms.size() - interimSize, expectedFromMods);
-	}
 
-	// mod-added Containers to avoid looting
-	std::vector<std::tuple<std::string, RE::FormID>> modContainers = {
+	// special and mod-added Containers to avoid looting
+	std::vector<std::tuple<std::string, RE::FormID>> oneOffContainers = {
+		// WEMerchantChest
+		{"Skyrim.esm", 0xbbcd0},
+		// DLC1dunRedwaterDenMerchantChest
+		{"Dawnguard.esm", 0x13941},
+		// DLC2dunFrostmoonVendorChest
+		{"Dragonborn.esm", 0x1dc65},
+		// DLC2MerchantDremoraChest
+		{"Dragonborn.esm", 0x1eec0},
 		// LoTD Museum Shipments
 		{"LegacyoftheDragonborn.esm", 0x1772a6},	// Incoming
-		{"LegacyoftheDragonborn.esm", 0x1772a7}		// Outgoing
+		{"LegacyoftheDragonborn.esm", 0x1772a7},	// Outgoing
+		// HLIORemielVendorChest
+		{"HLIORemi.esp", 0x4c786},
+		//SL00MerchantGenericAmuletChest
+		{"SL01AmuletsSkyrim.esp", 0x1de80},
+		// SL00MerchantHoldNecklaceChest
+		{"SL01AmuletsSkyrim.esp", 0x420c1},
+		// SL00MerchantSolitudeGenericAmuletChest
+		{"SL01AmuletsSkyrim.esp", 0x471e0},
+		// ccVSVSSE001_MerchantPack
+		{"ccvsvsse001-winter.esl", 0x809},
+		// CYRMerchantBrumaMuseumChest
+		{"BSHeartland.esm", 0xd24d1},
+		// CYRMerchantBrumaLeoNewspaperChest
+		{"BSHeartland.esm", 0xd3743},
+		// CYRMerchantKvatchTheRightfulRemedyChest
+		{"BSHeartland.esm", 0xf9704},
+		// CYRMerchantKvatchTheRightfulRemedyChestExtra
+		{"BSHeartland.esm", 0xf970f},
+		// CYRMerchantKvatchFireheartHotelBarChest
+		{"BSHeartland.esm", 0xf973f},
+		// CH_IssalMerchantChest
+		{"Coldhaven.esm", 0x3a84dc},
+		// FSMerchantAudmund
+		{"Falskaar.esm", 0x15c536},
+		// Yadamerchantchest
+		{"Jehanna.esp", 0x1ca84},
+		// MerchantFlorinIarraChest
+		{"Midwood Isle.esp", 0x56971},
+		// MidwoodIsleMerchantTradesmanChest
+		{"Midwood Isle.esp", 0x7f166e},
+		// NyhusMerchantAreathchest
+		{"Nyhus.esp", 0x7341a9},
+		// NyhusMerchantTG04EECDockworker03
+		{"Nyhus.esp", 0x8fdb65},
+		// SB_SamMerchantChest
+		{"SkyrimBounties.esp", 0x6b808},
+		// SB_RedLanternMerchantChest
+		{"SkyrimBounties.esp", 0x18acf4},
+		// <N78HelheimGanglotMerchantChest>
+		{"TrueHel.esp", 0x162e75},
+		// MerchantWhiterunQuintus
+		{"SurWR.esp", 0x2ecda0},
+		// RiftenExtMerchantChestAnjiir
+		{"RiftenExtension.esp", 0x105530},
+		// 000FCLukiMerchantContainer
+		{"ForgottenCity.esp", 0x2cc87},
+		// 000FCStoreroomMerchantContainer
+		{"ForgottenCity.esp", 0x2f3c8},
+		// 000FCTailorMerchantContainer
+		{"ForgottenCity.esp", 0x2f950},
+		// LAMIOzirianaMerchantChest
+		{"BetalillesHammerfellQuestBundle.esp", 0x1298},
+		// ASHGMerchantDarkElfChest01
+		{"BetalillesHammerfellQuestBundle.esp", 0x1733},
+		// ASHGMerchantDarkElfChest02
+		{"BetalillesHammerfellQuestBundle.esp", 0x1734},
+		// aaaCJGMerchant1Chest1
+		{"ClefJs Karthwasten.esp", 0x72e63},
+		// SRC_LKHCharcoalMerchantChest
+		{"SRC - All In One.esp", 0xeedc6},
+		// _LP_MerchantBardWaresChest
+		{"BecomeABard.esp", 0x5075b},
+		// BSMMerchantChest
+		{"BeyondSkyrimMerchant.esp", 0x55aa},
+		// BUV_MerchantTGTuldinwaeChest,
+		{"BUVARP SE RE.esp", 0x1254aa}
 	};
-	for (const auto& container : modContainers)
+	for (const auto& container : oneOffContainers)
 	{
 		std::string espName(std::get<0>(container));
 		RE::FormID formID(std::get<1>(container));
 		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
 		if (chestForm)
 		{
-			REL_MESSAGE("CONT {}:0x{:08x} added to Mod Blacklist", espName, chestForm->GetFormID());
+			REL_MESSAGE("CONT {}:0x{:08x} added to Blacklist", espName, chestForm->GetFormID());
 			m_containerBlackList.insert(chestForm);
 		}
 		else
 		{
-			DBG_MESSAGE("CONT {}/0x{:08x} for mod not found", espName, formID);
+			DBG_MESSAGE("CONT {}/0x{:08x} not found", espName, formID);
 		}
 	}
 
@@ -492,11 +567,11 @@ void DataCase::ExcludeVendorContainers()
 			DBG_MESSAGE("Skip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 			continue;
 		}
-		// does container have VendorGold?
+		// does container have any sentinel Vendor Item?
 		bool matched(false);
 		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> RE::BSContainer::ForEachResult {
 			auto entryContents(entry.obj);
-			if (vendorGoldForms.find(entryContents->As<RE::TESLevItem>()) != vendorGoldForms.cend())
+			if (vendorSentinels.find(entryContents->As<RE::TESLevItem>()) != vendorSentinels.cend())
 			{
 				REL_MESSAGE("Block Vendor Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 				matched = true;
@@ -506,7 +581,7 @@ void DataCase::ExcludeVendorContainers()
 			}
 			else
 			{
-				DBG_MESSAGE("{}/0x{:08x} in Container {}/0x{:08x} not VendorGold", entryContents->GetName(), entryContents->GetFormID(),
+				DBG_MESSAGE("{}/0x{:08x} in Container {}/0x{:08x} not sentinel Vendor Item", entryContents->GetName(), entryContents->GetFormID(),
 					container->GetName(), container->GetFormID());
 			}
 			// continue the scan
