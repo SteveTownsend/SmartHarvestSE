@@ -147,6 +147,12 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR* refr, const bo
 		return Lootability::FloraHarvested;
 	}
 
+	if (DataCase::GetInstance()->IsSyntheticFloraHarvested(refr))
+	{
+		DBG_VMESSAGE("skip REFR 0x{:08x} to harvested synthetic Flora {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+		return Lootability::SyntheticFloraHarvested;
+	}
+
 	if (ScanGovernor::Instance().IsLockedForHarvest(refr))
 	{
 		DBG_VMESSAGE("skip REFR, harvest pending {}/0x{:08x}", refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);

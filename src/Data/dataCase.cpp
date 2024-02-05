@@ -254,6 +254,12 @@ void DataCase::CategorizeByActivationVerb()
 						m_resourceTypeByOreVein.insert(std::make_pair(activator, resourceType));
 						REL_VMESSAGE("{}/0x{:08x} has ResourceType {}", formName, activator->GetFormID(), PrintResourceType(resourceType));
 					}
+					// Creation Club and others use Harvest for ACTI. We bucket as flora but need custom harvesting logic, like critter.
+					else if (activatorType == ObjectType::flora)
+					{
+						m_syntheticFlora.insert(activator);
+						REL_VMESSAGE("ACTI {}/0x{:08x} must be treated as flora", formName, activator->GetFormID());
+					}
 				}
 				continue;
 			}
@@ -842,8 +848,12 @@ void DataCase::AddFirehose(const RE::TESForm* form)
 
 void DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
 {
+	if (!refr
+#if NDEBUG && !defined(_FULL_LOGGING)
 	// dynamic forms must never be recorded as their FormID may be reused
-	if (!refr || refr->IsDynamicForm())
+	 || refr->IsDynamicForm()
+#endif	 
+	 )
 		return;
 	BlockReferenceByID(refr->GetFormID(), reason);
 }
@@ -868,11 +878,13 @@ Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
 void DataCase::ResetBlockedReferences(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
+	// settings change may make things lootable
 	m_blockRefr.clear();
 	if (gameReload)
 	{
 		DBG_MESSAGE("Reset entire list of blocked REFRs");
 		ForgetFirehoseSources();
+		m_syntheticFloraHarvested.clear();
 		return;
 	}
 	// Volcanic dig sites from Fossil Mining and firehose item sources are only cleared on game reload,
@@ -907,9 +919,11 @@ bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+#if NDEBUG && !defined(_FULL_LOGGING)
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (refr->IsDynamicForm())
 		return false;
+#endif	 
 	RecursiveLockGuard guard(m_blockListLock);
 	return (m_blacklistRefr.insert(refr->GetFormID())).second;
 }
@@ -918,9 +932,11 @@ bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
+#if NDEBUG && !defined(_FULL_LOGGING)
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (refr->IsDynamicForm())
 		return false;
+#endif	 
 	RecursiveLockGuard guard(m_blockListLock);
 	return m_blacklistRefr.contains(refr->GetFormID());
 }
@@ -1032,9 +1048,11 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 {
 	if (!form)
 		return false;
-	// dynamic forms must never be recorded as they are not consistent across games, or FormID may be reused if ephemeral
+#if NDEBUG && !defined(_FULL_LOGGING)
+	// dynamic forms must never be recorded as their FormID may be reused
 	if (form->IsDynamicForm())
 		return false;
+#endif	 
 	RecursiveLockGuard guard(m_blockListLock);
 	BlockForm(form, reason);
 	return (m_permanentBlockedForms.insert({ form, reason })).second;
@@ -1073,6 +1091,42 @@ void DataCase::RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable)
 	ObjectType objectType(ConsumableObjectType<RE::AlchemyItem>(consumable));
 	REL_MESSAGE("Register player-created ALCH {}/0x{:08x} as {}", consumable->GetFullName(), consumable->GetFormID(), GetObjectTypeName(objectType));
 	SetObjectTypeForForm(consumable, objectType);
+}
+
+[[nodiscard]] bool DataCase::IsSyntheticFlora(const RE::TESBoundObject* boundObject) const
+{
+	const RE::TESObjectACTI* activator(boundObject->As<RE::TESObjectACTI>());
+	return activator && m_syntheticFlora.contains(activator);
+}
+
+[[nodiscard]] bool DataCase::IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const
+{
+	if (candidate)
+	{
+		auto harvestedState(m_syntheticFloraHarvested.find(candidate));
+		if (harvestedState != m_syntheticFloraHarvested.end())
+		{
+			// reset after a sensible interval so we can check if the synthetic flora script has respawned the yielded loot
+			constexpr float SyntheticFloraResetInterval(5.0);
+			float elapsed(RE::Calendar::GetSingleton()->GetCurrentGameTime() - harvestedState->second.second);
+			if (elapsed > SyntheticFloraResetInterval)
+			{
+				REL_MESSAGE("Reset Harvested flag for REFR 0x{:08x} synthetic Flora 0x{:08x} after {:.2f} game-days",
+					candidate->GetFormID(), candidate->GetBaseObject()->GetFormID(), elapsed);
+				harvestedState->second.first = false;
+			}
+			return harvestedState->second.first;
+		}
+	}
+	return false;
+}
+
+void DataCase::SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested)
+{
+	if (candidate)
+	{
+		m_syntheticFloraHarvested[candidate] = {isHarvested, RE::Calendar::GetSingleton()->GetCurrentGameTime()};
+	}
 }
 
 bool DataCase::SetObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType)
@@ -1683,54 +1737,6 @@ template <>
 ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE*)
 {
 	return ObjectType::food;
-}
-
-void LeveledItemCategorizer::CategorizeContents()
-{
-	ProcessContentsAtLevel(m_rootItem);
-}
-
-LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem) :
-	m_rootItem(rootItem)
-{
-	m_lvliSeen.insert(m_rootItem);
-}
-
-LeveledItemCategorizer::~LeveledItemCategorizer()
-{
-}
-
-void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
-{
-	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
-	{
-		RE::TESForm* itemForm(leveledObject.form);
-		if (!itemForm)
-			continue;
-		// Handle nesting of leveled items
-		RE::TESLevItem* leveledItemForm(itemForm->As<RE::TESLevItem>());
-		if (leveledItemForm)
-		{
-			// only process LVLI if not already seen
-			if (m_lvliSeen.insert(leveledItemForm).second)
-			{
-				ProcessContentsAtLevel(leveledItemForm);
-			}
-			continue;
-		}
-		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
-		if (itemType != ObjectType::unknown)
-		{
-			RE::TESBoundObject* boundItem = itemForm->As<RE::TESBoundObject>();
-			if (!boundItem)
-			{
-				REL_WARNING("LVLI 0x{:08x} has content leaf {}/0x{:08x} that is not TESBoundObject", m_rootItem->GetFormID(),
-					itemForm->GetName(), itemForm->GetFormID());
-				return;
-			}
-			ProcessContentLeaf(boundItem, itemType);
-		}
-	}
 }
 
 DataCase::ProduceFormCategorizer::ProduceFormCategorizer(

@@ -598,6 +598,7 @@ enum class Lootability {
 	ReferenceIsPlayer,
 	ReferenceIsLiveActor,
 	FloraHarvested,
+	SyntheticFloraHarvested,
 	PendingHarvest,
 	ContainerLootedAlready,
 	DynamicReferenceLootedAlready,

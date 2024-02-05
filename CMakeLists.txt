@@ -50,6 +50,8 @@ set(sources
         src/Data/dataCase.h
         src/Data/iniSettings.cpp
         src/Data/iniSettings.h
+        src/Data/LeveledItemCategorizer.cpp
+        src/Data/LeveledItemCategorizer.h
         src/Data/LoadOrder.cpp
         src/Data/LoadOrder.h
         src/Data/SettingsCache.cpp

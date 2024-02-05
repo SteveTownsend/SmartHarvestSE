@@ -73,6 +73,9 @@ LeveledItem FOS_LItemFossilTierOneyum
 LeveledItem FOS_LItemFossilTierOneVolcanicDigSite
 LeveledItem FOS_LItemFossilTierTwoVolcanic
 
+bool hasCCSaintsAndSeducers = False
+bool hasCCTheCause = False
+
 ; supported Effect Shaders
 EffectShader redShader          ; red
 EffectShader flamesShader       ; flames
@@ -1340,6 +1343,67 @@ int Function SupportedCritterActivateCount(ObjectReference target)
     return 0
 EndFunction
 
+Function NotifyActivated(int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted)
+    if (notify)
+        string activateMsg = none
+        if count >= 2
+            string translation = GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG")
+            
+            string[] targets = New String[2]
+            targets[0] = "{ITEMNAME}"
+            targets[1] = "{COUNT}"
+
+            string[] replacements = New String[2]
+            replacements[0] = baseName
+            replacements[1] = count as string
+            
+            activateMsg = ReplaceArray(translation, targets, replacements)
+        else
+            string translation = GetTranslation("$SHSE_ACTIVATE_MSG")
+            activateMsg = Replace(translation, "{ITEMNAME}", baseName)
+        endif
+        if (activateMsg)
+            Debug.Notification(activateMsg)
+        endif
+    endif
+    if isWhitelisted
+        string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseName)
+        if whitelistMsg
+            Debug.Notification(whitelistMsg)
+        endif
+    endIf
+    UnlockHarvest(refrID, baseID, baseName, silent)
+EndFunction
+
+Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
+    bool notify = false
+    ; capture values now, dynamic REFRs can become invalid before we need them
+    int refrID = akTarget.GetFormID()
+    int baseID = akTarget.GetBaseObject().GetFormID()
+    Form baseForm = akTarget.GetBaseObject()
+    bool activated = False
+
+    ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
+    if (!akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget))
+        activated = True
+        if ActivateEx(akTarget, thisPlayer, true, 1)
+            notify = !silent
+            if count >= 2
+                ; work round for ObjectReference.Activate() known issue
+                ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
+                int toGet = count - 1
+                thisPlayer.AddItem(itemForm, toGet, true)
+                ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
+            endIf
+        endif
+        if collectible
+            RecordItem(itemForm, itemSourceLoose, itemType)
+        endIf
+        SetHarvested(akTarget)
+        ;DebugTrace("OnHarvestSyntheticFlora:Activated:" + akTarget)
+    endif
+    NotifyActivated(refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+endEvent
 
 Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
@@ -1347,11 +1411,12 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
     int refrID = akTarget.GetFormID()
     int baseID = akTarget.GetBaseObject().GetFormID()
     Form baseForm = akTarget.GetBaseObject()
+    bool activated = False
 
-    ;DebugTrace("OnHarvest:Run: target " + akTarget + ", base " + itemForm) 
-    ;DebugTrace(", item type: " + itemType + ", do not notify: " + silent + ")
+    ;DebugTrace("OnHarvest: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
 
     if (IsBookObject(itemType))
+        activated = True;
         thisPlayer.AddItem(akTarget, count, true)
         if collectible
             RecordItem(itemForm, itemSourceLoose, itemType)
@@ -1366,11 +1431,15 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             if logEvent
                 DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
             endIf
-            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && ActivateEx(akTarget, thisPlayer, true, 1)
-                notify = !silent
+            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle")
+                activated = True;
+                if ActivateEx(akTarget, thisPlayer, true, 1)
+                    notify = !silent
+                endif
             endIf
         endIf
     elseif (!akTarget.IsActivationBlocked())
+        activated = True;
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
             ActivateEx(akTarget, thisPlayer, silent, 1)
 
@@ -1404,38 +1473,9 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
         if collectible
             RecordItem(itemForm, itemSourceLoose, itemType)
         endIf
-        ;DebugTrace("OnHarvest:Activated:" + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
+        ;DebugTrace("OnHarvest:Activated:" + akTarget)
     endif
-    if (notify)
-        string activateMsg = none
-        if (count >= 2)
-            string translation = GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG")
-            
-            string[] targets = New String[2]
-            targets[0] = "{ITEMNAME}"
-            targets[1] = "{COUNT}"
-
-            string[] replacements = New String[2]
-            replacements[0] = baseName
-            replacements[1] = count as string
-            
-            activateMsg = ReplaceArray(translation, targets, replacements)
-        else
-            string translation = GetTranslation("$SHSE_ACTIVATE_MSG")
-            activateMsg = Replace(translation, "{ITEMNAME}", baseName)
-        endif
-        if (activateMsg)
-            Debug.Notification(activateMsg)
-        endif
-    endif
-    if isWhitelisted
-        string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseName)
-        if whitelistMsg
-            Debug.Notification(whitelistMsg)
-        endif
-    endIf
-    
-    UnlockHarvest(refrID, baseID, baseName, silent)
+    NotifyActivated(refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
 
 ; NPC looting appears to have thread safety issues requiring script to perform
@@ -1455,10 +1495,38 @@ endEvent
 
 Event OnGetProducerLootable(ObjectReference akTarget)
     ;DebugTrace("OnGetProducerLootable " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
+    ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
+    Form baseForm = akTarget.GetBaseObject()
+    DLC1TrapPoisonBloom poisonBloom = akTarget as DLC1TrapPoisonBloom
+    if poisonBloom
+        SetLootableForProducer(baseForm, poisonBloom.myIngredient)
+        return
+    endif
+    ; handle Saints and Seducers
+    if hasCCSaintsAndSeducers
+        ccBGSSSE025_HarvestableActivator saintsFlora = akTarget as ccBGSSSE025_HarvestableActivator
+        if saintsFlora
+            ; Behaves differently if Rare Curios is active
+            if saintsFlora.useRareCuriosItem as Bool && saintsFlora.isRareCuriosLoaded.GetValueInt() == 1
+                SetLootableForProducer(baseForm, saintsFlora.leveledRareCuriosItem as Form)
+            else
+                SetLootableForProducer(baseForm, saintsFlora.itemToHarvest as Form)
+            endif
+            return
+        endif
+    endif
+    ; handle The Cause
+    if hasCCTheCause
+        ccBGSSSE067_HarradaBehaviorScript causeFlora = akTarget as ccBGSSSE067_HarradaBehaviorScript
+        if causeFlora
+            SetLootableForProducer(baseForm, causeFlora.ccBGSSSE067_IngredientHarrada)
+            return
+        endif
+    endif
+    ; test for critters after checking all the scripted flora
     if SupportedCritterActivateCount(akTarget) == 0
         return
     endIf
-    Form baseForm = akTarget.GetBaseObject()
     Critter thisCritter = akTarget as Critter
     if thisCritter
         if thisCritter.nonIngredientLootable
@@ -1506,6 +1574,36 @@ Event OnGetProducerLootable(ObjectReference akTarget)
         endIf
     endIf
 endEvent
+
+bool Function IsInHarvestableState(ObjectReference akTarget)
+    ;DebugTrace("IsInHarvestableState: Target " + akTarget + ", Base " + akTarget.GetBaseObject())
+    ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
+    Form baseForm = akTarget.GetBaseObject()
+    DLC1TrapPoisonBloom poisonBloom = akTarget as DLC1TrapPoisonBloom
+    if poisonBloom
+        ;DebugTrace("DLC1TrapPoisonBloom State=" + poisonBloom.getState())
+        String bloomState = poisonBloom.getState()
+        return bloomState != "Done" && bloomState != "Firing" && bloomState != "Disarmed"
+    endif
+    ; handle Saints and Seducers
+    if hasCCSaintsAndSeducers
+        ccBGSSSE025_HarvestableActivator saintsFlora = akTarget as ccBGSSSE025_HarvestableActivator
+        if saintsFlora
+            ;DebugTrace("ccBGSSSE025_HarvestableActivator State=" + saintsFlora.getState())
+            return saintsFlora.getState() == "Ready"
+        endif
+    endif
+    ; handle The Cause
+    if hasCCTheCause
+        ccBGSSSE067_HarradaBehaviorScript causeFlora = akTarget as ccBGSSSE067_HarradaBehaviorScript
+        if causeFlora
+            ;DebugTrace("ccBGSSSE067_HarradaBehaviorScript State=" + causeFlora.getState())
+            return causeFlora.getState() == "IdleReadyUnharvested"
+        endif
+    endif
+    ;DebugTrace("IsInHarvestableState not determined for " + akTarget)
+    return False
+EndFunction
 
 Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     EffectShader effShader
@@ -1733,6 +1831,14 @@ Event OnGameReady()
         FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem
         FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
     endif
+
+    ; Check for CC Saints and Seducers, testing form injected to Update.esm
+    hasCCSaintsAndSeducers = Game.GetFormFromFile(0x308c, "Update.esm") as Activator != None
+    AlwaysTrace("CC Saints and Seducers present = " + hasCCSaintsAndSeducers)
+
+    ; Check for CC Saints and Seducers, testing form injected to Update.esm
+    hasCCTheCause = Game.GetFormFromFile(0x3157, "Update.esm") as Activator != None
+    AlwaysTrace("CC The Cause present = " + hasCCTheCause)
 
     ;update Hearthfire Extended index in load order, to handle Apiary ACTI
     HearthfireExtendedModIndex = Game.GetModByName("hearthfireextended.esp")

@@ -298,9 +298,32 @@ namespace papyrus
 		INIFile::GetInstance()->SaveFile();
 	}
 
-	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* critter, RE::TESForm* lootable)
+	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* producer, RE::TESForm* lootable)
 	{
-		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable ? lootable->As<RE::TESBoundObject>() : nullptr);
+		if (!lootable)
+		{
+			shse::ProducerLootables::Instance().SetLootableForProducer(producer, nullptr);
+			return;
+		}
+		REL_MESSAGE("Store Lootable 0x{:08x} for producer 0x{:08x}", lootable->GetFormID(), producer->GetFormID());
+		RE::TESLevItem* leveledItem( lootable->As<RE::TESLevItem>());
+		if (leveledItem)
+		{
+			shse::ProducerLootables::Instance().ResolveLootableForProducer(producer, leveledItem);
+			return;
+		}
+		RE::TESBoundObject* item( lootable->As<RE::TESBoundObject>());
+		if (item)
+		{
+			shse::ProducerLootables::Instance().SetLootableForProducer(producer, item);
+			return;
+		}
+		REL_WARNING("Lootable 0x{:08x} for producer 0x{:08x} has invalid Form Type", producer->GetFormID(), lootable->GetFormID());
+	}
+
+	void SetHarvested(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		shse::DataCase::GetInstance()->SetSyntheticFloraHarvested(refr, true);
 	}
 
 	void PrepareSPERGMining(RE::StaticFunctionTag*)
@@ -908,6 +931,7 @@ namespace papyrus
 		a_vm->RegisterFunction("SaveIniFile", SHSE_PROXY, papyrus::SaveIniFile);
 
 		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
+		a_vm->RegisterFunction("SetHarvested", SHSE_PROXY, papyrus::SetHarvested);
 		a_vm->RegisterFunction("PrepareSPERGMining", SHSE_PROXY, papyrus::PrepareSPERGMining);
 		a_vm->RegisterFunction("PostprocessSPERGMining", SHSE_PROXY, papyrus::PostprocessSPERGMining);
 		a_vm->RegisterFunction("PeriodicReminder", SHSE_PROXY, papyrus::PeriodicReminder);

@@ -22,29 +22,12 @@ http://www.fsf.org/licensing/licenses
 #include <mutex>
 #include <chrono>
 
+#include "Data/LeveledItemCategorizer.h"
 #include "Looting/ProducerLootables.h"
 #include "Looting/objects.h"
 
 namespace shse
 {
-
-class LeveledItemCategorizer
-{
-public:
-	LeveledItemCategorizer(const RE::TESLevItem* rootItem);
-	virtual ~LeveledItemCategorizer();
-	void CategorizeContents();
-
-private:
-	void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
-
-protected:
-	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) = 0;
-
-	const RE::TESLevItem* m_rootItem;
-	// prevent infinite recursion
-	std::unordered_set<const RE::TESLevItem*> m_lvliSeen;
-};
 
 class DataCase
 {
@@ -152,6 +135,10 @@ public:
 	static constexpr RE::FormID Gold = 0x0F;
 	static constexpr RE::FormID WispCore = 0x10EB2A;
 	static constexpr RE::FormID RollOfPaper = 0x33761;
+
+	bool IsSyntheticFlora(const RE::TESBoundObject* boundObject) const;
+	bool IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const;
+	void SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested);
 
 private:
 	std::unordered_map<std::string, std::string> m_translations;
@@ -332,6 +319,9 @@ private:
 	std::unordered_map<std::string, ObjectType> m_objectTypeByActivationVerb;
 	mutable std::unordered_set<std::string> m_unhandledActivationVerbs;
 	std::unordered_map<const RE::TESObjectACTI*, ResourceType> m_resourceTypeByOreVein;
+	std::unordered_set<const RE::TESObjectACTI*> m_syntheticFlora;
+	// Mirror the kHarvested check we get for free on FLOR/TREE records - store REFR state and game-time-of-record
+	mutable std::unordered_map<const RE::TESObjectREFR*, std::pair<bool, float>> m_syntheticFloraHarvested;
 
 	ObjectType GetObjectTypeForActivationText(const std::string& verb) const;
 

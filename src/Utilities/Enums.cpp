@@ -73,6 +73,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ReferenceIsPlayer : return "ReferenceIsPlayer";
 	case Lootability::ReferenceIsLiveActor : return "ReferenceIsLiveActor";
 	case Lootability::FloraHarvested : return "FloraHarvested";
+	case Lootability::SyntheticFloraHarvested : return "SyntheticFloraHarvested";
 	case Lootability::PendingHarvest : return "PendingHarvest";
 	case Lootability::ContainerLootedAlready : return "ContainerLootedAlready";
 	case Lootability::DynamicReferenceLootedAlready : return "DynamicReferenceLootedAlready";

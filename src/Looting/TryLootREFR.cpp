@@ -64,22 +64,27 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	{
 		LootableREFR refrEx(m_candidate, m_targetType);
 		ObjectType objType = refrEx.GetObjectType();
+		ObjectType originalType = objType;
 		m_typeName = refrEx.GetTypeName();
 		// Various form types contain an ingredient or FormList that is the final lootable item
+		bool isSyntheticFlora(DataCase::GetInstance()->IsSyntheticFlora(m_candidate->GetBaseObject()));
 		if (!dryRun && refrEx.IsHarvestable())
 		{
 			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
+				// process other checks based on what is yielded
+				refrEx.SetLootable(lootable);
+				objType = refrEx.GetObjectType();
 				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
 					lootable->GetName(), lootable->formID, GetObjectTypeName(objType));
 			}
-			// resolve here if critter and not yet known
-			else if (refrEx.IsCritter())
+			// resolve here if critter or other special-case scripted Producer, ie. synthetic Flora, and not yet known
+			else if (refrEx.IsCritter() || isSyntheticFlora)
 			{
-				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
+				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve state is recorded using nullptr,
 				// only trigger if not already pending
-				DBG_VMESSAGE("resolve critter {}/0x{:08x} to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("resolve critter/scripted producer {}/0x{:08x} to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				if (ProducerLootables::Instance().SetLootableForProducer(m_candidate->GetBaseObject(), nullptr))
 				{
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
@@ -270,9 +275,10 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 
 		// Check if this is an item harvestable in player home - this setting ignores player-ownership for flora, critters etc
+		// The original type is used here as objType now represents the type yielded, in the case of critter and flora
 		bool atHome(LocationTracker::Instance().IsPlayerAtHome());
 		bool allowHarvestAtHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse() &&
-			refrEx.IsItemLootableInPlayerHouse(objType));
+			refrEx.IsItemLootableInPlayerHouse(originalType));
 
 		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
 		Lootability forbidden(atHome && allowHarvestAtHome ?
@@ -297,10 +303,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
 		// Harvesting in player house is a special-case.
+		// The original type is used here, as objType now represents the type yielded, in the case of critter and flora
 		bool whitelistedPlace(LocationTracker::Instance().IsPlayerInWhitelistedPlace());
 		if ((!atHome || !allowHarvestAtHome) && !whitelistedPlace &&
 			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
-			!refrEx.IsItemLootableInPopulationCenter(objType))
+			!refrEx.IsItemLootableInPopulationCenter(originalType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
 			result = Lootability::PopulousLocationRestrictsLooting;
@@ -357,7 +364,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (!skipLooting)
 		{
 			// check if final output of harvest is lootable
-			lootingType = forceIngredientLoot ? LootingType::LootAlwaysNotify : SettingsCache::Instance().ObjectLootingType(objType);
+			// The original type is used here, as objType now represents the type yielded, in the case of critter and flora
+			// We distinguish critter/flora from their yielded INGRs to respect player's aesthetic preference
+			lootingType = forceIngredientLoot ? LootingType::LootAlwaysNotify : SettingsCache::Instance().ObjectLootingType(originalType);
 			if (lootingType == LootingType::LeaveBehind)
 			{
 				if (!dryRun)
@@ -469,17 +478,29 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
 				return Lootability::InventoryLimitsEnforced;
 			}
-			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
-				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
-				GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
 			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
-			EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
-				isSilent,
-				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
-			if (isFirehose)
+			// Here we pass along the yieled item ObjectType in lieu of the REFR's. In the case of Producer ACTIs, this ensures
+			// Collections are properly handled at the afar end of the harvesting pipeline.
+			if (isSyntheticFlora)
 			{
-				// do not revisit over-generous sources any time soon
-				DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+				DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for Synthetic Flora REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
+				EventPublisher::Instance().TriggerHarvestSyntheticFlora(m_candidate, refrEx.GetTarget(), objType, itemCount,
+					isSilent, collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
+			}
+			else
+			{
+				DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
+				EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
+					isSilent, collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
+				if (isFirehose)
+				{
+					// do not revisit over-generous sources any time soon
+					DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+				}
 			}
 		}
 	}
