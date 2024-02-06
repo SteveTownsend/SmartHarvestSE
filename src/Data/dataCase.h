@@ -319,6 +319,7 @@ private:
 	std::unordered_map<std::string, ObjectType> m_objectTypeByActivationVerb;
 	mutable std::unordered_set<std::string> m_unhandledActivationVerbs;
 	std::unordered_map<const RE::TESObjectACTI*, ResourceType> m_resourceTypeByOreVein;
+	// Many scripted ACTI are categorized as flora but require special handling
 	std::unordered_set<const RE::TESObjectACTI*> m_syntheticFlora;
 	// Mirror the kHarvested check we get for free on FLOR/TREE records - store REFR state and game-time-of-record
 	mutable std::unordered_map<const RE::TESObjectREFR*, std::pair<bool, float>> m_syntheticFloraHarvested;
@@ -486,12 +487,15 @@ private:
 		return matches;
 	}
 
-	void IncludeFossilMiningExcavation();
+	void IncludeSeptimSpecialCases();
+	void IncludeCoinReplacerRedux();
 	void IncludeCorpseCoinage();
-	void IncludeHearthfireExtendedApiary();
-	void IncludePileOfGold();
 	void IncludeBSBruma();
 	void IncludeToolsOfKagrenac();
+	void IncludeCOIN();
+
+	void IncludeFossilMiningExcavation();
+	void HandleHearthfireExtendedApiary();
 
 	DataCase(void);
 };

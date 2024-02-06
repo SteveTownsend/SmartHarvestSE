@@ -682,7 +682,7 @@ void DataCase::IncludeFossilMiningExcavation()
 	}
 }
 
-void DataCase::IncludePileOfGold()
+void DataCase::IncludeSeptimSpecialCases()
 {
 	static std::string espName("Dragonborn.esm");
 	static std::vector<RE::FormID> pilesOfGold({ 0x18486, 0x18488 });
@@ -691,9 +691,18 @@ void DataCase::IncludePileOfGold()
 		RE::TESForm* goldPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(goldPileFormID, espName));
 		if (goldPileForm)
 		{
-			SetObjectTypeForForm(goldPileForm, ObjectType::septims);
+			ForceObjectTypeForForm(goldPileForm, ObjectType::septims);
 		}
 	}
+	IncludeCoinReplacerRedux();
+	IncludeCorpseCoinage();
+	IncludeBSBruma();
+	IncludeToolsOfKagrenac();
+	IncludeCOIN();
+}
+
+void DataCase::IncludeCoinReplacerRedux()
+{
 	// Coin Replacer Redux adds similar
 	static std::string crrName("SkyrimCoinReplacerRedux.esp");
 	static std::vector<RE::FormID> pilesOfCoin({ 0x800, 0x801, 0x802 });
@@ -702,7 +711,7 @@ void DataCase::IncludePileOfGold()
 		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
 		if (coinPileForm)
 		{
-			SetObjectTypeForForm(coinPileForm, ObjectType::septims);
+			ForceObjectTypeForForm(coinPileForm, ObjectType::septims);
 		}
 	}
 }
@@ -714,21 +723,7 @@ void DataCase::IncludeCorpseCoinage()
 	RE::TESForm* corpseCoinageForm(RE::TESDataHandler::GetSingleton()->LookupForm(corpseCoinageFormID, espName));
 	if (corpseCoinageForm)
 	{
-		SetObjectTypeForForm(corpseCoinageForm, ObjectType::septims);
-	}
-}
-
-void DataCase::IncludeHearthfireExtendedApiary()
-{
-	static std::string espName("hearthfireextended.esp");
-	static RE::FormID apiaryFormID(0xd62);
-	RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
-	if (apiaryForm)
-	{
-		// force object type - this was already categorized incorrectly using Activation Verb
-		ForceObjectTypeForForm(apiaryForm, ObjectType::critter);
-		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
-		AddFirehose(apiaryForm);
+		ForceObjectTypeForForm(corpseCoinageForm, ObjectType::septims);
 	}
 }
 
@@ -739,7 +734,7 @@ void DataCase::IncludeBSBruma()
 	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
 	if (ayleidGoldForm)
 	{
-		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+		ForceObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
 	}
 }
 
@@ -750,7 +745,45 @@ void DataCase::IncludeToolsOfKagrenac()
 	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
 	if (ayleidGoldForm)
 	{
-		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+		ForceObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+	}
+}
+
+void DataCase::IncludeCOIN()
+{
+	static std::string crrName("C.O.I.N.esp");
+	static std::vector<RE::FormID> pilesOfInterestingCoin({ 0x810, 0x9c6 });
+	for (const auto coinPileFormID : pilesOfInterestingCoin)
+	{
+		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
+		if (coinPileForm)
+		{
+			ForceObjectTypeForForm(coinPileForm, ObjectType::septims);
+		}
+	}
+	static std::string injectedName("Update.esm");
+	static std::vector<RE::FormID> interestingCoins({
+		0xde5012, 0xde5013, 0xde5014, 0xde5015, 0xde5016, 0xde5017,
+	 	0xde5018, 0xde5019, 0xde5020, 0xde5021, 0xde5022, 0xde5023, 0xde5024 });
+	for (const auto coinFormID : interestingCoins)
+	{
+		RE::TESForm* coinForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinFormID, injectedName));
+		if (coinForm)
+		{
+			ForceObjectTypeForForm(coinForm, ObjectType::septims);
+		}
+	}
+}
+
+void DataCase::HandleHearthfireExtendedApiary()
+{
+	static std::string espName("hearthfireextended.esp");
+	static RE::FormID apiaryFormID(0xd62);
+	const RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
+	if (apiaryForm->Is(RE::FormType::Activator))
+	{
+		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
+		AddFirehose(apiaryForm);
 	}
 }
 
@@ -1330,8 +1363,12 @@ void DataCase::CategorizeLootables()
 	REL_MESSAGE("*** LOAD *** Categorize by Keyword: MISC");
 	CategorizeByKeyword<RE::TESObjectMISC>();
 
+	// force-categorize all special cases yielding gold or coins
+	IncludeSeptimSpecialCases();
+
 	// Classes inheriting from TESProduceForm may have an ingredient, categorized as the appropriate consumable
 	// This 'ingredient' can be MISC (e.g. Coin Replacer Redux Coin Purses) so those must be done first, as above by keyword
+	// or forcing as septims
 	REL_MESSAGE("*** LOAD *** Categorize by Ingredient: FLOR");
 	CategorizeByIngredient<RE::TESFlora>();
 
@@ -1387,17 +1424,10 @@ void DataCase::HandleExceptions()
 	RecordOffLimitsLocations();
 	RecordPlayerHouseCells();
 
-	// whitelist Dragonborn Pile of Gold
-	IncludePileOfGold();
 	// whitelist Fossil sites
 	IncludeFossilMiningExcavation();
-	// whitelist CorpseToCoinage producer
-	IncludeCorpseCoinage();
 	// whitelist Hearthfire Extended Apiary
-	IncludeHearthfireExtendedApiary();
-	// categorize custom Gold forms
-	IncludeBSBruma();
-	IncludeToolsOfKagrenac();
+	HandleHearthfireExtendedApiary();
 	// exclude auto-mining if incompatible mods loaded
 	CheckAutoMiningOK();
 }
@@ -1681,7 +1711,12 @@ void DataCase::CategorizeStatics()
 	// Map well-known forms to ObjectType
 	SetObjectTypeForFormID(LockPick, ObjectType::lockpick);
 	SetObjectTypeForFormID(Gold, ObjectType::septims);
-	SetObjectTypeForFormID(WispCore, ObjectType::critter);
+	auto wispCoreForm(RE::TESDataHandler::GetSingleton()->LookupForm(WispCore, "Skyrim.esm"));
+	if (wispCoreForm->Is(RE::FormType::Activator))
+	{
+		ForceObjectTypeForForm(wispCoreForm, ObjectType::flora);
+		m_syntheticFlora.insert(wispCoreForm->As<RE::TESObjectACTI>());
+	}
 	// WACCF makes this a Scroll. It's not a Scroll.
 	SetObjectTypeForFormID(RollOfPaper, ObjectType::clutter);
 

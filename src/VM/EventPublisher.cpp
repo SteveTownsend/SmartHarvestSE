@@ -56,6 +56,7 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onResetCarryWeight("OnResetCarryWeight"),
 	m_onHarvest("OnHarvest"),
 	m_onHarvestSyntheticFlora("OnHarvestSyntheticFlora"),
+	m_onHarvestCritter("OnHarvestCritter"),
 	m_onMining("OnMining"),
 	m_onLootFromNPC("OnLootFromNPC"),
 	m_onFlushAddedItems("OnFlushAddedItems"),
@@ -124,6 +125,7 @@ void EventPublisher::HookUp()
 	m_onObjectGlow.Register(m_eventTarget);
 	m_onHarvest.Register(m_eventTarget);
 	m_onHarvestSyntheticFlora.Register(m_eventTarget);
+	m_onHarvestCritter.Register(m_eventTarget);
 	m_onMining.Register(m_eventTarget);
 	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
@@ -162,12 +164,21 @@ void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const RE::TESBoundO
 }
 
 void EventPublisher::TriggerHarvestSyntheticFlora(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount,
-	const bool isSilent, const bool collectible, const float ingredientCount, const bool isWhitelisted)
+	const bool isSilent, const bool collectible, const bool isWhitelisted)
 {
 	// We always lock the REFR from more harvesting before firing this
 	m_onHarvestSyntheticFlora.SendEvent(refr, const_cast<RE::TESBoundObject*>(lootable), lootable->GetName(), static_cast<int>(objType), itemCount,
-		isSilent, collectible, ingredientCount, isWhitelisted);
+		isSilent, collectible, isWhitelisted);
 }
+
+void EventPublisher::TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount,
+	const bool isSilent, const bool collectible, const bool isWhitelisted)
+{
+	// We always lock the REFR from more harvesting before firing this
+	m_onHarvestCritter.SendEvent(refr, const_cast<RE::TESBoundObject*>(lootable), lootable->GetName(), static_cast<int>(objType), itemCount,
+		isSilent, collectible, isWhitelisted);
+}
+
 void EventPublisher::TriggerFlushAddedItems()
 {
 	m_onFlushAddedItems.SendEvent();

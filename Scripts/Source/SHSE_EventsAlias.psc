@@ -75,6 +75,7 @@ LeveledItem FOS_LItemFossilTierTwoVolcanic
 
 bool hasCCSaintsAndSeducers = False
 bool hasCCTheCause = False
+ccBGSSSE001_DialogueDetectScript ccFishingDialogue = None
 
 ; supported Effect Shaders
 EffectShader redShader          ; red
@@ -1329,53 +1330,54 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         ; unrecognized 'Mine' verb target - print message for 'nearby manual lootable' if configured to do so
         NotifyManualLootItem(akMineable)
     endif
-
 EndEvent
 
-int Function SupportedCritterActivateCount(ObjectReference target)
-    if target as Critter || target as FXFakeCritterScript || target as WispCoreScript
-        return 1
-    endIf
+int Function SyntheticFloraActivateCount(ObjectReference target)
     if HearthfireExtendedModIndex != 255 && target as KmodApiaryScript
         return 5
     endIf
-    ; 'not a critter' sentinel
-    return 0
+    return 1
 EndFunction
 
-Function NotifyActivated(int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted)
-    if (notify)
-        string activateMsg = none
-        if count >= 2
-            string translation = GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG")
-            
-            string[] targets = New String[2]
-            targets[0] = "{ITEMNAME}"
-            targets[1] = "{COUNT}"
+Function NotifyActivated(Form itemForm, int itemType, bool collectible, int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted)
+    if activated
+        if (notify)
+            string activateMsg = none
+            if count >= 2
+                string translation = GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG")
+                
+                string[] targets = New String[2]
+                targets[0] = "{ITEMNAME}"
+                targets[1] = "{COUNT}"
 
-            string[] replacements = New String[2]
-            replacements[0] = baseName
-            replacements[1] = count as string
-            
-            activateMsg = ReplaceArray(translation, targets, replacements)
-        else
-            string translation = GetTranslation("$SHSE_ACTIVATE_MSG")
-            activateMsg = Replace(translation, "{ITEMNAME}", baseName)
+                string[] replacements = New String[2]
+                replacements[0] = baseName
+                replacements[1] = count as string
+                
+                activateMsg = ReplaceArray(translation, targets, replacements)
+            else
+                string translation = GetTranslation("$SHSE_ACTIVATE_MSG")
+                activateMsg = Replace(translation, "{ITEMNAME}", baseName)
+            endif
+            if (activateMsg)
+                Debug.Notification(activateMsg)
+            endif
         endif
-        if (activateMsg)
-            Debug.Notification(activateMsg)
-        endif
+        if isWhitelisted
+            string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseName)
+            if whitelistMsg
+                Debug.Notification(whitelistMsg)
+            endif
+        endIf
+        if collectible
+            RecordItem(itemForm, itemSourceLoose, itemType)
+        endIf
     endif
-    if isWhitelisted
-        string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseName)
-        if whitelistMsg
-            Debug.Notification(whitelistMsg)
-        endif
-    endIf
     UnlockHarvest(refrID, baseID, baseName, silent)
 EndFunction
 
-Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
+; don't worry about interrupting Fishing, the minigame won;t yield this type of object
+Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
@@ -1385,10 +1387,11 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
 
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if (!akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget))
+        int activations = SyntheticFloraActivateCount(akTarget)
         activated = True
-        if ActivateEx(akTarget, thisPlayer, true, 1)
+        if ActivateEx(akTarget, thisPlayer, true, activations)
             notify = !silent
-            if count >= 2
+            if activations == 1 && count >= 2
                 ; work round for ObjectReference.Activate() known issue
                 ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
                 int toGet = count - 1
@@ -1396,13 +1399,55 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
                 ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
             endIf
         endif
-        if collectible
-            RecordItem(itemForm, itemSourceLoose, itemType)
-        endIf
         SetHarvested(akTarget)
         ;DebugTrace("OnHarvestSyntheticFlora:Activated:" + akTarget)
     endif
-    NotifyActivated(refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+    NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+endEvent
+
+bool Function CanHarvestCritter(ObjectReference target)
+    if target as FXfakeCritterScript
+        return True
+    endif
+    if target as critter
+        critterFish fishCritter = target as critterFish
+        if fishCritter && ccFishingDialogue
+            ; Do not screw up CC Fishing - main Fishing script keeps DialogueDetect active only when player is fishing
+            ;DebugTrace("CanHarvestCritter: ccFishingDialogue.dialogueDetectEnabled=" + ccFishingDialogue.dialogueDetectEnabled.GetValueInt())
+            return ccFishingDialogue.dialogueDetectEnabled.GetValueInt() == 0
+        else
+            return True
+        endif
+    endif
+    AlwaysTrace("CanHarvestCritter called for invalid target " + target + ", base " + target.GetBaseObject())
+    return False
+endFunction
+
+; Don't interfere with the CC Fishing dialogue
+bool Function CanHarvest(int objectType)
+    if ccFishingDialogue
+        ; Do not screw up CC Fishing - main Fishing script keeps DialogueDetect active only when player is fishing
+        ;DebugTrace("CanHarvest: ccFishingDialogue.dialogueDetectEnabled=" + ccFishingDialogue.dialogueDetectEnabled.GetValueInt())
+        return ccFishingDialogue.dialogueDetectEnabled.GetValueInt() == 0
+    endif
+    return True
+endFunction
+
+Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
+    bool notify = false
+    ; capture values now, dynamic REFRs can become invalid before we need them
+    int refrID = akTarget.GetFormID()
+    int baseID = akTarget.GetBaseObject().GetFormID()
+    Form baseForm = akTarget.GetBaseObject()
+    bool activated = False
+
+    ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
+    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
+        activated = True;
+        ActivateEx(akTarget, thisPlayer, silent, 1)
+        ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
+    endif
+    NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
 
 Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
@@ -1414,14 +1459,9 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
     bool activated = False
 
     ;DebugTrace("OnHarvest: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-
     if (IsBookObject(itemType))
         activated = True;
         thisPlayer.AddItem(akTarget, count, true)
-        if collectible
-            RecordItem(itemForm, itemSourceLoose, itemType)
-        endIf
-
         notify = !silent
     elseif (itemType == objType_Soulgem && akTarget.GetLinkedRef(None))
         ; Harvest trapped SoulGem only after deactivation - no-op otherwise
@@ -1438,7 +1478,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                 endif
             endIf
         endIf
-    elseif (!akTarget.IsActivationBlocked())
+    elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType)
         activated = True;
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
             ActivateEx(akTarget, thisPlayer, silent, 1)
@@ -1453,21 +1493,14 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                 notify = !silent && ingredientCount as int > 1
                 count = count * ingredientCount as int
             endif
-        ; Critter ACTI REFRs cannot be identified by item type
-        else
-            int critterActivations = SupportedCritterActivateCount(akTarget)
-            if critterActivations > 0
-                ;DebugTrace("Critter " + itemForm.GetName())
-                ActivateEx(akTarget, thisPlayer, silent, critterActivations)
-            elseif ActivateEx(akTarget, thisPlayer, true, 1)
-                notify = !silent
-                if count >= 2
-                    ; work round for ObjectReference.Activate() known issue
-                    ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
-                    int toGet = count - 1
-                    thisPlayer.AddItem(itemForm, toGet, true)
-                    ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
-                endIf
+        elseif ActivateEx(akTarget, thisPlayer, true, 1)
+            notify = !silent
+            if count >= 2
+                ; work round for ObjectReference.Activate() known issue
+                ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
+                int toGet = count - 1
+                thisPlayer.AddItem(itemForm, toGet, true)
+                ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
             endIf
         endif
         if collectible
@@ -1475,7 +1508,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
         endIf
         ;DebugTrace("OnHarvest:Activated:" + akTarget)
     endif
-    NotifyActivated(refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+    NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
 
 ; NPC looting appears to have thread safety issues requiring script to perform
@@ -1523,10 +1556,21 @@ Event OnGetProducerLootable(ObjectReference akTarget)
             return
         endif
     endif
-    ; test for critters after checking all the scripted flora
-    if SupportedCritterActivateCount(akTarget) == 0
+    WispCoreScript wispCore = akTarget as WispCoreScript
+    if wispCore
+        SetLootableForProducer(baseForm, wispCore.glowDust)
         return
     endIf
+    ; handle modified apiary if present
+    if HearthfireExtendedModIndex != 255
+        KmodApiaryScript apiary = akTarget as KmodApiaryScript
+        if apiary
+            ; there are three items: we choose the critter for loot rule checking, but all items should be looted
+            SetLootableForProducer(baseForm, apiary.CritterBeeIngredient)
+            return
+        endIf
+    endIf
+    ; test for critters after checking all the synthetic flora
     Critter thisCritter = akTarget as Critter
     if thisCritter
         if thisCritter.nonIngredientLootable
@@ -1559,20 +1603,7 @@ Event OnGetProducerLootable(ObjectReference akTarget)
         endif
         return
     endIf
-    WispCoreScript wispCore = akTarget as WispCoreScript
-    if wispCore
-        SetLootableForProducer(baseForm, wispCore.glowDust)
-        return
-    endIf
-    ; handle modified apiary if present
-    if HearthfireExtendedModIndex != 255
-        KmodApiaryScript apiary = akTarget as KmodApiaryScript
-        if apiary
-            ; there are three items: we choose the critter for loot rule checking, but all items should be looted
-            SetLootableForProducer(baseForm, apiary.CritterBeeIngredient)
-            return
-        endIf
-    endIf
+    AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " is unsupported scripted ACTI")
 endEvent
 
 bool Function IsInHarvestableState(ObjectReference akTarget)
@@ -1601,6 +1632,15 @@ bool Function IsInHarvestableState(ObjectReference akTarget)
             return causeFlora.getState() == "IdleReadyUnharvested"
         endif
     endif
+    ; handle vanilla Wisp Core
+    if akTarget as WispCoreScript
+        return True
+    endIf
+    ; handle modified apiary if present
+    if HearthfireExtendedModIndex != 255 && akTarget as KmodApiaryScript
+        ; there are three items: we choose the critter for loot rule checking, but all items should be looted
+        return True
+    endIf
     ;DebugTrace("IsInHarvestableState not determined for " + akTarget)
     return False
 EndFunction
@@ -1839,6 +1879,10 @@ Event OnGameReady()
     ; Check for CC Saints and Seducers, testing form injected to Update.esm
     hasCCTheCause = Game.GetFormFromFile(0x3157, "Update.esm") as Activator != None
     AlwaysTrace("CC The Cause present = " + hasCCTheCause)
+
+    ; Check for CC Fishing, the QUST has a property we can use to detect if Fishing is active
+    ccFishingDialogue = Game.GetFormFromFile(0x33a55, "ccbgssse001-fish.esm") as ccBGSSSE001_DialogueDetectScript
+    AlwaysTrace("CC Fishing present = " + ccFishingDialogue as bool)
 
     ;update Hearthfire Extended index in load order, to handle Apiary ACTI
     HearthfireExtendedModIndex = Game.GetModByName("hearthfireextended.esp")

@@ -107,10 +107,9 @@ bool LootableREFR::IsFlora() const
 bool LootableREFR::HasIngredient() const
 {
 	// flora, but not those that produce cash money
-	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
 	auto target(GetTarget());
 	bool hasIngredient(false);
-	if (m_typeName != septimsName &&
+	if (m_objectType != ObjectType::septims &&
 		(target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>() || DataCase::GetInstance()->IsSyntheticFlora(target)))
 	{
 		hasIngredient = true;
@@ -122,8 +121,7 @@ bool LootableREFR::HasIngredient() const
 bool LootableREFR::HarvestForbiddenForForm() const
 {
 	// flora, but not those that produce cash money
-	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
-	if (m_typeName != septimsName && m_flora)
+	if (m_objectType != ObjectType::septims && m_flora)
 	{
 		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
 	}

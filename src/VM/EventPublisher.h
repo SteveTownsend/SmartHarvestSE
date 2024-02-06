@@ -42,7 +42,9 @@ public:
 	void TriggerHarvest(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
 		const bool collectible, const float ingredientCount, const bool isWhitelisted);
 	void TriggerHarvestSyntheticFlora(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
-		const bool collectible, const float ingredientCount, const bool isWhitelisted);
+		const bool collectible, const bool isWhitelisted);
+	void TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
+		const bool collectible, const bool isWhitelisted);
 	void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const bool collectible);
 	void TriggerFlushAddedItems(void);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
@@ -61,7 +63,8 @@ private:
 	SKSE::RegistrationSet<int> m_onCarryWeightDelta;
 	SKSE::RegistrationSet<> m_onResetCarryWeight;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, float, bool> m_onHarvest;
-	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, float, bool> m_onHarvestSyntheticFlora;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, bool> m_onHarvestSyntheticFlora;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, bool> m_onHarvestCritter;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool, bool> m_onMining;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int, bool> m_onLootFromNPC;
 	SKSE::RegistrationSet<> m_onFlushAddedItems;

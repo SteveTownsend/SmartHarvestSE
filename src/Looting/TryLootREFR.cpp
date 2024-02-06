@@ -487,7 +487,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
 					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
 				EventPublisher::Instance().TriggerHarvestSyntheticFlora(m_candidate, refrEx.GetTarget(), objType, itemCount,
-					isSilent, collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
+					isSilent, collectible.first, whiteListNotify && whitelisted);
+			}
+			else if (refrEx.IsCritter())
+			{
+				DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for Critter REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
+				EventPublisher::Instance().TriggerHarvestCritter(m_candidate, refrEx.GetTarget(), objType, itemCount,
+					isSilent, collectible.first, whiteListNotify && whitelisted);
 			}
 			else
 			{
@@ -496,11 +504,11 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
 				EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
 					isSilent, collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
-				if (isFirehose)
-				{
-					// do not revisit over-generous sources any time soon
-					DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
-				}
+			}
+			if (isFirehose)
+			{
+				// do not revisit over-generous sources any time soon
+				DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
 			}
 		}
 	}
