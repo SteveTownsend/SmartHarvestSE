@@ -435,7 +435,7 @@ CellOwnership LocationTracker::GetCellOwnership(const RE::TESObjectCELL* cell) c
 {
 	if (!cell)
 		return CellOwnership::NoOwner;
-	RE::TESForm* owner = GetCellOwner(cell);
+	RE::TESForm* owner = const_cast<RE::TESObjectCELL*>(cell)->GetOwner();
 	if (!owner)
 		return CellOwnership::NoOwner;
 	if (owner->formType == RE::FormType::NPC)
@@ -623,13 +623,13 @@ bool LocationTracker::Refresh()
 		// check if new location/cell is a newly-visited player house
 		if (!IsPlacePlayerHome(m_playerCellID, m_playerLocation))
 		{
-			if (m_playerLocation && PlayerHouses::Instance().IsValidHouse(m_playerLocation))
+			if (m_playerLocation && PlayerHouses::Instance().IsValidHouseLocation(m_playerLocation))
 			{
 				// record Location as a player house and notify as it is a new one in this game load
 				DBG_MESSAGE("Player House LCTN {}/0x{:08x} detected", m_playerLocation->GetName(), m_playerLocation->GetFormID());
 				PlayerHouses::Instance().Add(m_playerLocation);
 			}
-			else if (m_playerCellID != InvalidForm && PlayerHouses::Instance().IsValidHouseCell(m_playerCellID))
+			else if (m_playerCellID != InvalidForm && PlayerHouses::Instance().IsValidHouseCell(playerCell))
 			{
 				// record Cell as a player house and notify as it is a new one in this game load
 				DBG_MESSAGE("Player House CELL {}/0x{:08x} detected", PlayerCell()->GetName(), m_playerCellID);

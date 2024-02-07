@@ -780,7 +780,7 @@ void DataCase::HandleHearthfireExtendedApiary()
 	static std::string espName("hearthfireextended.esp");
 	static RE::FormID apiaryFormID(0xd62);
 	const RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
-	if (apiaryForm->Is(RE::FormType::Activator))
+	if (apiaryForm && apiaryForm->Is(RE::FormType::Activator))
 	{
 		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
 		AddFirehose(apiaryForm);
@@ -1528,10 +1528,10 @@ void DataCase::SetObjectTypeByKeywords()
 			continue;
 		}
 		// Store player house keyword for SearchTask usage
-		if (keywordName == "LocTypePlayerHouse")
+		if (keywordName == "LocTypePlayerHouse" || keywordName == "BYOHHouseLocationKeyword")
 		{
 			REL_VMESSAGE("Found PlayerHouse KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
-			PlayerHouses::Instance().SetKeyword(keywordDef);
+			PlayerHouses::Instance().AddLocationKeyword(keywordDef);
 			continue;
 		}
 		// Immersive Armors gives some armors the VendorItemSpellTome keyword. No, they are not spellBook

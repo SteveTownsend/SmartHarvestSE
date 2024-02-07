@@ -253,4 +253,6 @@ install(TARGETS ${PROJECT_NAME}
 # #######################################################################################################################
 if (${CMAKE_BUILD_TYPE} STREQUAL Release)
         include(shseBuildArchive.cmake)
+elseif (${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+        include(shseBuildLoggingArchive.cmake)
 endif()

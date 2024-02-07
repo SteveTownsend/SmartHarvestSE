@@ -34,14 +34,14 @@ public:
 	bool Contains(const RE::BGSLocation* location) const;
 	bool ContainsCell(const RE::FormID cellID) const;
 
-	void SetKeyword(RE::BGSKeyword* keyword);
+	void AddLocationKeyword(RE::BGSKeyword* keyword);
 	void SetCell(const RE::TESObjectCELL* houseCell);
-	bool IsValidHouse(const RE::BGSLocation* location) const;
-	bool IsValidHouseCell(const RE::FormID cellID) const;
+	bool IsValidHouseLocation(const RE::BGSLocation* location) const;
+	bool IsValidHouseCell(const RE::TESObjectCELL* cell) const;
 
 private:
 	static std::unique_ptr<PlayerHouses> m_instance;
-	RE::BGSKeyword* m_keyword;
+	std::unordered_set<RE::BGSKeyword*> m_locationKeywords;
 
 	// LCTN forms
 	std::unordered_set<RE::FormID> m_houses;
