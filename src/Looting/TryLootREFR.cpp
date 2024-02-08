@@ -443,6 +443,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				data->BlockReference(m_candidate, Lootability::AutoMiningDisabledByIncompatibleMod);
 				return Lootability::AutoMiningDisabledByIncompatibleMod;
 			}
+			else if (RE::PlayerCharacter::GetSingleton()->IsSneaking() && SettingsCache::Instance().DisallowMiningIfSneaking())
+			{
+				DBG_VMESSAGE("loot oreVein prevented because player is sneaking : 0x{:08x}", m_candidate->formID);
+				data->BlockReference(m_candidate, Lootability::CannotMineIfSneaking);
+				return Lootability::CannotMineIfSneaking;
+			}
 			else 
 			{
 				DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);

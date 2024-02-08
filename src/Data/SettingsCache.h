@@ -85,6 +85,7 @@ public:
 	PopulationCenterSize PreventPopulationCenterLooting() const;
 	int16_t MaxMiningItems() const;
 	bool MiningToolsRequired() const;
+	bool DisallowMiningIfSneaking() const;
 
 private:
 	static std::unique_ptr<SettingsCache> m_instance;
@@ -132,6 +133,7 @@ private:
 	PopulationCenterSize m_preventPopulationCenterLooting;
 	int16_t m_maxMiningItems;
 	bool m_miningToolsRequired;
+	bool m_disallowMiningIfSneaking;
 
 	static constexpr size_t TypeCount = size_t(ObjectType::oreVein);
 

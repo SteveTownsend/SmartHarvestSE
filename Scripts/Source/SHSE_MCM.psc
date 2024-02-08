@@ -124,6 +124,8 @@ int maxMiningItems
 int maxMiningItemsDefault
 bool miningToolsRequired
 bool miningToolsRequiredDefault
+bool disallowMiningIfSneaking
+bool disallowMiningIfSneakingDefault
 
 int excessLeave
 int excessSell
@@ -250,6 +252,11 @@ endFunction
 function updateMiningToolsRequired(bool toolsRequired)
     miningToolsRequired = toolsRequired
     eventScript.updateMiningToolsRequired(toolsRequired)
+endFunction
+
+function updateDisallowMiningIfSneaking(bool noSneakyMining)
+    disallowMiningIfSneaking = noSneakyMining
+    eventScript.updateDisallowMiningIfSneaking(noSneakyMining)
 endFunction
 
 float[] function GetSettingToObjectArray(int section1, int section2)
@@ -379,6 +386,7 @@ function LoadSettingsFromNative()
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
     updateMiningToolsRequired(GetSetting(type_Harvest, type_Config, "MiningToolsRequired") as bool)
+    updateDisallowMiningIfSneaking(GetSetting(type_Harvest, type_Config, "DisallowMiningIfSneaking") as bool)
     saleValuePercent = GetSetting(type_Harvest, type_Config, "SaleValuePercent") as int
 
     verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor")
@@ -488,6 +496,7 @@ Function SaveSettingsToNative()
     PutSetting(type_Harvest, type_Config, "SaleValuePercent", saleValuePercent as float)
     PutSetting(type_Harvest, type_Config, "MaxMiningItems", maxMiningItems as float)
     PutSetting(type_Harvest, type_Config, "MiningToolsRequired", miningToolsRequired as float)
+    PutSetting(type_Harvest, type_Config, "DisallowMiningIfSneaking", disallowMiningIfSneaking as float)
     PutSettingObjectArray(type_Harvest, type_ValueWeight, 30, valueWeightSettingArray)
 
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
@@ -687,8 +696,10 @@ Function SetMiscDefaults(bool firstTime)
 
     maxMiningItemsDefault = 8
     miningToolsRequiredDefault = false
+    disallowMiningIfSneakingDefault = false
     updateMaxMiningItems(maxMiningItemsDefault)
     updateMiningToolsRequired(miningToolsRequiredDefault)
+    updateDisallowMiningIfSneaking(disallowMiningIfSneakingDefault)
 
     notifyLocationChange = false
     enchantedItemLoot = 1
@@ -1087,7 +1098,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 54
+    return 55
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1235,6 +1246,9 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 54 && CurrentVersion < 54
         updateMiningToolsRequired(false)
     endIf
+    if a_version >= 55 && CurrentVersion < 55
+        updateDisallowMiningIfSneaking(False)
+    endif
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -1630,6 +1644,7 @@ event OnPageReset(string currentPage)
         AddToggleOptionST("LootAllowedItemsInSettlementState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT", lootAllowedItemsInSettlement as bool)
         AddToggleOptionST("LootAllowedItemsInPlayerHouseState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_PLAYER_HOUSE", lootAllowedItemsInPlayerHouse as bool)
         AddToggleOptionST("MiningToolsRequired", "$SHSE_MINING_TOOLS_REQUIRED", miningToolsRequired)
+        AddToggleOptionST("DisallowMiningIfSneaking", "$SHSE_NO_SNEAKY_MINING", disallowMiningIfSneaking)
 
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -2455,6 +2470,22 @@ state MiningToolsRequired
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_MINING_TOOLS_REQUIRED"))
+    endEvent
+endState
+
+state DisallowMiningIfSneaking
+    event OnSelectST()
+        updateDisallowMiningIfSneaking(!(disallowMiningIfSneaking as bool) as int)
+        SetToggleOptionValueST(disallowMiningIfSneaking as bool)
+    endEvent
+
+    event OnDefaultST()
+        updateDisallowMiningIfSneaking(disallowMiningIfSneaking)
+        SetToggleOptionValueST(disallowMiningIfSneaking as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_NO_SNEAKY_MINING"))
     endEvent
 endState
 

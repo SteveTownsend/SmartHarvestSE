@@ -51,6 +51,7 @@ public:
 	void BlockReferenceByID(const RE::FormID refrID, const Lootability reason);
 	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr) const;
 	void ResetBlockedReferences(const bool gameReload);
+	void UnblockReferences(const Lootability reason);
 
 	// permanent REFR blacklist, reset on game reload
 	bool BlacklistReference(const RE::TESObjectREFR* refr);

@@ -119,6 +119,7 @@ int transferListSize
 
 int maxMiningItems
 bool miningToolsRequired
+bool disallowMiningIfSneaking
 
 int infiniteWeight
 
@@ -1001,6 +1002,11 @@ function updateMiningToolsRequired(bool toolsRequired)
     miningToolsRequired = toolsRequired
 endFunction
 
+function updateDisallowMiningIfSneaking(bool noSneakyMining)
+    ;DebugTrace("disallowMiningIfSneaking -> " + noSneakyMining)
+    disallowMiningIfSneaking = noSneakyMining
+endFunction
+
 bool Function IsBookObject(int type)
     return type >= objType_Book && type <= objType_skillBookRead
 endFunction
@@ -1168,12 +1174,6 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 endif
             endIf       
             if firstTime
-                ; Bug fix from CACO/CCOR
-                ; USKP 1.3.0 FixStart - Deactivate sneaking before mining to prevent sneak issues.
-                    if thisPlayer.IsSneaking()
-                        thisPlayer.StartSneaking()
-                    endif
-                ;USKP 1.3.0 FixEnd
                 if CCORModIndex != 255 && ((Game.GetFormFromFile(0x01CC0508, "Update.esm") As GlobalVariable).GetValue() As Int) == 1 ;MiningMakesNoise_CCO	
                     oreScript.CreateDetectionEvent(thisPlayer, 250)		;MINING MAKE NOISE by Kryptopyr	
                 endif
@@ -1234,12 +1234,6 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                     DebugTrace("Trigger CACO ore harvesting")
                 endIf            
                 if firstTime
-                    ; Bug fix from CACO
-                    ; USKP 1.3.0 FixStart - Deactivate sneaking before mining to prevent sneak issues.
-                    if thisPlayer.IsSneaking()
-                        thisPlayer.StartSneaking()
-                    endif
-                    ;USKP 1.3.0 FixEnd
                     if cacoMinable.MiningMakesNoise_CCO.GetValue() == 1
                         cacoMinable.CreateDetectionEvent(thisPlayer, 250)   ;MINING MAKE NOISE by Kryptopyr	
                     endif

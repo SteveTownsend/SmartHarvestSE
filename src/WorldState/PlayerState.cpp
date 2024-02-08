@@ -105,6 +105,11 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 		// no player detection by NPC is a prerequisite for autoloot of crime-to-activate items
 		m_ownershipRule = sneaking ? SettingsCache::Instance().CrimeCheckSneaking() : SettingsCache::Instance().CrimeCheckNotSneaking();
 		m_belongingsCheck = SettingsCache::Instance().PlayerBelongingsLoot();
+		// revisit ore-veins blocked while sneaking
+		if (!m_sneaking && SettingsCache::Instance().DisallowMiningIfSneaking())
+		{
+			DataCase::GetInstance()->UnblockReferences(Lootability::CannotMineIfSneaking);
+		}
 	}
 	auto target(RE::PlayerCharacter::GetSingleton()->As<RE::MagicTarget>());
 	m_slowedTime = target && target->HasEffectWithArchetype(RE::EffectSetting::Archetype::kSlowTime);

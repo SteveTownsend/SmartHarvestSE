@@ -948,6 +948,23 @@ void DataCase::ResetBlockedReferences(const bool gameReload)
 	BlockOffLimitsContainers();
 }
 
+void DataCase::UnblockReferences(const Lootability reason)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	for (auto refr = m_blockRefr.begin(); refr != m_blockRefr.end(); ) 
+	{
+		if (refr->second == reason)
+		{
+			DBG_VMESSAGE("Reset blocked REFR 0x{:08x} with reason {}", refr->first, LootabilityName(reason));
+			refr = m_blockRefr.erase(refr);
+		}
+		else
+		{
+			++refr;
+		}
+	}
+}
+
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)

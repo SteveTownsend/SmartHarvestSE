@@ -82,6 +82,7 @@ SettingsCache::SettingsCache()
 	m_preventPopulationCenterLooting = PopulationCenterSize::Settlements;
 	m_maxMiningItems = 8;
 	m_miningToolsRequired = false;
+	m_disallowMiningIfSneaking = false;
 
 	m_lootingType.fill(LootingType::LootIfValuableEnoughNotify);
 	m_excessHandling.fill(ExcessInventoryHandling::NoLimits);
@@ -249,6 +250,9 @@ void SettingsCache::Refresh(void)
 	m_miningToolsRequired = ini->GetSetting(
 		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "MiningToolsRequired") != 0;
 	REL_VMESSAGE("Mining Tools Required {}", m_miningToolsRequired);
+	m_disallowMiningIfSneaking = ini->GetSetting(
+		INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "DisallowMiningIfSneaking") != 0;
+	REL_VMESSAGE("Disallow mining if sneaking {}", m_disallowMiningIfSneaking);
 }
 
 double SettingsCache::OutdoorsRadius() const
@@ -455,6 +459,10 @@ int16_t SettingsCache::MaxMiningItems() const
 bool SettingsCache::MiningToolsRequired() const
 {
 	return m_miningToolsRequired;
+}
+bool SettingsCache::DisallowMiningIfSneaking() const
+{
+	return m_disallowMiningIfSneaking;
 }
 
 }

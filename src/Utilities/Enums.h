@@ -594,6 +594,7 @@ enum class Lootability {
 	CorruptArrowPosition,
 	CannotMineTwiceInSameCellVisit,
 	AutoMiningDisabledByIncompatibleMod,
+	CannotMineIfSneaking,
 	ReferenceBlacklisted,
 	UnnamedReference,
 	ReferenceIsPlayer,
