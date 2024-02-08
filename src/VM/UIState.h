@@ -34,10 +34,9 @@ public:
 	void ReportVMGoodToGo(const bool delayed, const int nonce);
 	void Reset();
 	void SetMCMState(const bool isOpen);
-
-private:
 	bool OKToScan() const;
 
+private:
 	// Worker thread loop delays once UI ready
 	static constexpr double OnUIClosedThreadDelaySeconds = 1.0;
 

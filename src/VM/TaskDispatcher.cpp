@@ -65,7 +65,15 @@ void TaskDispatcher::GlowObjects()
         }
 
     }
-	DBG_VMESSAGE("Dispatch {} queued Glow requests", queued.size());
+    if (!UIState::Instance().OKToScan())
+    {
+	    REL_WARNING("Discard queued {} queueud Glow requests, scan disallowed", queued.size());
+        return;
+    }
+    else
+    {
+	    DBG_VMESSAGE("Dispatch {} queued Glow requests", queued.size());
+    }
     // Pass in current queued requests by value, as this executes asynchronously
     m_taskInterface->AddTask([=] (void) {
         RE::TESObjectREFR* refr;
@@ -82,7 +90,6 @@ void TaskDispatcher::GlowObjects()
             {
                 shader = m_shaders[static_cast<int>(GlowReason::SimpleTarget)];
             }
-            // TODO check OKToScan() per script
             if (shader && refr && refr->Is3DLoaded() && !refr->IsDisabled())
             {
                 refr->ApplyEffectShader(shader, static_cast<float>(duration));
