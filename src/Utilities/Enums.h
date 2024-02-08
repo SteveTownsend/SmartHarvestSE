@@ -35,7 +35,8 @@ enum class GlowReason {
 	EnchantedItem,
 	PlayerProperty,
 	SimpleTarget,
-	None
+	None,
+	NumberOfShaders = None		// for shader array
 };
 
 inline GlowReason CycleGlow(const GlowReason current)

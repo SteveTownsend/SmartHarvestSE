@@ -86,7 +86,7 @@ public:
 	void ResetLootedContainers();
 	void ForgetLockedContainers();
 	void ClearPendingHarvestNotifications(const bool gameReload);
-	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
+	void GlowObject(RE::TESObjectREFR* refr, const int duration, const ObjectType objectType, const GlowReason glowReason);
 	void ClearGlowExpiration();
 
 	void SetSPERGKeyword(const RE::BGSKeyword* keyword);

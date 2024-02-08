@@ -115,6 +115,8 @@ set(sources
         src/VM/EventPublisher.h
         src/VM/papyrus.cpp
         src/VM/papyrus.h
+        src/VM/TaskDispatcher.cpp
+        src/VM/TaskDispatcher.h
         src/VM/UIState.cpp
         src/VM/UIState.h
         src/WorldState/ActorTracker.cpp

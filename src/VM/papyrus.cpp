@@ -36,6 +36,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
+#include "VM/TaskDispatcher.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
@@ -840,6 +841,11 @@ namespace papyrus
 		shse::ScanGovernor::Instance().InvokeLootSense();
 	}
 
+	void SyncShader(RE::StaticFunctionTag*, const int index, RE::TESEffectShader* shader)
+	{
+		shse::TaskDispatcher::Instance().SetShader(index, shader);
+	}
+
 	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag*, const int actorIndex, const bool dryRun)
 	{
 		if (dryRun)
@@ -992,6 +998,7 @@ namespace papyrus
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
 		a_vm->RegisterFunction("GlowNearbyLoot", SHSE_PROXY, papyrus::GlowNearbyLoot);
+		a_vm->RegisterFunction("SyncShader", SHSE_PROXY, papyrus::SyncShader);
 
 		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
 		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);

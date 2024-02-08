@@ -272,6 +272,8 @@ Function SyncList(int listNum, Form[] forms, int formCount)
         ; do not push empty entries to C++ for blacklist or whitelist.
         if nextEntry && (StringUtil.GetLength(GetNameForListForm(nextEntry)) > 0)
             AddEntryToList(listNum, nextEntry)
+        else
+            AlwaysTrace("Skipping sync for list #" + listNum + " entry " + nextEntry)
         endif
         index += 1
     endwhile
@@ -507,6 +509,7 @@ endFunction
 function AddToWhiteList(Form target)
     ; do not add if empty or no name
     if !target || StringUtil.GetLength(GetNameForListForm(target)) == 0
+        AlwaysTrace("Ignoring bad WhiteList Form (" + target + ")")
         return
     endIf
     if whiteListSize == 128
@@ -562,6 +565,7 @@ endFunction
 function AddToBlackList(Form target)
     ; do not add if empty or no name
     if !target || StringUtil.GetLength(GetNameForListForm(target)) == 0
+        AlwaysTrace("Ignoring bad BlackList Form (" + target + ")")
         return
     endIf
     if blackListSize == 128
@@ -622,6 +626,7 @@ function AddToTransferList(string locationName, Form target)
     ; do not add if empty or no name
     string containerName = GetNameForListForm(target)
     if !target || StringUtil.GetLength(containerName) == 0
+        AlwaysTrace("Skip bad Transfer List Entry (" + target + ")")
         return
     endIf
     string name = locationName + "/" + containerName
@@ -705,6 +710,7 @@ Function SyncShaders(Int[] colours)
     int index = 0
     while index < colours.length
         categoryShaders[index] = defaultCategoryShaders[colours[index]]
+        SyncShader(index, categoryShaders[index])
         index = index + 1
     endWhile
 EndFunction
@@ -1659,6 +1665,7 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     endif
 endFunction
 
+; This only handles ore-veins
 Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     ; do not glow ore-vein if it's depleted. Various checks.
     MineOreScript mineable = akTargetRef as MineOreScript

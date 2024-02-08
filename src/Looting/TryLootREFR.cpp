@@ -273,16 +273,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-
-		// Check if this is an item harvestable in player home - this setting ignores player-ownership for flora, critters etc
-		// The original type is used here as objType now represents the type yielded, in the case of critter and flora
-		bool atHome(LocationTracker::Instance().IsPlayerAtHome());
-		bool allowHarvestAtHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse() &&
-			refrEx.IsItemLootableInPlayerHouse(originalType));
-
-		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
-		Lootability forbidden(atHome && allowHarvestAtHome ?
-			Lootability::Lootable : ItemLootingLegality(collectible.first, m_targetType));
+		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result,
+		// but should not result in a crime being committed.
+		Lootability forbidden(ItemLootingLegality(collectible.first, m_targetType));
 		if (forbidden != Lootability::Lootable)
 		{
 			skipLooting = true;
@@ -292,13 +285,19 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Force-Harvest hotkey is used to pick up loose Quest Targets, at user's discretion and own risk
 		if (!dryRun && !m_forceHarvest && m_glowReason != GlowReason::None)
 		{
-			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objType, m_glowReason);
 			// further checks redundant if we have a glowable target
 			if (m_glowOnly)
 			{
 				return result;
 			}
 		}
+
+		// Check if this is an item harvestable in player home - this setting ignores player-ownership for flora, critters etc
+		// The original type is used here as objType now represents the type yielded, in the case of critter and flora
+		bool atHome(LocationTracker::Instance().IsPlayerAtHome());
+		bool allowHarvestAtHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse() &&
+			refrEx.IsItemLootableInPlayerHouse(originalType));
 
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
@@ -418,7 +417,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// we would loot this - glow and exit if we are using Loot Sense
 			if (m_glowOnly)
 			{
-				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objType, GlowReason::SimpleTarget);
 				return result;
 			}
 
@@ -514,6 +513,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
+		ObjectType objectType(m_targetType == INIFile::SecondaryType::containers ? ObjectType::container : ObjectType::actor);
 		if (m_candidate->IsActivationBlocked())
 		{
 			DBG_MESSAGE("skip activation-blocked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -715,7 +715,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (!dryRun && m_glowReason != GlowReason::None)
 		{
-			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objectType, m_glowReason);
 			if (m_glowOnly)
 			{
 				return result;
@@ -857,7 +857,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			if (!targets.empty())
 			{
-				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objectType, GlowReason::SimpleTarget);
 			}
 			return result;
 		}
@@ -932,7 +932,8 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	else if (animationType == ContainerAnimationHandling::Glow)
 	{
 		// glow looted object briefly after looting
-		ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
+		ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationLootedSeconds,
+			inlineTransfer ? ObjectType::container : ObjectType::actor, GlowReason::SimpleTarget);
 	}
 
 	// avoid sound spam
@@ -1075,7 +1076,7 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 			else if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::Ownerless)
 			{
 				if (!playerOwned && !firedArrow &&
-					(m_candidate->GetOwner() != nullptr || !LocationTracker::Instance().IsPlayerInFriendlyCell()))
+					(m_candidate->GetOwner() || !LocationTracker::Instance().IsPlayerInFriendlyCell()))
 				{
 					// owner of item or cell is not player/player-friendly - disallow owned item
 					DBG_VMESSAGE("REFR or Cell is not player-owned, cannot loot");

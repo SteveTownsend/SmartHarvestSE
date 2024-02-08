@@ -42,6 +42,7 @@ http://www.fsf.org/licensing/licenses
 #include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "VM/EventPublisher.h"
+#include "VM/TaskDispatcher.h"
 #include "VM/papyrus.h"
 
 #include <chrono>
@@ -261,10 +262,12 @@ void ScanGovernor::ProgressGlowDemo()
 	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindAllCandidates();
 	for (auto target : targets)
 	{
+		// Glow ore-vein even if depleted during the test run
 		DBG_VMESSAGE("Trigger glow for {}/0x{:08x} at distance {:0.2f} units", target.second->GetName(), target.second->formID, target.first);
-		EventPublisher::Instance().TriggerObjectGlow(target.second, ObjectGlowDurationCalibrationSeconds,
+		GlowObject(target.second, ObjectGlowDurationCalibrationSeconds, ObjectType::container,
 			m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
 	}
+	TaskDispatcher::Instance().GlowObjects();
 
 	// glow demo runs forever at the same radius, range calibration stops after the outer limit
 	if (!m_glowDemo)
@@ -589,6 +592,7 @@ void ScanGovernor::LootAllEligible()
 		static const bool forceHarvest(false);
 		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
 	}
+	TaskDispatcher::Instance().GlowObjects();
 }
 
 void ScanGovernor::TrackActors()
@@ -715,6 +719,7 @@ void ScanGovernor::InvokeLootSense(void)
 		static const bool forceHarvest(false);
 		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
 	}
+	TaskDispatcher::Instance().GlowObjects();
 	if (!m_fhiRunning.compare_exchange_strong(running, false))
 	{
 		REL_ERROR("Fortune Hunter's Instinct reset failed");
@@ -1091,7 +1096,7 @@ void ScanGovernor::ToggleCalibration(const bool glowDemo)
 	}
 }
 
-void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
+void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const ObjectType objectType, const GlowReason glowReason)
 {
 	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
 	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
@@ -1105,7 +1110,15 @@ void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const
 	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0) - 500LL);
 	m_glowExpiration[refr] = expiry;
 	DBG_VMESSAGE("Trigger glow for {}/0x{:08x}", refr->GetName(), refr->formID);
-	EventPublisher::Instance().TriggerObjectGlow(refr, duration, glowReason);
+	if (objectType == ObjectType::oreVein)
+	{
+		// use script to check whether vein is depleted
+		EventPublisher::Instance().TriggerObjectGlow(refr, duration, glowReason);
+	}
+	else
+	{
+		TaskDispatcher::Instance().EnqueueObjectGlow(refr, duration, glowReason);
+	}
 }
 
 }
