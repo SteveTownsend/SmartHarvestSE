@@ -187,12 +187,13 @@ bool IsSummoned(const RE::Actor* actor)
 }
 
 // applies only if NPC
-bool IsGhost(const RE::Actor* actor)
+bool IsDisintegrating(const RE::Actor* actor)
 {
-	const RE::TESNPC* npc(actor->GetActorBase());
-	const bool result(npc && npc->HasKeyword(DataCase::GetInstance()->GhostKeyword()));
-	DBG_DMESSAGE("Actor is a ghost = {}", result ? "true" : "false");
-	return result;
+	if (actor)
+	{
+		return actor->GetActorRuntimeData().criticalStage == RE::ACTOR_CRITICAL_STAGE::kDisintegrateStart;
+	}
+	return false;
 }
 
 // applies only if NPC

@@ -13,6 +13,7 @@ Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native
 bool Function IsLootableObject(ObjectReference refr) global native
+bool Function UseUnderwear() global native
 string Function ValidTransferTargetLocation(ObjectReference refr, bool linksChest, bool knownGood) global native
 bool Function SupportsExcessHandling(int objectType) global native
 string Function SellItem(Form item, bool excessOnly) global native

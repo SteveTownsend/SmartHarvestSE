@@ -28,6 +28,8 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
+class Collection;
+class CollectionManager;
 
 class DataCase
 {
@@ -57,6 +59,7 @@ public:
 	bool BlacklistReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const;
 	void ClearReferenceBlacklist();
+	void ClearReferenceBlacklistEphemeral();
 
 	void RefreshKnownIngredients();
 	bool IsIngredientKnown(const RE::TESForm* form) const;
@@ -129,8 +132,6 @@ public:
 
 	void RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable);
 
-	inline const RE::BGSKeyword* GhostKeyword() const { return m_ghostNpcKeyword; }
-
 	// special case statics
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
@@ -141,11 +142,19 @@ public:
 	bool IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const;
 	void SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested);
 
+	// Collections used for special case Form aggregegation
+	void LoadBuiltinSpecialCases(void);
+	void RefreshBuiltinSpecialCases(void);
+
+	bool UseUnderwear() const;
+	bool IsUnderwear(const RE::TESForm* armour) const;
+
 private:
 	std::unordered_map<std::string, std::string> m_translations;
 
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
 
+	const Collection* m_underwear;
 	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
 	std::unordered_set<RE::EffectSetting*> m_slowTimeEffects;
@@ -168,7 +177,6 @@ private:
 	// assume simple setters for now, like vanilla Green Thumb
 	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
 	RE::BGSKeyword* m_spellTomeKeyword;
-	RE::BGSKeyword* m_ghostNpcKeyword;
 	bool m_miningDisabled;
 
 	mutable RecursiveLock m_blockListLock;
@@ -420,6 +428,7 @@ private:
 	bool CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg) const;
 
 	static DataCase* s_pInstance;
+	CollectionManager* m_specialCases;
 
 	void CategorizeStatics();
 	void SetPermanentBlockedItems();
@@ -497,6 +506,7 @@ private:
 
 	void IncludeFossilMiningExcavation();
 	void HandleHearthfireExtendedApiary();
+	void RecordUnderwear();
 
 	DataCase(void);
 };

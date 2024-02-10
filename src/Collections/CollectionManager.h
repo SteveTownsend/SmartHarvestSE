@@ -58,6 +58,7 @@ public:
 	std::string NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	std::string DescriptionByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	static std::string MakeLabel(const std::string& groupName, const std::string& collectionName);
+	const Collection* CollectionByLabel(const std::string& groupName, const std::string& collectionName) const;
 
 	bool PolicyRepeat(const std::string& groupName, const std::string& collectionName) const;
 	bool PolicyNotify(const std::string& groupName, const std::string& collectionName) const;

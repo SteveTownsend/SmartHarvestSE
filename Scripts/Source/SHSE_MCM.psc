@@ -47,6 +47,10 @@ bool enableHarvest
 bool enableLootContainer
 int enableLootDeadbody
 string[] s_lootDeadBodyArray
+int excludeNPCAll
+int excludeNPCArmour
+int excludeNPCNone
+int excludeNPCUnderwear
 
 bool unencumberedInCombat
 bool unencumberedInPlayerHome
@@ -592,10 +596,18 @@ Function AugmentExcessDisposalChoices()
 EndFunction
 
 Function SetDeadBodyChoices()
-    s_lootDeadBodyArray = New String[3]
-    s_lootDeadBodyArray[0] = "$SHSE_DONT_PICK_UP"
-    s_lootDeadBodyArray[1] = "$SHSE_EXCLUDING_ARMOR"
-    s_lootDeadBodyArray[2] = "$SHSE_PICK_UP"
+    DebugTrace("SetDeadBodyChoices called")
+    excludeNPCAll = 0
+    excludeNPCArmour = 1
+    excludeNPCNone = 2
+    excludeNPCUnderwear = 3
+
+    s_lootDeadBodyArray = New String[4]
+    ; values match the C++ enumeration and INI file
+    s_lootDeadBodyArray[excludeNPCAll] = "$SHSE_DONT_PICK_UP"
+    s_lootDeadBodyArray[excludeNPCArmour] = "$SHSE_EXCLUDING_ARMOR"
+    s_lootDeadBodyArray[excludeNPCUnderwear] = "$SHSE_EXCLUDING_UNDERWEAR"
+    s_lootDeadBodyArray[excludeNPCNone] = "$SHSE_PICK_UP"
 EndFunction
 
 Function AllocateItemCategoryArrays()
@@ -1248,6 +1260,8 @@ Event OnVersionUpdate(int a_version)
     endIf
     if a_version >= 55 && CurrentVersion < 55
         updateDisallowMiningIfSneaking(False)
+        ; this got a new option
+        SetDeadBodyChoices()
     endif
 endEvent
 
@@ -2161,10 +2175,27 @@ state enableLootContainer
     endEvent
 endState
 
+; Custom logic: handle late addition of the 'leave underwear' option while keeping order in UI logical
+int Function CycleLootDeadbody(int num)
+    if num == excludeNPCUnderwear
+        return excludeNPCNone
+    elseif num == excludeNPCArmour
+        ; only enable the underwear option if there are relevant mods present
+        if UseUnderwear()
+            return excludeNPCUnderwear
+        else
+            return excludeNPCNone
+        endif
+    elseif num == excludeNPCNone
+        return excludeNPCAll
+    else ; excludeNPCNone
+        return excludeNPCArmour
+    endif
+endFunction
+
 state enableLootDeadbody
     event OnSelectST()
-        int size = s_lootDeadBodyArray.length
-        enableLootDeadbody = CycleInt(enableLootDeadbody, size)
+        enableLootDeadbody = CycleLootDeadbody(enableLootDeadbody)
         SetTextOptionValueST(s_lootDeadBodyArray[enableLootDeadbody])
     endEvent
 

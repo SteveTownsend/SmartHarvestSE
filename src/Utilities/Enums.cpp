@@ -129,7 +129,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::OutOfScope: return "OutOfScope";
 	case Lootability::PlayerHouseRestrictsLooting: return "PlayerHouseRestrictsLooting";
 	case Lootability::ReferenceActivationBlocked: return "ReferenceActivationBlocked";
-	case Lootability::NPCIsAGhost: return "NPCIsAGhost";
+	case Lootability::NPCIsDisintegrating: return "NPCIsDisintegrating";
 	default: return "";
 	}
 }

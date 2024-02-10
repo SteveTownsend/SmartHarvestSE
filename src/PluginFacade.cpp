@@ -179,6 +179,7 @@ bool PluginFacade::Load()
 	{
 		CollectionManager::Collectibles().ProcessDefinitions();
 		CollectionManager::ExcessInventory().ProcessDefinitions();
+		DataCase::GetInstance()->LoadBuiltinSpecialCases();
 	}
 
 	REL_MESSAGE("Plugin Data load complete!");
@@ -310,6 +311,8 @@ void PluginFacade::OnVMSync()
 	// Update Collections State, including saved-game data if present
 	CollectionManager::Collectibles().OnGameReload();
 	CollectionManager::ExcessInventory().OnGameReload();
+	DataCase::GetInstance()->RefreshBuiltinSpecialCases();
+	
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
 	REL_MESSAGE("Plugin sync completed");

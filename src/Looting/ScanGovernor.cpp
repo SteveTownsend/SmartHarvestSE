@@ -293,13 +293,15 @@ Lootability ScanGovernor::CanLootActor(const RE::Actor* actor)
 	{
 		exclusionType = Lootability::DeadBodyIsEssential;
 	}
-	else if (IsSummoned(actor))
+	// check before "Summoned" - the REFR might become lootable after the summoned BaseObject disintegrates
+	else if (IsDisintegrating(actor))
+	{
+		exclusionType = Lootability::NPCIsDisintegrating;
+	}
+	// Summons with ash pile are lootable - skip their ephemeral body though
+	else if (IsSummoned(actor) && !HasAshPile(actor))
 	{
 		exclusionType = Lootability::DeadBodyIsSummoned;
-	}
-	else if (IsGhost(actor))
-	{
-		exclusionType = Lootability::NPCIsAGhost;
 	}
 	else if (IsQuestTargetNPC(actor))
 	{
@@ -384,9 +386,18 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				{
 					if (!dryRun)
 					{
-						DBG_VMESSAGE("Block ineligible Actor 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-						DataCase::GetInstance()->BlockReference(refr, exclusionType);
+						// if actor is disintegrating don't block it or loot it - retry when the ashpile is decoupled from the base NPC_
+						if (exclusionType == Lootability::NPCIsDisintegrating)
+						{
+							DBG_VMESSAGE("Skip disintegrating Actor 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
+								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+						}
+						else
+						{
+							DBG_VMESSAGE("Block ineligible Actor 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
+								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+							DataCase::GetInstance()->BlockReference(refr, exclusionType);
+						}
 					}
 					return exclusionType;
 				}
@@ -485,9 +496,18 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				{
 					if (!dryRun)
 					{
-						DBG_VMESSAGE("Block ineligible Actor linked via ash-pile 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-							refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-						DataCase::GetInstance()->BlockReference(refr, exclusionType);
+						// if actor is disintegrating don't block it or loot it - retry when the ashpile is decoupled from the base NPC_
+						if (exclusionType == Lootability::NPCIsDisintegrating)
+						{
+							DBG_VMESSAGE("Skip disintegrating Actor linked via ash-pile 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
+								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+						}
+						else
+						{
+							DBG_VMESSAGE("Block ineligible Actor linked via ash-pile 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
+								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
+							DataCase::GetInstance()->BlockReference(refr, exclusionType);
+						}
 					}
 					return exclusionType;
 				}

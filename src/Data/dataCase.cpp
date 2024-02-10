@@ -26,6 +26,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
+#include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
 #include "WorldState/CraftingItems.h"
@@ -61,7 +62,7 @@ namespace shse
 
 DataCase* DataCase::s_pInstance = nullptr;
 
-DataCase::DataCase() : m_spellTomeKeyword(nullptr), m_ghostNpcKeyword(nullptr)
+DataCase::DataCase() : m_spellTomeKeyword(nullptr), m_specialCases(nullptr), m_underwear(nullptr)
 {
 }
 
@@ -787,6 +788,13 @@ void DataCase::HandleHearthfireExtendedApiary()
 	}
 }
 
+void DataCase::RecordUnderwear()
+{
+	const std::string GroupName("SpecialCases");
+	const std::string CollectionName("SHSE-Underwear");
+	m_underwear = m_specialCases->CollectionByLabel(GroupName, CollectionName);
+}
+
 void DataCase::RecordOffLimitsLocations()
 {
 	DBG_MESSAGE("Pre-emptively block all off-limits locations");
@@ -996,6 +1004,25 @@ void DataCase::ClearReferenceBlacklist()
 	DBG_MESSAGE("Reset blacklisted REFRs");
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blacklistRefr.clear();
+}
+
+void DataCase::ClearReferenceBlacklistEphemeral()
+{
+#if DEBUG || defined(_FULL_LOGGING)
+	DBG_MESSAGE("Reset ephemeral blacklisted REFRs");
+	RecursiveLockGuard guard(m_blockListLock);
+	for (auto refr = m_blacklistRefr.begin(); refr != m_blacklistRefr.end(); )
+	{
+		if ((*refr) < 0xFF000000)
+		{
+			refr = m_blacklistRefr.erase(refr);
+		}
+		else
+		{
+			++refr;
+		}
+	}
+#endif
 }
 
 void DataCase::RefreshKnownIngredients()
@@ -1300,6 +1327,7 @@ void DataCase::ListsClear(const bool gameReload)
 	// reset blocked Base Objects and REFRs, reseed with off-limits containers
 	ResetBlockedForms();
 	ResetBlockedReferences(gameReload);
+	ClearReferenceBlacklistEphemeral();
 }
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
@@ -1425,6 +1453,36 @@ void DataCase::CategorizeLootables()
 	HandleExceptions();
 }
 
+void DataCase::LoadBuiltinSpecialCases()
+{
+	if (m_specialCases)
+	{
+		REL_WARNING("DataCase::LoadBuiltinSpecialCases() should not be called twice");
+	}
+	const std::wstring specialCaseFileName(L"SHSE\\.Builtin\\.(.*)\\.json$");
+	m_specialCases = new CollectionManager(specialCaseFileName);
+	m_specialCases->ProcessDefinitions();
+}
+
+void DataCase::RefreshBuiltinSpecialCases()
+{
+	m_specialCases->OnGameReload();
+
+	// blacklist underwear in case user has "don't show me their junk" setting turned on
+	RecordUnderwear();
+}
+
+bool DataCase::UseUnderwear() const
+{
+	return m_underwear && m_underwear->IsActive();
+}
+
+bool DataCase::IsUnderwear(const RE::TESForm* armour) const
+{
+	ConditionMatcher matcher(armour);
+	return m_underwear->IsMemberOf(matcher);
+}
+
 void DataCase::HandleExceptions()
 {
 	// on first pass, detect off limits containers and other special cases to avoid rescan on game reload
@@ -1445,6 +1503,7 @@ void DataCase::HandleExceptions()
 	IncludeFossilMiningExcavation();
 	// whitelist Hearthfire Extended Apiary
 	HandleHearthfireExtendedApiary();
+
 	// exclude auto-mining if incompatible mods loaded
 	CheckAutoMiningOK();
 }
@@ -1556,12 +1615,6 @@ void DataCase::SetObjectTypeByKeywords()
 		{
 			REL_VMESSAGE("Found Spell Tome KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			m_spellTomeKeyword = keywordDef;
-		}
-		// Do not loot ghost NPCs
-		if (keywordName == "ActorTypeGhost")
-		{
-			REL_VMESSAGE("Found Ghost NPC KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
-			m_ghostNpcKeyword = keywordDef;
 		}
 		// SPERG mining resource types
 		if (keywordName == "VendorItemOreIngot" || keywordName == "VendorItemGem")

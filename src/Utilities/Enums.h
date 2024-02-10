@@ -457,6 +457,7 @@ enum class DeadBodyLooting {
 	DoNotLoot = 0,
 	LootExcludingArmor,
 	LootAll,
+	LootExcludingUnderwear,
 	MAX
 };
 
@@ -467,6 +468,8 @@ inline std::string DeadBodyLootingString(const DeadBodyLooting deadBodyLooting)
 		return "DoNotLoot";
 	case DeadBodyLooting::LootExcludingArmor:
 		return "LootExcludingArmor";
+	case DeadBodyLooting::LootExcludingUnderwear:
+		return "LootExcludingUnderwear";
 	case DeadBodyLooting::LootAll:
 		return "LootAll";
 	default:
@@ -655,7 +658,7 @@ enum class Lootability {
 	OutOfScope,
 	PlayerHouseRestrictsLooting,
 	ReferenceActivationBlocked,
-	NPCIsAGhost,
+	NPCIsDisintegrating,
 	MAX
 };
 

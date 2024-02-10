@@ -628,6 +628,11 @@ namespace papyrus
 		return true;
 	}
 
+	bool UseUnderwear(RE::StaticFunctionTag*)
+	{
+		return shse::DataCase::GetInstance()->UseUnderwear();
+	}
+
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
 	{
 		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
@@ -912,6 +917,7 @@ namespace papyrus
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
 		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
 		a_vm->RegisterFunction("IsLootableObject", SHSE_PROXY, papyrus::IsLootableObject);
+		a_vm->RegisterFunction("UseUnderwear", SHSE_PROXY, papyrus::UseUnderwear);
 		a_vm->RegisterFunction("ValidTransferTargetLocation", SHSE_PROXY, papyrus::ValidTransferTargetLocation);
 		a_vm->RegisterFunction("SupportsExcessHandling", SHSE_PROXY, papyrus::SupportsExcessHandling);
 		a_vm->RegisterFunction("SellItem", SHSE_PROXY, papyrus::SellItem);

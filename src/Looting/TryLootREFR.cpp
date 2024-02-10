@@ -535,6 +535,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// INI defaults exclude nudity by not looting armor from dead bodies
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::LootExcludingArmor);
+		// User may alternatively choose to leave the victim their dignity via underwear
+		bool excludeUnderwear(excludeArmor || (m_targetType == INIFile::SecondaryType::deadbodies &&
+			SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::LootExcludingUnderwear));
 		EnchantedObjectHandling enchantedLoot = SettingsCache::Instance().EnchantedObjectHandlingType();
 		ContainerLister lister(m_targetType, m_candidate);
 		size_t lootableItems(lister.AnalyzeLootableItems(enchantedLoot));
@@ -763,6 +766,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			ObjectType objType = targetItemInfo.LootObjectType();
+			if (excludeUnderwear && DataCase::GetInstance()->UseUnderwear() && DataCase::GetInstance()->IsUnderwear(target))
+			{
+				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update
+				DBG_VMESSAGE("block looting of underwear from dead body {}/0x{:08x}", target->GetName(), target->GetFormID());
+				continue;
+			}
 			if (excludeArmor && (objType == ObjectType::armor || objType == ObjectType::enchantedArmor))
 			{
 				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update

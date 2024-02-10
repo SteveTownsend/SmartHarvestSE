@@ -5,6 +5,7 @@ file(GLOB_RECURSE EDIT_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Edit Scr
 file(GLOB_RECURSE JSON_SCHEMAS "${CMAKE_CURRENT_SOURCE_DIR}/**/SHSE.Schema*.json")
 file(GLOB_RECURSE BUILTIN_COLLECTIONS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Builtin/SHSE.Collections*.json")
 file(GLOB_RECURSE EXCESS_INVENTORY "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Builtin/SHSE.ExcessInventory*.json")
+file(GLOB_RECURSE SPECIAL_CASE_COLLECTIONS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Builtin/SHSE.Builtin*.json")
 file(GLOB_RECURSE EXAMPLE_COLLECTIONS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/Examples/SHSE.Collections*.json")
 file(GLOB_RECURSE LOOT_FILTERS "${CMAKE_CURRENT_SOURCE_DIR}/Filters/SHSE.Filter.*.json")
 file(GLOB_RECURSE GLOW_TEXTURES "${CMAKE_CURRENT_SOURCE_DIR}/Textures/**/*.dds")
@@ -49,7 +50,10 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 message("Copying Excess Inventory Collections ${EXCESS_INVENTORY}.")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${EXCESS_INVENTORY} "${ARTIFACTS_DIR}/SKSE/Plugins/")
-message("Copying xEdit Scripts ${EDIT_SCRIPTS}.")
+message("Copying Special Case Collections ${SPECIAL_CASE_COLLECTIONS}.")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${SPECIAL_CASE_COLLECTIONS} "${ARTIFACTS_DIR}/SKSE/Plugins/")
+        message("Copying xEdit Scripts ${EDIT_SCRIPTS}.")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${EDIT_SCRIPTS} "${ARTIFACTS_DIR}/Collections/Edit Scripts/")
 message("Copying Example Collections ${EXAMPLE_COLLECTIONS}.")

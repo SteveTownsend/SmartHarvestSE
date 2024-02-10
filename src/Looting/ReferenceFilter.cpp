@@ -289,11 +289,18 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				continue;
 			}
 
-			// if 3D not loaded do not measure
+			// if 3D not loaded do not measure - Ash Piles are exempt from this since they enter this state after Actor disintegrates
 			if (!refr->Is3DLoaded())
 			{
-				DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-				continue;
+				if (HasAshPile(refr))
+				{
+					DBG_VMESSAGE("allow no 3D for Ash Pile on REFR 0x{:08x}, Base {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				}
+				else
+				{
+					DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+					continue;
+				}
 			}
 
 			// If Looting through Doors is not allowed, check distance and record if this is the nearest so far

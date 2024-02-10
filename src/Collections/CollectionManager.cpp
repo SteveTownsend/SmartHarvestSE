@@ -522,6 +522,19 @@ std::string CollectionManager::MakeLabel(const std::string& groupName, const std
 	return labelStream.str();
 }
 
+const Collection* CollectionManager::CollectionByLabel(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second.get();
+	}
+	return nullptr;
+}
+
+
 bool CollectionManager::PolicyRepeat(const std::string& groupName, const std::string& collectionName) const
 {
 	const std::string label(MakeLabel(groupName, collectionName));

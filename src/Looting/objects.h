@@ -31,7 +31,7 @@ inline bool IsBookObject(ObjectType objType)
 
 PlayerAffinity GetPlayerAffinity(const RE::Actor* actor);
 bool IsSummoned(const RE::Actor* actor);
-bool IsGhost(const RE::Actor* actor);
+bool IsDisintegrating(const RE::Actor* actor);
 bool IsQuestTargetNPC(const RE::Actor* actor);
 
 bool HasAshPile(const RE::TESObjectREFR* refr);
