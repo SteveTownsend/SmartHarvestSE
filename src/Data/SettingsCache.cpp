@@ -59,6 +59,8 @@ SettingsCache::SettingsCache()
 	m_collectionsEnabled = false;
 	m_notifyLocationChange = false;
 	m_valuableItemThreshold = 500.0;
+	m_checkWeightlessValue = false;
+	m_weightlessMinimumValue = 10;
 	m_valueWeightDefault = 10.0;
 	m_deadBodyLooting = DeadBodyLooting::LootExcludingArmor;
 	m_enchantedObjectHandling = EnchantedObjectHandling::DoLoot;
@@ -144,6 +146,10 @@ void SettingsCache::Refresh(void)
 
 	m_valuableItemThreshold = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValuableItemThreshold");
 	REL_VMESSAGE("Valuable Item Threshold {:0.2f}", m_valuableItemThreshold);
+	m_checkWeightlessValue = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::valueWeight, "CheckWeightlessValue") != 0.0;
+	REL_VMESSAGE("Check Weightless Value {}", m_checkWeightlessValue);
+	m_weightlessMinimumValue = static_cast<int>(ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::valueWeight, "WeightlessMinimumValue"));
+	REL_VMESSAGE("Weightless Minimum Value {}", m_weightlessMinimumValue);
 	m_valueWeightDefault = ini->GetSetting(INIFile::PrimaryType::harvest, INIFile::SecondaryType::config, "ValueWeightDefault");
 	REL_VMESSAGE("Value Weight Default {:0.2f}", m_valueWeightDefault);
 
@@ -325,6 +331,14 @@ bool SettingsCache::NotifyLocationChange() const
 double SettingsCache::ValuableItemThreshold() const
 {
 	return m_valuableItemThreshold;
+}
+bool SettingsCache::CheckWeightlessValue() const
+{
+	return m_checkWeightlessValue;
+}
+int SettingsCache::WeightlessMinimumValue() const
+{
+	return m_weightlessMinimumValue;
 }
 double SettingsCache::ValueWeightDefault() const
 {

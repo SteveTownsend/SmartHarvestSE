@@ -388,7 +388,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				skipLooting = true;
 				result = Lootability::HarvestDisallowedForBaseObjectType;
 			}
-			else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType))
+			else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType, refrEx.GetWeight()))
 			{
 				if (refrEx.ValueWeightTooLowToLoot())
 				{
@@ -843,12 +843,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					data->BlockForm(target, Lootability::ItemTypeIsSetToPreventLooting);
 					continue;
 				}
-				else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType) &&
-					TESFormHelper(target, objType, m_targetType).ValueWeightTooLowToLoot())
+				else if (!forceIngredientLoot)
 				{
-					DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
-					data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
-					continue;
+					TESFormHelper helper(target, objType, m_targetType);
+					if (LootingDependsOnValueWeight(lootingType, objType, helper.GetWeight()) && helper.ValueWeightTooLowToLoot())
+					{
+						DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
+						data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
+						continue;
+					}
 				}
 			}
 

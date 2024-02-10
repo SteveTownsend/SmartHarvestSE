@@ -134,8 +134,14 @@ std::string LootabilityName(const Lootability lootability)
 	}
 }
 
-bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType, const double weight)
 {
+	// lockpicks get tested here, other exempt types do not
+	if (!AlwaysValueWeightExempt(objectType) && weight == 0.0 && SettingsCache::Instance().CheckWeightlessValue())
+	{
+		DBG_VMESSAGE("Must check weightless item value > {}", SettingsCache::Instance().WeightlessMinimumValue());
+		return true;
+	}
 	if (IsValueWeightExempt(objectType))
 	{
 		DBG_VMESSAGE("No V/W check for objType {}", GetObjectTypeName(objectType));

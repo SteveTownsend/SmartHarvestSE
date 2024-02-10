@@ -451,7 +451,7 @@ inline bool UseTransferForExcess(const ExcessInventoryHandling handling)
 		handling != ExcessInventoryHandling::NoLimits;
 }
 
-bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType);
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType, const double weight);
 
 enum class DeadBodyLooting {
 	DoNotLoot = 0,

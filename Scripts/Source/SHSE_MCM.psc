@@ -187,6 +187,10 @@ bool fortuneHuntNPC
 bool fortuneHuntContainer
 bool unlockGlowColours
 
+bool checkWeightlessValue
+bool checkWeightlessValueDefault
+int weightlessMinimumValue
+int weightlessMinimumValueDefault
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -399,6 +403,8 @@ function LoadSettingsFromNative()
     lootAllowedItemsInPlayerHouse = GetSetting(type_Harvest, type_Config, "LootAllowedItemsInPlayerHouse") as bool
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
+    checkWeightlessValue = GetSetting(type_Harvest, type_ValueWeight, "CheckWeightlessValue") as bool
+    weightlessMinimumValue = GetSetting(type_Harvest, type_ValueWeight, "WeightlessMinimumValue") as int
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
     excessHandlingArray = GetSettingToExcessHandlingArray(type_Harvest, type_Handling)
     excessCountArray = GetSettingToExcessHandlingArray(type_Harvest, type_MaxItems)
@@ -501,6 +507,8 @@ Function SaveSettingsToNative()
     PutSetting(type_Harvest, type_Config, "MaxMiningItems", maxMiningItems as float)
     PutSetting(type_Harvest, type_Config, "MiningToolsRequired", miningToolsRequired as float)
     PutSetting(type_Harvest, type_Config, "DisallowMiningIfSneaking", disallowMiningIfSneaking as float)
+    PutSetting(type_Harvest, type_ValueWeight, "CheckWeightlessValue", checkWeightlessValue as float)
+    PutSetting(type_Harvest, type_ValueWeight, "WeightlessMinimumValue", weightlessMinimumValue as float)
     PutSettingObjectArray(type_Harvest, type_ValueWeight, 30, valueWeightSettingArray)
 
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
@@ -687,6 +695,13 @@ Function SetObjectTypeData()
     s_objectTypeNameArray[29] = "$SHSE_OREVEIN"
 EndFunction
 
+Function SetCheckWeightless()
+    checkWeightlessValueDefault = false
+    checkWeightlessValue = checkWeightlessValueDefault
+    weightlessMinimumValueDefault = 10
+    weightlessMinimumValue = weightlessMinimumValueDefault
+EndFunction
+
 Function SetMiscDefaults(bool firstTime)
     ; New or clarified defaults and constants
     manualLootTargetNotify = true
@@ -720,6 +735,8 @@ Function SetMiscDefaults(bool firstTime)
     valuableItemThreshold = 500
     lootAllowedItemsInSettlement = true
     lootAllowedItemsInPlayerHouse = false
+
+    SetCheckWeightless()
 
     InstallCollections()
     InstallCollectionGroupPolicy()
@@ -1262,6 +1279,7 @@ Event OnVersionUpdate(int a_version)
         updateDisallowMiningIfSneaking(False)
         ; this got a new option
         SetDeadBodyChoices()
+        SetCheckWeightless()
     endif
 endEvent
 
@@ -1666,6 +1684,7 @@ event OnPageReset(string currentPage)
         SetCursorFillMode(TOP_TO_BOTTOM)
 
         AddHeaderOption("$SHSE_PICK_UP_ITEM_TYPE_HEADER")
+        AddToggleOptionST("CheckWeightlessValue", "$SHSE_CHECK_WEIGHTLESS_VALUE", checkWeightlessValue as bool)
         
         int index = 0
         int objType = 1
@@ -1687,6 +1706,11 @@ event OnPageReset(string currentPage)
         SetCursorPosition(1)
 
         AddHeaderOption("$SHSE_VALUE/WEIGHT_HEADER")
+        int checkFlags = OPTION_FLAG_NONE
+        if !checkWeightlessValue
+            checkFlags = OPTION_FLAG_DISABLED
+        endif
+        AddSliderOptionST("WeightlessMinimumValue", "$SHSE_WEIGHTLESS_MINIMUM_VALUE", weightlessMinimumValue as float, "$SHSE_MONEY", checkFlags)
 
         index = 0
         objType = 1
@@ -2896,6 +2920,55 @@ state valuableItemThreshold
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_VALUABLE_ITEM_THRESHOLD"))
+    endEvent
+endState
+
+Function UpdateWeightlessItemValueSlider()
+    if checkWeightlessValue
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "WeightlessMinimumValue")
+    else
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "WeightlessMinimumValue")
+    endIf
+EndFunction
+
+state CheckWeightlessValue
+    event OnSelectST()
+        checkWeightlessValue = !(checkWeightlessValue as bool)
+        SetToggleOptionValueST(checkWeightlessValue)
+        UpdateWeightlessItemValueSlider()
+    endEvent
+
+    event OnDefaultST()
+        checkWeightlessValue = checkWeightlessValueDefault
+        SetToggleOptionValueST(checkWeightlessValue)
+        UpdateWeightlessItemValueSlider()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_CHECK_WEIGHTLESS_VALUE_DESC"))
+    endEvent
+endState
+
+state WeightlessMinimumValue
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(weightlessMinimumValue)
+        SetSliderDialogDefaultValue(weightlessMinimumValueDefault)
+        SetSliderDialogRange(0, 200)
+        SetSliderDialogInterval(1)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        weightlessMinimumValue = value as int
+        SetSliderOptionValueST(weightlessMinimumValue)
+    endEvent
+
+    event OnDefaultST()
+        weightlessMinimumValue = weightlessMinimumValueDefault
+        SetSliderOptionValueST(weightlessMinimumValue)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_WEIGHTLESS_MINIMUM_VALUE_DESC"))
     endEvent
 endState
 

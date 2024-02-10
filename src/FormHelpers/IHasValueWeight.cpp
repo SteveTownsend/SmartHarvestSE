@@ -54,6 +54,13 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 	if (IsValuable())
 		return false;
 
+	double weight = GetWeight();
+	if (weight == 0.0)
+	{
+		bool result(SettingsCache::Instance().CheckWeightlessValue() && worth < SettingsCache::Instance().WeightlessMinimumValue());
+		DBG_VMESSAGE("Weightless item value too low to loot? {}", worth, result);
+		return result;
+	}
 	// A specified default for value-weight supersedes a missing type-specific value-weight
 	double valueWeight(SettingsCache::Instance().ValueWeight(m_objectType));
 	if (valueWeight <= 0.)
@@ -70,7 +77,6 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 			DBG_VMESSAGE("{}/0x{:08x} ammo damage {} vs threshold {:0.2f}", GetName(), GetFormID(), worth, valueWeight);
 			return worth < valueWeight - 0.01;
 		}
-		double weight = std::max(GetWeight(), 0.);
 		if (worth > 0. && weight <= 0.)
 		{
 			DBG_VMESSAGE("{}/0x{:08x} has value {}, weightless", GetName(), GetFormID(), worth);

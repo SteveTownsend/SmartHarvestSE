@@ -49,6 +49,8 @@ public:
 	bool NotifyLocationChange() const;
 
 	double ValuableItemThreshold() const;
+	bool CheckWeightlessValue() const;
+	int WeightlessMinimumValue() const;
 	double ValueWeightDefault() const;
 	double ValueWeight(ObjectType objectType) const;
 	LootingType ObjectLootingType(ObjectType objectType) const;
@@ -106,6 +108,8 @@ private:
 	bool m_collectionsEnabled;
 	bool m_notifyLocationChange;
 	double m_valuableItemThreshold;
+	bool m_checkWeightlessValue;
+	int m_weightlessMinimumValue;
 	double m_valueWeightDefault;
 	DeadBodyLooting m_deadBodyLooting;
 	EnchantedObjectHandling m_enchantedObjectHandling;

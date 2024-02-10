@@ -67,6 +67,15 @@ inline bool IsValueWeightExempt(ObjectType objectType)
 		objectType == ObjectType::septims;
 }
 
+inline bool AlwaysValueWeightExempt(ObjectType objectType)
+{
+	return objectType == ObjectType::critter ||
+		objectType == ObjectType::flora ||
+		objectType == ObjectType::key ||
+		objectType == ObjectType::oreVein ||
+		objectType == ObjectType::septims;
+}
+
 bool FormTypeIsLootableObject(const RE::FormType formType);
 bool NPCIsLeveled(const RE::TESNPC* npc);
 bool FormIsLeveledNPC(const RE::TESForm* form);

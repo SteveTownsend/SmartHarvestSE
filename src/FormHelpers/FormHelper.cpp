@@ -190,8 +190,8 @@ double TESFormHelper::GetWeight() const
 		return 0.0;
 	}
 
-	DBG_VMESSAGE("TESWeightForm for {}/0x{:08x} has {}", m_form->GetName(), m_form->GetFormID(), pWeight->weight);
-	return pWeight->weight;
+	DBG_VMESSAGE("TESWeightForm for {}/0x{:08x} has weight {} (floored at zero)", m_form->GetName(), m_form->GetFormID(), pWeight->weight);
+	return std::max(pWeight->weight, 0.0f);
 }
 
 uint32_t TESFormHelper::CalculateWorth(void) const 
