@@ -38,25 +38,26 @@ TaskDispatcher& TaskDispatcher::Instance()
 	return *m_instance;
 }
 
-TaskDispatcher::TaskDispatcher()
+TaskDispatcher::TaskDispatcher() : m_player(nullptr)
 {
     m_taskInterface = SKSE::GetTaskInterface();
 }
 
 void TaskDispatcher::EnqueueObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
 {
-    m_queued.emplace_back(refr, duration, glowReason);
+    RecursiveLockGuard lock(m_queueLock);
+    m_queuedGlow.emplace_back(refr, duration, glowReason);
 }
 
 void TaskDispatcher::GlowObjects()
 {
     // Dispatch the queued glow requests via the TaskInterface
-    decltype(m_queued) queued;
+    decltype(m_queuedGlow) queued;
     {
         RecursiveLockGuard lock(m_queueLock);
-        if (m_queued.size())
+        if (m_queuedGlow.size())
         {
-            queued.swap(m_queued);
+            queued.swap(m_queuedGlow);
         }
         else
         {
@@ -106,6 +107,60 @@ void TaskDispatcher::SetShader(const int index, RE::TESEffectShader* shader)
     }
 	REL_MESSAGE("Shader 0x{:08x} set for GlowReason {}", shader->formID, GlowName(static_cast<GlowReason>(index)));
     m_shaders[index] = shader;
+}
+
+void TaskDispatcher::EnqueueLootFromNPC(
+    RE::TESObjectREFR* npc, RE::TESBoundObject* item, const int count, const ObjectType objectType)
+{
+    if (!npc || !item)
+        return;
+    RecursiveLockGuard lock(m_queueLock);
+    m_queuedNPCLoot.emplace_back(npc, item, count, objectType);
+}
+
+void TaskDispatcher::LootNPCs()
+{
+    // Dispatch the queued NPC Loot requests via the TaskInterface
+    decltype(m_queuedNPCLoot) queued;
+    {
+        RecursiveLockGuard lock(m_queueLock);
+        if (m_queuedNPCLoot.size())
+        {
+            queued.swap(m_queuedNPCLoot);
+        }
+        else
+        {
+	        DBG_VMESSAGE("No pending NPC Loot requests");
+            return;
+        }
+
+    }
+    DBG_VMESSAGE("Dispatch {} queued Loot NPC requests", queued.size());
+    // Pass in current queued requests by value, as this executes asynchronously
+    m_taskInterface->AddTask([=] (void) {
+        RE::TESObjectREFR* npc;
+        RE::TESBoundObject* item;
+        int count;
+        ObjectType objectType;
+        for (const auto request: queued) {
+            std::tie(npc, item, count, objectType) = request;
+            DBG_VMESSAGE("Loot NPC: REFR 0x{:08x} to NPC {}/0x{:08x} {} of item {}", npc->GetFormID(),
+                npc->GetBaseObject()->GetName(), npc->GetBaseObject()->GetFormID(), count, item->GetName());
+            // record receipt of item, if collectible
+            CollectionManager::Collectibles().CheckEnqueueAddedItem(item, INIFile::SecondaryType::deadbodies, objectType);
+            npc->RemoveItem(item, count, RE::ITEM_REMOVE_REASON::kRemove, nullptr, m_player);
+        }
+    });
+}
+
+void TaskDispatcher::SetPlayer(RE::Actor* player)
+{
+    if (!player)
+    {
+        return;
+    }
+	REL_MESSAGE("REFR for Player 0x{:08x} for NPC Loot transfer", player->formID);
+    m_player = player;
 }
 
 }

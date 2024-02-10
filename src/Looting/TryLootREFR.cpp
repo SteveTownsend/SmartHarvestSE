@@ -961,7 +961,6 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 		// Play sound first as this uses InventoryItemData on the source container
 		InventoryItem& itemInfo(std::get<0>(target));
 		bool notify(std::get<1>(target));
-		bool collectible(std::get<2>(target));
 		bool whiteListNotify(std::get<3>(target));
 		if (!madeSound)
 		{
@@ -969,7 +968,7 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 			madeSound = true;
 		}
 		std::string name(itemInfo.BoundObject()->GetName());
-		size_t count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible, inlineTransfer));
+		size_t count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), inlineTransfer));
 		// save count in case we have to copy these after failure to transfer (e.g. MrB's Lootable Things)
 		std::get<4>(target) = count;
 		std::string notificationText;

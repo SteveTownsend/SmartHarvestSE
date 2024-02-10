@@ -45,7 +45,6 @@ public:
 		const bool collectible, const bool isWhitelisted);
 	void TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
 		const bool collectible, const bool isWhitelisted);
-	void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const bool collectible);
 	void TriggerFlushAddedItems(void);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void TriggerCheckOKToScan(const int nonce);
@@ -66,7 +65,6 @@ private:
 	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, bool> m_onHarvestSyntheticFlora;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, bool> m_onHarvestCritter;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool, bool> m_onMining;
-	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int, bool> m_onLootFromNPC;
 	SKSE::RegistrationSet<> m_onFlushAddedItems;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;

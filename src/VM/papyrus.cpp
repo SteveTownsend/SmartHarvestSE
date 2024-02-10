@@ -851,6 +851,11 @@ namespace papyrus
 		shse::TaskDispatcher::Instance().SetShader(index, shader);
 	}
 
+	void SetPlayer(RE::StaticFunctionTag*, RE::Actor* player)
+	{
+		shse::TaskDispatcher::Instance().SetPlayer(player);
+	}
+
 	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag*, const int actorIndex, const bool dryRun)
 	{
 		if (dryRun)
@@ -1005,6 +1010,7 @@ namespace papyrus
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
 		a_vm->RegisterFunction("GlowNearbyLoot", SHSE_PROXY, papyrus::GlowNearbyLoot);
 		a_vm->RegisterFunction("SyncShader", SHSE_PROXY, papyrus::SyncShader);
+		a_vm->RegisterFunction("SetPlayer", SHSE_PROXY, papyrus::SetPlayer);
 
 		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
 		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);

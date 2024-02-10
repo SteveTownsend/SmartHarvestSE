@@ -101,6 +101,7 @@ Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
 Function GlowNearbyLoot() global native
 Function SyncShader(int index, EffectShader shader) global native
+Function SetPlayer(Actor player) global native
 
 Actor Function GetDetectingActor(int actorIndex, bool dryRun) global native    
 Function ReportPlayerDetectionState(bool detected) global native

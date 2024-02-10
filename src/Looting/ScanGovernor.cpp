@@ -268,6 +268,7 @@ void ScanGovernor::ProgressGlowDemo()
 			m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
 	}
 	TaskDispatcher::Instance().GlowObjects();
+	TaskDispatcher::Instance().LootNPCs();
 
 	// glow demo runs forever at the same radius, range calibration stops after the outer limit
 	if (!m_glowDemo)
@@ -613,6 +614,7 @@ void ScanGovernor::LootAllEligible()
 		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
 	}
 	TaskDispatcher::Instance().GlowObjects();
+	TaskDispatcher::Instance().LootNPCs();
 }
 
 void ScanGovernor::TrackActors()
@@ -740,6 +742,7 @@ void ScanGovernor::InvokeLootSense(void)
 		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
 	}
 	TaskDispatcher::Instance().GlowObjects();
+	TaskDispatcher::Instance().LootNPCs();
 	if (!m_fhiRunning.compare_exchange_strong(running, false))
 	{
 		REL_ERROR("Fortune Hunter's Instinct reset failed");

@@ -32,14 +32,21 @@ public:
 	void EnqueueObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
     void GlowObjects();
     void SetShader(const int index, RE::TESEffectShader* shader);
+    void EnqueueLootFromNPC(
+        RE::TESObjectREFR* npc, RE::TESBoundObject* item, const int count, const ObjectType objectType);
+    void LootNPCs();
+    void SetPlayer(RE::Actor* player);
 
 private:
     typedef std::tuple<RE::TESObjectREFR*, const int, const GlowReason> GlowRequest;
+    typedef std::tuple<RE::TESObjectREFR*, RE::TESBoundObject*, const int, const ObjectType> NPCLootRequest;
 	static TaskDispatcher* m_instance;
     const SKSE::TaskInterface* m_taskInterface;
-    std::deque<GlowRequest> m_queued;
+    std::deque<GlowRequest> m_queuedGlow;
+    std::deque<NPCLootRequest> m_queuedNPCLoot;
     RecursiveLock m_queueLock;
     std::array<RE::TESEffectShader*, static_cast<int>(GlowReason::NumberOfShaders)> m_shaders;
+    RE::Actor* m_player;
 };
 
 }

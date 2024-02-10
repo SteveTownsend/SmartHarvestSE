@@ -58,7 +58,6 @@ EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onHarvestSyntheticFlora("OnHarvestSyntheticFlora"),
 	m_onHarvestCritter("OnHarvestCritter"),
 	m_onMining("OnMining"),
-	m_onLootFromNPC("OnLootFromNPC"),
 	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
 	m_onCheckOKToScan("OnCheckOKToScan"),
@@ -127,7 +126,6 @@ void EventPublisher::HookUp()
 	m_onHarvestSyntheticFlora.Register(m_eventTarget);
 	m_onHarvestCritter.Register(m_eventTarget);
 	m_onMining.Register(m_eventTarget);
-	m_onLootFromNPC.Register(m_eventTarget);
 	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
 	m_onStealIfUndetected.Register(m_eventTarget);
@@ -182,11 +180,6 @@ void EventPublisher::TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TE
 void EventPublisher::TriggerFlushAddedItems()
 {
 	m_onFlushAddedItems.SendEvent();
-}
-
-void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const bool collectible)
-{
-	m_onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType), collectible);
 }
 
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)

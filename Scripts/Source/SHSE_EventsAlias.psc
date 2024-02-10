@@ -137,6 +137,7 @@ Perk spergProspector
 Function Prepare(Actor playerref, bool useLog)
     logEvent = useLog
     thisPlayer = playerref
+    SetPlayer(playerRef)
     ;check for SPERG being active and set up the Prospector Perk to check
     int spergProspectorPerkID = 0x5cc21
     spergProspector = Game.GetFormFromFile(spergProspectorPerkID, "SPERG-SSE.esp") as Perk
@@ -1509,21 +1510,6 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
         ;DebugTrace("OnHarvest:Activated:" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
-endEvent
-
-; NPC looting appears to have thread safety issues requiring script to perform
-Event OnLootFromNPC(ObjectReference akContainerRef, Form akForm, int count, int itemType, bool collectible)
-    ;DebugTrace("OnLootFromNPC: " + akContainerRef.GetDisplayName() + " " + akForm.GetName() + "(" + count + ")")
-    if (!akContainerRef)
-        return
-    elseif (!akForm)
-        return
-    endif
-
-    akContainerRef.RemoveItem(akForm, count, true, thisPlayer)
-    if collectible
-        RecordItem(akForm, itemSourceNPC, itemType)
-    endIf
 endEvent
 
 Event OnGetProducerLootable(ObjectReference akTarget)
