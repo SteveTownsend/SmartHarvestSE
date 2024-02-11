@@ -1516,6 +1516,11 @@ Event OnGetProducerLootable(ObjectReference akTarget)
     ;DebugTrace("OnGetProducerLootable " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
     ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
     Form baseForm = akTarget.GetBaseObject()
+    NirnrootACTIVATORScript nirnrootACTI = akTarget as NirnrootACTIVATORScript
+    if nirnrootACTI
+        SetLootableForProducer(baseForm, nirnrootACTI.nirnroot)
+        return
+    endif
     DLC1TrapPoisonBloom poisonBloom = akTarget as DLC1TrapPoisonBloom
     if poisonBloom
         SetLootableForProducer(baseForm, poisonBloom.myIngredient)
@@ -1596,6 +1601,11 @@ bool Function IsInHarvestableState(ObjectReference akTarget)
     ;DebugTrace("IsInHarvestableState: Target " + akTarget + ", Base " + akTarget.GetBaseObject())
     ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
     Form baseForm = akTarget.GetBaseObject()
+    NirnrootACTIVATORScript nirnrootACTI = akTarget as NirnrootACTIVATORScript
+    if nirnrootACTI
+        String nirnrootState = nirnrootACTI.getState()
+        return nirnrootState == "WaitingForHarvest"
+    endif
     DLC1TrapPoisonBloom poisonBloom = akTarget as DLC1TrapPoisonBloom
     if poisonBloom
         ;DebugTrace("DLC1TrapPoisonBloom State=" + poisonBloom.getState())
