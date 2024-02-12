@@ -299,13 +299,14 @@ namespace papyrus
 		INIFile::GetInstance()->SaveFile();
 	}
 
+	void ClearLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* producer)
+	{
+		shse::ProducerLootables::Instance().ClearLootableForProducer(producer);
+		return;
+	}
+
 	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* producer, RE::TESForm* lootable)
 	{
-		if (!lootable)
-		{
-			shse::ProducerLootables::Instance().SetLootableForProducer(producer, nullptr);
-			return;
-		}
 		REL_MESSAGE("Store Lootable 0x{:08x} for producer 0x{:08x}", lootable->GetFormID(), producer->GetFormID());
 		RE::TESLevItem* leveledItem( lootable->As<RE::TESLevItem>());
 		if (leveledItem)
@@ -948,6 +949,7 @@ namespace papyrus
 		a_vm->RegisterFunction("SaveIniFile", SHSE_PROXY, papyrus::SaveIniFile);
 
 		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
+		a_vm->RegisterFunction("ClearLootableForProducer", SHSE_PROXY, papyrus::ClearLootableForProducer);
 		a_vm->RegisterFunction("SetHarvested", SHSE_PROXY, papyrus::SetHarvested);
 		a_vm->RegisterFunction("PrepareSPERGMining", SHSE_PROXY, papyrus::PrepareSPERGMining);
 		a_vm->RegisterFunction("PostprocessSPERGMining", SHSE_PROXY, papyrus::PostprocessSPERGMining);

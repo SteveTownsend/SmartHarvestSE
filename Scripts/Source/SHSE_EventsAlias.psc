@@ -73,9 +73,12 @@ LeveledItem FOS_LItemFossilTierOneyum
 LeveledItem FOS_LItemFossilTierOneVolcanicDigSite
 LeveledItem FOS_LItemFossilTierTwoVolcanic
 
+bool hasExtendedCutSaintsAndSeducers = False
 bool hasCCSaintsAndSeducers = False
 bool hasCCTheCause = False
 ccBGSSSE001_DialogueDetectScript ccFishingDialogue = None
+MiscObject sirenrootFlower = None
+bool hasOrangeMoon = False
 
 ; supported Effect Shaders
 EffectShader redShader          ; red
@@ -1539,6 +1542,14 @@ Event OnGetProducerLootable(ObjectReference akTarget)
             return
         endif
     endif
+    ; handle Extended Cut - Saints and Seducers
+    if hasExtendedCutSaintsAndSeducers
+        EC_HarvestTreeofShades ecssFlora = akTarget as EC_HarvestTreeofShades
+        if ecssFlora
+            SetLootableForProducer(baseForm, ecssFlora.ccBGSSSE019_BranchOfTreeOfShades as Form)
+            return
+        endif
+    endif
     ; handle The Cause
     if hasCCTheCause
         ccBGSSSE067_HarradaBehaviorScript causeFlora = akTarget as ccBGSSSE067_HarradaBehaviorScript
@@ -1561,6 +1572,21 @@ Event OnGetProducerLootable(ObjectReference akTarget)
             return
         endIf
     endIf
+    if sirenrootFlower
+        ; only the first has contents, the others are never treated as Harvestable
+        if akTarget as evgSRharvestsroot || akTarget as EVGSR01HarvestScript || akTarget as evgSR10bosstart
+            SetLootableForProducer(baseForm, sirenrootFlower)
+            return
+        endif
+    endif
+    if hasOrangeMoon
+        ; only the first has contents, the others are never treated as Harvestable
+        ORMOrangeActivatorScript orangeTree = akTarget as ORMOrangeActivatorScript
+        if orangeTree
+            SetLootableForProducer(baseForm, orangeTree.FruitIngredient)
+            return
+        endif
+    endif
     ; test for critters after checking all the synthetic flora
     Critter thisCritter = akTarget as Critter
     if thisCritter
@@ -1573,7 +1599,7 @@ Event OnGetProducerLootable(ObjectReference akTarget)
                 SetLootableForProducer(baseForm, thisCritter.nonIngredientLootable.GetAt(0))
             else
                 ; blacklist empty vessel
-                SetLootableForProducer(baseForm, None)
+                ClearLootableForProducer(baseForm)
             endif
         else
             ; everything else - simple ingredient
@@ -1590,10 +1616,11 @@ Event OnGetProducerLootable(ObjectReference akTarget)
             SetLootableForProducer(baseForm, fakeCritter.myFood)
         else
             AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " has neither myFood nor myIngredient")
-            SetLootableForProducer(baseForm, None)
+            ClearLootableForProducer(baseForm)
         endif
         return
     endIf
+    ClearLootableForProducer(baseForm)
     AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " is unsupported scripted ACTI")
 endEvent
 
@@ -1620,6 +1647,14 @@ bool Function IsInHarvestableState(ObjectReference akTarget)
             return saintsFlora.getState() == "Ready"
         endif
     endif
+    ; handle Extended Cut - Saints and Seducers
+    if hasExtendedCutSaintsAndSeducers
+        EC_HarvestTreeofShades ecssFlora = akTarget as EC_HarvestTreeofShades
+        if ecssFlora
+            ; deleted once harvested
+            return True;
+        endif
+    endif
     ; handle The Cause
     if hasCCTheCause
         ccBGSSSE067_HarradaBehaviorScript causeFlora = akTarget as ccBGSSSE067_HarradaBehaviorScript
@@ -1637,7 +1672,18 @@ bool Function IsInHarvestableState(ObjectReference akTarget)
         ; there are three items: we choose the critter for loot rule checking, but all items should be looted
         return True
     endIf
-    ;DebugTrace("IsInHarvestableState not determined for " + akTarget)
+    if sirenrootFlower
+        ; two others are skipped
+        if akTarget as evgSRharvestsroot
+            return True
+        endif
+    endif
+    if hasOrangeMoon
+        if akTarget as ORMOrangeActivatorScript
+            return True
+        endif
+    endif
+    AlwaysTrace("IsInHarvestableState not determined for " + akTarget)
     return False
 EndFunction
 
@@ -1869,11 +1915,15 @@ Event OnGameReady()
         FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
     endif
 
-    ; Check for CC Saints and Seducers, testing form injected to Update.esm
-    hasCCSaintsAndSeducers = Game.GetFormFromFile(0x308c, "Update.esm") as Activator != None
+    ; Check for CC Saints and Seducers
+    hasCCSaintsAndSeducers = Game.GetFormFromFile(0x54046, "ccbgssse025-advdsgs.esm") as Activator != None
     AlwaysTrace("CC Saints and Seducers present = " + hasCCSaintsAndSeducers)
 
-    ; Check for CC Saints and Seducers, testing form injected to Update.esm
+    ; Check for Extended Cut - Saints and Seducers
+    hasExtendedCutSaintsAndSeducers = Game.GetFormFromFile(0x4800, "Skyrim Extended Cut - Saints and Seducers.esp") as Activator != None
+    AlwaysTrace("Extended Cut - Saints and Seducers present = " + hasExtendedCutSaintsAndSeducers)
+
+    ; Check for CC The Cause, testing form injected to Update.esm
     hasCCTheCause = Game.GetFormFromFile(0x3157, "Update.esm") as Activator != None
     AlwaysTrace("CC The Cause present = " + hasCCTheCause)
 
@@ -1886,6 +1936,14 @@ Event OnGameReady()
     if HearthfireExtendedModIndex != 255
         AlwaysTrace("Hearthfire Extended mod index: " + HearthfireExtendedModIndex)
     endif
+
+    ; Check for Sirenroot - the Misc Object some ACTIs return
+    sirenrootFlower = Game.GetFormFromFile(0xb97d9, "evgSIRENROOT.esm") as MiscObject
+    AlwaysTrace("Sirenroot present = " + (sirenrootFlower as Bool))
+
+    ; Check for Orange Moon
+    hasOrangeMoon = Game.GetFormFromFile(0xe5868, "OrangeMoon.esp") as Activator != None
+    AlwaysTrace("Orange Moon present = " + hasOrangeMoon)
 
     ; yes, this really is the ESP name. And there are three different names.
     MagicChestModIndex = Game.GetModByName("Skyrim_SE_Nexus .esp")

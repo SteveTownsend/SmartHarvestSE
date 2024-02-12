@@ -91,6 +91,7 @@ bool ProducerLootables::SetLootableForProducer(const RE::TESForm* producer, RE::
 		return true;
 	}
 }
+
 bool ProducerLootables::ResolveLootableForProducer(RE::TESForm* producer, RE::TESLevItem* lootableList)
 {
 	RecursiveLockGuard guard(m_producerIngredientLock);
@@ -116,6 +117,17 @@ bool ProducerLootables::ResolveLootableForProducer(RE::TESForm* producer, RE::TE
 			return false;
 		}
 	}
+}
+
+// ingredient nullptr indicates this Producer failed resolution. We have to remove it or we will retry resolution forever
+void ProducerLootables::ClearLootableForProducer(const RE::TESForm* producer)
+{
+	if (!producer)
+		return;
+	RecursiveLockGuard guard(m_producerIngredientLock);
+	DBG_VMESSAGE("Producer {}/0x{:08x} failed resolution to lootable", producer->GetName(), producer->formID);
+	m_producerLootable.erase(producer);
+	DataCase::GetInstance()->ClearSyntheticFlora(producer->As<RE::TESBoundObject>());
 }
 
 RE::TESBoundObject* ProducerLootables::GetLootableForProducer(RE::TESForm* producer) const

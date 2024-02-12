@@ -139,6 +139,7 @@ public:
 	static constexpr RE::FormID RollOfPaper = 0x33761;
 
 	bool IsSyntheticFlora(const RE::TESBoundObject* boundObject) const;
+	void ClearSyntheticFlora(const RE::TESBoundObject* boundObject);
 	bool IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const;
 	void SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested);
 

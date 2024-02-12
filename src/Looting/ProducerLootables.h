@@ -52,6 +52,7 @@ public:
 
 	bool SetLootableForProducer(const RE::TESForm* producer, RE::TESBoundObject* ingredient);
 	bool ResolveLootableForProducer(RE::TESForm* producer, RE::TESLevItem* leveledItem);
+	void ClearLootableForProducer(const RE::TESForm* producer);
 	RE::TESBoundObject* GetLootableForProducer(RE::TESForm* producer) const;
 };
 

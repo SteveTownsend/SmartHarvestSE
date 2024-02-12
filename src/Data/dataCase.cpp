@@ -1172,12 +1172,25 @@ void DataCase::RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable)
 
 [[nodiscard]] bool DataCase::IsSyntheticFlora(const RE::TESBoundObject* boundObject) const
 {
+	if (!boundObject)
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
 	const RE::TESObjectACTI* activator(boundObject->As<RE::TESObjectACTI>());
 	return activator && m_syntheticFlora.contains(activator);
 }
 
+void DataCase::ClearSyntheticFlora(const RE::TESBoundObject* boundObject)
+{
+	if (!boundObject)
+		return;
+	RecursiveLockGuard guard(m_blockListLock);
+	const RE::TESObjectACTI* activator(boundObject->As<RE::TESObjectACTI>());
+	m_syntheticFlora.erase(activator);
+}
+
 [[nodiscard]] bool DataCase::IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const
 {
+	RecursiveLockGuard guard(m_blockListLock);
 	if (candidate)
 	{
 		auto harvestedState(m_syntheticFloraHarvested.find(candidate));
@@ -1200,6 +1213,7 @@ void DataCase::RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable)
 
 void DataCase::SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested)
 {
+	RecursiveLockGuard guard(m_blockListLock);
 	if (candidate)
 	{
 		m_syntheticFloraHarvested[candidate] = {isHarvested, RE::Calendar::GetSingleton()->GetCurrentGameTime()};

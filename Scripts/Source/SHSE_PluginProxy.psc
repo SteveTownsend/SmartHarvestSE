@@ -38,6 +38,7 @@ Function LoadIniFile(bool useDefaults) global native
 Function SaveIniFile() global native
 
 Function SetLootableForProducer(Form producer, Form lootable) global native
+Function ClearLootableForProducer(Form producer) global native
 Function SetHarvested(ObjectReference refr) global native
 
 Function PrepareSPERGMining() global native
