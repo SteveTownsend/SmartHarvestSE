@@ -853,8 +853,6 @@ bool LocationTracker::IsPlayerInRestrictedLootSettlement() const
 
 bool LocationTracker::IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const
 {
-	if (!location)
-		return false;
 	RecursiveLockGuard guard(m_locationLock);
 	// whitelist check done before we get called
 	return PopulationCenters::Instance().CannotLoot(cellID, location);

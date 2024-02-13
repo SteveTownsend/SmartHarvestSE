@@ -44,12 +44,15 @@ bool PopulationCenters::CannotLoot(const RE::FormID cellID, const RE::BGSLocatio
 	if (centerSize == PopulationCenterSize::None)
 		return false;
 
-	const auto locationRecord(m_centers.find(location));
-	// if small locations are excluded we automatically exclude any larger, so use >= here, assuming this is
-	// a population center
-	if (locationRecord != m_centers.cend())
+	if (location)
 	{
-		return locationRecord->second >= centerSize;
+		const auto locationRecord(m_centers.find(location));
+		// if small locations are excluded we automatically exclude any larger, so use >= here, assuming this is
+		// a population center
+		if (locationRecord != m_centers.cend())
+		{
+			return locationRecord->second >= centerSize;
+		}
 	}
 	const auto cellRecord(m_cells.find(cellID));
 	if (cellRecord != m_cells.cend())
@@ -234,7 +237,7 @@ void PopulationCenters::AddOtherPlaces(void)
 	}
 
 	baseline = m_cells.size();
-	// Helgen Reborn house CELLs
+	// house building mod CELLs
 	espName = "LC_BuildYourNobleHouse.esp";
 	std::vector<RE::FormID> LC_BuildYourNobleHouseHouses = {
 		0x2baad,			// LCBYHunterHouse
