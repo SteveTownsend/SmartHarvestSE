@@ -57,6 +57,7 @@ private:
 	bool m_threadStarted;
 	bool m_pluginSynced;
 	bool m_loadedSettings;
+	bool m_ready;
 };
 
 }

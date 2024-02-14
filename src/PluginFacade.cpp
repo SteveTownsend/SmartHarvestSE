@@ -52,7 +52,8 @@ PluginFacade& PluginFacade::Instance()
 	return *m_instance;
 }
 
-PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted), m_threadStarted(false), m_pluginSynced(false), m_loadedSettings(false)
+PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted),
+	m_threadStarted(false), m_pluginSynced(false), m_loadedSettings(false), m_ready(false)
 {
 }
 
@@ -115,6 +116,8 @@ bool PluginFacade::Init()
 	}
 	// here we go
 	EventPublisher::Instance().TriggerGameReady();
+	// we are now ready for interaction with the Papyrus VM
+	m_ready = true;
 	return true;
 }
 
@@ -293,7 +296,19 @@ void PluginFacade::ResetTransientState(const bool gameReload)
 
 void PluginFacade::OnVMSync()
 {
-	REL_MESSAGE("Plugin sync, VM ready");
+	// This can get called via SHSE_MCM.OnGameReload if player consoles into the game using coc.
+	// In that case, the script state is consistent but the C++ code is unprepared, meaning undefined behaviour.
+	// Don't do this processing before the SKSE plugin has reached a stable state.
+	if (!m_ready)
+	{
+		REL_ERROR("Plugin sync from VM, skip until we are ready");
+		return;
+	}
+	else
+	{
+		REL_MESSAGE("Plugin sync, VM ready");
+	}
+
 	WindowsUtils::LogProcessWorkingSet();
 	ResetTransientState(true);
 	// reset player state
