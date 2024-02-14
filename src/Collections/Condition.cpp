@@ -95,7 +95,7 @@ FormListCondition::FormListCondition(const std::vector<std::pair<std::string, st
 	{
 		// schema enforces 8-char HEX format
 		RE::FormID formID(StringUtils::ToFormID(entry.second));
-		RE::BGSListForm* formList(RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSListForm>(LoadOrder::Instance().AsRaw(formID), entry.first));
+		RE::BGSListForm* formList(LoadOrder::Instance().LookupForm<RE::BGSListForm>(LoadOrder::Instance().AsRaw(formID), entry.first));
 		if (!formList)
 		{
 			REL_ERROR("FormListCondition cannot resolve FormList {}/0x{:08x}", entry.first.c_str(), formID);
@@ -152,7 +152,7 @@ FormsCondition::FormsCondition(const std::vector<std::pair<std::string, std::vec
 		{
 			// schema enforces 8-char HEX format
 			RE::FormID formID(StringUtils::ToFormID(nextID));
-			RE::TESForm* form(RE::TESDataHandler::GetSingleton()->LookupForm(LoadOrder::Instance().AsRaw(formID), entry.first));
+			RE::TESForm* form(LoadOrder::Instance().LookupForm(LoadOrder::Instance().AsRaw(formID), entry.first));
 			if (!form)
 			{
 				REL_ERROR("FormsCondition requires valid Forms, got {}/0x{:08x}", entry.first.c_str(), formID);
@@ -457,6 +457,7 @@ bool NameMatchCondition::operator()(const ConditionMatcher& matcher) const
 void NameMatchCondition::AsJSON(nlohmann::json& j) const
 {
 	nlohmann::json nameMatch(nlohmann::json::object());
+	nameMatch["isNPC"] = m_isNPC;
 	nameMatch["matchIf"] = NameMatchTypeName(m_matchIf);
 	nameMatch["names"] = m_names;
 	j["nameMatch"] = nameMatch;

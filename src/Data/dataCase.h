@@ -23,6 +23,7 @@ http://www.fsf.org/licensing/licenses
 #include <chrono>
 
 #include "Data/LeveledItemCategorizer.h"
+#include "Data/LoadOrder.h"
 #include "Looting/ProducerLootables.h"
 #include "Looting/objects.h"
 
@@ -118,7 +119,7 @@ public:
 	{
 		if (defaultESP == "Skyrim.esm")
 			return RE::TESForm::LookupByID<T>(maskedFormID);
-		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
+		T* typedForm(LoadOrder::Instance().LookupForm<T>(maskedFormID, defaultESP));
 		if (typedForm)
 		{
 			DBG_MESSAGE("Found exact match 0x{:08x} for {}:0x{:06x}", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
@@ -156,6 +157,7 @@ private:
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
 
 	const Collection* m_underwear;
+	Collection* m_missivesBoards;
 	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
 	std::unordered_set<RE::EffectSetting*> m_slowTimeEffects;
@@ -440,63 +442,6 @@ private:
 	void ExcludeMissivesBoards();
 	void CheckAutoMiningOK();
 	void ExcludeBuildYourNobleHouseIncomeChest();
-
-	template <typename T>
-	T* FindBestMatch(const std::string& defaultESP, const RE::FormID maskedFormID, const std::string& name)
-	{
-		T* match(FindExactMatch<T>(defaultESP, maskedFormID));
-		// supplied EDID and Name not checked if we match plugin/formID
-		if (match)
-		{
-			DBG_MESSAGE("Returning exact match 0x{:08x}/{} for {}:0x{:06x}", match->GetFormID(), match->GetName(),
-				defaultESP.c_str(), maskedFormID);
-			return match;
-		}
-
-		// look for merged form
-		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-		if (!dhnd)
-			return nullptr;
-
-		// Check for match on name. FormID can change if this is in a merge output. Cannot use EDID as it is not loaded.
-		for (T* container : dhnd->GetFormArray<T>())
-		{
-			if (container->GetName() == name)
-			{
-				if (match)
-				{
-					REL_MESSAGE("Ambiguity in best match 0x{:08x} vs for 0x{:08x} for {}:0x{:06x}/{}",
-						match->GetFormID(), container->GetFormID(), defaultESP.c_str(), maskedFormID, name);
-					return nullptr;
-				}
-				else
-				{
-					REL_MESSAGE("Found best match 0x{:08x} for {}:0x{:06x}", container->GetFormID(),
-						defaultESP.c_str(), maskedFormID, name);
-					match = container;
-				}
-			}
-		}
-		return match;
-	}
-
-	template <typename T>
-	std::unordered_set<T*> FindExactMatchesByName(const std::string& name)
-	{
-		std::unordered_set<T*> matches;
-		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-		if (!dhnd)
-			return matches;
-
-		// Check for match on name. FormID can change if this is in a merge output.
-		std::for_each(dhnd->GetFormArray<T>().cbegin(), dhnd->GetFormArray<T>().cend(), [&](T* entry) {
-			if (entry->GetName() == name)
-			{
-				matches.insert(entry);
-			}
-		});
-		return matches;
-	}
 
 	void IncludeSeptimSpecialCases();
 	void IncludeCoinReplacerRedux();

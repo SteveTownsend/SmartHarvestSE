@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/LoadOrder.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
+#include "MergeMapperPluginAPI.h"
 
 namespace shse
 {
@@ -81,14 +82,54 @@ bool LoadOrder::Analyze(void)
 	return true;
 }
 
+// Proxy for CommonLibSSE-NG to handle merged plugins using MergeMapper
+RE::TESForm* LoadOrder::LookupForm(RE::FormID a_localFormID, std::string_view a_modName)
+{
+	RE::FormID formID(a_localFormID);
+	std::string modName(a_modName);
+	if (g_mergeMapperInterface)
+	{
+		if (g_mergeMapperInterface->wasMerged(modName.c_str()))
+		{
+			const char* newName;
+			RE::FormID newID;
+			std::tie(newName, newID) = g_mergeMapperInterface->GetNewFormID(modName.c_str(), a_localFormID);
+			DBG_VMESSAGE("Merged form {}/0x{:08x} has new FormID {}/0x{:08x}", modName, formID, newName, newID);
+			formID = newID;
+			a_modName = newName;
+		}
+	}
+	return RE::TESDataHandler::GetSingleton()->LookupForm(formID, a_modName);
+}
+
 // returns zero if mod not loaded
 RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 {
 	RecursiveLockGuard guard(m_loadLock);
-	const auto& matched(m_loadInfoByName.find(modName));
+	auto matched(m_loadInfoByName.find(modName));
 	if (matched != m_loadInfoByName.cend())
 	{
 		return matched->second.m_mask;
+	}
+	if (g_mergeMapperInterface)
+	{
+		if (g_mergeMapperInterface->wasMerged(modName.c_str()))
+		{
+			// get the mod's new name and returns its mask
+			const char* newName;
+			RE::FormID newID;
+			std::tie(newName, newID) = g_mergeMapperInterface->GetNewFormID(modName.c_str(), 0);
+			matched = m_loadInfoByName.find(newName);
+			if (matched != m_loadInfoByName.cend())
+			{
+				DBG_VMESSAGE("Plugin {} has merged plugin FormIDMask {}/0x{:08x}", modName, newName, matched->second.m_mask);
+				return matched->second.m_mask;
+			}
+			else
+			{
+				REL_WARNING("Plugin {} cannot be mapped to any merged plugin", modName);
+			}
+		}
 	}
 	return InvalidPlugin;
 }
@@ -97,15 +138,42 @@ RE::FormID LoadOrder::GetFormIDMask(const std::string& modName) const
 bool LoadOrder::IncludesMod(const std::string& modName) const
 {
 	RecursiveLockGuard guard(m_loadLock);
-	return m_loadInfoByName.find(modName) != m_loadInfoByName.cend();
+	if (m_loadInfoByName.find(modName) != m_loadInfoByName.cend())
+	{
+		return true;
+	}
+	// Check if it's present but merged
+	return g_mergeMapperInterface && g_mergeMapperInterface->wasMerged(modName.c_str());
 }
 
 // returns true iff mod is installed/active, and earlier than SHSE in Load Order
 bool LoadOrder::ModPrecedesSHSE(const std::string& modName) const
 {
 	RecursiveLockGuard guard(m_loadLock);
-	const auto matched(m_loadInfoByName.find(modName));
-	return matched != m_loadInfoByName.cend() && matched->second.m_priority < m_shsePriority;
+	auto matched(m_loadInfoByName.find(modName));
+	if (matched != m_loadInfoByName.cend())
+	{
+		DBG_VMESSAGE("Plugin {} has priority {}", modName, matched->second.m_priority);
+	 	return matched->second.m_priority < m_shsePriority;
+	}
+	if (g_mergeMapperInterface && g_mergeMapperInterface->wasMerged(modName.c_str()))
+	{
+		// get the mod's new name and check its merged plugin vs SHSE
+		const char* newName;
+		RE::FormID newID;
+		std::tie(newName, newID) = g_mergeMapperInterface->GetNewFormID(modName.c_str(), 0);
+		matched = m_loadInfoByName.find(newName);
+		if (matched != m_loadInfoByName.cend())
+		{
+			DBG_VMESSAGE("Plugin {} has merged plugin {} with priority {}", modName, newName, matched->second.m_priority);
+		 	return matched->second.m_priority < m_shsePriority;
+		}
+		else
+		{
+			REL_WARNING("Plugin {} cannot be mapped to any merged plugin", modName);
+		}
+	}
+	return false;
 }
 
 bool LoadOrder::ModOwnsForm(const std::string& modName, const RE::FormID formID) const

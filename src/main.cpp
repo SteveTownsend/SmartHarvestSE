@@ -33,6 +33,7 @@ http://www.fsf.org/licensing/licenses
 #include <filesystem>
 
 #include <spdlog/sinks/basic_file_sink.h>
+#include "MergeMapperPluginAPI.h"
 
 #define DLLEXPORT __declspec(dllexport)
 
@@ -77,6 +78,19 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 	case SKSE::MessagingInterface::kPreLoadGame:
 		REL_MESSAGE("Game load starting");
 		shse::PluginFacade::Instance().PrepareForReloadOrNewGame();
+		break;
+		
+	case SKSE::MessagingInterface::kPostPostLoad:
+		MergeMapperPluginAPI::GetMergeMapperInterface001();  // Request interface
+		if (g_mergeMapperInterface)
+		{ // Use Interface
+			const auto version = g_mergeMapperInterface->GetBuildNumber();
+			REL_MESSAGE("Got MergeMapper interface buildnumber {}", version);
+		}
+		else
+		{
+			REL_MESSAGE("MergeMapper not detected");
+		}
 		break;
 
 	case SKSE::MessagingInterface::kNewGame:

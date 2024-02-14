@@ -534,6 +534,17 @@ const Collection* CollectionManager::CollectionByLabel(const std::string& groupN
 	return nullptr;
 }
 
+Collection* CollectionManager::MutableCollectionByLabel(const std::string& groupName, const std::string& collectionName)
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second.get();
+	}
+	return nullptr;
+}
 
 bool CollectionManager::PolicyRepeat(const std::string& groupName, const std::string& collectionName) const
 {
@@ -788,6 +799,7 @@ void CollectionManager::ResolveMembership(void)
 	std::vector<RE::FormType> extraFormTypes = {
 		RE::FormType::Activator,
 		RE::FormType::Ammo,
+		RE::FormType::Container,			// blacklisted containers e.g. Missives
 		RE::FormType::Flora,
 		RE::FormType::Light,
 		RE::FormType::NPC,

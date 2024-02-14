@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
+#include "Data/LoadOrder.h"
 #include "VM/EventPublisher.h"
 #include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
@@ -72,7 +73,7 @@ RE::BGSRefAlias* EventPublisher::GetScriptTarget(const char* espName, RE::FormID
 	static RE::BGSRefAlias* alias(nullptr);
 	if (!quest)
 	{
-		RE::TESForm* questForm(RE::TESDataHandler::GetSingleton()->LookupForm(questID, espName));
+		RE::TESForm* questForm(LoadOrder::Instance().LookupForm(questID, espName));
 		if (questForm)
 		{
 			DBG_MESSAGE("Got Base Form {}", questForm ? FormUtils::SafeGetFormEditorID(questForm).c_str() : "nullptr");

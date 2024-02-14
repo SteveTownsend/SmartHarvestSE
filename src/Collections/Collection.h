@@ -84,6 +84,7 @@ protected:
 	CollectionPolicy m_effectivePolicy;
 	bool m_overridesGroup;
 	std::unique_ptr<ItemRule> m_itemRule;
+	bool m_disabled;
 	// derived
 	std::unordered_map<const RE::TESForm*, float> m_observed;
 	std::vector<INIFile::SecondaryType> m_scopes;
@@ -94,6 +95,8 @@ public:
 		const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ItemRule> filter);
 	virtual ~Collection();
 	bool IsActive() const;
+	void Disable();
+	inline bool IsEnabled() const { return !m_disabled; }
 	virtual bool HasMembers() const = 0;
 	virtual bool IsStaticMatch(const ConditionMatcher& matcher) const = 0;
 	virtual bool IsMemberOf(const ConditionMatcher& matcher) const = 0;

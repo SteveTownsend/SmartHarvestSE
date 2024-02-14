@@ -71,7 +71,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(CommonLibSSE)
 
-include_directories(${fmt_SOURCE_DIR}/include)
+FetchContent_Declare(
+  MergeMapper
+  GIT_REPOSITORY https://github.com/alandtse/MergeMapper
+  GIT_TAG        v1.5.0
+  OVERRIDE_FIND_PACKAGE
+)
+#FetchContent_MakeAvailable(MergeMapper)
+
+include_directories(${fmt_SOURCE_DIR}/include ${MergeMapper_SOURCE_DIR}/include)
 target_compile_definitions(spdlog PUBLIC SPDLOG_FMT_EXTERNAL)
 target_compile_options(spdlog PUBLIC "/I${fmt_SOURCE_DIR}/include")
 target_compile_options(CommonLibSSE PUBLIC "/I${rapidcsv_SOURCE_DIR}/src")

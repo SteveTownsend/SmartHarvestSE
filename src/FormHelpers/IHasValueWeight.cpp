@@ -57,7 +57,8 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const
 	double weight = GetWeight();
 	if (weight == 0.0)
 	{
-		bool result(SettingsCache::Instance().CheckWeightlessValue() && worth < SettingsCache::Instance().WeightlessMinimumValue());
+		bool result(SettingsCache::Instance().CheckWeightlessValue() &&
+			worth < static_cast<uint32_t>(SettingsCache::Instance().WeightlessMinimumValue()));
 		DBG_VMESSAGE("Weightless item value too low to loot? {}", worth, result);
 		return result;
 	}

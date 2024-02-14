@@ -29,6 +29,12 @@ configure_file(
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
         @ONLY)
 
+# #######################################################################################################################
+# # Find dependencies
+# #######################################################################################################################
+include(shseDependencies.cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 set(sources
         src/alglib/alglibinternal.cpp
         src/alglib/alglibinternal.h
@@ -151,6 +157,8 @@ set(sources
         src/main.cpp
         src/PluginFacade.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+        ${MergeMapper_SOURCE_DIR}/src/MergeMapperPluginAPI.cpp
+        ${MergeMapper_SOURCE_DIR}/include/MergeMapperPluginAPI.h
 )
 
 source_group(
@@ -164,12 +172,6 @@ source_group(
 # #######################################################################################################################
 include(CheckIPOSupported)
 include(GNUInstallDirs)
-
-# #######################################################################################################################
-# # Find dependencies
-# #######################################################################################################################
-include(shseDependencies.cmake)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # #######################################################################################################################
 # # Configuration for all targets

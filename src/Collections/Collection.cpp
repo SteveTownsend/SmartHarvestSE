@@ -57,7 +57,7 @@ std::string ItemCollected::AsString() const
 Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
 	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ItemRule> itemRule) :
 	m_name(name), m_description(description), m_effectivePolicy(policy),
-	m_overridesGroup(overridesGroup), m_itemRule(std::move(itemRule)), m_owningGroup(owningGroup)
+	m_overridesGroup(overridesGroup), m_itemRule(std::move(itemRule)), m_owningGroup(owningGroup), m_disabled(false)
 {
 }
 
@@ -91,6 +91,12 @@ std::tuple<bool, bool, bool> Collection::InScopeAndCollectibleFor(const Conditio
 	}
 	// absolutely not a member of the collection
 	return { inScope, repeat, observed };
+}
+
+void Collection::Disable()
+{
+	DBG_VMESSAGE("Collection {} disabled", m_name);
+	m_disabled = true;
 }
 
 bool Collection::IsActive() const

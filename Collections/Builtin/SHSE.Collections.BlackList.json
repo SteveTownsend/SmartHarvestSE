@@ -23,6 +23,21 @@
           ]
         }
       }
+    },
+    {
+      "description": "Prevent SHSE from Looting Missives Boards, depending on Load Order",
+      "name": "SHSE-Missives",
+      "rootFilter": {
+        "condition": {
+          "nameMatch": {
+            "isNPC": false,
+            "matchIf": "equals",
+            "names": [ "Missive Board" ]
+          },
+          "scope": [ "container" ]
+        },
+        "operator": "AND"
+      }
     }
   ]
 }

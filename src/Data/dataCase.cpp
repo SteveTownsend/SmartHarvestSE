@@ -36,6 +36,9 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/NPCFilter.h"
 
+const std::string MissivesGroup("BlackList");
+const std::string MissivesCollection("SHSE-Missives");
+
 namespace
 {
 	std::vector<std::string> Split(const std::string &str, char sep)
@@ -62,7 +65,8 @@ namespace shse
 
 DataCase* DataCase::s_pInstance = nullptr;
 
-DataCase::DataCase() : m_spellTomeKeyword(nullptr), m_specialCases(nullptr), m_underwear(nullptr)
+DataCase::DataCase() :
+m_spellTomeKeyword(nullptr), m_specialCases(nullptr), m_underwear(nullptr), m_missivesBoards(nullptr)
 {
 }
 
@@ -385,7 +389,22 @@ void DataCase::ExcludeFactionContainers()
 bool DataCase::ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_containerBlackList.contains(refr->GetContainer());
+	if (m_containerBlackList.contains(refr->GetContainer()))
+	{
+		return true;
+	}
+	const RE::TESObjectCONT* container(refr->GetBaseObject()->As<RE::TESObjectCONT>());
+	if (container && m_missivesBoards)
+	{
+		DBG_VMESSAGE("Is Container {}/{:08x} member of Missive Boards? {}",
+			container->GetName(), container->GetFormID(), m_missivesBoards->IsMemberOf(container));
+		return m_missivesBoards->IsEnabled() && m_missivesBoards->IsMemberOf(container);
+	}
+	else if (!container)
+	{
+		REL_WARNING("Base Object for {:08x} is not TESObjectCONT", refr->GetFormID());
+	}
+	return false;
 }
 
 void DataCase::ExcludeVendorContainers()
@@ -603,8 +622,8 @@ void DataCase::ExcludeVendorContainers()
 
 void DataCase::ExcludeImmersiveArmorsGodChest()
 {
-	// check for best matching candidate in Load Order
-	RE::TESObjectCONT* godChestForm(FindBestMatch<RE::TESObjectCONT>("Hothtrooper44_ArmorCompilation.esp", 0x4b352, "Auxiliary Armor Storage"));
+	// check for form in Load Order
+	RE::TESObjectCONT* godChestForm(FindExactMatch<RE::TESObjectCONT>("Hothtrooper44_ArmorCompilation.esp", 0x4b352));
 	if (godChestForm)
 	{
 		REL_MESSAGE("Block Immersive Armors 'all the loot' chest {}/0x{:08x}", godChestForm->GetName(), godChestForm->GetFormID());
@@ -627,22 +646,12 @@ void DataCase::ExcludeMissivesBoards()
 {
 	// if Missives is installed and loads later than SHSE, conditionally blacklist the Noticeboards to avoid auto-looting of non-quest Missives
 	static constexpr const char* modName = "Missives.esp";
-	if (!LoadOrder::Instance().IncludesMod(modName))
-		return;
-	if (LoadOrder::Instance().ModPrecedesSHSE(modName))
+	m_missivesBoards = CollectionManager::Collectibles().MutableCollectionByLabel(MissivesGroup, MissivesCollection);
+	if (m_missivesBoards && (!LoadOrder::Instance().IncludesMod(modName) || LoadOrder::Instance().ModPrecedesSHSE(modName)))
 	{
-		REL_MESSAGE("Missive Boards lootable: Missives loads before SHSE");
-		return;
-	}
-
-	// if SHSE loads ahead of Missives (and by extension its patches), blacklist the relevant containers. This relies on CONT
-	// name "Missive Board" to tag these across base mod and its patches. Patches may be merged, so plugin name is no help.
-	static constexpr const char * containerName = "Missive Board";
-	std::unordered_set<RE::TESObjectCONT*> missivesBoards(FindExactMatchesByName<RE::TESObjectCONT>(containerName));
-	for (const auto missivesBoard : missivesBoards)
-	{
-		REL_MESSAGE("Block Missive Board {}/0x{:08x}", missivesBoard->GetName(), missivesBoard->GetFormID());
-		m_containerBlackList.insert(missivesBoard);
+		REL_MESSAGE("Missives absent or loads before SHSE: disable Missive Board blacklist");
+		// must disable the related Blacklist Collection
+		m_missivesBoards->Disable();
 	}
 }
 
@@ -661,8 +670,8 @@ bool DataCase::AutoMiningDisabled() const
 
 void DataCase::ExcludeBuildYourNobleHouseIncomeChest()
 {
-	// check for best matching candidate in Load Order
-	RE::TESObjectCONT* incomeChestForm(FindBestMatch<RE::TESObjectCONT>("LC_BuildYourNobleHouse.esp", 0xaacdd, "Income "));
+	// check for matching form in Load Order
+	RE::TESObjectCONT* incomeChestForm(FindExactMatch<RE::TESObjectCONT>("LC_BuildYourNobleHouse.esp", 0xaacdd));
 	if (incomeChestForm)
 	{
 		REL_MESSAGE("Block 'Build Your Noble House' Income Chest {}/0x{:08x}", incomeChestForm->GetName(), incomeChestForm->GetFormID());
@@ -674,7 +683,7 @@ void DataCase::IncludeFossilMiningExcavation()
 {
 	static std::string espName("Fossilsyum.esp");
 	static RE::FormID excavationSiteFormID(0x3f41b);
-	RE::TESForm* excavationSiteForm(RE::TESDataHandler::GetSingleton()->LookupForm(excavationSiteFormID, espName));
+	RE::TESForm* excavationSiteForm(LoadOrder::Instance().LookupForm(excavationSiteFormID, espName));
 	if (excavationSiteForm)
 	{
 		REL_MESSAGE("Record Fossil Mining Excavation Site {}/0x{:08x} as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
@@ -709,7 +718,7 @@ void DataCase::IncludeCoinReplacerRedux()
 	static std::vector<RE::FormID> pilesOfCoin({ 0x800, 0x801, 0x802 });
 	for (const auto coinPileFormID : pilesOfCoin)
 	{
-		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
+		RE::TESForm* coinPileForm(LoadOrder::Instance().LookupForm(coinPileFormID, crrName));
 		if (coinPileForm)
 		{
 			ForceObjectTypeForForm(coinPileForm, ObjectType::septims);
@@ -721,7 +730,7 @@ void DataCase::IncludeCorpseCoinage()
 {
 	static std::string espName("CorpseToCoinage.esp");
 	static RE::FormID corpseCoinageFormID(0xaa03);
-	RE::TESForm* corpseCoinageForm(RE::TESDataHandler::GetSingleton()->LookupForm(corpseCoinageFormID, espName));
+	RE::TESForm* corpseCoinageForm(LoadOrder::Instance().LookupForm(corpseCoinageFormID, espName));
 	if (corpseCoinageForm)
 	{
 		ForceObjectTypeForForm(corpseCoinageForm, ObjectType::septims);
@@ -756,7 +765,7 @@ void DataCase::IncludeCOIN()
 	static std::vector<RE::FormID> pilesOfInterestingCoin({ 0x810, 0x9c6 });
 	for (const auto coinPileFormID : pilesOfInterestingCoin)
 	{
-		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
+		RE::TESForm* coinPileForm(LoadOrder::Instance().LookupForm(coinPileFormID, crrName));
 		if (coinPileForm)
 		{
 			ForceObjectTypeForForm(coinPileForm, ObjectType::septims);
@@ -780,7 +789,7 @@ void DataCase::HandleHearthfireExtendedApiary()
 {
 	static std::string espName("hearthfireextended.esp");
 	static RE::FormID apiaryFormID(0xd62);
-	const RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
+	const RE::TESForm* apiaryForm(LoadOrder::Instance().LookupForm(apiaryFormID, espName));
 	if (apiaryForm && apiaryForm->Is(RE::FormType::Activator))
 	{
 		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
@@ -1484,6 +1493,8 @@ void DataCase::RefreshBuiltinSpecialCases()
 
 	// blacklist underwear in case user has "don't show me their junk" setting turned on
 	RecordUnderwear();
+	// Blacklist Missives Boards, if present and so ordered 
+	ExcludeMissivesBoards();
 }
 
 bool DataCase::UseUnderwear() const
@@ -1503,7 +1514,6 @@ void DataCase::HandleExceptions()
 	DBG_MESSAGE("Pre-emptively handle special cases from Load Order");
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
-	ExcludeMissivesBoards();
 	ExcludeBuildYourNobleHouseIncomeChest();
 
 	ExcludeFactionContainers();
