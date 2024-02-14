@@ -1132,7 +1132,7 @@ void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const
 	// lower this by 500ms so that it expires before container recheck timer
 	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0) - 500LL);
 	m_glowExpiration[refr] = expiry;
-	DBG_VMESSAGE("Trigger glow for {}/0x{:08x}", refr->GetName(), refr->formID);
+	DBG_VMESSAGE("Trigger glow {} for {}/0x{:08x}", GlowName(glowReason), refr->GetName(), refr->formID);
 	if (objectType == ObjectType::oreVein)
 	{
 		// use script to check whether vein is depleted

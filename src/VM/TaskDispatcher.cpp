@@ -83,7 +83,7 @@ void TaskDispatcher::GlowObjects()
         for (const auto request: queued) {
             RE::TESEffectShader* shader(nullptr);
             std::tie(refr, duration, glowReason) = request;
-            if (static_cast<int>(glowReason) > 0 && static_cast<int>(glowReason) < static_cast<int>(GlowReason::SimpleTarget))
+            if (static_cast<int>(glowReason) >= 0 && static_cast<int>(glowReason) <= static_cast<int>(GlowReason::SimpleTarget))
             {
                 shader = m_shaders[static_cast<int>(glowReason)];
             }
