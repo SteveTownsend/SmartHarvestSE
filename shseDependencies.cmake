@@ -77,7 +77,7 @@ FetchContent_Declare(
   GIT_TAG        v1.5.0
   OVERRIDE_FIND_PACKAGE
 )
-#FetchContent_MakeAvailable(MergeMapper)
+FetchContent_GetProperties(MergeMapper)
 
 include_directories(${fmt_SOURCE_DIR}/include ${MergeMapper_SOURCE_DIR}/include)
 target_compile_definitions(spdlog PUBLIC SPDLOG_FMT_EXTERNAL)

@@ -136,7 +136,6 @@
                 "platform-win32-unicode",
                 "generator-visualstudio",
                 "compiler-msvc",
-                "packaging-vcpkg",
                 "common"
             ],
             "description": "Debug build for testing.",
@@ -150,7 +149,6 @@
                 "platform-win32-unicode",
                 "generator-visualstudio",
                 "compiler-msvc",
-                "packaging-vcpkg",
                 "common"
             ],
             "description": "Optimized release build.",
@@ -164,7 +162,6 @@
                 "platform-win32-unicode",
                 "generator-visualstudio",
                 "compiler-msvc",
-                "packaging-vcpkg",
                 "common"
             ],
             "description": "Optimized release build with logging.",
@@ -178,7 +175,6 @@
                 "platform-win32-unicode",
                 "generator-ninja",
                 "compiler-clang-cl",
-                "packaging-vcpkg",
                 "common"
             ],
             "description": "Debug build for testing.",
@@ -192,7 +188,6 @@
                 "platform-win32-unicode",
                 "generator-ninja",
                 "compiler-clang-cl",
-                "packaging-vcpkg",
                 "common"
             ],
             "description": "Optimized release build.",
@@ -206,7 +201,6 @@
                 "platform-win32-unicode",
                 "generator-ninja",
                 "compiler-clang-cl",
-                "packaging-vcpkg",
                 "common"
             ],
             "description": "Optimized release build with logging.",
