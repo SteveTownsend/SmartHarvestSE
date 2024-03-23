@@ -8,6 +8,7 @@ set(PRETTY_NAME "Smart Harvest SE")
 set(VERSION 5.5.2)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+set(fmt_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 project(
         ${NAME}
