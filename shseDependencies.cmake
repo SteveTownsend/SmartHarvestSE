@@ -46,7 +46,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.5.2
+  GIT_TAG        v3.5.3
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(Catch2)
@@ -54,7 +54,7 @@ FetchContent_MakeAvailable(Catch2)
 FetchContent_Declare(
   rapidcsv
   GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG        v8.64
+  GIT_TAG        v8.80
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(rapidcsv)
