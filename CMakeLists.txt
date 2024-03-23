@@ -157,14 +157,23 @@ set(sources
         src/main.cpp
         src/PluginFacade.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
-        ${MergeMapper_SOURCE_DIR}/src/MergeMapperPluginAPI.cpp
-        ${MergeMapper_SOURCE_DIR}/include/MergeMapperPluginAPI.h
 )
 
 source_group(
         TREE ${CMAKE_CURRENT_SOURCE_DIR}
         FILES
         ${sources}
+)
+
+set(mergemappersources
+        ${mergemapper_SOURCE_DIR}/src/MergeMapperPluginAPI.cpp
+        ${mergemapper_SOURCE_DIR}/include/MergeMapperPluginAPI.h
+)
+
+source_group(
+        TREE ${mergemapper_SOURCE_DIR}
+        FILES
+        ${mergemappersources}
 )
 
 # #######################################################################################################################
@@ -216,7 +225,7 @@ add_commonlibsse_plugin(${PROJECT_NAME}
     EMAIL "SteveTownsend0@gmail.com"
     USE_ADDRESS_LIBRARY
     USE_SIGNATURE_SCANNING
-    SOURCES ${sources}
+    SOURCES ${sources} ${mergemappersources}
 )
 
 add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")

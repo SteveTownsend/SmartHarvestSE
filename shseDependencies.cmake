@@ -75,11 +75,13 @@ FetchContent_Declare(
   MergeMapper
   GIT_REPOSITORY https://github.com/alandtse/MergeMapper
   GIT_TAG        v1.5.0
-  OVERRIDE_FIND_PACKAGE
 )
-#FetchContent_MakeAvailable(MergeMapper)
+FetchContent_GetProperties(MergeMapper)
+if(NOT MergeMapper_POPULATED)
+  FetchContent_Populate(MergeMapper)
+endif()
 
-include_directories(${fmt_SOURCE_DIR}/include ${MergeMapper_SOURCE_DIR}/include)
+include_directories(${fmt_SOURCE_DIR}/include ${mergemapper_SOURCE_DIR}/include)
 target_compile_definitions(spdlog PUBLIC SPDLOG_FMT_EXTERNAL)
 target_compile_options(spdlog PUBLIC "/I${fmt_SOURCE_DIR}/include")
 target_compile_options(CommonLibSSE PUBLIC "/I${rapidcsv_SOURCE_DIR}/src")
