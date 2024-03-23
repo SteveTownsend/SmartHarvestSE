@@ -9,7 +9,7 @@ Doing this brute force helped me understand CMake better, and makes it possible 
 
 CMake is confusing, no question. Things to know:
 - it is a two-phase process: first *configure* to generate the build, then *build*
-- once you have configured, you can only build that configuration until you change the configuration preset by removing *CMakeFiles* and *CMakeCache.txt*, and running the configure step
+- once you have configured, you can only build that configuration until you change the configuration preset by removing the generated *CMakeFiles* and *CMakeCache.txt*, and re-running the configure step
 - don't build in your source code directory, it clutters it up with cruft
 - **multi-target generators** exist that allow build of different targets without reconfiguring, but that's just going to conuse me all over again.
 
@@ -31,3 +31,4 @@ If you edit *CMakeFiles.txt* or other CMake files, manually delete *./build/CMak
 ## Scripts
 Scripts can be built using the Visual Studio Code Papyrus extension. There is a Papyrus project file **SkyrimSE.ppj** that should be edited according to your local setup.
 
+_note: CMakeFiles is referring to all the generated CMakeFiles in your build directory... You are able to keep _deps around to save having to redownload the project _dependencies_
