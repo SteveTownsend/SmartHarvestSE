@@ -16,7 +16,7 @@ CMake is confusing, no question. Things to know:
 1. Check out the code
 2. Start a Visual Studio 20xx Powershell window to do the build
 3. change directory to the SmartHarvestSE root directory you just checked out.
-4. Configure using the appropriate preset *cmake -B ./build -S . --preset Logging-MSVC|Release-msvc|Debug-msvc*
+4. Configure using the appropriate preset *cmake -B ./build -S . --preset Logging-MSVC|Release-MSVC|Debug-MSVC*
 5. Build using the matching **CMAKE_BUILD_TYPE**: *cmake --build ./build/ --config RelWithDebInfo|Release|Debug*
 
 When you want to change the build you are working with, configure then build using the matching **CMAKE_BUILD_TYPE**.
