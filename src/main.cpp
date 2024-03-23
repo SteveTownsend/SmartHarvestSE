@@ -31,6 +31,7 @@ http://www.fsf.org/licensing/licenses
 #include <sstream>
 #include <KnownFolders.h>
 #include <filesystem>
+#include <psapi.h>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include "MergeMapperPluginAPI.h"
@@ -180,15 +181,16 @@ void InitializeDiagnostics()
 	catch (const spdlog::spdlog_ex&)
 	{
 	}
-	spdlog::set_level(logLevel); // Set global log level
-	spdlog::flush_on(logLevel);	// always flush
+	SHSELogger->set_level(logLevel); // Set mod's log level
+	SHSELogger->flush_on(logLevel);	// Set mod's log to always flush
 #if 0
 #if _DEBUG
 	SKSE::add_papyrus_sink();	// TODO what goes in here now
 #endif
 #endif
-
-	REL_MESSAGE("{} v{}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
+	// Get Process version
+	std::string versionString = VersionInfo::Instance().GetExeVersionString();
+	REL_MESSAGE("{} v{} in executable {}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString(),	versionString);
 }
 
 EXTERN_C __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* skse)

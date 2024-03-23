@@ -116,6 +116,7 @@ bool PluginFacade::Init()
 	}
 	// here we go
 	EventPublisher::Instance().TriggerGameReady();
+	PlayerState::Instance().UpdateGameTime();
 	// we are now ready for interaction with the Papyrus VM
 	m_ready = true;
 	return true;
@@ -238,7 +239,7 @@ void PluginFacade::ScanThread()
 		}
 
 		// block until UI is good to go
-		bool delayed(UIState::Instance().WaitUntilVMGoodToGo());
+		UIState::Instance().WaitUntilVMGoodToGo();
 
 		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
 		if (!LocationTracker::Instance().Refresh())
@@ -247,7 +248,7 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		const bool onMCMPush(delayed);
+		static const bool onMCMPush(false);
 		static const bool onGameReload(false);
 		PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 

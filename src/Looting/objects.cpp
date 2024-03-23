@@ -182,7 +182,15 @@ bool IsSummoned(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
 	bool result(npc && npc->IsSummonable());
-	DBG_DMESSAGE("Actor summoned = {}", result ? "true" : "false");
+	DBG_DMESSAGE("Actor summoned = {}", result);
+	return result;
+}
+
+// applies only if NPC
+bool StartsDead(const RE::TESObjectREFR* refr)
+{
+	bool result(refr && refr->loadedData && ((refr->loadedData->flags & RE::TESObjectREFR::RecordFlags::kStartsDead) == 0));
+	DBG_DMESSAGE("Actor starts dead = {}", result);
 	return result;
 }
 

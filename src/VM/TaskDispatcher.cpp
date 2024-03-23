@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "VM/TaskDispatcher.h"
 #include "Collections/CollectionManager.h"
+#include "Looting/TheftCoordinator.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
 
@@ -51,13 +52,21 @@ void TaskDispatcher::EnqueueObjectGlow(RE::TESObjectREFR* refr, const int durati
 
 void TaskDispatcher::GlowObjects()
 {
+
     // Dispatch the queued glow requests via the TaskInterface
+    ScanStatus status(UIState::Instance().OKToScan());
     decltype(m_queuedGlow) queued;
     {
         RecursiveLockGuard lock(m_queueLock);
         if (m_queuedGlow.size())
         {
+            if (status != ScanStatus::GoodToGo)
+            {
+                REL_WARNING("Delay {} queued Glow requests, scan status {}", m_queuedGlow.size(), status);
+                return;
+            }
             queued.swap(m_queuedGlow);
+            DBG_VMESSAGE("Dispatch queue of {} Glow requests", queued.size());
         }
         else
         {
@@ -66,33 +75,40 @@ void TaskDispatcher::GlowObjects()
         }
 
     }
-    if (!UIState::Instance().OKToScan())
-    {
-	    REL_WARNING("Discard queued {} queueud Glow requests, scan disallowed", queued.size());
-        return;
-    }
-    else
-    {
-	    DBG_VMESSAGE("Dispatch {} queued Glow requests", queued.size());
-    }
     // Pass in current queued requests by value, as this executes asynchronously
     m_taskInterface->AddTask([=] (void) {
         RE::TESObjectREFR* refr;
         int duration;
         GlowReason glowReason;
+        std::unordered_set<RE::FormID> doneRefrs;
         for (const auto request: queued) {
-            RE::TESEffectShader* shader(nullptr);
             std::tie(refr, duration, glowReason) = request;
-            if (static_cast<int>(glowReason) >= 0 && static_cast<int>(glowReason) <= static_cast<int>(GlowReason::SimpleTarget))
+            if (!refr)
             {
-                shader = m_shaders[static_cast<int>(glowReason)];
+	            REL_WARNING("Skipping invalid glow request for null REFR");
+                continue;
             }
-            else
+            if (!doneRefrs.insert(refr->GetFormID()).second)
             {
-                shader = m_shaders[static_cast<int>(GlowReason::SimpleTarget)];
+	            REL_WARNING("Skipping repeat glow request for REFR 0x{:08x}", refr->GetFormID());
+                continue;
             }
-            if (shader && refr && refr->Is3DLoaded() && !refr->IsDisabled())
+            if (refr->Is3DLoaded() && !refr->IsDisabled())
             {
+                RE::TESEffectShader* shader(nullptr);
+                if (static_cast<int>(glowReason) >= 0 && static_cast<int>(glowReason) <= static_cast<int>(GlowReason::SimpleTarget))
+                {
+                    shader = m_shaders[static_cast<int>(glowReason)];
+                }
+                else
+                {
+                    shader = m_shaders[static_cast<int>(GlowReason::SimpleTarget)];
+                }
+                if (!shader)
+                {
+	                REL_WARNING("Skipping glow request for REFR 0x{:08x}, no shader", refr->GetFormID());
+                    continue;
+                }
                 refr->ApplyEffectShader(shader, static_cast<float>(duration));
             }
         }
@@ -153,6 +169,65 @@ void TaskDispatcher::LootNPCs()
     });
 }
 
+void TaskDispatcher::EnqueueCheckIfUndetected(RE::Actor* actor, const bool dryRun)
+{
+    m_taskInterface->AddTask([=] (void) {
+        // Logic from po3 Papyrus Extender
+        // https://github.com/powerof3/PapyrusExtenderSSE/blob/master/include/Papyrus/Functions/Detection.h
+        std::string message;
+        bool detected(false);
+        if (!actor)
+        {
+            message = "No Actor for detection check";
+            REL_ERROR(message);
+            detected = true;
+        }
+        else
+        {
+            ScanStatus status(UIState::Instance().OKToScan());
+            if (status != ScanStatus::GoodToGo)
+            {
+                message = "UI Open : Actor Detection interrupted";
+                REL_WARNING(message);
+                detected = true;
+            }
+            else if (actor->GetActorRuntimeData().currentProcess)
+            {
+                if (const auto processLists = RE::ProcessLists::GetSingleton(); processLists)
+                {
+                    for (auto& targetHandle : processLists->highActorHandles)
+                    {
+                        if (const auto target = targetHandle.get(); target && target->GetActorRuntimeData().currentProcess)
+                        {
+                            if (const auto base = target->GetActorBase(); base && !base->AffectsStealthMeter())
+                            {
+                                continue;
+                            }
+                            if (target->RequestDetectionLevel(actor) > 0)
+                            {
+                                detected = true;
+                                message = "Player detected by ";
+                                message.append(target->GetActorBase()->GetName());
+                                DBG_MESSAGE(message);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (dryRun)
+        {
+            RE::DebugNotification(message.c_str());
+        }
+        else
+        {
+		    TheftCoordinator::Instance().StealOrForgetItems(detected);
+        }
+    });
+}
+
 void TaskDispatcher::SetPlayer(RE::Actor* player)
 {
     if (!player)
@@ -161,6 +236,53 @@ void TaskDispatcher::SetPlayer(RE::Actor* player)
     }
 	REL_MESSAGE("REFR for Player 0x{:08x} for NPC Loot transfer", player->formID);
     m_player = player;
+}
+
+// should only fire if we are managing carry weight
+void TaskDispatcher::EnqueueCarryWeightDelta(int weightDelta)
+{
+    m_taskInterface->AddTask([=] (void) {
+        RE::ActorValueOwner* actorValueOwner(RE::PlayerCharacter::GetSingleton()->AsActorValueOwner());
+        if (actorValueOwner)
+        {
+            int carryWeight = static_cast<int>(actorValueOwner->GetActorValue(RE::ActorValue::kCarryWeight));
+            REL_VMESSAGE("Adjusting Player.CarryWeight delta by {} from {}", weightDelta, carryWeight);
+            actorValueOwner->ModActorValue(RE::ActorValue::kCarryWeight, static_cast<float>(weightDelta));
+        }
+    });
+}
+
+void TaskDispatcher::EnqueueResetCarryWeight()
+{
+    static const int InfiniteWeight(100000);
+    m_taskInterface->AddTask([=] (void) {
+        RE::ActorValueOwner* actorValueOwner(RE::PlayerCharacter::GetSingleton()->AsActorValueOwner());
+        if (actorValueOwner)
+        {
+            int carryWeight = static_cast<int>(actorValueOwner->GetActorValue(RE::ActorValue::kCarryWeight));
+            int weightDelta(0);
+            while (carryWeight > InfiniteWeight)
+            {
+                weightDelta -= InfiniteWeight;
+                carryWeight -= InfiniteWeight;
+            }
+            while (carryWeight < 0)
+            {
+                weightDelta += InfiniteWeight;
+                carryWeight += InfiniteWeight;
+            }
+
+            if (weightDelta != 0)
+            {
+                actorValueOwner->ModActorValue(RE::ActorValue::kCarryWeight, static_cast<float>(weightDelta));
+                REL_VMESSAGE("Removing Player.CarryWeight delta={} from {}", weightDelta, carryWeight);
+            }
+            else
+            {
+                REL_VMESSAGE("Player.CarryWeight left as is {}", carryWeight);
+            }
+        }
+    });
 }
 
 }

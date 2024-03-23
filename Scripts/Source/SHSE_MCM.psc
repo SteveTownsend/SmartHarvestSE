@@ -445,10 +445,6 @@ function CheckFirstTimeEver()
     ;DebugTrace("FirstTimeEver finished")
 endFunction
 
-bool Function ManagesCarryWeight()
-    return unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn
-endFunction
-
 Function SaveSettingsToNative()
     PutSetting(type_Common, type_Config, "EnableHarvest", enableHarvest as float)
     PutSetting(type_Common, type_Config, "EnableLootContainer", enableLootContainer as float)
@@ -541,10 +537,6 @@ Function ApplySetting()
     logMCM = LoggingEnabled()
     thisPlayer = Game.GetPlayer()
     eventScript.Prepare(thisPlayer, logMCM)
-    ; Only adjust weight if we are in any way responsible for it
-    if ManagesCarryWeight()
-        eventScript.RemoveCarryWeightDelta()
-    endIf
     eventScript.ApplySetting()
     eventScript.SyncShaders(glowReasonSettingArray)
 
@@ -1303,15 +1295,17 @@ endEvent
 
 Function PopulateLists()
     int max_size = eventScript.GetWhiteListSize()
+    int validSize = 0
+    int index = max_size
+    string name
+    int entry = 0
     if max_size > 0
         Form[] currentList = eventScript.GetWhiteList()
         ; assume max size initially, resize if bad entries are found
-        int validSize = 0
-        int index = max_size
         while index > 0
             index -= 1
             Form nextEntry = currentList[index]
-            string name = GetNameForListForm(nextEntry)
+            name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
             else
@@ -1327,10 +1321,9 @@ Function PopulateLists()
             index = max_size
             ; iterate forwards, to preserve order
             index = 0
-            int entry = 0
             while index < max_size
                 Form nextEntry = currentList[index]
-                string name = GetNameForListForm(nextEntry)
+                name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     whiteList_form_array[entry] = nextEntry
                     whiteList_name_array[entry] = name
@@ -1347,16 +1340,16 @@ Function PopulateLists()
         whiteListEntries = 0
     endIf
 
+    validSize = 0
     max_size = eventScript.GetBlackListSize()
+    index = max_size
     if max_size > 0
         ; assume max size initially, resize if bad entries are found
         Form[] currentList = eventScript.GetBlackList()
-        int validSize = 0
-        int index = max_size
         while index > 0
             index -= 1
             Form nextEntry = currentList[index]
-            string name = GetNameForListForm(nextEntry)
+            name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
             else
@@ -1372,10 +1365,10 @@ Function PopulateLists()
             index = max_size
             ; iterate forwards, to preserve order
             index = 0
-            int entry = 0
+            entry = 0
             while index < max_size
                 Form nextEntry = currentList[index]
-                string name = GetNameForListForm(nextEntry)
+                name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     blackList_form_array[entry] = nextEntry
                     blackList_name_array[entry] = name
@@ -1395,8 +1388,8 @@ Function PopulateLists()
     ; Transfer List can be sparse
     Form[] currentList = eventScript.GetTransferList()
     string[] currentNames = eventScript.GetTransferNames()
-    int validSize = 0
-    int index = 0
+    validSize = 0
+    index = 0
     max_size = 64
     while index < max_size
         Form nextEntry = currentList[index]
@@ -1417,7 +1410,7 @@ Function PopulateLists()
         transferList_flag_array = Utility.CreateBoolArray(validSize)
         ; iterate forwards, order must be preserved to ensure correct linkage to target
         index = 0
-        int entry = 0
+        entry = 0
         while index < max_size
             Form nextEntry = currentList[index]
             if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
@@ -1437,9 +1430,9 @@ EndFunction
 
 Event OnConfigOpen()
     ;DebugTrace("OnConfigOpen")
+    eventScript.OnMCMOpen()
     InitPages()
     PopulateLists()
-    eventScript.OnMCMOpen()
 endEvent
 
 Function PopulateCollectionGroups()

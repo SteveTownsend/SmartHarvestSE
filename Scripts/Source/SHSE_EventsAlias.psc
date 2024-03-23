@@ -52,12 +52,6 @@ int objType_skillBookRead
 Actor thisPlayer
 bool logEvent
 
-Form[] addedItems
-int[] addedItemScope
-int[] addedItemType
-int maxAddedItems
-
-int currentAddedItem
 bool collectionsInUse
 
 int resource_Ore
@@ -754,11 +748,6 @@ Function ResetCollections()
         return
     endIf
     ;DebugTrace("eventScript.ResetCollections")
-    addedItems = Utility.CreateFormArray(128)
-    maxAddedItems = 128
-    currentAddedItem = 0
-    addedItemScope = Utility.CreateIntArray(128)
-    addedItemType = Utility.CreateIntArray(128)
 EndFunction
 
 Function ApplySetting()
@@ -923,7 +912,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             endif
         elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode
             if targetedRefr
-                HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteListKeyCode, holdTime)
+                if mcmOpen
+                    AlwaysTrace("MCM Open, ignore crosshair blacklist/whitelist hotkey")
+                else
+                    HandleCrosshairItemHotKey(targetedRefr, keyCode == whiteListKeyCode, holdTime)
+                endif
                 keyHandlingActive = false
                 return
             endIf
@@ -939,12 +932,18 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                 keyHandlingActive = false
                 return
             endif
-            if keyCode == whiteListKeyCode
-                HandleWhiteListKeyPress(place)
-            else ; blacklist key
-                HandleBlackListKeyPress(place)
+            if mcmOpen
+                AlwaysTrace("MCM Open, ignore location blacklist/whitelist hotkey")
+                keyHandlingActive = false
+                return
+            else
+                if keyCode == whiteListKeyCode
+                    HandleWhiteListKeyPress(place)
+                else ; blacklist key
+                    HandleBlackListKeyPress(place)
+                endif
+                SyncLists(false, true)    ; not a reload
             endif
-            SyncLists(false, true)    ; not a reload
         endif
     ; menu open - only actionable on our blacklist/whitelist keys
     elseif keyCode == whiteListKeyCode || keyCode == blackListKeyCode || keyCode == pauseKeyCode
@@ -1013,40 +1012,6 @@ endFunction
 
 bool Function IsBookObject(int type)
     return type >= objType_Book && type <= objType_skillBookRead
-endFunction
-
-Function RecordItem(Form akBaseItem, int scope, int objectType)
-    ;register item received in the 'collection pending' list
-    ;DebugTrace("RecordItem " + akBaseItem)
-    if !collectionsInUse
-        return
-    endIf
-    if currentAddedItem == maxAddedItems
-        ; list is full, flush to the plugin
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, addedItemScope, addedItemType, currentAddedItem)
-        currentAddedItem = 0
-    endif
-    addedItems[currentAddedItem] = akBaseItem
-    addedItemScope[currentAddedItem] = scope
-    addedItemType[currentAddedItem] = objectType
-    currentAddedItem += 1
-EndFunction
-
-bool Function ActivateEx(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount)
-    bool bShowHUD = Utility.GetINIBool("bShowHUDMessages:Interface")
-    if (bShowHUD && suppressMessage)
-        Utility.SetINIBool("bShowHUDMessages:Interface", false)
-    endif
-    int activated = 0
-    bool result = True
-    while result && activated < activateCount
-        result = akTarget.Activate(akActivator)
-        activated += 1
-    endWhile
-    if (bShowHUD && suppressMessage)
-        Utility.SetINIBool("bShowHUDMessages:Interface", true)
-    endif
-    return result
 endFunction
 
 bool Function CanMine(MineOreScript handler, int available)
@@ -1343,44 +1308,7 @@ int Function SyntheticFloraActivateCount(ObjectReference target)
     return 1
 EndFunction
 
-Function NotifyActivated(Form itemForm, int itemType, bool collectible, int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted)
-    if activated
-        if (notify)
-            string activateMsg = none
-            if count >= 2
-                string translation = GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG")
-                
-                string[] targets = New String[2]
-                targets[0] = "{ITEMNAME}"
-                targets[1] = "{COUNT}"
-
-                string[] replacements = New String[2]
-                replacements[0] = baseName
-                replacements[1] = count as string
-                
-                activateMsg = ReplaceArray(translation, targets, replacements)
-            else
-                string translation = GetTranslation("$SHSE_ACTIVATE_MSG")
-                activateMsg = Replace(translation, "{ITEMNAME}", baseName)
-            endif
-            if (activateMsg)
-                Debug.Notification(activateMsg)
-            endif
-        endif
-        if isWhitelisted
-            string whitelistMsg = Replace(GetTranslation("$SHSE_WHITELIST_ITEM_LOOTED"), "{ITEMNAME}", baseName)
-            if whitelistMsg
-                Debug.Notification(whitelistMsg)
-            endif
-        endIf
-        if collectible
-            RecordItem(itemForm, itemSourceLoose, itemType)
-        endIf
-    endif
-    UnlockHarvest(refrID, baseID, baseName, silent)
-EndFunction
-
-; don't worry about interrupting Fishing, the minigame won;t yield this type of object
+; don't worry about interrupting Fishing, the minigame won't yield this type of object
 Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
@@ -1393,7 +1321,7 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
     if (!akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget))
         int activations = SyntheticFloraActivateCount(akTarget)
         activated = True
-        if ActivateEx(akTarget, thisPlayer, true, activations)
+        if ActivateItem(akTarget, thisPlayer, true, activations)
             notify = !silent
             if activations == 1 && count >= 2
                 ; work round for ObjectReference.Activate() known issue
@@ -1448,7 +1376,7 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
     ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
         activated = True;
-        ActivateEx(akTarget, thisPlayer, silent, 1)
+        ActivateItem(akTarget, thisPlayer, silent, 1)
         ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
@@ -1477,7 +1405,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             endIf
             if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle")
                 activated = True;
-                if ActivateEx(akTarget, thisPlayer, true, 1)
+                if ActivateItem(akTarget, thisPlayer, true, 1)
                     notify = !silent
                 endif
             endIf
@@ -1485,19 +1413,19 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
     elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType)
         activated = True;
         if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
-            ActivateEx(akTarget, thisPlayer, silent, 1)
+            ActivateItem(akTarget, thisPlayer, silent, 1)
 
         elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
             ;DebugTrace("Player has ingredient count " + ingredientCount)
             bool suppressMessage = silent || ingredientCount as int > 1
             ;DebugTrace("Flora/Tree original base form " + itemForm.GetName())
-            if ActivateEx(akTarget, thisPlayer, suppressMessage, 1)
+            if ActivateItem(akTarget, thisPlayer, suppressMessage, 1)
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
                 count = count * ingredientCount as int
             endif
-        elseif ActivateEx(akTarget, thisPlayer, true, 1)
+        elseif ActivateItem(akTarget, thisPlayer, true, 1)
             notify = !silent
             if count >= 2
                 ; work round for ObjectReference.Activate() known issue
@@ -1507,9 +1435,6 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                 ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
             endIf
         endif
-        if collectible
-            RecordItem(itemForm, itemSourceLoose, itemType)
-        endIf
         ;DebugTrace("OnHarvest:Activated:" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
@@ -1736,50 +1661,10 @@ Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     DoObjectGlow(akTargetRef, duration, reason)
 endEvent
 
-; event should only fire if we are managing carry weight
-Event OnCarryWeightDelta(int weightDelta)
-    thisPlayer.ModActorValue("CarryWeight", weightDelta as float)
-    ;DebugTrace("Player carry weight " + player.GetActorValue("CarryWeight") + " after applying delta " + weightDelta)
-EndEvent
-
-Function RemoveCarryWeightDelta()
-    int carryWeight = thisPlayer.GetActorValue("CarryWeight") as int
-    ;DebugTrace("Player carry weight initially " + carryWeight)
-
-    int weightDelta = 0
-    while (carryWeight > infiniteWeight)
-        weightDelta -= infiniteWeight
-        carryWeight -= infiniteWeight
-    endwhile
-    while (carryWeight < 0)
-        weightDelta += infiniteWeight
-        carryWeight += infiniteWeight
-    endwhile
-
-    if (weightDelta != 0)
-        thisPlayer.ModActorValue("CarryWeight", weightDelta as float)
-    endif
-    ;DebugTrace("Player carry weight adjusted to " + player.GetActorValue("CarryWeight"))
-endFunction
-
-; event should only fire if we are managing carry weight
-Event OnResetCarryWeight()
-    ;DebugTrace("Player carry weight reset request")
-    RemoveCarryWeightDelta()
-EndEvent
-
-Event OnFlushAddedItems()
-    ;DebugTrace("Request to flush added items")
-    ; always respond to poll so plugin DLL keeps in sync with game-time
-    if currentAddedItem > 0
-        FlushAddedItems(Utility.GetCurrentGameTime(), addedItems, addedItemScope, addedItemType, currentAddedItem)
-        currentAddedItem = 0
-    else
-        PushGameTime(Utility.GetCurrentGameTime())
-    endIf
-EndEvent
-
 Function OnMCMOpen()
+    if keyHandlingActive
+        AlwaysTrace("MCM opened during keystroke handling")
+    endIf
     mcmOpen = True
     SetMCMState(True)
 EndFunction
@@ -1841,47 +1726,6 @@ EndEvent
 ; Check UI State is OK for scan thread - block the plugin if not, rechecking on a timed poll
 Event OnCheckOKToScan(int nonce)
     StartCheckReportUIState(nonce)
-EndEvent
-
-; check if Actor detects player - used for real stealing, or stealibility check in dry run
-Event OnStealIfUndetected(int actorCount, bool dryRun)
-    ;DebugTrace("Check player detection, actorCount=" + actorCount)
-    ; Get all the requested actors to check first, as this is a slow process
-    Form[] actors = Utility.CreateFormArray(actorCount)
-    int currentActor = 0
-    while currentActor < actorCount
-        actors[currentActor] = GetDetectingActor(currentActor, dryRun)
-        currentActor += 1
-    endWhile
-
-    String msg
-    bool detected = False
-    currentActor = 0
-    while currentActor < actorCount && !detected
-        if !OKToScan()
-            msg = "UI Open : Actor Detection interrupted"
-            AlwaysTrace(msg)
-            detected = True     ; do not steal items while UI is active
-        else
-            Actor npc = actors[currentActor] as Actor
-            if npc && thisPlayer.IsDetectedBy(npc)
-                msg = "Player detected by " + npc.getActorBase().GetName()
-                detected = True
-            else
-                ;DebugTrace("Player not detected by " + npc.getActorBase().GetName())
-            endIf
-            currentActor += 1
-        endIf
-    endWhile
-
-    if dryRun
-        if !detected
-            msg = "Player is not detected"
-        endIf
-        Debug.Notification(msg)
-    else
-        ReportPlayerDetectionState(detected)
-    endIf
 EndEvent
 
 ; Reset state related to new game/load game
@@ -1965,5 +1809,4 @@ Event OnGameReady()
 
     ; only need to check Collections requisite data structure on reload, not MCM close
     ResetCollections()
-    PushGameTime(Utility.GetCurrentGameTime())
 EndEvent

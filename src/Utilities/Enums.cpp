@@ -111,6 +111,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ValueWeightPreventsLooting : return "ValueWeightPreventsLooting";
 	case Lootability::ItemTheftTriggered : return "ItemTheftTriggered";
 	case Lootability::HarvestOperationPending : return "HarvestOperationPending";
+	case Lootability::HarvestOperationTimeout : return "HarvestOperationTimeout";
 	case Lootability::ContainerHasNoLootableItems : return "ContainerHasNoLootableItems";
 	case Lootability::ContainerIsLocked : return "ContainerIsLocked";
 	case Lootability::ContainerIsBossChest : return "ContainerIsBossChest";
@@ -220,4 +221,22 @@ std::string EnchantedObjectHandlingString(const EnchantedObjectHandling enchante
 	}
 }
 
+}
+
+std::ostream& operator<<(std::ostream& os, shse::ScanStatus status) {
+	switch (status) {
+		case shse::ScanStatus::GoodToGo:
+			os << "GoodToGo";
+			break;
+		case shse::ScanStatus::MCMOpen:
+			os << "MCMOpen";
+			break;
+		case shse::ScanStatus::GamePaused:
+			os << "GamePaused";
+			break;
+		case shse::ScanStatus::NoActivateControls:
+			os << "NoActivateControls";
+			break;
+	}
+	return os;
 }

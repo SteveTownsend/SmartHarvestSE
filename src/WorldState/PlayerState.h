@@ -45,8 +45,7 @@ public:
 	Position GetPosition() const;
 	const RE::TESRace* GetRace() const;
 	AlglibPosition GetAlglibPosition() const;
-	bool WithinDetectionRange(const double distance) const;
-	void UpdateGameTime(const float gameTime);
+	void UpdateGameTime();
 	inline float CurrentGameTime() const { return m_gameTime; }
 	int ItemHeadroom(RE::TESBoundObject* form, const int delta) const;
 	bool IsTimeSlowed() const { return m_slowedTime; }

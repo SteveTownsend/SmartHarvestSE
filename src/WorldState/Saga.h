@@ -43,17 +43,6 @@ public:
 	size_t CurrentDayPageCount() const;
 	std::string PageByNumber(const unsigned int pageNumber) const;
 
-	template <typename EVENTTYPE>
-	void AddEvent(const EVENTTYPE& event)
-	{
-		size_t elapsedDays(static_cast<size_t>(std::floor(event.GameTime())));
-		if (elapsedDays+1 > m_eventsByDay.size())
-		{
-			m_eventsByDay.resize(elapsedDays+1);
-		}
-		m_eventsByDay[elapsedDays].push_back(SagaEvent(event));
-	}
-
 private:
 	void AddPaginatedText(std::ostringstream& page, const std::string& text, const bool skipIfNewPage) const;
 	void FlushPaginatedText(std::ostringstream& page) const;
@@ -67,6 +56,19 @@ private:
 	mutable std::vector<std::string> m_currentDayPages;
 	mutable size_t m_currentPageLength;
 	mutable bool m_hasContent;
+
+public:
+	template <typename EVENTTYPE>
+	void AddEvent(const EVENTTYPE& event)
+	{
+		RecursiveLockGuard guard(m_sagaLock);
+		size_t elapsedDays(static_cast<size_t>(std::floor(event.GameTime())));
+		if (elapsedDays+1 > m_eventsByDay.size())
+		{
+			m_eventsByDay.resize(elapsedDays+1);
+		}
+		m_eventsByDay[elapsedDays].push_back(SagaEvent(event));
+	}	
 };
 
 }

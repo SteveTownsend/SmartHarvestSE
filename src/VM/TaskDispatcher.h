@@ -35,7 +35,10 @@ public:
     void EnqueueLootFromNPC(
         RE::TESObjectREFR* npc, RE::TESBoundObject* item, const int count, const ObjectType objectType);
     void LootNPCs();
+	void EnqueueCheckIfUndetected(RE::Actor* a_actor, const bool dryRun);
     void SetPlayer(RE::Actor* player);
+    void EnqueueCarryWeightDelta(int weightDelta);
+    void EnqueueResetCarryWeight();
 
 private:
     typedef std::tuple<RE::TESObjectREFR*, const int, const GlowReason> GlowRequest;

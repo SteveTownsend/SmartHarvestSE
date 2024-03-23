@@ -60,6 +60,7 @@ private:
 
 	typedef std::function<bool()> QuestTargetPredicate;
 
+	Lootability ConditionalQuestItemLootability(const RE::TESForm* form) const;
 	bool IsLootableInanimateReference(const RE::TESObjectREFR* refr) const;
 	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
 	bool BlacklistConditionalQuestTargetItem(const RE::TESBoundObject* item, QuestTargetPredicate predicate);
@@ -67,6 +68,7 @@ private:
 	bool BlacklistQuestTargetReferencedItemByID(const RE::FormID itemID, const RE::FormID refrID);
 	bool BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr);
 	bool BlacklistQuestTargetNPC(const RE::TESNPC* npc);
+	void BlacklistFavorItems();
 	void BlacklistOutliers();
 
 	static std::unique_ptr<QuestTargets> m_instance;

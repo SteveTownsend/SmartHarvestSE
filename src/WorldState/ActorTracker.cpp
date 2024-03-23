@@ -73,7 +73,6 @@ void ActorTracker::Reset()
 	RecursiveLockGuard guard(m_actorLock);
 	m_seenAlive.clear();
 	m_apparentTimeOfDeath.clear();
-	m_detectives.clear();
 	m_followers.clear();
 	m_checkedBodies.clear();
 }
@@ -155,32 +154,10 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget& refs)
 	}
 }
 
-void ActorTracker::AddDetective(const RE::Actor* detective, const double distance)
+void ActorTracker::AddFollower(const RE::Actor* follower)
 {
 	RecursiveLockGuard guard(m_actorLock);
-	m_detectives.insert({ distance, detective });
-}
-
-std::vector<const RE::Actor*> ActorTracker::GetDetectives()
-{ 
-	RecursiveLockGuard guard(m_actorLock);
-	std::vector<const RE::Actor*> result;
-	result.reserve(m_detectives.size());
-	std::transform(m_detectives.cbegin(), m_detectives.cend(), std::back_inserter(result),
-		[&](const auto& detective) { return detective.second; });
-	return result;
-}
-
-void ActorTracker::ClearDetectives()
-{
-	RecursiveLockGuard guard(m_actorLock);
-	m_detectives.clear();
-}
-
-void ActorTracker::AddFollower(const RE::Actor* detective)
-{
-	RecursiveLockGuard guard(m_actorLock);
-	m_followers.insert(detective);
+	m_followers.insert(follower);
 }
 
 void ActorTracker::ClearFollowers()

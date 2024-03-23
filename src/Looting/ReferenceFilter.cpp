@@ -289,6 +289,18 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				continue;
 			}
 
+			RE::FormType formType(refr->GetBaseObject()->GetFormType());
+			// skip some form types outright
+			if (formType == RE::FormType::Furniture ||
+				formType == RE::FormType::Hazard ||
+				formType == RE::FormType::IdleMarker ||
+				formType == RE::FormType::MovableStatic ||
+				formType == RE::FormType::Static)
+			{
+				DBG_VMESSAGE("invalid formtype {} for 0x{:08x}", formType, refr->GetFormID());
+				continue;
+			}
+
 			// if 3D not loaded do not measure - Ash Piles are exempt from this since they enter this state after Actor disintegrates
 			if (!refr->Is3DLoaded())
 			{
@@ -304,7 +316,6 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 			}
 
 			// If Looting through Doors is not allowed, check distance and record if this is the nearest so far
-			RE::FormType formType(refr->GetBaseObject()->GetFormType());
 			if (formType == RE::FormType::Door)
 			{
 				if (m_respectDoors)
@@ -340,16 +351,6 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 				}
 				continue;
 			}
-			// skip other invalid form types
-			if (formType == RE::FormType::Furniture ||
-				formType == RE::FormType::Hazard ||
-				formType == RE::FormType::IdleMarker ||
-				formType == RE::FormType::MovableStatic ||
-				formType == RE::FormType::Static)
-			{
-				DBG_VMESSAGE("invalid formtype {} for 0x{:08x}", formType, refr->GetFormID());
-				continue;
-			}
 
 			bool withinRange(m_rangeCheck.IsValid(refr));
 			// Record this REFR if it represents a potential player-detecting NPC, unless Stealing operation is in progress already
@@ -370,14 +371,6 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 					{
 						DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} ineligible as Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
 					}
-				}
-				else if (affinity == PlayerAffinity::Unaffiliated &&
-					PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected &&
-					!TheftCoordinator::Instance().StealingItems() &&
-					PlayerState::Instance().WithinDetectionRange(m_rangeCheck.Distance()))	// sneak detection range is not the same as looting
-				{
-					DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} may detect player", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
-					ActorTracker::Instance().AddDetective(actor, m_rangeCheck.Distance());
 				}
 			}
 			if (!withinRange)
@@ -402,8 +395,7 @@ void ReferenceFilter::FilterNearbyReferences()
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Filter loot candidates in/near cell");
 #endif
-	// reset the possible detecting Actor and Follower lists
-	ActorTracker::Instance().ClearDetectives();
+	// reset the Follower list
 	ActorTracker::Instance().ClearFollowers();
 
 	const RE::TESObjectCELL* cell(LocationTracker::Instance().PlayerCell());
@@ -431,7 +423,7 @@ void ReferenceFilter::FilterNearbyReferences()
 
 	// Postprocess the list into ascending distance order and truncate if too long
 	// We must confirm distance is valid because the Radius may update adjusted on the fly as Doors are processed
-	DBG_MESSAGE("Sort and truncate {} eligible REFRs", m_refs.size());
+	DBG_MESSAGE("Sort and truncate {} eligible REFRs vs limit {}", m_refs.size(), m_limit);
 
 	// This logic needs to reliably handle load spikes. We do not commit to process more than N references. The rest will get processed on future passes.
 	// A spike of 200+ in a second makes the VM dump stacks, so pick N accordingly. Prefer closer references, so partition the list by distance order so we handle
@@ -440,18 +432,26 @@ void ReferenceFilter::FilterNearbyReferences()
 	auto endOfRange(m_refs.begin() + static_cast<ptrdiff_t>(std::min(m_limit, m_refs.size())));
 	std::nth_element(m_refs.begin(), endOfRange, m_refs.end(),
 		[&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
-	std::sort(m_refs.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 	// "Nearest Door" restriction can adjust the range downwards during the scan - re-check here
 	if (m_respectDoors && m_nearestDoor > 0.)
 	{
+		std::sort(m_refs.begin(), endOfRange, [&](const TargetREFR& a, const TargetREFR& b) ->bool { return a.first < b.first; });
 		double effectiveRadius(std::min(m_nearestDoor, m_rangeCheck.Radius()));
 		auto tooFarAway(std::find_if(m_refs.begin(), endOfRange, [&](const auto& target) -> bool
 		{
 			return target.first > effectiveRadius;
 		}));
 
-		DBG_MESSAGE("Erase {} REFRs outside effective loot range {:.2f}", std::distance(tooFarAway, m_refs.end()), effectiveRadius);
-		m_refs.erase(tooFarAway, m_refs.end());
+		if (tooFarAway != m_refs.end())
+		{
+			DBG_MESSAGE("Erase {} REFRs outside effective loot range {:.2f}", std::distance(tooFarAway, m_refs.end()), effectiveRadius);
+			m_refs.erase(tooFarAway, m_refs.end());
+		}
+	}
+	else if (endOfRange != m_refs.end())
+	{
+		DBG_MESSAGE("Erase {} REFRs exceeding single-pass limit {}", std::distance(endOfRange, m_refs.end()), m_limit);
+		m_refs.erase(endOfRange, m_refs.end());
 	}
 }
 

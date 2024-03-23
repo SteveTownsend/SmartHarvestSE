@@ -88,8 +88,8 @@ void CollectionManager::ProcessDefinitions(void)
 
 void CollectionManager::Refresh() const
 {
-	// request added items and game time to be pushed to us while we are sleeping
-	EventPublisher::Instance().TriggerFlushAddedItems();
+	// update current game time
+	PlayerState::Instance().UpdateGameTime();
 }
 
 bool CollectionManager::ItemIsCollectionCandidate(RE::TESBoundObject* item) const
@@ -351,6 +351,7 @@ bool CollectionManager::LoadCollectionGroup(
 		BuildDecisionTrees(collectionGroup);
 		if (collectionGroup->UseMCM())
 		{
+			REL_MESSAGE("Record MCM-visible Collection Group {}/{}", groupName, defFile.string());
 			m_mcmVisibleFileByGroupName.insert(std::make_pair(groupName, defFile.string()));
 		}
 		m_allGroupsByName.insert(std::make_pair(groupName, collectionGroup));
@@ -458,9 +459,13 @@ std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
+		{
+			DBG_DMESSAGE("Collection Group name={} at index {}", group.first, fileIndex);
 			return group.first;
+		}
 		++index;
 	}
+	REL_WARNING("No Collection Group name for index {}", fileIndex);
 	return std::string();
 }
 
@@ -480,7 +485,9 @@ std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 int CollectionManager::NumberOfActiveCollections(const std::string& groupName) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	return static_cast<int>(m_activeCollectionsByGroupName.count(groupName));
+	int count(static_cast<int>(m_activeCollectionsByGroupName.count(groupName)));
+	REL_DMESSAGE("Collection Group {} has {} active collections", groupName, count);
+	return static_cast<int>(count);
 }
 
 std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const
@@ -493,10 +500,13 @@ std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, 
 		if (index == collectionIndex)
 		{
 			// strip the group name and separator
-			return group->second.substr(groupName.length() + 1);
+			auto name(group->second.substr(groupName.length() + 1));
+			REL_DMESSAGE("Collection Group {} index {} -> {}", groupName, collectionIndex, name);
+			return name;
 		}
 		++index;
 	}
+	REL_ERROR("Collection Group {} index {} not found", groupName, collectionIndex);
 	return std::string();
 }
 
@@ -553,8 +563,11 @@ bool CollectionManager::PolicyRepeat(const std::string& groupName, const std::st
 	const auto matched(m_allCollectionsByLabel.find(label));
 	if (matched != m_allCollectionsByLabel.cend())
 	{
-		return matched->second->Policy().Repeat();
+		bool repeat(matched->second->Policy().Repeat());
+		DBG_DMESSAGE("Collection {}/{} labeled as {} policy-repeat={}", groupName, collectionName, label, repeat);
+		return repeat;
 	}
+	REL_ERROR("Collection {}/{} labeled as {} not found", groupName, collectionName, label);
 	return false;
 }
 
@@ -762,8 +775,11 @@ void CollectionManager::ResolveMembership(void)
 	// record static members before resolving
 	for (const auto& collection : m_allCollectionsByLabel)
 	{
-		for (const auto member : collection.second->Members())
+		auto staticMembers(collection.second->Members());
+		REL_MESSAGE("Collection {} has {} static members", collection.first, staticMembers.size());
+		for (const auto member : staticMembers)
 		{
+			REL_MESSAGE("Static member {}/0x{:08x}", member->GetName(), member->GetFormID());
 			RecordCollectibleForm(collection.second, member, uniqueMembers);
 		}
 	}
@@ -771,6 +787,7 @@ void CollectionManager::ResolveMembership(void)
 	auto processFormType = [&](const RE::FormType formType) {
 		for (const auto form : RE::TESDataHandler::GetSingleton()->GetFormArray(formType))
 		{
+			DBG_VMESSAGE("Checking {}/0x{:08x}", form->GetName(), form->GetFormID());
 			if (!FormUtils::IsConcrete(form))
 				continue;
 			if (FormIsLeveledNPC(form))
@@ -784,6 +801,7 @@ void CollectionManager::ResolveMembership(void)
 				ConditionMatcher matcher(form);
 				if (collection.second->IsStaticMatch(matcher))
 				{
+					REL_MESSAGE("{}/0x{:08x} matched Collection {}", form->GetName(), form->GetFormID(), collection.first);
 					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
 					collection.second->SetScopes(matcher.ScopesSeen());
 					RecordCollectibleForm(collection.second, form, uniqueMembers);
@@ -793,6 +811,7 @@ void CollectionManager::ResolveMembership(void)
 	};
 	for (const auto& signature : SignatureCondition::ValidSignatures())
 	{
+		REL_MESSAGE("Check Signature {}, form type {}", signature.first, RE::FormTypeToString(signature.second));
 		processFormType(signature.second);
 	}
 	// named objects processed in DataCase::CategorizeLootables or otherwise Lootable, but not valid in SignatureCondition
@@ -809,6 +828,7 @@ void CollectionManager::ResolveMembership(void)
 	};
 	for (const auto& extraFormType : extraFormTypes)
 	{
+		REL_MESSAGE("Check extra form type {}", RE::FormTypeToString(extraFormType));
 		processFormType(extraFormType);
 	}
 	REL_MESSAGE("Collections contain {} unique objects", uniqueMembers.size());

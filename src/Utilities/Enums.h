@@ -21,6 +21,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/ObjectType.h"
 #include "brotli/decode.h"
+#include "fmt/ostream.h"
 
 namespace shse
 {
@@ -640,6 +641,7 @@ enum class Lootability {
 	ValueWeightPreventsLooting,
 	ItemTheftTriggered,
 	HarvestOperationPending,
+	HarvestOperationTimeout,
 	ContainerHasNoLootableItems,
 	ContainerIsLocked,
 	ContainerIsBossChest,
@@ -729,4 +731,14 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 	}
 }
 
+enum class ScanStatus {
+	GoodToGo,
+	MCMOpen,
+	GamePaused,
+	NoActivateControls
+};
 }
+
+std::ostream& operator<<(std::ostream& os, shse::ScanStatus status);
+template <> struct fmt::formatter<shse::ScanStatus> : fmt::ostream_formatter {};
+

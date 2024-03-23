@@ -26,7 +26,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "FormHelpers/FormHelper.h"
 #include "WorldState/LocationTracker.h"
-#include "VM/EventPublisher.h"
+#include "VM/TaskDispatcher.h"
 #include "Looting/ScanGovernor.h"
 #include "Utilities/utils.h"
 
@@ -79,12 +79,13 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 
 	if (onGameReload || onMCMPush)
 	{
-		// reset carry weight state and recache settings
+		// recache settings after resetting carry weight delta based on current
 		ResetCarryWeight();
 		SettingsCache::Instance().Refresh();
 	}
 	else
 	{
+		// adjust carry-weight delta if it does not reflect current settings
 		AdjustCarryWeight();
 	}
 
@@ -191,15 +192,17 @@ void PlayerState::AdjustCarryWeight()
 	bool manageIfWeaponDrawn(SettingsCache::Instance().UnencumberedIfWeaponDrawn());
 	bool manageDuringCombat(SettingsCache::Instance().UnencumberedInCombat());
 
-	// no op if this is not in use at all
-	if (!manageDuringCombat && !manageIfWeaponDrawn && !managePlayerHome)
-	{
-		DBG_DMESSAGE("Carry weight not managed, skip checks");
-		return;
-	}
-
 	RecursiveLockGuard guard(m_playerLock);
 	int carryWeightChange(m_currentCarryWeightChange);
+	DBG_DMESSAGE("Carry weight existing delta {}", m_currentCarryWeightChange);
+
+	// may need to reset if this is not in use at all
+	if (!manageDuringCombat && !manageIfWeaponDrawn && !managePlayerHome)
+	{
+		DBG_DMESSAGE("Carry weight not managed, reset any current delta");
+		carryWeightChange = 0;
+	}
+
 	if (managePlayerHome)
 	{
 		// when location changes to/from player house, adjust carry weight accordingly
@@ -226,23 +229,28 @@ void PlayerState::AdjustCarryWeight()
 
 	if (manageIfWeaponDrawn)
 	{
-		auto actorState(RE::PlayerCharacter::GetSingleton()->As<RE::ActorState>());
-	    bool isWeaponDrawn(actorState && actorState->IsWeaponDrawn());
-		// when state changes between drawn/sheathed, adjust carry weight accordingly
-		if (isWeaponDrawn != m_carryAdjustedForDrawnWeapon)
+		auto actorState(RE::PlayerCharacter::GetSingleton()->AsActorState());
+		if (actorState)
 		{
-			carryWeightChange += isWeaponDrawn ? InfiniteWeight : -InfiniteWeight;
-			m_carryAdjustedForDrawnWeapon = isWeaponDrawn;
-			DBG_MESSAGE("Carry weight delta after drawn weapon adjustment {}", carryWeightChange);
+			DBG_VMESSAGE("Player WeaponState {}", static_cast<uint32_t>(actorState->GetWeaponState()));
+			bool isWeaponDrawn(actorState->IsWeaponDrawn());
+			// when state changes between drawn/sheathed, adjust carry weight accordingly
+			if (isWeaponDrawn != m_carryAdjustedForDrawnWeapon)
+			{
+				carryWeightChange += isWeaponDrawn ? InfiniteWeight : -InfiniteWeight;
+				m_carryAdjustedForDrawnWeapon = isWeaponDrawn;
+				DBG_MESSAGE("Carry weight delta after drawn weapon adjustment {}", carryWeightChange);
+			}
 		}
 	}
+
 	if (carryWeightChange != m_currentCarryWeightChange)
 	{
 		int requiredWeightDelta(carryWeightChange - m_currentCarryWeightChange);
 		m_currentCarryWeightChange = carryWeightChange;
-		// handle carry weight update via a script event
+		// upate Player's CarryWeight via Task Interface
 		DBG_MESSAGE("Adjust carry weight by delta {}", requiredWeightDelta);
-		EventPublisher::Instance().TriggerCarryWeightDelta(requiredWeightDelta);
+		TaskDispatcher::Instance().EnqueueCarryWeightDelta(requiredWeightDelta);
 	}
 }
 
@@ -342,14 +350,14 @@ float PlayerState::PerkIngredientMultiplier() const
 	return m_harvestedIngredientMultiplier;
 }
 
-// reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
+// reset carry weight adjustments - script will handle the Player Actor Value, scan will reinstate as needed when we resume
 void PlayerState::ResetCarryWeight()
 {
 	bool managePlayerHome(SettingsCache::Instance().UnencumberedInPlayerHome());
 	bool manageIfWeaponDrawn(SettingsCache::Instance().UnencumberedIfWeaponDrawn());
 	bool manageDuringCombat(SettingsCache::Instance().UnencumberedInCombat());
 
-	// do not adjust if this is not in use at all
+	// reset delta to 0 if this is not in use at all
 	if (manageDuringCombat || manageIfWeaponDrawn || managePlayerHome)
 	{
 		RecursiveLockGuard guard(m_playerLock);
@@ -361,7 +369,7 @@ void PlayerState::ResetCarryWeight()
 		if (m_currentCarryWeightChange != 0)
 		{
 			m_currentCarryWeightChange = 0;
-			EventPublisher::Instance().TriggerResetCarryWeight();
+			TaskDispatcher::Instance().EnqueueResetCarryWeight();
 		}
 	}
 	else
@@ -421,15 +429,10 @@ AlglibPosition PlayerState::GetAlglibPosition() const
 	return { player->GetPositionX(), player->GetPositionY(), player->GetPositionZ() };
 }
 
-bool PlayerState::WithinDetectionRange(const double distance) const
-{
-	double maxDistance(LocationTracker::Instance().IsPlayerIndoors() ? SneakDistanceInterior() : SneakDistanceExterior());
-	return distance <= maxDistance;
-}
-
-void PlayerState::UpdateGameTime(const float gameTime)
+void PlayerState::UpdateGameTime()
 {
 	RecursiveLockGuard guard(m_playerLock);
+	auto gameTime(RE::Calendar::GetSingleton()->GetCurrentGameTime());
 	DBG_MESSAGE("GameTime is now {:0.3f}/{}", gameTime, GameCalendar::Instance().DateTimeString(gameTime));
 	m_gameTime = gameTime;
 }

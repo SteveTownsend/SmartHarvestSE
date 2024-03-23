@@ -8,7 +8,6 @@ string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
-bool Function UnlockHarvest(int refrID, int baseID, string baseName, bool isSilent) global native
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native
@@ -63,10 +62,11 @@ String Function GetTranslation(String key) global native
 String Function Replace(String str, String target, String replacement) global native
 String Function ReplaceArray(String str, String[] targets, String[] replacements) global native
 
+Function NotifyActivated(Form itemForm, int itemType, bool collectible, int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted) global native
+bool Function ActivateItem(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+
 ;Collection Management
 bool Function CollectionsInUse() global native
-Function FlushAddedItems(float gameTime, Form[] forms, int[] scopes, int[] types, int itemCount) global native
-Function PushGameTime(float gameTime) global native
 int Function CollectionGroups() global native
 String Function CollectionGroupName(int fileIndex) global native
 String Function CollectionGroupFile(int fileIndex) global native
@@ -104,8 +104,6 @@ Function GlowNearbyLoot() global native
 Function SyncShader(int index, EffectShader shader) global native
 Function SetPlayer(Actor player) global native
 
-Actor Function GetDetectingActor(int actorIndex, bool dryRun) global native    
-Function ReportPlayerDetectionState(bool detected) global native
 Function CheckLootable(ObjectReference refr) global native
 
 ; Script operation timing

@@ -53,16 +53,12 @@ EventPublisher& EventPublisher::Instance()
 
 EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onGetProducerLootable("OnGetProducerLootable"),
-	m_onCarryWeightDelta("OnCarryWeightDelta"),
-	m_onResetCarryWeight("OnResetCarryWeight"),
 	m_onHarvest("OnHarvest"),
 	m_onHarvestSyntheticFlora("OnHarvestSyntheticFlora"),
 	m_onHarvestCritter("OnHarvestCritter"),
 	m_onMining("OnMining"),
-	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
 	m_onCheckOKToScan("OnCheckOKToScan"),
-	m_onStealIfUndetected("OnStealIfUndetected"),
 	m_onGameReady("OnGameReady")
 {
 }
@@ -120,32 +116,18 @@ bool EventPublisher::GoodToGo()
 void EventPublisher::HookUp()
 {
 	m_onGetProducerLootable.Register(m_eventTarget);
-	m_onCarryWeightDelta.Register(m_eventTarget);
-	m_onResetCarryWeight.Register(m_eventTarget);
 	m_onObjectGlow.Register(m_eventTarget);
 	m_onHarvest.Register(m_eventTarget);
 	m_onHarvestSyntheticFlora.Register(m_eventTarget);
 	m_onHarvestCritter.Register(m_eventTarget);
 	m_onMining.Register(m_eventTarget);
-	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
-	m_onStealIfUndetected.Register(m_eventTarget);
 	m_onGameReady.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
 {
 	m_onGetProducerLootable.SendEvent(refr);
-}
-
-void EventPublisher::TriggerCarryWeightDelta(const int delta)
-{
-	m_onCarryWeightDelta.SendEvent(delta);
-}
-
-void EventPublisher::TriggerResetCarryWeight()
-{
-	m_onResetCarryWeight.SendEvent();
 }
 
 void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify, const bool isFirehose)
@@ -178,11 +160,6 @@ void EventPublisher::TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TE
 		isSilent, collectible, isWhitelisted);
 }
 
-void EventPublisher::TriggerFlushAddedItems()
-{
-	m_onFlushAddedItems.SendEvent();
-}
-
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
 {
 	m_onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
@@ -191,11 +168,6 @@ void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int durati
 void EventPublisher::TriggerCheckOKToScan(const int nonce)
 {
 	m_onCheckOKToScan.SendEvent(nonce);
-}
-
-void EventPublisher::TriggerStealIfUndetected(const size_t actorCount, const bool dryRun)
-{
-	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount), dryRun);
 }
 
 void EventPublisher::TriggerGameReady()

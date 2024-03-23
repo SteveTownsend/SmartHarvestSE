@@ -409,8 +409,8 @@ begin
     result := DoStringReplace(result, '{NAME}', name);
     result := DoStringReplace(result, '{DESCRIPTION}', 'Display: ' + edid);
     result := DoStringReplace(result, '{PLUGIN}', GetFileName(e));
-    result := DoStringReplace(result, '{FORMID}', IntToHex(GetLoadOrderFormID(e), 8));
-end;
+    result := DoStringReplace(result, '{FORMID}', '00' + copy(IntToHex(FixedFormID(e), 8), length(IntToHex(FixedFormID(e), 8))-5, 6));
+  end;
 
 function Process(e: IInterface): integer;
 var

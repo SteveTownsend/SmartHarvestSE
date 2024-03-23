@@ -43,41 +43,42 @@ UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_wai
 {
 }
 
-bool UIState::OKToScan() const
+ScanStatus UIState::OKToScan() const
 {
 	if (m_mcmOpen)
 	{
 		DBG_VMESSAGE("MCM is Open");
-		return false;
+		return ScanStatus::MCMOpen;
 	}
 	if (RE::UI::GetSingleton()->GameIsPaused())
 	{
 		DBG_VMESSAGE("GameIsPaused true");
-		return false;
+		return ScanStatus::GamePaused;
 	}
 	if (!RE::ControlMap::GetSingleton()->IsActivateControlsEnabled())
 	{
 		DBG_VMESSAGE("IsActivateControlsEnabled false");
-		return false;
+		return ScanStatus::NoActivateControls;
 	}
-	return true;
+	return ScanStatus::GoodToGo;
 }
 
 // Check VM is not handling UI - blocks if so, to avoid problems in-game and at game shutdown
 // Returns True iff there was a UI-induced delay
-bool UIState::WaitUntilVMGoodToGo()
+void UIState::WaitUntilVMGoodToGo()
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("VM Status check");
 #endif
 	// perform UI state checking here, only fire handshake with scripts if UI is open
-	if (OKToScan())
-		return true;
+	ScanStatus status(OKToScan());
+	if (status == ScanStatus::GoodToGo)
+		return;
 
 	const auto startTime(std::chrono::high_resolution_clock::now());
 	++m_nonce;
 	int nonce(m_nonce);
-	REL_MESSAGE("UI status request # {}", nonce);
+	REL_MESSAGE("UI status request # {} for scan status {}", nonce, status);
 	EventPublisher::Instance().TriggerCheckOKToScan(nonce);
 
 	std::unique_lock<std::mutex> guard(m_uiLock);
@@ -98,16 +99,13 @@ bool UIState::WaitUntilVMGoodToGo()
 			WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
 		}
 		REL_MESSAGE("Scan progressing after game load");
-		return true;
 	}
 	else if (m_uiDelayed)
 	{
 		REL_MESSAGE("UI/controls were active, delay scan");
 		WindowsUtils::TakeNap(OnUIClosedThreadDelaySeconds);
 		REL_MESSAGE("Scan progressing");
-		return true;
 	}
-	return false;
 }
 
 void UIState::ReportVMGoodToGo(const bool delayed, const int nonce)

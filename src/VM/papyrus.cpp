@@ -456,11 +456,72 @@ namespace papyrus
 	{
 		return shse::LocationTracker::Instance().CurrentPlayerPlace();
 	}
-
-	bool UnlockHarvest(RE::StaticFunctionTag*, const int refrID, const int baseID,
-		const RE::BSFixedString baseName, const bool isSilent)
+	
+	void NotifyActivated(RE::StaticFunctionTag*, RE::TESForm* itemForm, int itemType, bool collectible, int refrID, int baseID,
+		bool notify, RE::BSFixedString baseName, int count, bool activated, bool isSilent, bool isWhitelisted)
 	{
-		return shse::ScanGovernor::Instance().UnlockHarvest(RE::FormID(refrID), RE::FormID(baseID), baseName.c_str(), isSilent);
+		if (activated)
+		{
+			if (notify)
+			{
+				std::string activateMsg;
+				if (count >= 2)
+				{
+					activateMsg = shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG");
+					StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
+					StringUtils::Replace(activateMsg, "{COUNT}", std::to_string(count));
+				}
+				else
+				{
+					activateMsg = shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE_MSG");
+					StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
+				}
+				if (!activateMsg.empty())
+				{
+					RE::DebugNotification(activateMsg.c_str());
+				}
+			}
+			if (isWhitelisted)
+			{
+				std::string whitelistMsg = shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG");
+				StringUtils::Replace(whitelistMsg, "{ITEMNAME}", baseName.c_str());
+				if (!whitelistMsg.empty())
+				{
+					RE::DebugNotification(whitelistMsg.c_str());
+				}
+			}
+			if (collectible)
+			{
+				shse::CollectionManager::Collectibles().CheckEnqueueAddedItem(
+					itemForm->As<RE::TESBoundObject>(), INIFile::SecondaryType::containers, ObjectType(itemType));
+			}
+		}
+		shse::ScanGovernor::Instance().UnlockHarvest(RE::FormID(refrID), RE::FormID(baseID), baseName.c_str(), isSilent);
+	}
+
+	bool ActivateItem(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		RE::Setting* setting(nullptr);
+		RE::INISettingCollection* iniSettingCollection(nullptr);
+		bool showHUD(false);
+		if (suppressMessage)
+		{
+			iniSettingCollection = RE::INISettingCollection::GetSingleton();
+			setting = iniSettingCollection ? iniSettingCollection->GetSetting("bShowHUDMessages:Interface") : nullptr;
+    		showHUD = (setting && setting->GetType() == RE::Setting::Type::kBool) ? setting->GetBool() : false;
+		}
+		if (showHUD)
+		{
+			setting->data.b = false;
+			iniSettingCollection->WriteSetting(setting);
+		}
+		bool result(target->ActivateRef(activator, 0, nullptr, activateCount, false));
+		if (showHUD)
+		{
+			setting->data.b = true;
+			iniSettingCollection->WriteSetting(setting);
+		}
+		return result;
 	}
 
 	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -676,31 +737,11 @@ namespace papyrus
 		return shse::CollectionManager::Collectibles().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<RE::TESForm*> forms,
-		const std::vector<int> scopes, const std::vector<int> objectTypes, const int itemCount)
-	{
-		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
-		auto form(forms.cbegin());
-		auto scope(scopes.cbegin());
-		auto objectType(objectTypes.cbegin());
-		int current(0);
-		shse::PlayerState::Instance().UpdateGameTime(gameTime);
-		while (current < itemCount)
-		{
-			// checked API
-			shse::CollectionManager::Collectibles().CheckEnqueueAddedItem(
-				(*form)->As<RE::TESBoundObject>(), INIFile::SecondaryType(*scope), ObjectType(*objectType));
-			++current;
-			++form;
-			++scope;
-			++objectType;
-		}
-	}
-
-	void PushGameTime(RE::StaticFunctionTag*, const float gameTime)
-	{
-		shse::PlayerState::Instance().UpdateGameTime(gameTime);
-	}
+	// void RecordAddedItem(RE::StaticFunctionTag*, RE::TESForm* baseItem, int scope, int objectType)
+	// {
+	// 	shse::CollectionManager::Collectibles().CheckEnqueueAddedItem(
+	// 		baseItem->As<RE::TESBoundObject>(), INIFile::SecondaryType(scope), ObjectType(objectType));
+	// }
 
 	int CollectionGroups(RE::StaticFunctionTag*)
 	{
@@ -717,9 +758,9 @@ namespace papyrus
 		return shse::CollectionManager::Collectibles().GroupFileByIndex(fileIndex);
 	}
 
-	int CollectionsInGroup(RE::StaticFunctionTag*, const std::string fileName)
+	int CollectionsInGroup(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return shse::CollectionManager::Collectibles().NumberOfActiveCollections(fileName);
+		return shse::CollectionManager::Collectibles().NumberOfActiveCollections(groupName);
 	}
 
 	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
@@ -857,23 +898,6 @@ namespace papyrus
 		shse::TaskDispatcher::Instance().SetPlayer(player);
 	}
 
-	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag*, const int actorIndex, const bool dryRun)
-	{
-		if (dryRun)
-		{
-			return shse::ScanGovernor::Instance().ActorByIndex(static_cast<size_t>(actorIndex));
-		}
-		else
-		{
-			return shse::TheftCoordinator::Instance().ActorByIndex(static_cast<size_t>(actorIndex));
-		}
-	}
-
-	void ReportPlayerDetectionState(RE::StaticFunctionTag*, const bool detected)
-	{
-		shse::TheftCoordinator::Instance().StealOrForgetItems(detected);
-	}
-
 	void CheckLootable(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
 		shse::ScanGovernor::Instance().DisplayLootability(refr);
@@ -918,7 +942,8 @@ namespace papyrus
 		a_vm->RegisterFunction("GetPluginVersion", SHSE_PROXY, papyrus::GetPluginVersion);
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
-		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
+		a_vm->RegisterFunction("NotifyActivated", SHSE_PROXY, papyrus::NotifyActivated);
+		a_vm->RegisterFunction("ActivateItem", SHSE_PROXY, papyrus::ActivateItem);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
 		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
@@ -976,8 +1001,6 @@ namespace papyrus
 		a_vm->RegisterFunction("ReplaceArray", SHSE_PROXY, papyrus::ReplaceArray);
 
 		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
-		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
-		a_vm->RegisterFunction("PushGameTime", SHSE_PROXY, papyrus::PushGameTime);
 		a_vm->RegisterFunction("CollectionGroups", SHSE_PROXY, papyrus::CollectionGroups);
 		a_vm->RegisterFunction("CollectionGroupName", SHSE_PROXY, papyrus::CollectionGroupName);
 		a_vm->RegisterFunction("CollectionGroupFile", SHSE_PROXY, papyrus::CollectionGroupFile);
@@ -1014,8 +1037,6 @@ namespace papyrus
 		a_vm->RegisterFunction("SyncShader", SHSE_PROXY, papyrus::SyncShader);
 		a_vm->RegisterFunction("SetPlayer", SHSE_PROXY, papyrus::SetPlayer);
 
-		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
-		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);
 		a_vm->RegisterFunction("CheckLootable", SHSE_PROXY, papyrus::CheckLootable);
 
 		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);
