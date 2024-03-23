@@ -4,7 +4,7 @@ https://www.nexusmods.com/skyrimspecialedition/mods/37091
 
 ## Building
 
-The library builds using CMake. I don't use the Colorglass reportsitory for CommonLibSSE-NG because I found it hard to work out what was going on. Instead, CMakeFiles.txt manually imports its dependencies using *FetchContent*.
+The library builds using CMake. I don't use the Colorglass repository for CommonLibSSE-NG because I found it hard to work out what was going on. Instead, CMakeFiles.txt manually imports its dependencies using *FetchContent*.
 Doing this brute force helped me understand CMake better, and makes it possible to experiment with other CommonLibSSE-NG variants. I don't plan to revert the build to use vcpkg.
 
 CMake is confusing, no question. Things to know:
