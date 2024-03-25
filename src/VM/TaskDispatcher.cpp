@@ -52,8 +52,7 @@ void TaskDispatcher::EnqueueObjectGlow(RE::TESObjectREFR* refr, const int durati
 
 void TaskDispatcher::GlowObjects()
 {
-
-    // Dispatch the queued glow requests via the TaskInterface
+    // Dispatch the queued glow requests via the TaskInterface - do not require activation availability here
     ScanStatus status(UIState::Instance().OKToScan());
     decltype(m_queuedGlow) queued;
     {
@@ -169,7 +168,7 @@ void TaskDispatcher::LootNPCs()
     });
 }
 
-void TaskDispatcher::EnqueueCheckIfUndetected(RE::Actor* actor, const bool dryRun)
+void TaskDispatcher::EnqueueStealIfUndetected(RE::Actor* actor, const bool dryRun)
 {
     m_taskInterface->AddTask([=] (void) {
         // Logic from po3 Papyrus Extender
@@ -184,10 +183,11 @@ void TaskDispatcher::EnqueueCheckIfUndetected(RE::Actor* actor, const bool dryRu
         }
         else
         {
+            // Do not require activation availability here
             ScanStatus status(UIState::Instance().OKToScan());
             if (status != ScanStatus::GoodToGo)
             {
-                message = "UI Open : Actor Detection interrupted";
+                message = "Cannot scan : Actor Detection interrupted";
                 REL_WARNING(message);
                 detected = true;
             }

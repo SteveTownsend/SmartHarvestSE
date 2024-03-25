@@ -58,7 +58,7 @@ void TheftCoordinator::StealIfUndetected(void)
 		// start timer before issuing event in case result comes back really quickly (however unlikely)
 		m_stealTimer = WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
 		static const bool dryRun(false);
-		TaskDispatcher::Instance().EnqueueCheckIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
+		TaskDispatcher::Instance().EnqueueStealIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
 	}
 	else
 	{

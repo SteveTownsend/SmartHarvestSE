@@ -234,9 +234,6 @@ std::ostream& operator<<(std::ostream& os, shse::ScanStatus status) {
 		case shse::ScanStatus::GamePaused:
 			os << "GamePaused";
 			break;
-		case shse::ScanStatus::NoActivateControls:
-			os << "NoActivateControls";
-			break;
 	}
 	return os;
 }

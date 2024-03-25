@@ -788,7 +788,7 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
 	if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
 	{
 		DBG_VMESSAGE("Detection check to steal");
-		TaskDispatcher::Instance().EnqueueCheckIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
+		TaskDispatcher::Instance().EnqueueStealIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
 	}
 
 	std::ostringstream resultStr;

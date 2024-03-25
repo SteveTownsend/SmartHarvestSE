@@ -1024,9 +1024,11 @@ bool Function CanMine(MineOreScript handler, int available)
     endif
     ; Cidhna Mine special case
     If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
-        ;DebugTrace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
-        CidhnaMinePlayerBedREF.Activate(thisPlayer)
-        DialogueCidhnaMine.SetStage(45)
+        if OKToActivate()
+            ;DebugTrace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
+            CidhnaMinePlayerBedREF.Activate(thisPlayer)
+            DialogueCidhnaMine.SetStage(45)
+        endIf
         return False
     EndIf
     return True
@@ -1053,9 +1055,11 @@ bool Function CanMineCACO(CACO_MineOreScript handler, int available)
     endif
     ; duplicate vanilla Cidhna Mine processing
     If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
-        ;DebugTrace(self + "Player is in Cidhna Mine, activate the bed to serve time")
-        CidhnaMinePlayerBedREF.Activate(thisPlayer)
-        DialogueCidhnaMine.SetStage(45)
+        if OKToActivate()
+            ;DebugTrace(self + "Player is in Cidhna Mine, activate the bed to serve time")
+            CidhnaMinePlayerBedREF.Activate(thisPlayer)
+            DialogueCidhnaMine.SetStage(45)
+        endIf
         return False
     EndIf
     return True
@@ -1132,34 +1136,35 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         if toolsFailed
             ; allow retry, player might acquire tools in the interim
             UnblockMineable(akMineable)
-        endif
-        while (mined < maxMiningItems) && OKToScan() && CanMine(oreScript, available) && !toolsFailed
-            ; Vanilla resource retrieval.
-            if logEvent
-                if CCORModIndex != 255
-                    DebugTrace("Trigger CCOR Mining")
-                else
-                    DebugTrace("Trigger Vanilla Mining")
+        else
+            while (mined < maxMiningItems) && OKToActivate() && CanMine(oreScript, available)
+                ; Vanilla resource retrieval.
+                if logEvent
+                    if CCORModIndex != 255
+                        DebugTrace("Trigger CCOR Mining")
+                    else
+                        DebugTrace("Trigger Vanilla Mining")
+                    endif
+                endIf       
+                if firstTime
+                    if CCORModIndex != 255 && ((Game.GetFormFromFile(0x01CC0508, "Update.esm") As GlobalVariable).GetValue() As Int) == 1 ;MiningMakesNoise_CCO	
+                        oreScript.CreateDetectionEvent(thisPlayer, 250)		;MINING MAKE NOISE by Kryptopyr	
+                    endif
+                        firstTime = False
                 endif
-            endIf       
-            if firstTime
-                if CCORModIndex != 255 && ((Game.GetFormFromFile(0x01CC0508, "Update.esm") As GlobalVariable).GetValue() As Int) == 1 ;MiningMakesNoise_CCO	
-                    oreScript.CreateDetectionEvent(thisPlayer, 250)		;MINING MAKE NOISE by Kryptopyr	
-                endif
-                    firstTime = False
-            endif
-        
-            ; Vanilla and CCOR giveOre() also handle distribution of gems
-            oreScript.giveOre()
+            
+                ; Vanilla and CCOR giveOre() also handle distribution of gems
+                oreScript.giveOre()
 
-            mined = thisPlayer.GetItemCount(oreScript.Ore) - initialOreCount;
-            available = oreScript.ResourceCountCurrent
-            if logEvent
-                DebugTrace("Ore amount so far: " + mined + ", max: " + maxMiningItems + ", available: " + available)
-            endIf            
-            miningStrikes += 1
-        endwhile
-        if !OKToScan()
+                mined = thisPlayer.GetItemCount(oreScript.Ore) - initialOreCount;
+                available = oreScript.ResourceCountCurrent
+                if logEvent
+                    DebugTrace("Ore amount so far: " + mined + ", max: " + maxMiningItems + ", available: " + available)
+                endIf            
+                miningStrikes += 1
+            endwhile
+        endIf
+        if !OKToActivate()
             AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " obtained")
         endIf
         if logEvent
@@ -1197,29 +1202,30 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             if toolsFailed
                 ; allow retry, player might acquire tools in the interim
                 UnblockMineable(akMineable)
-            endif
-            while (mined < maxMiningItems) && OKToScan() && CanMineCACO(cacoMinable, available) && !toolsFailed
-                if logEvent
-                    DebugTrace("Trigger CACO ore harvesting")
-                endIf            
-                if firstTime
-                    if cacoMinable.MiningMakesNoise_CCO.GetValue() == 1
-                        cacoMinable.CreateDetectionEvent(thisPlayer, 250)   ;MINING MAKE NOISE by Kryptopyr	
+            else
+                while (mined < maxMiningItems) && OKToActivate() && CanMineCACO(cacoMinable, available) && !toolsFailed
+                    if logEvent
+                        DebugTrace("Trigger CACO ore harvesting")
+                    endIf            
+                    if firstTime
+                        if cacoMinable.MiningMakesNoise_CCO.GetValue() == 1
+                            cacoMinable.CreateDetectionEvent(thisPlayer, 250)   ;MINING MAKE NOISE by Kryptopyr	
+                        endif
+                        firstTime = False
                     endif
-                    firstTime = False
-                endif
-                cacoMinable.giveOre()
-                mined = thisPlayer.GetItemCount(cacoMinable.Ore) - initialOreCount;
-                ; script properties are trusted now 
-                available = cacoMinable.ResourceCountCurrent
-                targetResourceTotal = cacoMinable.ResourceCountTotal
-                strikesToCollect = cacoMinable.StrikesBeforeCollection
-                if logEvent
-                    DebugTrace("CACO ore vein amount so far: " + mined + ", max: " + maxMiningItems + ", available: " + available)
-                endIf           
-                miningStrikes += 1
-            endwhile
-            if !OKToScan()
+                    cacoMinable.giveOre()
+                    mined = thisPlayer.GetItemCount(cacoMinable.Ore) - initialOreCount;
+                    ; script properties are trusted now 
+                    available = cacoMinable.ResourceCountCurrent
+                    targetResourceTotal = cacoMinable.ResourceCountTotal
+                    strikesToCollect = cacoMinable.StrikesBeforeCollection
+                    if logEvent
+                        DebugTrace("CACO ore vein amount so far: " + mined + ", max: " + maxMiningItems + ", available: " + available)
+                    endIf           
+                    miningStrikes += 1
+                endwhile
+            endIf
+            if !OKToActivate()
                 AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " obtained")
             endIf
             if logEvent
@@ -1318,10 +1324,10 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
     bool activated = False
 
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-    if (!akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget))
+    if !akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget) && OKToActivate()
         int activations = SyntheticFloraActivateCount(akTarget)
-        activated = True
-        if ActivateItem(akTarget, thisPlayer, true, activations)
+        activated = ActivateItem(akTarget, thisPlayer, true, activations)
+        if activated
             notify = !silent
             if activations == 1 && count >= 2
                 ; work round for ObjectReference.Activate() known issue
@@ -1330,9 +1336,9 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
                 thisPlayer.AddItem(itemForm, toGet, true)
                 ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
             endIf
+            SetHarvested(akTarget)
+            ;DebugTrace("OnHarvestSyntheticFlora:Activated:" + akTarget)
         endif
-        SetHarvested(akTarget)
-        ;DebugTrace("OnHarvestSyntheticFlora:Activated:" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
@@ -1374,9 +1380,8 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
     bool activated = False
 
     ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
-        activated = True;
-        ActivateItem(akTarget, thisPlayer, silent, 1)
+    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget) && OKToActivate()
+        activated = ActivateItem(akTarget, thisPlayer, silent, 1)
         ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
@@ -1403,39 +1408,42 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             if logEvent
                 DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
             endIf
-            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle")
-                activated = True;
-                if ActivateItem(akTarget, thisPlayer, true, 1)
+            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && OKToActivate()
+                activated = ActivateItem(akTarget, thisPlayer, true, 1)
+                if activated
                     notify = !silent
                 endif
             endIf
         endIf
-    elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType)
-        activated = True;
-        if (itemType == objType_Septim && baseForm.GetType() == getType_kFlora)
-            ActivateItem(akTarget, thisPlayer, silent, 1)
+    elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType) && OKToActivate()
+        if itemType == objType_Septim && baseForm.GetType() == getType_kFlora
+            activated = ActivateItem(akTarget, thisPlayer, silent, 1)
 
         elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
             ;DebugTrace("Player has ingredient count " + ingredientCount)
             bool suppressMessage = silent || ingredientCount as int > 1
             ;DebugTrace("Flora/Tree original base form " + itemForm.GetName())
-            if ActivateItem(akTarget, thisPlayer, suppressMessage, 1)
+            activated = ActivateItem(akTarget, thisPlayer, suppressMessage, 1)
+            if activated
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
                 count = count * ingredientCount as int
             endif
-        elseif ActivateItem(akTarget, thisPlayer, true, 1)
-            notify = !silent
-            if count >= 2
-                ; work round for ObjectReference.Activate() known issue
-                ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
-                int toGet = count - 1
-                thisPlayer.AddItem(itemForm, toGet, true)
-                ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
-            endIf
+        else
+            activated = ActivateItem(akTarget, thisPlayer, true, 1)
+            if activated
+                notify = !silent
+                if count >= 2
+                    ; work round for ObjectReference.Activate() known issue
+                    ; https://www.creationkit.com/fallout4/index.php?title=Activate_-_ObjectReference
+                    int toGet = count - 1
+                    thisPlayer.AddItem(itemForm, toGet, true)
+                    ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
+                endIf
+            endif
         endif
-        ;DebugTrace("OnHarvest:Activated:" + akTarget)
+        ;DebugTrace("OnHarvest:Activated:" + akTarget + " = " + activated)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
@@ -1619,6 +1627,7 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
     else
         effShader = categoryShaders[glowReasonSimpleTarget]
     endif
+    ; no need to check Activation available here
     if effShader && OKToScan() && akTargetRef.Is3DLoaded() && !akTargetRef.IsDisabled()        
         ; play for requested duration - C++ code will tidy up when out of range
         ;DebugTrace("DoObjectGlow for " + akTargetRef.GetDisplayName() + " for " + duration + " seconds")
@@ -1674,18 +1683,26 @@ Function OnMCMClose()
     mcmOpen = False
 EndFunction
 
-bool Function OKToScan()
-    if mcmOpen
-        AlwaysTrace("MCM for SHSE is open")
-        return False
-    elseif (Utility.IsInMenuMode())
-        AlwaysTrace("UI has menu open")
-        return False
-    elseif (!Game.IsActivateControlsEnabled())
+; fine-grain check on whether we can activate
+bool Function OKToActivate()
+    if (!Game.IsActivateControlsEnabled())
         AlwaysTrace("UI has controls disabled")
         return False
     endIf
     return True
+EndFunction
+
+; no need to check Activate Controls here
+bool Function OKToScan()
+    if mcmOpen
+        AlwaysTrace("MCM for SHSE is open")
+        return False
+    elseif Utility.IsInMenuMode()
+        AlwaysTrace("UI has menu open")
+        return False
+    else
+        return OKToActivate()
+    endIf
 EndFunction
 
 ; Periodic poll to check whether native code can be released. If game closes down this will never happen.

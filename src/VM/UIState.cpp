@@ -43,6 +43,16 @@ UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_wai
 {
 }
 
+bool UIState::OKToActivate() const
+{
+	if (!RE::ControlMap::GetSingleton()->IsActivateControlsEnabled())
+	{
+		DBG_VMESSAGE("IsActivateControlsEnabled false");
+		return false;
+	}
+	return true;
+}
+
 ScanStatus UIState::OKToScan() const
 {
 	if (m_mcmOpen)
@@ -55,11 +65,6 @@ ScanStatus UIState::OKToScan() const
 		DBG_VMESSAGE("GameIsPaused true");
 		return ScanStatus::GamePaused;
 	}
-	if (!RE::ControlMap::GetSingleton()->IsActivateControlsEnabled())
-	{
-		DBG_VMESSAGE("IsActivateControlsEnabled false");
-		return ScanStatus::NoActivateControls;
-	}
 	return ScanStatus::GoodToGo;
 }
 
@@ -70,7 +75,7 @@ void UIState::WaitUntilVMGoodToGo()
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("VM Status check");
 #endif
-	// perform UI state checking here, only fire handshake with scripts if UI is open
+	// perform UI state checking here, only fire handshake with scripts if UI is open - do not check activate availability here
 	ScanStatus status(OKToScan());
 	if (status == ScanStatus::GoodToGo)
 		return;

@@ -734,8 +734,7 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 enum class ScanStatus {
 	GoodToGo,
 	MCMOpen,
-	GamePaused,
-	NoActivateControls
+	GamePaused
 };
 }
 
