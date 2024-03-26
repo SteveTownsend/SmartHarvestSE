@@ -43,16 +43,6 @@ UIState::UIState() : m_nonce(0), m_vmResponded(false), m_uiDelayed(false), m_wai
 {
 }
 
-bool UIState::OKToActivate() const
-{
-	if (!RE::ControlMap::GetSingleton()->IsActivateControlsEnabled())
-	{
-		DBG_VMESSAGE("IsActivateControlsEnabled false");
-		return false;
-	}
-	return true;
-}
-
 ScanStatus UIState::OKToScan() const
 {
 	if (m_mcmOpen)

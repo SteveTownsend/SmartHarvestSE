@@ -34,7 +34,6 @@ public:
 	void ReportVMGoodToGo(const bool delayed, const int nonce);
 	void Reset();
 	void SetMCMState(const bool isOpen);
-	bool OKToActivate() const;
 	ScanStatus OKToScan() const;
 
 private:

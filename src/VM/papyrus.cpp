@@ -515,8 +515,7 @@ namespace papyrus
 			setting->data.b = false;
 			iniSettingCollection->WriteSetting(setting);
 		}
-		// fine grain check on Activate Controls here
-		bool result(shse::UIState::Instance().OKToActivate() && target->ActivateRef(activator, 0, nullptr, activateCount, false));
+		bool result(target->ActivateRef(activator, 0, nullptr, activateCount, false));
 		if (showHUD)
 		{
 			setting->data.b = true;

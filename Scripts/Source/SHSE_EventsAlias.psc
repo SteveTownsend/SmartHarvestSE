@@ -1024,10 +1024,11 @@ bool Function CanMine(MineOreScript handler, int available)
     endif
     ; Cidhna Mine special case
     If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
-        if OKToActivate()
-            ;DebugTrace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
-            CidhnaMinePlayerBedREF.Activate(thisPlayer)
+        ;DebugTrace(handler + " Player is in Cidhna Mine, activate the bed to serve time")
+        if CidhnaMinePlayerBedREF.Activate(thisPlayer)
             DialogueCidhnaMine.SetStage(45)
+        else
+            AlwaysTrace("CanMine: Activate failed for " + CidhnaMinePlayerBedREF)
         endIf
         return False
     EndIf
@@ -1055,10 +1056,11 @@ bool Function CanMineCACO(CACO_MineOreScript handler, int available)
     endif
     ; duplicate vanilla Cidhna Mine processing
     If thisPlayer.GetCurrentLocation() == CidhnaMineLocation && MS02.ISRunning() == False
-        if OKToActivate()
-            ;DebugTrace(self + "Player is in Cidhna Mine, activate the bed to serve time")
-            CidhnaMinePlayerBedREF.Activate(thisPlayer)
+        ;DebugTrace(self + "Player is in Cidhna Mine, activate the bed to serve time")
+        if CidhnaMinePlayerBedREF.Activate(thisPlayer)
             DialogueCidhnaMine.SetStage(45)
+        else
+            AlwaysTrace("CanMineCACO: Activate failed for " + CidhnaMinePlayerBedREF)
         endIf
         return False
     EndIf
@@ -1137,7 +1139,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             ; allow retry, player might acquire tools in the interim
             UnblockMineable(akMineable)
         else
-            while (mined < maxMiningItems) && OKToActivate() && CanMine(oreScript, available)
+            while (mined < maxMiningItems) && OKToScan() && CanMine(oreScript, available)
                 ; Vanilla resource retrieval.
                 if logEvent
                     if CCORModIndex != 255
@@ -1164,7 +1166,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 miningStrikes += 1
             endwhile
         endIf
-        if !OKToActivate()
+        if !OKToScan()
             AlwaysTrace("UI open : oreScript mining interrupted, " + mined + " obtained")
         endIf
         if logEvent
@@ -1203,7 +1205,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 ; allow retry, player might acquire tools in the interim
                 UnblockMineable(akMineable)
             else
-                while (mined < maxMiningItems) && OKToActivate() && CanMineCACO(cacoMinable, available) && !toolsFailed
+                while (mined < maxMiningItems) && OKToScan() && CanMineCACO(cacoMinable, available) && !toolsFailed
                     if logEvent
                         DebugTrace("Trigger CACO ore harvesting")
                     endIf            
@@ -1225,7 +1227,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                     miningStrikes += 1
                 endwhile
             endIf
-            if !OKToActivate()
+            if !OKToScan()
                 AlwaysTrace("UI open : CACO_MineOreScript mining interrupted, " + mined + " obtained")
             endIf
             if logEvent
@@ -1324,7 +1326,7 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
     bool activated = False
 
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-    if !akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget) && OKToActivate()
+    if !akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget)
         int activations = SyntheticFloraActivateCount(akTarget)
         activated = ActivateItem(akTarget, thisPlayer, true, activations)
         if activated
@@ -1338,6 +1340,8 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
             endIf
             SetHarvested(akTarget)
             ;DebugTrace("OnHarvestSyntheticFlora:Activated:" + akTarget)
+        else
+            AlwaysTrace("OnHarvestSyntheticFlora: Activate failed for " + akTarget)
         endif
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
@@ -1380,8 +1384,11 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
     bool activated = False
 
     ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget) && OKToActivate()
+    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
         activated = ActivateItem(akTarget, thisPlayer, silent, 1)
+        if !activated
+            AlwaysTrace("OnHarvestCritter: Activate failed for " + akTarget)
+        endIf
         ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
@@ -1408,16 +1415,21 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             if logEvent
                 DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
             endIf
-            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle") && OKToActivate()
+            if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle")
                 activated = ActivateItem(akTarget, thisPlayer, true, 1)
                 if activated
                     notify = !silent
-                endif
+                else
+                    AlwaysTrace("OnHarvest: Activate failed for trapped soulgem" + akTarget)
+                endIf
             endIf
         endIf
-    elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType) && OKToActivate()
+    elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType)
         if itemType == objType_Septim && baseForm.GetType() == getType_kFlora
             activated = ActivateItem(akTarget, thisPlayer, silent, 1)
+            if !activated
+                AlwaysTrace("OnHarvest: Activate failed for Flora" + akTarget)
+            endIf
 
         elseif baseForm.GetType() == getType_kFlora || baseForm.GetType() == getType_kTree
             ; "Flora" or "Tree" Producer REFRs cannot be identified by item type
@@ -1429,6 +1441,8 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
                 count = count * ingredientCount as int
+            else
+                AlwaysTrace("OnHarvest: Activate failed for Tree/Flora" + akTarget)
             endif
         else
             activated = ActivateItem(akTarget, thisPlayer, true, 1)
@@ -1441,6 +1455,8 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                     thisPlayer.AddItem(itemForm, toGet, true)
                     ;DebugTrace("Add extra count " + toGet + " of " + itemForm)
                 endIf
+            else
+                AlwaysTrace("OnHarvest: Activate failed for " + akTarget)
             endif
         endif
         ;DebugTrace("OnHarvest:Activated:" + akTarget + " = " + activated)
@@ -1683,16 +1699,7 @@ Function OnMCMClose()
     mcmOpen = False
 EndFunction
 
-; fine-grain check on whether we can activate
-bool Function OKToActivate()
-    if (!Game.IsActivateControlsEnabled())
-        AlwaysTrace("UI has controls disabled")
-        return False
-    endIf
-    return True
-EndFunction
-
-; no need to check Activate Controls here
+; no need to check Activate Controls here, use script Activate or native ActivateRef return code
 bool Function OKToScan()
     if mcmOpen
         AlwaysTrace("MCM for SHSE is open")
@@ -1700,8 +1707,6 @@ bool Function OKToScan()
     elseif Utility.IsInMenuMode()
         AlwaysTrace("UI has menu open")
         return False
-    else
-        return OKToActivate()
     endIf
 EndFunction
 
