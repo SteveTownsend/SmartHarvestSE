@@ -1708,6 +1708,7 @@ bool Function OKToScan()
         AlwaysTrace("UI has menu open")
         return False
     endIf
+    return True
 EndFunction
 
 ; Periodic poll to check whether native code can be released. If game closes down this will never happen.

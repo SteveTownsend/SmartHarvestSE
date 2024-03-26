@@ -460,6 +460,7 @@ namespace papyrus
 	void NotifyActivated(RE::StaticFunctionTag*, RE::TESForm* itemForm, int itemType, bool collectible, int refrID, int baseID,
 		bool notify, RE::BSFixedString baseName, int count, bool activated, bool isSilent, bool isWhitelisted)
 	{
+		DBG_VMESSAGE("NotifyActivated={} for REFR 0x{:08x} to 0x{:08x}/{}", activated, refrID, baseID, baseName.c_str());
 		if (activated)
 		{
 			if (notify)

@@ -866,7 +866,7 @@ bool ScanGovernor::UnlockHarvest(const RE::FormID refrID, const RE::FormID baseI
 		if (!isSilent)
 			--m_pendingNotifies;
 		--m_pendingHarvests;
-		REL_MESSAGE("UnlockHarvest OK for REFR 0x{:08x} to 0x{:08x}/{}", refrID, baseID, baseName);
+		REL_VMESSAGE("UnlockHarvest OK for REFR 0x{:08x} to 0x{:08x}/{}", refrID, baseID, baseName);
 		return true;
 	}
 	else
