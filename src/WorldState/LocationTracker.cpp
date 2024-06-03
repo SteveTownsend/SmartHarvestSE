@@ -51,7 +51,7 @@ LocationTracker& LocationTracker::Instance()
 }
 
 LocationTracker::LocationTracker() : 
-	m_playerCellID(InvalidForm), m_playerCellX(0.), m_playerCellY(0.), m_playerIndoors(false),
+	m_playerCellID(InvalidForm), m_playerCellX(0), m_playerCellY(0), m_playerIndoors(false),
 	m_tellPlayerIfCanLootAfterLoad(false), m_playerLocation(nullptr), m_playerParentWorld(nullptr),
 	m_aiRunning(false)
 {
@@ -482,9 +482,9 @@ void LocationTracker::Reset()
 	m_playerCellID = InvalidForm;
 	m_playerIndoors = false;
 	m_playerPlaceName.clear();
-    m_playerCellX = 0.;
-    m_playerCellY = 0.;
-	m_adjacentCells.fill({ std::numeric_limits<float>::max(), nullptr });
+    m_playerCellX = 0;
+    m_playerCellY = 0;
+	m_adjacentCells.fill(nullptr);
 	m_playerLocation = nullptr;
 	m_playerParentWorld = nullptr;
 	m_markedPlaces.clear();
@@ -570,9 +570,9 @@ bool LocationTracker::Refresh()
 			else
 			{
 				const auto playerCoordinates(const_cast<RE::TESObjectCELL*>(playerCell)->GetCoordinates());
-				m_playerCellX = playerCoordinates->worldX;
-				m_playerCellY = playerCoordinates->worldY;
-				DBG_MESSAGE("Player cell updated to 0x{:08x} outdoors at ({:0.3f},{:0.3f})", m_playerCellID, m_playerCellX, m_playerCellY);
+				m_playerCellX = playerCoordinates->cellX;
+				m_playerCellY = playerCoordinates->cellY;
+				DBG_MESSAGE("Player cell updated to 0x{:08x} outdoors at ({},{})", m_playerCellID, m_playerCellX, m_playerCellY);
 			}
 
 			// player cell is valid - check for worldspace update
@@ -753,19 +753,24 @@ decltype(LocationTracker::m_adjacentCells) LocationTracker::AdjacentCells() cons
 	return m_adjacentCells;
 }
 
-float LocationTracker::DistanceTo(RE::TESObjectCELL* cell) const
+bool LocationTracker::IsAdjacent(RE::TESObjectCELL* cell) const
 {
 	// XCLC data available since both are exterior cells, by construction
 	const auto checkCoordinates(cell->GetCoordinates());
-	const float dx(fabs(m_playerCellX - checkCoordinates->worldX));
-	const float dy(fabs(m_playerCellY - checkCoordinates->worldY));
-	return std::sqrt((dx*dx) + (dy*dy));
+	const std::int32_t dx(abs(m_playerCellX - checkCoordinates->cellX));
+	const std::int32_t dy(abs(m_playerCellY - checkCoordinates->cellY));
+	if (dx <= 1 && dy <= 1)
+	{
+		DBG_MESSAGE("Cell 0x{:08x} at ({},{}) is adjacent to player", cell->GetFormID(), checkCoordinates->cellX, checkCoordinates->cellY);
+		return true;
+	}
+	return false;
 }
 
 // this is only called when we updated player-cell with a valid value
 void LocationTracker::RecordAdjacentCells(const RE::TESObjectCELL* current)
 {
-	m_adjacentCells.fill({ std::numeric_limits<float>::max(), nullptr });
+	m_adjacentCells.fill(nullptr);
 
 	// For exterior cells, also check directly adjacent cells for lootable goodies.
 	// Restrict to cells in the same worldspace, without walking parents.
@@ -775,6 +780,7 @@ void LocationTracker::RecordAdjacentCells(const RE::TESObjectCELL* current)
 		if (current->GetRuntimeData().worldSpace)
 		{
 			DBG_VMESSAGE("Worldspace is {}/0x{:08x}", current->GetRuntimeData().worldSpace->GetName(), current->GetRuntimeData().worldSpace->GetFormID());
+			auto nextSlot = m_adjacentCells.begin();
 			for (const auto& worldCell : current->GetRuntimeData().worldSpace->cellMap)
 			{
 				RE::TESObjectCELL* candidateCell(worldCell.second);
@@ -790,17 +796,11 @@ void LocationTracker::RecordAdjacentCells(const RE::TESObjectCELL* current)
 					DBG_VMESSAGE("Candidate cell 0x{:08x} flagged as interior", candidateCell->GetFormID());
 					continue;
 				}
-				// check for proximity to player CELL - do not record if more distant than all current possibles
-				const float distance(DistanceTo(candidateCell));
-				for (auto& comparand : m_adjacentCells)
+				// check if adjacent to player CELL - do not record if either X/Y grid coordinate differs by more than 1
+				if (IsAdjacent(candidateCell))
 				{
-					if (comparand.first > distance)
-					{
-						DBG_VMESSAGE("Record adjacent cell 0x{:08x} at distance {:0.3f}", candidateCell->GetFormID(), distance);
-						comparand.first = distance;
-						comparand.second = candidateCell;
-						break;
-					}
+					*nextSlot = candidateCell;
+					++nextSlot;
 				}
 			}
 		}

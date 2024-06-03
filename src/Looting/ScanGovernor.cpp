@@ -478,7 +478,7 @@ Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<R
 				return Lootability::DeadBodyDelayedLooting;
 			}
 			// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
-#if _DEBUG || _FULL_LOGGING
+#if _DEBUG || defined(_FULL_LOGGING)
 			RE::TESObjectREFR* original(refr);
 #endif
 			refr = GetAshPile(refr);

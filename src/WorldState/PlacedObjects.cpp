@@ -126,7 +126,8 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 
 // This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we could
 // check again then.
-void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
+// If worldSpace is set, this is the special persistent REFR CELL
+void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESWorldSpace* worldSpace, const RE::TESObjectCELL* cell)
 {
 	if (!cell)
 		return;
@@ -138,12 +139,22 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 
 	if (DataCase::GetInstance()->IsOffLimitsLocation(cell))
 		return;
-#if _DEBUG
+#if _DEBUG || defined(_FULL_LOGGING)
 	ptrdiff_t actors(std::count_if(cell->GetRuntimeData().references.cbegin(), cell->GetRuntimeData().references.cend(),
 		[&](const auto refr) -> bool { return refr->GetFormType() == RE::FormType::ActorCharacter; }));
-	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->GetRuntimeData().references.size(), actors,
-		FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
-#endif
+	if (worldSpace)
+	{
+		DBG_MESSAGE("Process {} REFRs including {} actors in WRLD {}/0x{:08x} persistent CELL {}/0x{:08x}",
+			cell->GetRuntimeData().references.size(), actors, worldSpace->GetName(), worldSpace->GetFormID(),
+			FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	}
+	else
+	{
+		DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->GetRuntimeData().references.size(), actors,
+			FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	}
+#endif		
+
 	for (const RE::TESObjectREFRPtr& refptr : cell->GetRuntimeData().references)
 	{
 		const RE::TESObjectREFR* refr(refptr.get());
@@ -157,19 +168,21 @@ void PlacedObjects::RecordPlacedObjects(void)
 	WindowsUtils::ScopedTimer elapsed("Record Placed Objects");
 #endif
 
-	// Process CELLs to list all placed objects of interest for Quest Target checking
 	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
+		// Process persistent REFRs off WLRD record
+		RecordPlacedObjectsForCell(worldSpace, worldSpace->persistentCell);
+		// Process CELLs to list all placed objects of interest for Quest Target checking
 		DBG_MESSAGE("Process {} CELLs in WorldSpace Map for {}/0x{:08x}", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
 		for (const auto cellEntry : worldSpace->cellMap)
 		{
-			RecordPlacedObjectsForCell(cellEntry.second);
+			RecordPlacedObjectsForCell(nullptr, cellEntry.second);
 		}
 	}
 	DBG_MESSAGE("Process {} Interior CELLs", RE::TESDataHandler::GetSingleton()->interiorCells.size());
 	for (const auto cell : RE::TESDataHandler::GetSingleton()->interiorCells)
 	{
-		RecordPlacedObjectsForCell(cell);
+		RecordPlacedObjectsForCell(nullptr, cell);
 	}
 	size_t placed(0);
 	placed = std::accumulate(m_placedObjects.cbegin(), m_placedObjects.cend(), placed,

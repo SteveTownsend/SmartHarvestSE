@@ -307,6 +307,16 @@ namespace papyrus
 
 	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* producer, RE::TESForm* lootable)
 	{
+		if (!producer)
+		{
+			REL_ERROR("SetLootableForProducer requires Producer");
+			return;
+		}
+		if (!lootable)
+		{
+			REL_ERROR("SetLootableForProducer requires Lootable");
+			return;
+		}
 		REL_MESSAGE("Store Lootable 0x{:08x} for producer 0x{:08x}", lootable->GetFormID(), producer->GetFormID());
 		RE::TESLevItem* leveledItem( lootable->As<RE::TESLevItem>());
 		if (leveledItem)
@@ -514,13 +524,11 @@ namespace papyrus
 		if (showHUD)
 		{
 			setting->data.b = false;
-			iniSettingCollection->WriteSetting(setting);
 		}
 		bool result(target->ActivateRef(activator, 0, nullptr, activateCount, false));
 		if (showHUD)
 		{
 			setting->data.b = true;
-			iniSettingCollection->WriteSetting(setting);
 		}
 		return result;
 	}

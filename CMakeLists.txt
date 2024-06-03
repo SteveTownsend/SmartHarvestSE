@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.28.1)
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
 set(PRETTY_NAME "Smart Harvest SE")
-set(VERSION 5.6.4)
+set(VERSION 5.7.0)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -254,6 +254,9 @@ target_link_libraries(${PROJECT_NAME}
 target_precompile_headers(${PROJECT_NAME}
         PRIVATE
         src/PrecompiledHeaders.h)
+
+# Uncomment as needed for crash log debugging
+# target_link_options(${PROJECT_NAME} PRIVATE "/MAP:${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map")
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/Sample"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

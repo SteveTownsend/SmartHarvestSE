@@ -39,7 +39,7 @@ TaskDispatcher& TaskDispatcher::Instance()
 	return *m_instance;
 }
 
-TaskDispatcher::TaskDispatcher() : m_player(nullptr)
+TaskDispatcher::TaskDispatcher() : m_player(nullptr), m_legacyCarryWeightChecked(false)
 {
     m_taskInterface = SKSE::GetTaskInterface();
 }
@@ -238,48 +238,65 @@ void TaskDispatcher::SetPlayer(RE::Actor* player)
     m_player = player;
 }
 
-// should only fire if we are managing carry weight
-void TaskDispatcher::EnqueueCarryWeightDelta(int weightDelta)
-{
-    m_taskInterface->AddTask([=] (void) {
-        RE::ActorValueOwner* actorValueOwner(RE::PlayerCharacter::GetSingleton()->AsActorValueOwner());
-        if (actorValueOwner)
-        {
-            int carryWeight = static_cast<int>(actorValueOwner->GetActorValue(RE::ActorValue::kCarryWeight));
-            REL_VMESSAGE("Adjusting Player.CarryWeight delta by {} from {}", weightDelta, carryWeight);
-            actorValueOwner->ModActorValue(RE::ActorValue::kCarryWeight, static_cast<float>(weightDelta));
-        }
-    });
-}
-
-void TaskDispatcher::EnqueueResetCarryWeight()
+// Beef up carry weight based on settings, or reset after doing so
+void TaskDispatcher::EnqueueCarryWeightStateChange(bool doReload, const bool needsBeefUp)
 {
     static const int InfiniteWeight(100000);
+    if (doReload)
+    {
+        m_legacyCarryWeightChecked = false;
+    }
     m_taskInterface->AddTask([=] (void) {
-        RE::ActorValueOwner* actorValueOwner(RE::PlayerCharacter::GetSingleton()->AsActorValueOwner());
-        if (actorValueOwner)
+        // Reset from legacy management scheme if appropriate
+        bool isBeefedUp(m_player->GetMagicTarget()->HasMagicEffect(PlayerState::Instance().CarryWeightEffect()));
+        if (!m_legacyCarryWeightChecked)
         {
-            int carryWeight = static_cast<int>(actorValueOwner->GetActorValue(RE::ActorValue::kCarryWeight));
-            int weightDelta(0);
-            while (carryWeight > InfiniteWeight)
+            m_legacyCarryWeightChecked = true;
+            if (!isBeefedUp)
             {
-                weightDelta -= InfiniteWeight;
-                carryWeight -= InfiniteWeight;
-            }
-            while (carryWeight < 0)
-            {
-                weightDelta += InfiniteWeight;
-                carryWeight += InfiniteWeight;
-            }
+                RE::ActorValueOwner* actorValueOwner(RE::PlayerCharacter::GetSingleton()->AsActorValueOwner());
+                if (actorValueOwner)
+                {
+                    int carryWeight = static_cast<int>(actorValueOwner->GetActorValue(RE::ActorValue::kCarryWeight));
+                    int weightDelta(0);
+                    while (carryWeight > InfiniteWeight)
+                    {
+                        weightDelta -= InfiniteWeight;
+                        carryWeight -= InfiniteWeight;
+                    }
+                    while (carryWeight < 0)
+                    {
+                        weightDelta += InfiniteWeight;
+                        carryWeight += InfiniteWeight;
+                    }
 
-            if (weightDelta != 0)
-            {
-                actorValueOwner->ModActorValue(RE::ActorValue::kCarryWeight, static_cast<float>(weightDelta));
-                REL_VMESSAGE("Removing Player.CarryWeight delta={} from {}", weightDelta, carryWeight);
+                    if (weightDelta != 0)
+                    {
+                        actorValueOwner->ModActorValue(RE::ActorValue::kCarryWeight, static_cast<float>(weightDelta));
+                        REL_WARNING("Removing legacy Player.CarryWeight delta={} from {}", weightDelta, carryWeight);
+                    }
+                    else
+                    {
+                        REL_MESSAGE("No legacy Player.CarryWeight to remove");
+                    }
+                }
             }
-            else
+        }
+        if (isBeefedUp && !needsBeefUp)
+        {
+            // Remove the SPEL from the player
+            REL_MESSAGE("Remove CarryWeight SPEL from Player");
+            RE::ActorHandle handle(RE::PlayerCharacter::GetSingleton()->GetHandle());
+            m_player->GetMagicTarget()->DispelEffect(PlayerState::Instance().CarryWeightSpell(), handle);
+        }
+        else if (!isBeefedUp and needsBeefUp)
+        {
+            // Cast the SPEL on the player
+            RE::MagicCaster* caster(RE::PlayerCharacter::GetSingleton()->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant));
+            if (caster)
             {
-                REL_VMESSAGE("Player.CarryWeight left as is {}", carryWeight);
+                REL_MESSAGE("Cast CarryWeight SPEL on Player");
+                caster->CastSpellImmediate(PlayerState::Instance().CarryWeightSpell(), true, m_player, 0.0f, false, 0.0f, m_player);
             }
         }
     });

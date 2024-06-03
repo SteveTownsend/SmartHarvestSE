@@ -37,8 +37,7 @@ public:
     void LootNPCs();
 	void EnqueueStealIfUndetected(RE::Actor* a_actor, const bool dryRun);
     void SetPlayer(RE::Actor* player);
-    void EnqueueCarryWeightDelta(int weightDelta);
-    void EnqueueResetCarryWeight();
+    void EnqueueCarryWeightStateChange(bool doReload, bool needsBeefUp);
 
 private:
     typedef std::tuple<RE::TESObjectREFR*, const int, const GlowReason> GlowRequest;
@@ -50,6 +49,7 @@ private:
     RecursiveLock m_queueLock;
     std::array<RE::TESEffectShader*, static_cast<int>(GlowReason::NumberOfShaders)> m_shaders;
     RE::Actor* m_player;
+    bool m_legacyCarryWeightChecked;
 };
 
 }

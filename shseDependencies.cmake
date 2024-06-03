@@ -31,7 +31,7 @@ endif()
 FetchContent_Declare(
  spdlog
  GIT_REPOSITORY https://github.com/gabime/spdlog
- GIT_TAG        v1.13.0
+ GIT_TAG        v1.14.1
  OVERRIDE_FIND_PACKAGE
 )
 FetchContent_GetProperties(spdlog)
@@ -46,7 +46,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.5.3
+  GIT_TAG        v3.6.0
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(Catch2)

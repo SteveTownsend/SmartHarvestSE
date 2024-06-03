@@ -34,7 +34,7 @@ public:
 private:
 	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
 	void SaveREFRIfPlaced(const RE::TESObjectREFR* refr);
-	void RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell);
+	void RecordPlacedObjectsForCell(const RE::TESWorldSpace* worldSpace, const RE::TESObjectCELL* cell);
 
 	static std::unique_ptr<PlacedObjects> m_instance;
 	mutable RecursiveLock m_placedLock;

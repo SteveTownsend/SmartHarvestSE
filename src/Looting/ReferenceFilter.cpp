@@ -281,6 +281,7 @@ void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
 	for (const RE::TESObjectREFRPtr& refptr : cell->GetRuntimeData().references)
 	{
 		RE::TESObjectREFR* refr(refptr.get());
+		DBG_VMESSAGE("check and record REFR 0x{:08x}", refr->GetFormID());
 		if (refr)
 		{
 			if (!refr->GetBaseObject())
@@ -411,13 +412,13 @@ void ReferenceFilter::FilterNearbyReferences()
 		for (const auto& adjacentCell : LocationTracker::Instance().AdjacentCells())
 		{
 			// sanity checks
-			if (!adjacentCell.second || !adjacentCell.second->IsAttached())
+			if (!adjacentCell || !adjacentCell->IsAttached())
 			{
 				DBG_VMESSAGE("Adjacent cell null or unattached");
 				continue;
 			}
-			DBG_VMESSAGE("Check adjacent cell 0x{:08x}", adjacentCell.second->GetFormID());
-			RecordCellReferences(adjacentCell.second);
+			DBG_VMESSAGE("Check adjacent cell 0x{:08x}", adjacentCell->GetFormID());
+			RecordCellReferences(adjacentCell);
 		}
 	}
 

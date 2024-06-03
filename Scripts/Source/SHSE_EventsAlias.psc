@@ -1321,8 +1321,8 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
-    int baseID = akTarget.GetBaseObject().GetFormID()
     Form baseForm = akTarget.GetBaseObject()
+    int baseID = baseForm.GetFormID()
     bool activated = False
 
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
@@ -1379,8 +1379,8 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
-    int baseID = akTarget.GetBaseObject().GetFormID()
     Form baseForm = akTarget.GetBaseObject()
+    int baseID = baseForm.GetFormID()
     bool activated = False
 
     ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
@@ -1398,8 +1398,8 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
-    int baseID = akTarget.GetBaseObject().GetFormID()
     Form baseForm = akTarget.GetBaseObject()
+    int baseID = baseForm.GetFormID()
     bool activated = False
 
     ;DebugTrace("OnHarvest: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
@@ -1465,9 +1465,9 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
 endEvent
 
 Event OnGetProducerLootable(ObjectReference akTarget)
-    ;DebugTrace("OnGetProducerLootable " + akTarget.GetDisplayName() + "RefID(" +  akTarget.GetFormID() + ")  BaseID(" + akTarget.GetBaseObject().GetFormID() + ")" )
-    ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
     Form baseForm = akTarget.GetBaseObject()
+    AlwaysTrace("OnGetProducerLootable: REFR=" +  akTarget + ", Base=" + baseForm )
+    ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
     NirnrootACTIVATORScript nirnrootACTI = akTarget as NirnrootACTIVATORScript
     if nirnrootACTI
         SetLootableForProducer(baseForm, nirnrootACTI.nirnroot)
@@ -1480,6 +1480,7 @@ Event OnGetProducerLootable(ObjectReference akTarget)
     endif
     ; handle Saints and Seducers
     if hasCCSaintsAndSeducers
+        ; This can be LVLI (CACO-patched) or INGR (unpatched), compilation of cast appears to depend on what script is found by Paprus Compiler
         ccBGSSSE025_HarvestableActivator saintsFlora = akTarget as ccBGSSSE025_HarvestableActivator
         if saintsFlora
             ; Behaves differently if Rare Curios is active
@@ -1501,9 +1502,10 @@ Event OnGetProducerLootable(ObjectReference akTarget)
     endif
     ; handle The Cause
     if hasCCTheCause
+        ; This can be LVLI (CACO-patched) or INGR (unpatched), compilation of cast appears to depend on what script is found by Paprus Compiler
         ccBGSSSE067_HarradaBehaviorScript causeFlora = akTarget as ccBGSSSE067_HarradaBehaviorScript
         if causeFlora
-            SetLootableForProducer(baseForm, causeFlora.ccBGSSSE067_IngredientHarrada)
+            SetLootableForProducer(baseForm, causeFlora.ccBGSSSE067_IngredientHarrada as Form)
             return
         endif
     endif
@@ -1543,7 +1545,7 @@ Event OnGetProducerLootable(ObjectReference akTarget)
             ; Salmon and other fish - FormList, 0-1 elements seen so far - make a log if > 1
             int lootableCount = thisCritter.nonIngredientLootable.GetSize()
             if lootableCount > 1
-                AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " has " + lootableCount + "nonIngredientLootable entries")
+                AlwaysTrace(akTarget + " with Base " + baseForm + " has " + lootableCount + "nonIngredientLootable entries")
             elseif lootableCount == 1
                 SetLootableForProducer(baseForm, thisCritter.nonIngredientLootable.GetAt(0))
             else
@@ -1564,19 +1566,19 @@ Event OnGetProducerLootable(ObjectReference akTarget)
         elseif fakeCritter.myFood
             SetLootableForProducer(baseForm, fakeCritter.myFood)
         else
-            AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " has neither myFood nor myIngredient")
+            AlwaysTrace(akTarget + " with Base " + baseForm + " has neither myFood nor myIngredient")
             ClearLootableForProducer(baseForm)
         endif
         return
     endIf
     ClearLootableForProducer(baseForm)
-    AlwaysTrace(akTarget + " with Base " + akTarget.GetBaseObject() + " is unsupported scripted ACTI")
+    AlwaysTrace(akTarget + " with Base " + baseForm + " is unsupported scripted ACTI")
 endEvent
 
 bool Function IsInHarvestableState(ObjectReference akTarget)
-    ;DebugTrace("IsInHarvestableState: Target " + akTarget + ", Base " + akTarget.GetBaseObject())
-    ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
     Form baseForm = akTarget.GetBaseObject()
+    ;DebugTrace("IsInHarvestableState: Target " + akTarget + ", Base " + baseForm)
+    ; Vanilla ACTI that are categorized as Flora but harvested like critters via scripted ACTI
     NirnrootACTIVATORScript nirnrootACTI = akTarget as NirnrootACTIVATORScript
     if nirnrootACTI
         String nirnrootState = nirnrootACTI.getState()
@@ -1590,6 +1592,7 @@ bool Function IsInHarvestableState(ObjectReference akTarget)
     endif
     ; handle Saints and Seducers
     if hasCCSaintsAndSeducers
+        ; This can be LVLI (CACO-patched) or INGR (unpatched), compilation of cast appears to depend on what script is found by Paprus Compiler
         ccBGSSSE025_HarvestableActivator saintsFlora = akTarget as ccBGSSSE025_HarvestableActivator
         if saintsFlora
             ;DebugTrace("ccBGSSSE025_HarvestableActivator State=" + saintsFlora.getState())
@@ -1606,6 +1609,7 @@ bool Function IsInHarvestableState(ObjectReference akTarget)
     endif
     ; handle The Cause
     if hasCCTheCause
+        ; This can be LVLI (CACO-patched) or INGR (unpatched), compilation of cast appears to depend on what script is found by Paprus Compiler
         ccBGSSSE067_HarradaBehaviorScript causeFlora = akTarget as ccBGSSSE067_HarradaBehaviorScript
         if causeFlora
             ;DebugTrace("ccBGSSSE067_HarradaBehaviorScript State=" + causeFlora.getState())

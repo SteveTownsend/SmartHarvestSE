@@ -28,9 +28,9 @@ add_custom_target(build-time-make-directory ALL
 message("Copying SKSE Plugin into ${ARTIFACTS_DIR}.")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${ARTIFACTS_DIR}/SKSE/Plugins/")
-# Symbols (PDB file) not needed for run-of-the-mill downloads
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-#         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${ARTIFACTS_DIR}/SKSE/Plugins/")
+# Symbols (PDB file) included for CrashLogger usage
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${ARTIFACTS_DIR}/SKSE/Plugins/")
 message("Copying JSON  Schemas ${JSON_SCHEMAS}.")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${JSON_SCHEMAS} "${ARTIFACTS_DIR}/SKSE/Plugins/")
