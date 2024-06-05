@@ -145,7 +145,6 @@ public:
 	void SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested);
 
 	// Collections used for special case Form aggregegation
-	void LoadBuiltinSpecialCases(void);
 	void RefreshBuiltinSpecialCases(void);
 
 	bool UseUnderwear() const;
@@ -431,7 +430,6 @@ private:
 	bool CheckObjectModelPath(const RE::TESForm* thisForm, const char* arg) const;
 
 	static DataCase* s_pInstance;
-	CollectionManager* m_specialCases;
 
 	void CategorizeStatics();
 	void SetPermanentBlockedItems();

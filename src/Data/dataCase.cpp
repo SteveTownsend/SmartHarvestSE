@@ -66,7 +66,7 @@ namespace shse
 DataCase* DataCase::s_pInstance = nullptr;
 
 DataCase::DataCase() :
-m_spellTomeKeyword(nullptr), m_specialCases(nullptr), m_underwear(nullptr), m_missivesBoards(nullptr)
+m_spellTomeKeyword(nullptr), m_underwear(nullptr), m_missivesBoards(nullptr)
 {
 }
 
@@ -321,7 +321,7 @@ void DataCase::AnalyzePerks(void)
 			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kModIngredientsHarvested)
 			{
 				if (entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kSetValue && 
-					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::FunctionType::kOneValue)
+					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::ENTRY_POINT_FUNCTION_DATA::kOneValue)
 				{
 					const RE::BGSEntryPointFunctionDataOneValue* oneValued(static_cast<const RE::BGSEntryPointFunctionDataOneValue*>(entryPoint->functionData));
 					REL_MESSAGE("Modify Harvested Ingredients factor {:0.2f} from perk {}/0x{:08x}", oneValued->data, perk->GetName(), perk->GetFormID());
@@ -801,7 +801,7 @@ void DataCase::RecordUnderwear()
 {
 	const std::string GroupName("SpecialCases");
 	const std::string CollectionName("SHSE-Underwear");
-	m_underwear = m_specialCases->CollectionByLabel(GroupName, CollectionName);
+	m_underwear = CollectionManager::SpecialCases().CollectionByLabel(GroupName, CollectionName);
 }
 
 void DataCase::RecordOffLimitsLocations()
@@ -1476,20 +1476,9 @@ void DataCase::CategorizeLootables()
 	HandleExceptions();
 }
 
-void DataCase::LoadBuiltinSpecialCases()
-{
-	if (m_specialCases)
-	{
-		REL_WARNING("DataCase::LoadBuiltinSpecialCases() should not be called twice");
-	}
-	const std::wstring specialCaseFileName(L"SHSE\\.Builtin\\.(.*)\\.json$");
-	m_specialCases = new CollectionManager(specialCaseFileName);
-	m_specialCases->ProcessDefinitions();
-}
-
 void DataCase::RefreshBuiltinSpecialCases()
 {
-	m_specialCases->OnGameReload();
+	CollectionManager::SpecialCases().OnGameReload();
 
 	// blacklist underwear in case user has "don't show me their junk" setting turned on
 	RecordUnderwear();

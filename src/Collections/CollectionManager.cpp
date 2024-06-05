@@ -22,7 +22,6 @@ http://www.fsf.org/licensing/licenses
 #include <filesystem>
 #include <regex>
 
-#include "Utilities/LogStackWalker.h"
 #include "Utilities/Exception.h"
 #include "Utilities/utils.h"
 #include "WorldState/LocationTracker.h"
@@ -42,6 +41,7 @@ namespace shse
 
 std::unique_ptr<CollectionManager> CollectionManager::m_collectibles;
 std::unique_ptr<CollectionManager> CollectionManager::m_excessInventory;
+std::unique_ptr<CollectionManager> CollectionManager::m_specialCases;
 nlohmann::json_schema::json_validator CollectionManager::m_validator;
 
 CollectionManager& CollectionManager::Collectibles()
@@ -62,6 +62,15 @@ CollectionManager& CollectionManager::ExcessInventory()
 	return *m_excessInventory;
 }
 
+CollectionManager& CollectionManager::SpecialCases()
+{
+	if (!m_specialCases)
+	{
+		m_specialCases = std::make_unique<CollectionManager>(L"SHSE\\.Builtin\\.(.*)\\.json$");
+	}
+	return *m_specialCases;
+}
+
 CollectionManager::CollectionManager(const std::wstring& filePattern) :
 m_notifications(0), m_ready(false), m_filePattern(filePattern)
 {
@@ -74,16 +83,11 @@ void CollectionManager::ProcessDefinitions(void)
 	if (IsAvailable())
 		return;
 
-	__try {
-		if (!LoadData())
-			return;
+	if (!LoadData())
+		return;
 
-		// data validated and loaded
-		m_ready = true;
-	}
-	__except (LogStackWalker::LogStack(GetExceptionInformation())) {
-		REL_FATALERROR("JSON Collection Definitions threw structured exception");
-	}
+	// data validated and loaded
+	m_ready = true;
 }
 
 void CollectionManager::Refresh() const

@@ -20,8 +20,6 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "PluginFacade.h"
 
-#include "Utilities/versiondb.h"
-#include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"
@@ -59,21 +57,13 @@ PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted),
 
 bool PluginFacade::OneTimeLoad(void)
 {
-	__try
-	{
-		// Use structured exception handling during game data load
-		REL_MESSAGE("Plugin not initialized - Game Data load executing");
-		WindowsUtils::LogProcessWorkingSet();
-		if (!Load())
-			return false;
-		m_loadProgress = LoadProgress::Complete;
-		WindowsUtils::LogProcessWorkingSet();
-	}
-	__except (LogStackWalker::LogStack(GetExceptionInformation()))
-	{
-		REL_FATALERROR("Fatal Exception during Game Data load");
+	// Use structured exception handling during game data load
+	REL_MESSAGE("Plugin not initialized - Game Data load executing");
+	WindowsUtils::LogProcessWorkingSet();
+	if (!Load())
 		return false;
-	}
+	m_loadProgress = LoadProgress::Complete;
+	WindowsUtils::LogProcessWorkingSet();
 	return true;
 }
 
@@ -130,14 +120,7 @@ void PluginFacade::Start()
 		return;
 	std::thread([]()
 	{
-		// use structured exception handling to get stack walk on windows exceptions
-		__try
-		{
-			ScanThread();
-		}
-		__except (LogStackWalker::LogStack(GetExceptionInformation()))
-		{
-		}
+		ScanThread();
 	}).detach();
 }
 
@@ -145,20 +128,6 @@ bool PluginFacade::Load()
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Startup: Load Game Data");
-#endif
-#if _DEBUG
-	VersionDb db;
-
-	// Try to load database of version 1.5.97.0 regardless of running executable version.
-	if (!db.Load(1, 5, 97, 0))
-	{
-		DBG_FATALERROR("Failed to load database for 1.5.97.0!");
-		return false;
-	}
-
-	// Write out a file called offsets-1.5.97.0.txt where each line is the ID and offset.
-	db.Dump("offsets-1.5.97.0.txt");
-	DBG_MESSAGE("Dumped offsets for 1.5.97.0");
 #endif
 	if (!LoadOrder::Instance().Analyze())
 	{
@@ -183,7 +152,7 @@ bool PluginFacade::Load()
 	{
 		CollectionManager::Collectibles().ProcessDefinitions();
 		CollectionManager::ExcessInventory().ProcessDefinitions();
-		DataCase::GetInstance()->LoadBuiltinSpecialCases();
+		CollectionManager::SpecialCases().ProcessDefinitions();
 	}
 
 	REL_MESSAGE("Plugin Data load complete!");

@@ -40,6 +40,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerState.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
+#include "Ver.h"
 
 namespace
 {
@@ -93,7 +94,7 @@ namespace papyrus
 
 	RE::BSFixedString GetPluginVersion(RE::StaticFunctionTag*)
 	{
-		return RE::BSFixedString(VersionInfo::Instance().GetPluginVersionString());
+		return RE::BSFixedString(Version::NAME);
 	}
 
 	RE::BSFixedString GetTextObjectType(RE::StaticFunctionTag*, RE::TESForm* thisForm)

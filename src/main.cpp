@@ -22,10 +22,10 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
-#include "Utilities/LogStackWalker.h"
 #include "VM/papyrus.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"
+#include "Ver.h"
 
 #include <shlobj.h>
 #include <sstream>
@@ -114,23 +114,9 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 	}
 }
 
-#if _DEBUG
-int MyCrtReportHook(int, char*, int*)
-{
-	__try {
-		RaiseException(EXCEPTION_NONCONTINUABLE_EXCEPTION, EXCEPTION_NONCONTINUABLE, 0, NULL);
-	}
-	__except (LogStackWalker::LogStack(GetExceptionInformation())) {
-		REL_FATALERROR("JSON Collection Definitions threw structured exception");
-	}
-	return 0;
-}
-#endif
-
 void InitializeDiagnostics()
 {
 #if _DEBUG
-	_CrtSetReportHook(MyCrtReportHook);
 	// default Debug log level is TRACE
 	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #else
@@ -188,9 +174,8 @@ void InitializeDiagnostics()
 	SKSE::add_papyrus_sink();	// TODO what goes in here now
 #endif
 #endif
-	// Get Process version
-	std::string versionString = VersionInfo::Instance().GetExeVersionString();
-	REL_MESSAGE("{} v{} in executable {}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString(),	versionString);
+	// Get Process and DLL version
+	REL_MESSAGE("{} v{} in executable {}", Version::PROJECT, Version::NAME, Version::GetExeVersionString());
 }
 
 EXTERN_C __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* skse)

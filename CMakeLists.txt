@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.28.1)
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
 set(PRETTY_NAME "Smart Harvest SE")
-set(VERSION 5.7.0)
+set(VERSION 5.8.0)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -27,6 +27,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+        @ONLY)
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Ver.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/include/Ver.h
         @ONLY)
 
 # #######################################################################################################################
@@ -105,18 +109,12 @@ set(sources
         src/Utilities/Enums.h
         src/Utilities/Exception.cpp
         src/Utilities/Exception.h
-        src/Utilities/LogStackWalker.cpp
-        src/Utilities/LogStackWalker.h
         src/Utilities/LogWrapper.h
         src/Utilities/RecursiveLock.cpp
         src/Utilities/RecursiveLock.h
-        src/Utilities/StackWalker.cpp
-        src/Utilities/StackWalker.h
         src/Utilities/utils.cpp
         src/Utilities/utils.h
-        src/Utilities/version.cpp
         src/Utilities/version.h
-        src/Utilities/versiondb.h
         src/VM/EventPublisher.cpp
         src/VM/EventPublisher.h
         src/VM/papyrus.cpp
@@ -157,6 +155,7 @@ set(sources
         src/main.cpp
         src/PluginFacade.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+        ${CMAKE_CURRENT_BINARY_DIR}/include/Ver.h
 )
 
 source_group(
@@ -238,7 +237,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE

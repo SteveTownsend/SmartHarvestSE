@@ -56,8 +56,8 @@ namespace FileUtils
 		if (s_runtimeDirectory.empty())
 		{
 			wchar_t	runtimePathBuf[MAX_PATH];
-			uint32_t	runtimePathLength = SKSE::WinAPI::GetModuleFileName(
-				SKSE::WinAPI::GetModuleHandle((const wchar_t *)(NULL)), runtimePathBuf, sizeof(runtimePathBuf));
+			uint32_t	runtimePathLength = REX::W32::GetModuleFileNameW(
+				REX::W32::GetModuleHandleW((const wchar_t *)(NULL)), runtimePathBuf, sizeof(runtimePathBuf));
 			if (runtimePathLength && (runtimePathLength < sizeof(runtimePathBuf)))
 			{
 				std::wstring runtimePath(runtimePathBuf, runtimePathLength);
@@ -75,15 +75,9 @@ namespace FileUtils
 		static std::wstring s_pluginFileName;
 		if (s_pluginFileName.empty())
 		{
-			HMODULE hm = NULL;
 			wchar_t path[MAX_PATH];
-			if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-				GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-				(LPCWSTR)&GetPluginPath, &hm) == 0)
-			{
-				REL_ERROR("GetModuleHandle failed, error = {}\n", GetLastError());
-			}
-			else if (SKSE::WinAPI::GetModuleFileName(hm, path, sizeof(path)) == 0)
+			REX::W32::HMODULE hm = REL::Module::get().pointer();
+			if (REX::W32::GetModuleFileNameW(hm, path, sizeof(path)) == 0)
 			{
 				REL_ERROR("GetModuleFileName failed, error = {}\n", GetLastError());
 			}
@@ -277,11 +271,11 @@ namespace StringUtils
 	std::string FromUnicode(const std::wstring& input) {
 		if (input.empty()) return std::string();
 
-		int size_needed = SKSE::WinAPI::WideCharToMultiByte(SKSE::WinAPI::CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
+		int size_needed = REX::W32::WideCharToMultiByte(REX::W32::CP_UTF8, 0, &input[0], static_cast<int>(input.size()), NULL, 0, 0, 0);
 		if (size_needed == 0) return std::string();
 
 		std::string output(static_cast<size_t>(size_needed), 0);
-		int result(SKSE::WinAPI::WideCharToMultiByte(SKSE::WinAPI::CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
+		int result(REX::W32::WideCharToMultiByte(REX::W32::CP_UTF8, 0, &input[0], static_cast<int>(input.size()), &output[0], size_needed, 0, 0));
 		if (result == 0) return std::string();
 
 		return output;

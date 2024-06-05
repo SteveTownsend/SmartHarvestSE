@@ -21,7 +21,6 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/ObjectType.h"
 #include "brotli/decode.h"
-#include "fmt/ostream.h"
 
 namespace shse
 {
@@ -731,13 +730,19 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 	}
 }
 
-enum class ScanStatus {
+enum class ScanStatus : unsigned int {
 	GoodToGo,
 	MCMOpen,
 	GamePaused
 };
+extern const char* ScanStatusNames[];
+ 
 }
 
-std::ostream& operator<<(std::ostream& os, shse::ScanStatus status);
-template <> struct fmt::formatter<shse::ScanStatus> : fmt::ostream_formatter {};
+template<> struct std::formatter<shse::ScanStatus> : std::formatter<const char*> {
+  auto format(shse::ScanStatus scanStatus, std::format_context& ctx) const {
+    return std::formatter<const char*>::format(shse::ScanStatusNames[(unsigned int)scanStatus], ctx);
+  }
+};
+
 

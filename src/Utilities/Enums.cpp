@@ -221,19 +221,6 @@ std::string EnchantedObjectHandlingString(const EnchantedObjectHandling enchante
 	}
 }
 
-}
+const char* ScanStatusNames[] = { "GoodToGo", "MCMOpen", "GamePaused" };
 
-std::ostream& operator<<(std::ostream& os, shse::ScanStatus status) {
-	switch (status) {
-		case shse::ScanStatus::GoodToGo:
-			os << "GoodToGo";
-			break;
-		case shse::ScanStatus::MCMOpen:
-			os << "MCMOpen";
-			break;
-		case shse::ScanStatus::GamePaused:
-			os << "GamePaused";
-			break;
-	}
-	return os;
 }

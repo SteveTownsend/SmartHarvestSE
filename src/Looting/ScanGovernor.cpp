@@ -39,7 +39,6 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PlayerState.h"
 #include "Looting/ProducerLootables.h"
 #include "Looting/TheftCoordinator.h"
-#include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "VM/EventPublisher.h"
 #include "VM/TaskDispatcher.h"

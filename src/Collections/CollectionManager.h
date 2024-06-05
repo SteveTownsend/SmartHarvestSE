@@ -77,6 +77,7 @@ class CollectionManager {
 public:
 	static CollectionManager& Collectibles();
 	static CollectionManager& ExcessInventory();
+	static CollectionManager& SpecialCases();
 	static bool LoadSchema(void);
 
 	CollectionManager() = delete;
@@ -147,6 +148,8 @@ private:
 
 	static std::unique_ptr<CollectionManager> m_collectibles;
 	static std::unique_ptr<CollectionManager> m_excessInventory;
+	static std::unique_ptr<CollectionManager> m_specialCases;
+
 	static nlohmann::json_schema::json_validator m_validator;
 
 	// data loaded ok?
