@@ -814,10 +814,10 @@ bool LocationTracker::IsPlayerIndoors() const
 }
 
 // get current from game and check consistent with our stored state
-const RE::TESObjectCELL* LocationTracker::PlayerCell() const
+RE::TESObjectCELL* LocationTracker::PlayerCell() const
 {
 	RecursiveLockGuard guard(m_locationLock);
-	const RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
+	RE::TESObjectCELL* playerCell(RE::PlayerCharacter::GetSingleton()->parentCell);
 	RE::FormID currentCellID(playerCell && playerCell->IsAttached() ? playerCell->GetFormID() : InvalidForm);
 	return currentCellID == m_playerCellID ? playerCell : nullptr;
 }

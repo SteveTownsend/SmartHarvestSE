@@ -38,6 +38,7 @@ public:
 	void EnqueueStealIfUndetected(RE::Actor* a_actor, const bool dryRun);
     void SetPlayer(RE::Actor* player);
     void EnqueueCarryWeightStateChange(bool doReload, bool needsBeefUp);
+	void EnqueueReviewExcessInventory(bool force);
 
 private:
     typedef std::tuple<RE::TESObjectREFR*, const int, const GlowReason> GlowRequest;

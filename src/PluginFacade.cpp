@@ -88,7 +88,7 @@ bool PluginFacade::Init()
 	}
 	if (loadRequired)
 	{
-		if (!OneTimeLoad())
+		if (!OneTimeLoad() || !PlayerState::Instance().IsValid())
 			return false;
 	}
 
@@ -117,7 +117,10 @@ void PluginFacade::Start()
 {
 	// do not start the thread if we failed to initialize
 	if (!Loaded())
+	{
+		REL_FATALERROR("SmartHarvest startup failed, cannot start scan thread");
 		return;
+	}
 	std::thread([]()
 	{
 		ScanThread();
@@ -185,6 +188,11 @@ bool PluginFacade::ScanAllowed() const {
 		return false;
 	}
 	return true;
+}
+
+bool PluginFacade::Loaded() const
+{
+	return m_loadProgress == LoadProgress::Complete && PlayerState::Instance().IsValid();
 }
 
 void PluginFacade::ScanThread()

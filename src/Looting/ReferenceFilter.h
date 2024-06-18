@@ -34,7 +34,8 @@ public:
 private:
 	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
 	void FilterNearbyReferences();
-	void RecordCellReferences(const RE::TESObjectCELL* cell);
+	void RecordReference(RE::TESObjectREFR* refr);
+	void RecordCellReferences(RE::TESObjectCELL* cell, const bool indoors);
 
 	Lootability AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const;
 	// predicates supported

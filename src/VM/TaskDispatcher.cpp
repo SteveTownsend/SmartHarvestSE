@@ -302,4 +302,18 @@ void TaskDispatcher::EnqueueCarryWeightStateChange(bool doReload, const bool nee
     });
 }
 
+void TaskDispatcher::EnqueueReviewExcessInventory(bool force)
+{
+    m_taskInterface->AddTask([=] (void) {
+        // Check excess inventory - always check known item updates, full review periodically and on possible state changes
+        // Do not process excess inventory if scanning is not allowed for any reason
+        // Player may be trying to manually sell items or doing other stuff that does not favour inventory manipulation
+        // per https://github.com/SteveTownsend/SmartHarvestSE/issues/252
+        if (PluginFacade::Instance().ScanAllowed())
+        {
+            PlayerState::Instance().ReviewExcessInventory(force);
+        }
+    });
+}
+
 }

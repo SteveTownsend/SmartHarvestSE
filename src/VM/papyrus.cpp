@@ -511,8 +511,24 @@ namespace papyrus
 		shse::ScanGovernor::Instance().UnlockHarvest(RE::FormID(refrID), RE::FormID(baseID), baseName.c_str(), isSilent);
 	}
 
-	bool ActivateItem(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	bool ActivateItem(const char* context, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
 	{
+		if (!target || !activator)
+		{
+			if (target)
+			{
+				REL_ERROR("{} target {}/0x{:08x} has no activator", context, target->GetName(), target->GetFormID());
+			}
+			else if (activator)
+			{
+				REL_ERROR("{} activator {}/0x{:08x} has no target", context, activator->GetName(), activator->GetFormID());
+			}
+			else
+			{
+				REL_ERROR("{} has neither activator nor target", context);
+			}
+			return false;
+		}
 		RE::Setting* setting(nullptr);
 		RE::INISettingCollection* iniSettingCollection(nullptr);
 		bool showHUD(false);
@@ -526,12 +542,39 @@ namespace papyrus
 		{
 			setting->data.b = false;
 		}
+		DBG_VMESSAGE("{} target {}/0x{:08x} with activator {}/0x{:08x} count={}", context, target->GetName(), target->GetFormID(),
+			activator->GetName(), activator->GetFormID(), activateCount);
 		bool result(target->ActivateRef(activator, 0, nullptr, activateCount, false));
 		if (showHUD)
 		{
 			setting->data.b = true;
 		}
 		return result;
+	}
+	// identifiable entry points
+	bool ActivateItem1(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem1", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem2(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem2", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem3(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem3", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem4(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem4", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem5(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem5", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem6(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem6", target, activator, suppressMessage, activateCount);
 	}
 
 	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -953,7 +996,12 @@ namespace papyrus
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
 		a_vm->RegisterFunction("NotifyActivated", SHSE_PROXY, papyrus::NotifyActivated);
-		a_vm->RegisterFunction("ActivateItem", SHSE_PROXY, papyrus::ActivateItem);
+		a_vm->RegisterFunction("ActivateItem1", SHSE_PROXY, papyrus::ActivateItem1);
+		a_vm->RegisterFunction("ActivateItem2", SHSE_PROXY, papyrus::ActivateItem2);
+		a_vm->RegisterFunction("ActivateItem3", SHSE_PROXY, papyrus::ActivateItem3);
+		a_vm->RegisterFunction("ActivateItem4", SHSE_PROXY, papyrus::ActivateItem4);
+		a_vm->RegisterFunction("ActivateItem5", SHSE_PROXY, papyrus::ActivateItem5);
+		a_vm->RegisterFunction("ActivateItem6", SHSE_PROXY, papyrus::ActivateItem6);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
 		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);

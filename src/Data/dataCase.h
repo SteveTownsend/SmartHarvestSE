@@ -72,6 +72,7 @@ public:
 	bool BlockFormPermanently(const RE::TESForm* form, const Lootability reason);
 
 	bool ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const;
+	bool IsContainerAlwaysLootable(const RE::FormID container) const;
 
 	ObjectType GetFormObjectType(const RE::FormID formID) const;
 	bool SetObjectTypeForFormID(const RE::FormID formID, const ObjectType objectType);
@@ -161,6 +162,7 @@ private:
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
 	std::unordered_set<RE::EffectSetting*> m_slowTimeEffects;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
+	std::unordered_set<RE::FormID> m_containerWhiteList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
 	std::unordered_set<const RE::TESForm*> m_firehoseForms;
@@ -184,7 +186,7 @@ private:
 	mutable RecursiveLock m_blockListLock;
 
 	void RecordOffLimitsLocations(void);
-	void RecordPlayerHouseCells(void);
+	void RecordPlayerHouses(void);
 	void BlockOffLimitsContainers(void);
 
 	bool AllEffectsKnown(const RE::IngredientItem* ingredient) const;
@@ -435,6 +437,7 @@ private:
 	void SetPermanentBlockedItems();
 	void ExcludeFactionContainers();
 	void ExcludeVendorContainers();
+	void IncludeLootableContainers();
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();

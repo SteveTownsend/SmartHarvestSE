@@ -35,7 +35,8 @@ public:
 	bool ContainsCell(const RE::FormID cellID) const;
 
 	void AddLocationKeyword(RE::BGSKeyword* keyword);
-	void SetCell(const RE::TESObjectCELL* houseCell);
+	void AddCell(const RE::TESObjectCELL* houseCell);
+	void AddLocation(const RE::BGSLocation* houseLocation);
 	bool IsValidHouseLocation(const RE::BGSLocation* location) const;
 	bool IsValidHouseCell(const RE::TESObjectCELL* cell) const;
 
@@ -47,8 +48,10 @@ private:
 	std::unordered_set<RE::FormID> m_houses;
 	// CELL forms
 	std::unordered_set<RE::FormID> m_houseCells;
-	// CELLS that are effectively player house but not in a properly-tagged LCTN
+	// CELLs that are effectively player house but not in a properly-tagged LCTN
 	std::unordered_set<RE::FormID> m_validHouseCells;
+	// LCTNs that are effectively player house but not properly-tagged
+	std::unordered_set<RE::FormID> m_validHouseLocations;
 	mutable RecursiveLock m_housesLock;
 };
 

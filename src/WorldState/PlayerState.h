@@ -33,6 +33,8 @@ public:
 	static PlayerState& Instance();
 	PlayerState();
 
+	inline bool IsValid() const { return m_valid;}
+
 	void Refresh(const bool onMCMPush, const bool onGameReload);
 	bool PerksAddLeveledItemsOnDeath() const;
 	float PerkIngredientMultiplier() const;
@@ -52,12 +54,12 @@ public:
 	double ArrowMovingThreshold() const;
 	inline RE::SpellItem* CarryWeightSpell() const { return m_carryWeightSpell; }
 	inline RE::EffectSetting* CarryWeightEffect() const { return m_carryWeightEffect; }
+	void ReviewExcessInventory(bool force);
 
 private:
 	void CheckPerks(const bool force);
 	void ReconcileCarryWeight(const bool doReload);
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
-	void ReviewExcessInventory(bool force);
 	bool FortuneHuntOnly() const;
 
 	static std::unique_ptr<PlayerState> m_instance;
@@ -86,6 +88,7 @@ private:
 
 	float m_gameTime;
 
+	bool m_valid;
 	mutable RecursiveLock m_playerLock;
 };
 

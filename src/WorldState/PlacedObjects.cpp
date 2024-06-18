@@ -53,7 +53,40 @@ void PlacedObjects::RecordPlacedItem(const RE::TESForm* item, const RE::TESObjec
 	}
 }
 
-void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
+void PlacedObjects::SavePersistentREFR(const RE::TESWorldSpace* worldSpace, RE::TESObjectREFR* refr)
+{
+	// convert REFR position to CELL X/Y
+	std::int32_t cellX(static_cast<std::int32_t>(std::floor(refr->GetPositionX() / 4096.0f)));
+	std::int32_t cellY(static_cast<std::int32_t>(std::floor(refr->GetPositionY() / 4096.0f)));
+	WorldspaceCell refrCell = {worldSpace, cellX, cellY};
+	if (m_persistentPlacedObjects[refrCell].insert(refr).second)
+	{
+		REL_VMESSAGE("Persistent REFR 0x{:08x} to item {}/0x{:08x} Placed in CELL ({},{})", refr->GetFormID(), refr->GetBaseObject()->GetName(),
+			refr->GetBaseObject()->GetFormID(), cellX, cellY);
+	}
+	else
+	{
+		REL_VMESSAGE("Cannot save Persistent REFR 0x{:08x} to item {}/0x{:08x} as Placed in CELL ({},{})", refr->GetFormID(), refr->GetBaseObject()->GetName(),
+			refr->GetBaseObject()->GetFormID(), cellX, cellY);
+	}
+}
+
+const std::unordered_set<RE::TESObjectREFR*>* PlacedObjects::CellPersistentREFRs(RE::TESObjectCELL* cell) const
+{
+	auto coordinates(cell->GetCoordinates());
+	if (coordinates)
+	{
+		WorldspaceCell  refrCell = {cell->GetRuntimeData().worldSpace, cell->GetCoordinates()->cellX, cell->GetCoordinates()->cellY};
+		auto refrs(m_persistentPlacedObjects.find(refrCell));
+		if (refrs != m_persistentPlacedObjects.cend())
+		{
+			return &refrs->second;
+		}
+	}
+	return &m_emptyREFRList;
+}
+
+void PlacedObjects::SaveREFRIfPlaced(const RE::TESWorldSpace* worldSpace, RE::TESObjectREFR* refr)
 {
 	// skip if empty REFR
 	if (!refr)
@@ -67,6 +100,12 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 		DBG_VMESSAGE("REFR 0x{:08x} Base 0x{:08x} is missing, non-playable or unnamed",
 			refr->GetFormID(), refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
 		return;
+	}
+
+	// record persistent REFRs by CELL X/Y
+	if (worldSpace)
+	{
+		SavePersistentREFR(worldSpace, refr);
 	}
 
 	// skip if not a valid BaseObject for Collections, or a placed Container or Corpse that we need to introspect
@@ -124,11 +163,14 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 }
 
+// 2024/06/16 this is broken for Temp REFRs, which load on-demand. Only useful for recording persistent exterior REFRs.
+// If worldSpace is set, this is the special persistent REFR CELL
 // This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we could
 // check again then.
-// If worldSpace is set, this is the special persistent REFR CELL
 void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESWorldSpace* worldSpace, const RE::TESObjectCELL* cell)
 {
+	if (!worldSpace)
+		return;
 	if (!cell)
 		return;
 	if (!m_checkedForPlacedObjects.insert(cell).second)
@@ -157,8 +199,8 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESWorldSpace* worldSpa
 
 	for (const RE::TESObjectREFRPtr& refptr : cell->GetRuntimeData().references)
 	{
-		const RE::TESObjectREFR* refr(refptr.get());
-		SaveREFRIfPlaced(refr);
+		RE::TESObjectREFR* refr(refptr.get());
+		SaveREFRIfPlaced(worldSpace, refr);
 	}
 }
 
@@ -184,6 +226,7 @@ void PlacedObjects::RecordPlacedObjects(void)
 	{
 		RecordPlacedObjectsForCell(nullptr, cell);
 	}
+
 	size_t placed(0);
 	placed = std::accumulate(m_placedObjects.cbegin(), m_placedObjects.cend(), placed,
 		[&] (const size_t& result, const auto& keyList) { return result + keyList.second.size(); });

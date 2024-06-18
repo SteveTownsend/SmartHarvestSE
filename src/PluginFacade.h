@@ -44,7 +44,7 @@ private:
 	bool Load();
 	void Start();
 	static void ScanThread(void);
-	inline bool Loaded() const { return m_loadProgress == LoadProgress::Complete; }
+	bool Loaded() const;
 
 	static std::unique_ptr<PluginFacade> m_instance;
 	mutable RecursiveLock m_pluginLock;

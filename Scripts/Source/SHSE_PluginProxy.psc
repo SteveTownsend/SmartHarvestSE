@@ -63,7 +63,12 @@ String Function Replace(String str, String target, String replacement) global na
 String Function ReplaceArray(String str, String[] targets, String[] replacements) global native
 
 Function NotifyActivated(Form itemForm, int itemType, bool collectible, int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted) global native
-bool Function ActivateItem(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem1(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem2(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem3(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem4(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem5(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem6(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
 
 ;Collection Management
 bool Function CollectionsInUse() global native

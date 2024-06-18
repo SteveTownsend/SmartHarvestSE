@@ -76,8 +76,14 @@ namespace FileUtils
 		if (s_pluginFileName.empty())
 		{
 			wchar_t path[MAX_PATH];
-			REX::W32::HMODULE hm = REL::Module::get().pointer();
-			if (REX::W32::GetModuleFileNameW(hm, path, sizeof(path)) == 0)
+			REX::W32::HMODULE hm(NULL);
+			if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+				GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+				(LPCWSTR)&GetPluginPath, (HMODULE*)&hm) == 0)
+			{
+				REL_ERROR("GetModuleHandle failed, error = {}\n", GetLastError());
+			}
+			else if (REX::W32::GetModuleFileNameW(hm, path, sizeof(path)) == 0)
 			{
 				REL_ERROR("GetModuleFileName failed, error = {}\n", GetLastError());
 			}

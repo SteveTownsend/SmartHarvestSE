@@ -108,7 +108,7 @@ public:
 	std::string ConversationalDistance(const double milesAway) const;
 	std::string PlayerExactLocation() const;
 
-	const RE::TESObjectCELL* PlayerCell() const;
+	RE::TESObjectCELL* PlayerCell() const;
 };
 
 }

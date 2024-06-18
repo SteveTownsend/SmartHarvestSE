@@ -26,6 +26,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/TheftCoordinator.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/LocationTracker.h"
+#include "WorldState/PlacedObjects.h"
 #include "WorldState/PlayerState.h"
 #include "Looting/ReferenceFilter.h"
 
@@ -270,123 +271,137 @@ void ReferenceFilter::FindAllCandidates()
 	FilterNearbyReferences();
 }
 
+void ReferenceFilter::RecordReference(RE::TESObjectREFR* refr)
+{
+	DBG_VMESSAGE("check and record REFR 0x{:08x}", refr->GetFormID());
+	if (refr)
+	{
+		if (!refr->GetBaseObject())
+		{
+			DBG_VMESSAGE("null base object for REFR 0x{:08x}", refr->GetFormID());
+			return;
+		}
+
+		RE::FormType formType(refr->GetBaseObject()->GetFormType());
+		// skip some form types outright
+		if (formType == RE::FormType::Furniture ||
+			formType == RE::FormType::Hazard ||
+			formType == RE::FormType::IdleMarker ||
+			formType == RE::FormType::MovableStatic ||
+			formType == RE::FormType::Static)
+		{
+			DBG_VMESSAGE("invalid formtype {} for 0x{:08x}", formType, refr->GetFormID());
+			return;
+		}
+
+		// if 3D not loaded do not measure - Ash Piles are exempt from this since they enter this state after Actor disintegrates
+		if (!refr->Is3DLoaded())
+		{
+			if (HasAshPile(refr))
+			{
+				DBG_VMESSAGE("allow no 3D for Ash Pile on REFR 0x{:08x}, Base {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+			}
+			else
+			{
+				DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
+				return;
+			}
+		}
+
+		// If Looting through Doors is not allowed, check distance and record if this is the nearest so far
+		if (formType == RE::FormType::Door)
+		{
+			if (m_respectDoors)
+			{
+				// Locked DOOR (even if not in range) can bar manual looting from a Display Case - if player gets close we may autoloot the contents
+				constexpr double DoorToleranceUnits(3. / DistanceUnitInFeet);
+				constexpr double MinLootingRangeUnits(1.0);
+				m_rangeCheck.IsValid(refr);	// calculate distance to door, in range or not
+				double doorLimit(m_rangeCheck.Distance());
+				if (IsLocked(refr))
+				{
+					doorLimit = std::max(MinLootingRangeUnits, doorLimit - DoorToleranceUnits);
+					DBG_VMESSAGE("Locked in-range Door 0x{:08x}({}) tightened proximity to {:0.2f}",
+						refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
+				}
+				else
+				{
+					// by the same token, an unlocked Display Case requires some leeway to autoloot its contents
+					doorLimit = std::min(m_rangeCheck.Radius(), doorLimit + DoorToleranceUnits);
+					DBG_VMESSAGE("Unlocked in-range Door 0x{:08x}({}) relaxed allowed proximity to {:0.2f}",
+						refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
+				}
+				if (m_nearestDoor == 0. || doorLimit < m_nearestDoor)
+				{
+					DBG_VMESSAGE("New nearest Door 0x{:08x}({}) at distance {:0.2f}", refr->GetFormID(),
+						refr->GetBaseObject()->GetName(), doorLimit);
+					m_nearestDoor = doorLimit;
+				}
+			}
+			else
+			{
+				DBG_VMESSAGE("skip Door 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName());
+			}
+			return;
+		}
+
+		bool withinRange(m_rangeCheck.IsValid(refr));
+		// Record this REFR if it represents a potential player-detecting NPC, unless Stealing operation is in progress already
+		// Bypass this logic if stealing is currently disallowed for player.
+		RE::Actor* actor(refr->As<RE::Actor>());
+		if (actor && !actor->IsDead(true))
+		{
+			PlayerAffinity affinity(GetPlayerAffinity(actor));
+			if (affinity == PlayerAffinity::FollowerFaction || affinity == PlayerAffinity::TeamMate)
+			{
+				// Do not track live summons or any dynamic Actor REFR as Follower
+				if (!IsSummoned(actor) && !refr->IsDynamicForm() && !refr->GetBaseObject()->IsDynamicForm())
+				{
+					DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+					ActorTracker::Instance().AddFollower(actor);
+				}
+				else
+				{
+					DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} ineligible as Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
+				}
+			}
+		}
+		if (!withinRange)
+		{
+			DBG_VMESSAGE("omit out of range REFR 0x{:08x}({})", refr->GetFormID(), refr->GetBaseObject()->GetName());
+			return;
+		}
+		if (!m_predicate(refr))
+		{
+			DBG_VMESSAGE("omit ineligible REFR 0x{:08x}({})", refr->GetFormID(), refr->GetBaseObject()->GetName());
+			return;
+		}
+		DBG_VMESSAGE("add REFR 0x{:08x}({}), distance {:0.2f}, formtype {}", refr->GetFormID(),
+			refr->GetBaseObject()->GetName(), m_rangeCheck.Distance(), formType);
+		m_refs.emplace_back(m_rangeCheck.Distance(), refr);
+	}
+}
+
 // update list with all possibly lootable REFRs in cell
-void ReferenceFilter::RecordCellReferences(const RE::TESObjectCELL* cell)
+void ReferenceFilter::RecordCellReferences(RE::TESObjectCELL* cell, const bool indoors)
 {
 	// Do not scan reference list until cell is attached
 	if (!cell->IsAttached())
 		return;
 
-	DBG_MESSAGE("Filter {} REFRS in CELL 0x{:08x}", cell->GetRuntimeData().references.size(), cell->GetFormID());
+	DBG_MESSAGE("Filter {} temp REFRS in CELL 0x{:08x}", cell->GetRuntimeData().references.size(), cell->GetFormID());
 	for (const RE::TESObjectREFRPtr& refptr : cell->GetRuntimeData().references)
 	{
-		RE::TESObjectREFR* refr(refptr.get());
-		DBG_VMESSAGE("check and record REFR 0x{:08x}", refr->GetFormID());
-		if (refr)
+		RecordReference(refptr.get());
+	}
+	// check for persistent references in outdoors CELLs
+	if (!indoors)
+	{
+		auto persistentREFRs(PlacedObjects::Instance().CellPersistentREFRs(cell));
+		DBG_MESSAGE("Filter {} persistent REFRS in CELL 0x{:08x}", persistentREFRs->size(), cell->GetFormID());
+		for (RE::TESObjectREFR* refr : *persistentREFRs)
 		{
-			if (!refr->GetBaseObject())
-			{
-				DBG_VMESSAGE("null base object for REFR 0x{:08x}", refr->GetFormID());
-				continue;
-			}
-
-			RE::FormType formType(refr->GetBaseObject()->GetFormType());
-			// skip some form types outright
-			if (formType == RE::FormType::Furniture ||
-				formType == RE::FormType::Hazard ||
-				formType == RE::FormType::IdleMarker ||
-				formType == RE::FormType::MovableStatic ||
-				formType == RE::FormType::Static)
-			{
-				DBG_VMESSAGE("invalid formtype {} for 0x{:08x}", formType, refr->GetFormID());
-				continue;
-			}
-
-			// if 3D not loaded do not measure - Ash Piles are exempt from this since they enter this state after Actor disintegrates
-			if (!refr->Is3DLoaded())
-			{
-				if (HasAshPile(refr))
-				{
-					DBG_VMESSAGE("allow no 3D for Ash Pile on REFR 0x{:08x}, Base {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-				}
-				else
-				{
-					DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-					continue;
-				}
-			}
-
-			// If Looting through Doors is not allowed, check distance and record if this is the nearest so far
-			if (formType == RE::FormType::Door)
-			{
-				if (m_respectDoors)
-				{
-					// Locked DOOR (even if not in range) can bar manual looting from a Display Case - if player gets close we may autoloot the contents
-					constexpr double DoorToleranceUnits(3. / DistanceUnitInFeet);
-					constexpr double MinLootingRangeUnits(1.0);
-					m_rangeCheck.IsValid(refr);	// calculate distance to door, in range or not
-					double doorLimit(m_rangeCheck.Distance());
-					if (IsLocked(refr))
-					{
-						doorLimit = std::max(MinLootingRangeUnits, doorLimit - DoorToleranceUnits);
-						DBG_VMESSAGE("Locked in-range Door 0x{:08x}({}) tightened proximity to {:0.2f}",
-							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
-					}
-					else
-					{
-						// by the same token, an unlocked Display Case requires some leeway to autoloot its contents
-						doorLimit = std::min(m_rangeCheck.Radius(), doorLimit + DoorToleranceUnits);
-						DBG_VMESSAGE("Unlocked in-range Door 0x{:08x}({}) relaxed allowed proximity to {:0.2f}",
-							refr->GetFormID(), refr->GetBaseObject()->GetName(), doorLimit);
-					}
-					if (m_nearestDoor == 0. || doorLimit < m_nearestDoor)
-					{
-						DBG_VMESSAGE("New nearest Door 0x{:08x}({}) at distance {:0.2f}", refr->GetFormID(),
-							refr->GetBaseObject()->GetName(), doorLimit);
-						m_nearestDoor = doorLimit;
-					}
-				}
-				else
-				{
-					DBG_VMESSAGE("skip Door 0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName());
-				}
-				continue;
-			}
-
-			bool withinRange(m_rangeCheck.IsValid(refr));
-			// Record this REFR if it represents a potential player-detecting NPC, unless Stealing operation is in progress already
-			// Bypass this logic if stealing is currently disallowed for player.
-			RE::Actor* actor(refr->As<RE::Actor>());
-			if (actor && !actor->IsDead(true))
-			{
-				PlayerAffinity affinity(GetPlayerAffinity(actor));
-				if (affinity == PlayerAffinity::FollowerFaction || affinity == PlayerAffinity::TeamMate)
-				{
-					// Do not track live summons or any dynamic Actor REFR as Follower
-					if (!IsSummoned(actor) && !refr->IsDynamicForm() && !refr->GetBaseObject()->IsDynamicForm())
-					{
-						DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} is Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
-						ActorTracker::Instance().AddFollower(actor);
-					}
-					else
-					{
-						DBG_VMESSAGE("NPC {}/0x{:08x} at distance {:0.2f} ineligible as Follower", actor->GetName(), refr->GetFormID(), m_rangeCheck.Distance());
-					}
-				}
-			}
-			if (!withinRange)
-			{
-				DBG_VMESSAGE("omit out of range REFR 0x{:08x}({})", refr->GetFormID(), refr->GetBaseObject()->GetName());
-				continue;
-			}
-			if (!m_predicate(refr))
-			{
-				DBG_VMESSAGE("omit ineligible REFR 0x{:08x}({})", refr->GetFormID(), refr->GetBaseObject()->GetName());
-				continue;
-			}
-			DBG_VMESSAGE("add REFR 0x{:08x}({}), distance {:0.2f}, formtype {}", refr->GetFormID(),
-				refr->GetBaseObject()->GetName(), m_rangeCheck.Distance(), formType);
-			m_refs.emplace_back(m_rangeCheck.Distance(), refr);
+			RecordReference(refr);
 		}
 	}
 }
@@ -399,14 +414,15 @@ void ReferenceFilter::FilterNearbyReferences()
 	// reset the Follower list
 	ActorTracker::Instance().ClearFollowers();
 
-	const RE::TESObjectCELL* cell(LocationTracker::Instance().PlayerCell());
+	RE::TESObjectCELL* cell(LocationTracker::Instance().PlayerCell());
 	if (!cell)
 		return;
 
 	// For exterior cells, also check directly adjacent cells for lootable goodies. Restrict to cells in the same worldspace.
 	// If current cell fills the list then ignore others.
-	RecordCellReferences(cell);
-	if (!LocationTracker::Instance().IsPlayerIndoors())
+	bool indoors(LocationTracker::Instance().IsPlayerIndoors());
+	RecordCellReferences(cell, indoors);
+	if (!indoors)
 	{
 		DBG_VMESSAGE("Scan cells adjacent to 0x{:08x}", cell->GetFormID());
 		for (const auto& adjacentCell : LocationTracker::Instance().AdjacentCells())
@@ -418,7 +434,7 @@ void ReferenceFilter::FilterNearbyReferences()
 				continue;
 			}
 			DBG_VMESSAGE("Check adjacent cell 0x{:08x}", adjacentCell->GetFormID());
-			RecordCellReferences(adjacentCell);
+			RecordCellReferences(adjacentCell, indoors);
 		}
 	}
 

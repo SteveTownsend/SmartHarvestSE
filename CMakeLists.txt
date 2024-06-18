@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.28.1)
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
 set(PRETTY_NAME "Smart Harvest SE")
-set(VERSION 5.8.0)
+set(VERSION 5.9.0)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -240,6 +240,9 @@ target_include_directories(${PROJECT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         ${CMAKE_CURRENT_BINARY_DIR}/include)
 
+# uncomment for assembler/source listing
+#target_compile_options(${PROJECT_NAME} PUBLIC /Fas /FA)
+
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
         CommonLibSSE
@@ -256,7 +259,7 @@ target_precompile_headers(${PROJECT_NAME}
         src/PrecompiledHeaders.h)
 
 # Uncomment as needed for crash log debugging
-# target_link_options(${PROJECT_NAME} PRIVATE "/MAP:${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map")
+#target_link_options(${PROJECT_NAME} PRIVATE "/MAP:${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map")
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/Sample"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

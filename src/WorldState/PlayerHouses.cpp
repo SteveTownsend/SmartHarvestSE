@@ -44,9 +44,14 @@ void PlayerHouses::AddLocationKeyword(RE::BGSKeyword* keyword)
 	m_locationKeywords.insert(keyword);
 }
 
-void PlayerHouses::SetCell(const RE::TESObjectCELL* houseCell)
+void PlayerHouses::AddCell(const RE::TESObjectCELL* houseCell)
 {
 	m_validHouseCells.insert(houseCell->GetFormID());
+}
+
+void PlayerHouses::AddLocation(const RE::BGSLocation* houseLocation)
+{
+	m_validHouseLocations.insert(houseLocation->GetFormID());
 }
 
 void PlayerHouses::Clear()
@@ -87,6 +92,8 @@ bool PlayerHouses::IsValidHouseLocation(const RE::BGSLocation* location) const
 	if (!location)
 		return false;
 	RecursiveLockGuard guard(m_housesLock);
+	if (m_validHouseLocations.contains(location->GetFormID()))
+		return true;
 	for (auto keyword : m_locationKeywords)
 	{
 		if (location->HasKeyword(keyword))

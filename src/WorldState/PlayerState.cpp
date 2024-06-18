@@ -49,6 +49,7 @@ PlayerState::PlayerState() :
 	m_harvestedIngredientMultiplier(1.),
 	m_currentlyBeefedUp(false),
 	m_sneaking(false),
+	m_valid(false),
 	m_ownershipRule(OwnershipRule::MAX),
 	m_belongingsCheck(SpecialObjectHandling::MAX),
 	m_disableWhileMounted(false),
@@ -57,17 +58,18 @@ PlayerState::PlayerState() :
 	m_carryWeightSpell = DataCase::GetInstance()->FindExactMatch<RE::SpellItem>("SmartHarvestSE.esp", 0xd7d);
 	if (!m_carryWeightSpell)
 	{
-		REL_ERROR("Cannot find Smart Harvest CarryWeight SPEL");
+		REL_FATALERROR("Cannot find Smart Harvest CarryWeight SPEL - make sure SmartHarvestSE.esp is enabled");
 		return;
 	}
 	REL_MESSAGE("Smart Harvest CarryWeight SPEL {}/0x{:08x}", m_carryWeightSpell->GetName(), m_carryWeightSpell->GetFormID());
 	m_carryWeightEffect = DataCase::GetInstance()->FindExactMatch<RE::EffectSetting>("SmartHarvestSE.esp", 0xd7e);
 	if (!m_carryWeightEffect)
 	{
-		REL_ERROR("Cannot find Smart Harvest CarryWeight MGEF");
+		REL_FATALERROR("Cannot find Smart Harvest CarryWeight MGEF - make sure SmartHarvestSE.esp is enabled");
 		return;
 	}
 	REL_MESSAGE("Smart Harvest CarryWeight MGEF {}/0x{:08x}", m_carryWeightEffect->GetName(), m_carryWeightEffect->GetFormID());
+	m_valid = true;
 }
 
 double PlayerState::SneakDistanceInterior() const
@@ -95,14 +97,7 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 	// reconcile carry-weight delta if it does not reflect current settings
 	ReconcileCarryWeight(onGameReload);
 
-	// Check excess inventory - always check known item updates, full review periodically and on possible state changes
-	// Do not process excess inventory if scanning is not allowed for any reason
-	// Player may be trying to manually sell items or doing other stuff that does not favour inventory manipulation
-	// per https://github.com/SteveTownsend/SmartHarvestSE/issues/252
-	if (PluginFacade::Instance().ScanAllowed())
-	{
-		ReviewExcessInventory(onGameReload || onMCMPush);
-	}
+	TaskDispatcher::Instance().EnqueueReviewExcessInventory(onGameReload || onMCMPush);
 
 	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
 	const bool sneaking(RE::PlayerCharacter::GetSingleton()->IsSneaking());

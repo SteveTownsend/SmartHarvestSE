@@ -1328,7 +1328,7 @@ Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string ba
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if !akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget)
         int activations = SyntheticFloraActivateCount(akTarget)
-        activated = ActivateItem(akTarget, thisPlayer, true, activations)
+        activated = ActivateItem1(akTarget, thisPlayer, true, activations)
         if activated
             notify = !silent
             if activations == 1 && count >= 2
@@ -1385,7 +1385,7 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
 
     ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
-        activated = ActivateItem(akTarget, thisPlayer, silent, 1)
+        activated = ActivateItem2(akTarget, thisPlayer, silent, 1)
         if !activated
             AlwaysTrace("OnHarvestCritter: Activate failed for " + akTarget)
         endIf
@@ -1416,7 +1416,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                 DebugTrace("Trapped soulgem " + akTarget + ", state " + myTrap.getState() + ", linked to " + akTarget.GetLinkedRef(None) + ", state " + baseState) 
             endIf
             if myTrap.getState() == "disarmed" && (baseState == "disarmed" || baseState == "idle")
-                activated = ActivateItem(akTarget, thisPlayer, true, 1)
+                activated = ActivateItem3(akTarget, thisPlayer, true, 1)
                 if activated
                     notify = !silent
                 else
@@ -1426,7 +1426,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
         endIf
     elseif !akTarget.IsActivationBlocked() && CanHarvest(itemType)
         if itemType == objType_Septim && baseForm.GetType() == getType_kFlora
-            activated = ActivateItem(akTarget, thisPlayer, silent, 1)
+            activated = ActivateItem4(akTarget, thisPlayer, silent, 1)
             if !activated
                 AlwaysTrace("OnHarvest: Activate failed for Flora" + akTarget)
             endIf
@@ -1436,7 +1436,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
             ;DebugTrace("Player has ingredient count " + ingredientCount)
             bool suppressMessage = silent || ingredientCount as int > 1
             ;DebugTrace("Flora/Tree original base form " + itemForm.GetName())
-            activated = ActivateItem(akTarget, thisPlayer, suppressMessage, 1)
+            activated = ActivateItem5(akTarget, thisPlayer, suppressMessage, 1)
             if activated
                 ;we must send the message if required default would have been incorrect
                 notify = !silent && ingredientCount as int > 1
@@ -1445,7 +1445,7 @@ Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int it
                 AlwaysTrace("OnHarvest: Activate failed for Tree/Flora" + akTarget)
             endif
         else
-            activated = ActivateItem(akTarget, thisPlayer, true, 1)
+            activated = ActivateItem6(akTarget, thisPlayer, true, 1)
             if activated
                 notify = !silent
                 if count >= 2

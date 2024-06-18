@@ -193,13 +193,13 @@ void QuestTargets::Analyze()
 					}
 					DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item {}/0x{:08x} has type kAt",
 						targetItem->GetName(), targetItem->GetFormID());
-					// if item is in permitted LVLI, do not blacklist it
 					size_t itemCount(PlacedObjects::Instance().NumberOfInstances(targetItem));
 					if (itemCount >= BoringQuestTargetThreshold)
 					{
 						DBG_VMESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
 							targetItem->GetName(), targetItem->GetFormID(), itemCount, BoringQuestTargetThreshold);
 					}
+					// if item is in permitted LVLI, do not blacklist it
 					else if (lvliMembers.contains(targetItem->GetFormID()))
 					{
 						DBG_VMESSAGE("RefAlias ALCO excluded as Quest Target Item {}/0x{:08x}, member of LVLI",

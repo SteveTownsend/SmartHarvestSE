@@ -1053,6 +1053,16 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 		}
 		return Lootability::Lootable;
 	}
+	// Some CONT base objects are marked PlayerOwned but are lootable eg. Frozen Electrocuted Combustion
+	if (targetType == INIFile::SecondaryType::containers)
+	{
+		if (DataCase::GetInstance()->IsContainerAlwaysLootable(m_candidate->GetBaseObject()->GetFormID()))
+		{
+			DBG_VMESSAGE("Player-owned Lootable CONT {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->formID);
+			return Lootability::Lootable;
+		}
+	}
 
 	Lootability legality(Lootability::Lootable);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.

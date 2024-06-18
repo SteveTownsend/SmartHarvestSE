@@ -407,6 +407,12 @@ bool DataCase::ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) con
 	return false;
 }
 
+bool DataCase::IsContainerAlwaysLootable(const RE::FormID container) const
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	return m_containerWhiteList.contains(container);
+}
+
 void DataCase::ExcludeVendorContainers()
 {
 	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
@@ -620,6 +626,39 @@ void DataCase::ExcludeVendorContainers()
 	}
 }
 
+void DataCase::IncludeLootableContainers()
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+	// special and mod-added Containers to allow looting
+	std::vector<std::tuple<std::string, RE::FormID>> oneOffContainers = {
+		// Frozen Electrocuted Combustion victim loot CONT get marked player-owned
+		{"FEC.esp", 0x817},
+		{"FEC.esp", 0x825},
+		{"FEC.esp", 0x843},
+		{"FEC.esp", 0x844},
+		{"FEC.esp", 0x86a},
+		{"FEC.esp", 0x876},
+		{"FEC.esp", 0x908}
+	};
+	for (const auto& container : oneOffContainers)
+	{
+		std::string espName(std::get<0>(container));
+		RE::FormID formID(std::get<1>(container));
+		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
+		if (chestForm)
+		{
+			REL_MESSAGE("CONT {}:0x{:08x} added to Whitelist", espName, chestForm->GetFormID());
+			m_containerWhiteList.insert(chestForm->GetFormID());
+		}
+		else
+		{
+			DBG_MESSAGE("Whitelist CONT {}/0x{:08x} not found", espName, formID);
+		}
+	}
+}
+
 void DataCase::ExcludeImmersiveArmorsGodChest()
 {
 	// check for form in Load Order
@@ -828,7 +867,7 @@ void DataCase::RecordOffLimitsLocations()
 	}
 }
 
-void DataCase::RecordPlayerHouseCells(void)
+void DataCase::RecordPlayerHouses(void)
 {
 	DBG_MESSAGE("Record free CELLs that are actually Player Houses");
 	std::vector<std::tuple<std::string, RE::FormID>> houseCells = {
@@ -843,8 +882,23 @@ void DataCase::RecordPlayerHouseCells(void)
 		const RE::TESObjectCELL* cell(FindExactMatch<RE::TESObjectCELL>(espName, formID));
 		if (cell)
 		{
-			REL_MESSAGE("Cell {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
-			PlayerHouses::Instance().SetCell(cell);
+			REL_MESSAGE("CELL {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
+			PlayerHouses::Instance().AddCell(cell);
+		}
+	}
+	DBG_MESSAGE("Record LCTN records that are actually Player Houses");
+	std::vector<std::tuple<std::string, RE::FormID>> houseLocations = {
+		{"ccvsvsse004-beafarmer.esl", 0xd38}			// ccVSVSSE004_BunkhouseInteriorLocation
+	};
+	for (const auto& pluginForm : houseLocations)
+	{
+		std::string espName(std::get<0>(pluginForm));
+		RE::FormID formID(std::get<1>(pluginForm));
+		const RE::BGSLocation* location(FindExactMatch<RE::BGSLocation>(espName, formID));
+		if (location)
+		{
+			REL_MESSAGE("LCTN {}/0x{:08x} treated as Player House", location->GetName(), location->GetFormID());
+			PlayerHouses::Instance().AddLocation(location);
 		}
 	}
 }
@@ -1507,10 +1561,11 @@ void DataCase::HandleExceptions()
 
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();
+	IncludeLootableContainers();
 
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
-	RecordPlayerHouseCells();
+	RecordPlayerHouses();
 
 	// whitelist Fossil sites
 	IncludeFossilMiningExcavation();
