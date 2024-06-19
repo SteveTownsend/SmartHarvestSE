@@ -273,13 +273,29 @@ void ReferenceFilter::FindAllCandidates()
 
 void ReferenceFilter::RecordReference(RE::TESObjectREFR* refr)
 {
-	DBG_VMESSAGE("check and record REFR 0x{:08x}", refr->GetFormID());
 	if (refr)
 	{
+		DBG_VMESSAGE("check and record REFR 0x{:08x}", refr->GetFormID());
 		if (!refr->GetBaseObject())
 		{
 			DBG_VMESSAGE("null base object for REFR 0x{:08x}", refr->GetFormID());
 			return;
+		}
+
+		// if 3D not loaded do not measure - Ash Piles are exempt from this since they enter this state after Actor disintegrates
+		// In general, GetBaseObject appears unreliable until 3D is loaded, see https://github.com/SteveTownsend/SmartHarvestSE/issues/499
+		// for bitter experience
+		if (!refr->Is3DLoaded())
+		{
+			if (HasAshPile(refr))
+			{
+				DBG_VMESSAGE("allow no 3D for Ash Pile on REFR 0x{:08x}", refr->GetFormID());
+			}
+			else
+			{
+				DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded", refr->GetFormID());
+				return;
+			}
 		}
 
 		RE::FormType formType(refr->GetBaseObject()->GetFormType());
@@ -292,20 +308,6 @@ void ReferenceFilter::RecordReference(RE::TESObjectREFR* refr)
 		{
 			DBG_VMESSAGE("invalid formtype {} for 0x{:08x}", formType, refr->GetFormID());
 			return;
-		}
-
-		// if 3D not loaded do not measure - Ash Piles are exempt from this since they enter this state after Actor disintegrates
-		if (!refr->Is3DLoaded())
-		{
-			if (HasAshPile(refr))
-			{
-				DBG_VMESSAGE("allow no 3D for Ash Pile on REFR 0x{:08x}, Base {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-			}
-			else
-			{
-				DBG_VMESSAGE("skip REFR 0x{:08x}, 3D not loaded {}/0x{:08x}", refr->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->formID);
-				return;
-			}
 		}
 
 		// If Looting through Doors is not allowed, check distance and record if this is the nearest so far
