@@ -32,7 +32,7 @@ public:
 
 	void RecordPlacedObjects(void);
 	size_t NumberOfInstances(const RE::TESForm* form) const;
-	const std::unordered_set<RE::TESObjectREFR*>* CellPersistentREFRs(RE::TESObjectCELL* cell) const;
+	std::shared_ptr<std::unordered_set<RE::TESObjectREFR*>> CellPersistentREFRs(RE::TESObjectCELL* cell);
 
 private:
 	void RecordPlacedItem(const RE::TESForm* item, const RE::TESObjectREFR* refr);
@@ -55,8 +55,8 @@ private:
 			return hasher(const_cast<RE::TESWorldSpace*>(get<0>(x))) ^ get<1>(x) ^ get<2>(x);
 		}
 	};
-	std::unordered_map<WorldspaceCell, std::unordered_set<RE::TESObjectREFR*>, WorldspaceCellHash> m_persistentPlacedObjects;
-	std::unordered_set<RE::TESObjectREFR*> m_emptyREFRList;
+	std::unordered_map<WorldspaceCell, std::shared_ptr<std::unordered_set<RE::TESObjectREFR*>>, WorldspaceCellHash> m_persistentPlacedObjects;
+	std::shared_ptr<std::unordered_set<RE::TESObjectREFR*>> m_emptyREFRList;
 };
 
 }

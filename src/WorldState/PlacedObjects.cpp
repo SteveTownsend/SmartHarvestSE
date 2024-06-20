@@ -39,7 +39,7 @@ PlacedObjects& PlacedObjects::Instance()
 	return *m_instance;
 }
 
-PlacedObjects::PlacedObjects()
+PlacedObjects::PlacedObjects() : m_emptyREFRList(new std::unordered_set<RE::TESObjectREFR*>)
 {
 }
 
@@ -59,7 +59,12 @@ void PlacedObjects::SavePersistentREFR(const RE::TESWorldSpace* worldSpace, RE::
 	std::int32_t cellX(static_cast<std::int32_t>(std::floor(refr->GetPositionX() / 4096.0f)));
 	std::int32_t cellY(static_cast<std::int32_t>(std::floor(refr->GetPositionY() / 4096.0f)));
 	WorldspaceCell refrCell = {worldSpace, cellX, cellY};
-	if (m_persistentPlacedObjects[refrCell].insert(refr).second)
+	auto refrs(m_persistentPlacedObjects.find(refrCell));
+	if (refrs == m_persistentPlacedObjects.cend())
+	{
+		refrs = m_persistentPlacedObjects.insert({refrCell, std::make_shared<std::unordered_set<RE::TESObjectREFR*>>()}).first;
+	}
+	if (refrs->second->insert(refr).second)
 	{
 		REL_VMESSAGE("Persistent REFR 0x{:08x} to item {}/0x{:08x} Placed in CELL ({},{})", refr->GetFormID(), refr->GetBaseObject()->GetName(),
 			refr->GetBaseObject()->GetFormID(), cellX, cellY);
@@ -71,19 +76,19 @@ void PlacedObjects::SavePersistentREFR(const RE::TESWorldSpace* worldSpace, RE::
 	}
 }
 
-const std::unordered_set<RE::TESObjectREFR*>* PlacedObjects::CellPersistentREFRs(RE::TESObjectCELL* cell) const
+std::shared_ptr<std::unordered_set<RE::TESObjectREFR*>> PlacedObjects::CellPersistentREFRs(RE::TESObjectCELL* cell)
 {
 	auto coordinates(cell->GetCoordinates());
 	if (coordinates)
 	{
-		WorldspaceCell  refrCell = {cell->GetRuntimeData().worldSpace, cell->GetCoordinates()->cellX, cell->GetCoordinates()->cellY};
+		WorldspaceCell  refrCell = {cell->GetRuntimeData().worldSpace, coordinates->cellX, coordinates->cellY};
 		auto refrs(m_persistentPlacedObjects.find(refrCell));
 		if (refrs != m_persistentPlacedObjects.cend())
 		{
-			return &refrs->second;
+			return refrs->second;
 		}
 	}
-	return &m_emptyREFRList;
+	return m_emptyREFRList;
 }
 
 void PlacedObjects::SaveREFRIfPlaced(const RE::TESWorldSpace* worldSpace, RE::TESObjectREFR* refr)
@@ -103,9 +108,21 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESWorldSpace* worldSpace, RE::TE
 	}
 
 	// record persistent REFRs by CELL X/Y
+	// Actors are problematic, on new game they show up with NULL base object
+	// Dynamic REFRs and Base Objects likewise
 	if (worldSpace)
 	{
-		SavePersistentREFR(worldSpace, refr);
+		if (refr->GetFormType() != RE::FormType::ActorCharacter &&
+			!refr->IsDynamicForm() &&
+			refr->GetBaseObject() &&
+			!refr->GetBaseObject()->IsDynamicForm())
+		{
+			SavePersistentREFR(worldSpace, refr);
+		}
+		else
+		{
+			DBG_VMESSAGE("Skip persistent REFR 0x{:08x}", refr->GetFormID());
+		}
 	}
 
 	// skip if not a valid BaseObject for Collections, or a placed Container or Corpse that we need to introspect
