@@ -572,7 +572,7 @@ bool LocationTracker::Refresh()
 				const auto playerCoordinates(const_cast<RE::TESObjectCELL*>(playerCell)->GetCoordinates());
 				m_playerCellX = playerCoordinates->cellX;
 				m_playerCellY = playerCoordinates->cellY;
-				DBG_MESSAGE("Player cell updated to 0x{:08x} outdoors at ({},{})", m_playerCellID, m_playerCellX, m_playerCellY);
+				REL_MESSAGE("Player cell updated to 0x{:08x} outdoors at ({},{})", m_playerCellID, m_playerCellX, m_playerCellY);
 			}
 
 			// player cell is valid - check for worldspace update
@@ -761,7 +761,7 @@ bool LocationTracker::IsAdjacent(RE::TESObjectCELL* cell) const
 	const std::int32_t dy(abs(m_playerCellY - checkCoordinates->cellY));
 	if (dx <= 1 && dy <= 1)
 	{
-		DBG_MESSAGE("Cell 0x{:08x} at ({},{}) is adjacent to player", cell->GetFormID(), checkCoordinates->cellX, checkCoordinates->cellY);
+		REL_MESSAGE("Cell 0x{:08x} at ({},{}) is adjacent to player", cell->GetFormID(), checkCoordinates->cellX, checkCoordinates->cellY);
 		return true;
 	}
 	return false;

@@ -125,7 +125,7 @@ void InitializeDiagnostics()
 	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #else
 	// default Release log level is ERROR
-	spdlog::level::level_enum logLevel(spdlog::level::err);
+	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #endif
 #endif
 	char* levelValue;
@@ -175,7 +175,7 @@ void InitializeDiagnostics()
 #endif
 #endif
 	// Get Process and DLL version
-	REL_MESSAGE("{} v{} in executable {}", Version::PROJECT, Version::NAME, Version::GetExeVersionString());
+	REL_MESSAGE("{} v{} in executable {}-{}", Version::PROJECT, Version::NAME, Version::GetExeVersionString(), Version::BUILDTYPE);
 }
 
 EXTERN_C __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* skse)

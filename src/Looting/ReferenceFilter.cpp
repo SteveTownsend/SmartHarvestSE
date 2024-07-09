@@ -396,16 +396,19 @@ void ReferenceFilter::RecordCellReferences(RE::TESObjectCELL* cell, const bool i
 	{
 		RecordReference(refptr.get());
 	}
+#if 0	
 	// check for persistent references in outdoors CELLs
 	if (!indoors)
 	{
 		auto persistentREFRs(PlacedObjects::Instance().CellPersistentREFRs(cell));
-		DBG_MESSAGE("Filter {} persistent REFRS in CELL 0x{:08x}", persistentREFRs->size(), cell->GetFormID());
+		REL_MESSAGE("Filter {} persistent REFRS in CELL 0x{:08x}", persistentREFRs->size(), cell->GetFormID());
 		for (RE::TESObjectREFR* refr : *persistentREFRs)
 		{
+			REL_MESSAGE("check and record REFR 0x{:08x}", refr ? refr->GetFormID() : 0x0);
 			RecordReference(refr);
 		}
 	}
+#endif
 }
 
 void ReferenceFilter::FilterNearbyReferences()

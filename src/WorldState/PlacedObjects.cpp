@@ -121,7 +121,7 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESWorldSpace* worldSpace, RE::TE
 		}
 		else
 		{
-			DBG_VMESSAGE("Skip persistent REFR 0x{:08x}", refr->GetFormID());
+			REL_VMESSAGE("Skip persistent REFR 0x{:08x}", refr->GetFormID());
 		}
 	}
 
