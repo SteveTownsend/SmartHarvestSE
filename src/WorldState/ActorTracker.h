@@ -59,11 +59,8 @@ public:
 	void RecordTimeOfDeath(RE::TESObjectREFR* actorRef);
 	void RecordIfKilledByParty(const RE::Actor* actor);
 	void ReleaseIfReliablyDead(DistanceToTarget& refs);
-	void AddDetective(const RE::Actor*, const double distance);
-	std::vector<const RE::Actor*> GetDetectives();
-	void ClearDetectives();
 
-	void AddFollower(const RE::Actor* detective);
+	void AddFollower(const RE::Actor* follower);
 	inline Followers GetFollowers() const {	return m_followers; }
 	void ClearFollowers();
 	void ClearVictims();
@@ -85,8 +82,6 @@ private:
 	// Actors we encountered alive at any point of this visit to the cell
 	std::unordered_set<const RE::TESObjectREFR*> m_seenAlive;
 	std::unordered_set<const RE::Actor*> m_checkedBodies;
-	// possible detecting NPCs, ordered by proximity to Player to expedite detection
-	std::map<double, const RE::Actor*> m_detectives;
 	// Followers in range i.e. the player's current party
 	Followers m_followers;
 	std::vector<PartyVictim> m_victims;

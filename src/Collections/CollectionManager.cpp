@@ -22,7 +22,6 @@ http://www.fsf.org/licensing/licenses
 #include <filesystem>
 #include <regex>
 
-#include "Utilities/LogStackWalker.h"
 #include "Utilities/Exception.h"
 #include "Utilities/utils.h"
 #include "WorldState/LocationTracker.h"
@@ -40,18 +39,40 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
 
-std::unique_ptr<CollectionManager> CollectionManager::m_instance;
+std::unique_ptr<CollectionManager> CollectionManager::m_collectibles;
+std::unique_ptr<CollectionManager> CollectionManager::m_excessInventory;
+std::unique_ptr<CollectionManager> CollectionManager::m_specialCases;
+nlohmann::json_schema::json_validator CollectionManager::m_validator;
 
-CollectionManager& CollectionManager::Instance()
+CollectionManager& CollectionManager::Collectibles()
 {
-	if (!m_instance)
+	if (!m_collectibles)
 	{
-		m_instance = std::make_unique<CollectionManager>();
+		m_collectibles = std::make_unique<CollectionManager>(L"SHSE\\.Collections\\.(.*)\\.json$");
 	}
-	return *m_instance;
+	return *m_collectibles;
 }
 
-CollectionManager::CollectionManager() : m_notifications(0), m_ready(false)
+CollectionManager& CollectionManager::ExcessInventory()
+{
+	if (!m_excessInventory)
+	{
+		m_excessInventory = std::make_unique<CollectionManager>(L"SHSE\\.ExcessInventory\\.(.*)\\.json$");
+	}
+	return *m_excessInventory;
+}
+
+CollectionManager& CollectionManager::SpecialCases()
+{
+	if (!m_specialCases)
+	{
+		m_specialCases = std::make_unique<CollectionManager>(L"SHSE\\.Builtin\\.(.*)\\.json$");
+	}
+	return *m_specialCases;
+}
+
+CollectionManager::CollectionManager(const std::wstring& filePattern) :
+m_notifications(0), m_ready(false), m_filePattern(filePattern)
 {
 }
 
@@ -62,22 +83,17 @@ void CollectionManager::ProcessDefinitions(void)
 	if (IsAvailable())
 		return;
 
-	__try {
-		if (!LoadData())
-			return;
+	if (!LoadData())
+		return;
 
-		// data validated and loaded
-		m_ready = true;
-	}
-	__except (LogStackWalker::LogStack(GetExceptionInformation())) {
-		REL_FATALERROR("JSON Collection Definitions threw structured exception");
-	}
+	// data validated and loaded
+	m_ready = true;
 }
 
 void CollectionManager::Refresh() const
 {
-	// request added items and game time to be pushed to us while we are sleeping
-	EventPublisher::Instance().TriggerFlushAddedItems();
+	// update current game time
+	PlayerState::Instance().UpdateGameTime();
 }
 
 bool CollectionManager::ItemIsCollectionCandidate(RE::TESBoundObject* item) const
@@ -224,6 +240,12 @@ void CollectionManager::AddToRelevantCollections(const ConditionMatcher& matcher
 	}
 }
 
+std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher)
+{
+	constexpr bool recordDups(true);
+	return TreatAsCollectible(matcher, recordDups);
+}
+
 std::pair<bool, CollectibleHandling> CollectionManager::TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups)
 {
 	if (!IsAvailable() || !matcher.Form())
@@ -329,10 +351,11 @@ bool CollectionManager::LoadCollectionGroup(
 		}
 		nlohmann::json collectionGroupData(nlohmann::json::parse(collectionFile));
 		validator.validate(collectionGroupData);
-		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(collectionGroupData, groupName));
+		const auto collectionGroup(CollectionFactory::Instance().ParseGroup(*this, collectionGroupData, groupName));
 		BuildDecisionTrees(collectionGroup);
 		if (collectionGroup->UseMCM())
 		{
+			REL_MESSAGE("Record MCM-visible Collection Group {}/{}", groupName, defFile.string());
 			m_mcmVisibleFileByGroupName.insert(std::make_pair(groupName, defFile.string()));
 		}
 		m_allGroupsByName.insert(std::make_pair(groupName, collectionGroup));
@@ -344,19 +367,44 @@ bool CollectionManager::LoadCollectionGroup(
 	}
 }
 
-bool CollectionManager::LoadData(void)
+void CollectionManager::LoadCollectionFiles(const std::wstring& pattern, nlohmann::json_schema::json_validator& validator)
+{
+	const std::wregex collectionsFilePattern(pattern);
+	for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
+	{
+		if (!std::filesystem::is_regular_file(nextFile))
+		{
+			DBG_MESSAGE("Skip {}, not a regular file", StringUtils::FromUnicode(nextFile.path().generic_wstring()));
+			continue;
+		}
+		std::wstring fileName(nextFile.path().filename().generic_wstring());
+		std::wsmatch matches;
+		if (!std::regex_search(fileName, matches, collectionsFilePattern))
+		{
+			DBG_MESSAGE("Skip {}, does not match Collections filename pattern", StringUtils::FromUnicode(fileName));
+			continue;
+		}
+		// capture string at index 1 is the Collection Name, always present after a regex match
+		REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
+		if (LoadCollectionGroup(nextFile, StringUtils::FromUnicode(matches[1].str()), validator))
+		{
+			REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
+		}
+	}
+}
+
+[[nodiscard]] bool CollectionManager::LoadSchema(void)
 {
 	// Validate the schema
 	const std::string schemaFileName("SHSE.SchemaCollections.json");
 	std::string filePath(StringUtils::FromUnicode(FileUtils::GetPluginPath()) + schemaFileName);
-	nlohmann::json_schema::json_validator validator;
 	try {
 		std::ifstream schemaFile(filePath);
 		if (schemaFile.fail()) {
 			throw FileNotFound(filePath.c_str());
 		}
 		nlohmann::json schema(nlohmann::json::parse(schemaFile));
-		validator.set_root_schema(schema); // insert root-schema
+		m_validator.set_root_schema(schema); // insert root-schema
 	}
 	catch (const std::exception& e) {
 		REL_ERROR("JSON Schema {} not loadable, error:\n{}", filePath.c_str(), e.what());
@@ -364,31 +412,14 @@ bool CollectionManager::LoadData(void)
 	}
 
 	REL_MESSAGE("JSON Schema {} parsed and validated", filePath.c_str());
+	return true;
+}
 
+bool CollectionManager::LoadData(void)
+{
 	try {
 		// Find and Load Collection Definitions using the validated schema
-		const std::wregex collectionsFilePattern(L"SHSE.Collections\\.(.*)\\.json$");
-		for (const auto& nextFile : std::filesystem::directory_iterator(FileUtils::GetPluginPath()))
-		{
-			if (!std::filesystem::is_regular_file(nextFile))
-			{
-				DBG_MESSAGE("Skip {}, not a regular file", StringUtils::FromUnicode(nextFile.path().generic_wstring()));
-				continue;
-			}
-			std::wstring fileName(nextFile.path().filename().generic_wstring());
-			std::wsmatch matches;
-			if (!std::regex_search(fileName, matches, collectionsFilePattern))
-			{
-				DBG_MESSAGE("Skip {}, does not match Collections filename pattern", StringUtils::FromUnicode(fileName));
-				continue;
-			}
-			// capture string at index 1 is the Collection Name, always present after a regex match
-			REL_MESSAGE("Load JSON Collection Definitions {} for Group {}", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
-			if (LoadCollectionGroup(nextFile, StringUtils::FromUnicode(matches[1].str()), validator))
-			{
-				REL_MESSAGE("JSON Collection Definitions {}/{} parsed and validated", StringUtils::FromUnicode(fileName), StringUtils::FromUnicode(matches[1].str()));
-			}
-		}
+		LoadCollectionFiles(m_filePattern, m_validator);
 	} catch (const std::exception& e) {
 		REL_ERROR("Collection Definitions not loadable: is the file target at {} inside 'Program Files' or another elevated-privilege location? Error:\n{}",
 			StringUtils::FromUnicode(FileUtils::GetPluginPath()), e.what());
@@ -432,9 +463,13 @@ std::string CollectionManager::GroupNameByIndex(const int fileIndex) const
 	for (const auto& group : m_mcmVisibleFileByGroupName)
 	{
 		if (index == fileIndex)
+		{
+			DBG_DMESSAGE("Collection Group name={} at index {}", group.first, fileIndex);
 			return group.first;
+		}
 		++index;
 	}
+	REL_WARNING("No Collection Group name for index {}", fileIndex);
 	return std::string();
 }
 
@@ -454,7 +489,9 @@ std::string CollectionManager::GroupFileByIndex(const int fileIndex) const
 int CollectionManager::NumberOfActiveCollections(const std::string& groupName) const
 {
 	RecursiveLockGuard guard(m_collectionLock);
-	return static_cast<int>(m_activeCollectionsByGroupName.count(groupName));
+	int count(static_cast<int>(m_activeCollectionsByGroupName.count(groupName)));
+	REL_DMESSAGE("Collection Group {} has {} active collections", groupName, count);
+	return static_cast<int>(count);
 }
 
 std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const
@@ -467,10 +504,13 @@ std::string CollectionManager::NameByIndexInGroup(const std::string& groupName, 
 		if (index == collectionIndex)
 		{
 			// strip the group name and separator
-			return group->second.substr(groupName.length() + 1);
+			auto name(group->second.substr(groupName.length() + 1));
+			REL_DMESSAGE("Collection Group {} index {} -> {}", groupName, collectionIndex, name);
+			return name;
 		}
 		++index;
 	}
+	REL_ERROR("Collection Group {} index {} not found", groupName, collectionIndex);
 	return std::string();
 }
 
@@ -496,6 +536,30 @@ std::string CollectionManager::MakeLabel(const std::string& groupName, const std
 	return labelStream.str();
 }
 
+const Collection* CollectionManager::CollectionByLabel(const std::string& groupName, const std::string& collectionName) const
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	const auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second.get();
+	}
+	return nullptr;
+}
+
+Collection* CollectionManager::MutableCollectionByLabel(const std::string& groupName, const std::string& collectionName)
+{
+	const std::string label(MakeLabel(groupName, collectionName));
+	RecursiveLockGuard guard(m_collectionLock);
+	auto matched(m_allCollectionsByLabel.find(label));
+	if (matched != m_allCollectionsByLabel.cend())
+	{
+		return matched->second.get();
+	}
+	return nullptr;
+}
+
 bool CollectionManager::PolicyRepeat(const std::string& groupName, const std::string& collectionName) const
 {
 	const std::string label(MakeLabel(groupName, collectionName));
@@ -503,8 +567,11 @@ bool CollectionManager::PolicyRepeat(const std::string& groupName, const std::st
 	const auto matched(m_allCollectionsByLabel.find(label));
 	if (matched != m_allCollectionsByLabel.cend())
 	{
-		return matched->second->Policy().Repeat();
+		bool repeat(matched->second->Policy().Repeat());
+		DBG_DMESSAGE("Collection {}/{} labeled as {} policy-repeat={}", groupName, collectionName, label, repeat);
+		return repeat;
 	}
+	REL_ERROR("Collection {}/{} labeled as {} not found", groupName, collectionName, label);
 	return false;
 }
 
@@ -712,8 +779,11 @@ void CollectionManager::ResolveMembership(void)
 	// record static members before resolving
 	for (const auto& collection : m_allCollectionsByLabel)
 	{
-		for (const auto member : collection.second->Members())
+		auto staticMembers(collection.second->Members());
+		REL_MESSAGE("Collection {} has {} static members", collection.first, staticMembers.size());
+		for (const auto member : staticMembers)
 		{
+			REL_MESSAGE("Static member {}/0x{:08x}", member->GetName(), member->GetFormID());
 			RecordCollectibleForm(collection.second, member, uniqueMembers);
 		}
 	}
@@ -721,6 +791,7 @@ void CollectionManager::ResolveMembership(void)
 	auto processFormType = [&](const RE::FormType formType) {
 		for (const auto form : RE::TESDataHandler::GetSingleton()->GetFormArray(formType))
 		{
+			DBG_VMESSAGE("Checking {}/0x{:08x}", form->GetName(), form->GetFormID());
 			if (!FormUtils::IsConcrete(form))
 				continue;
 			if (FormIsLeveledNPC(form))
@@ -734,6 +805,7 @@ void CollectionManager::ResolveMembership(void)
 				ConditionMatcher matcher(form);
 				if (collection.second->IsStaticMatch(matcher))
 				{
+					REL_MESSAGE("{}/0x{:08x} matched Collection {}", form->GetName(), form->GetFormID(), collection.first);
 					// Any condition on this collection that has a scope has aggregated the valid scopes in the matcher
 					collection.second->SetScopes(matcher.ScopesSeen());
 					RecordCollectibleForm(collection.second, form, uniqueMembers);
@@ -743,12 +815,14 @@ void CollectionManager::ResolveMembership(void)
 	};
 	for (const auto& signature : SignatureCondition::ValidSignatures())
 	{
+		REL_MESSAGE("Check Signature {}, form type {}", signature.first, RE::FormTypeToString(signature.second));
 		processFormType(signature.second);
 	}
 	// named objects processed in DataCase::CategorizeLootables or otherwise Lootable, but not valid in SignatureCondition
 	std::vector<RE::FormType> extraFormTypes = {
 		RE::FormType::Activator,
 		RE::FormType::Ammo,
+		RE::FormType::Container,			// blacklisted containers e.g. Missives
 		RE::FormType::Flora,
 		RE::FormType::Light,
 		RE::FormType::NPC,
@@ -758,6 +832,7 @@ void CollectionManager::ResolveMembership(void)
 	};
 	for (const auto& extraFormType : extraFormTypes)
 	{
+		REL_MESSAGE("Check extra form type {}", RE::FormTypeToString(extraFormType));
 		processFormType(extraFormType);
 	}
 	REL_MESSAGE("Collections contain {} unique objects", uniqueMembers.size());

@@ -24,20 +24,19 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
-
 class UIState {
 public:
+
 	static UIState& Instance();
 	UIState();
 
-	bool WaitUntilVMGoodToGo();
+	void WaitUntilVMGoodToGo();
 	void ReportVMGoodToGo(const bool delayed, const int nonce);
 	void Reset();
 	void SetMCMState(const bool isOpen);
+	ScanStatus OKToScan() const;
 
 private:
-	bool OKToScan() const;
-
 	// Worker thread loop delays once UI ready
 	static constexpr double OnUIClosedThreadDelaySeconds = 1.0;
 

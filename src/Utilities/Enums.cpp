@@ -24,6 +24,22 @@ http://www.fsf.org/licensing/licenses
 
 namespace shse
 {
+std::string BrotliDecoderResultString(const BrotliDecoderResult brotliDecoderResult)
+{
+	switch (brotliDecoderResult) {
+	case BROTLI_DECODER_RESULT_ERROR:
+		return "BrotliDecoderResultError";
+	case BROTLI_DECODER_RESULT_SUCCESS:
+		return "BrotliDecoderResultSuccess";
+	case BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT:
+		return "BrotliDecoderResultNeedsMoreInput";
+	case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
+		return "BrotliDecoderResultNeedsMoreOutput";
+	default:
+		return "OutOfRange";
+	}
+}
+
 std::string LootingTypeString(const LootingType lootingType)
 {
 	switch (lootingType) {
@@ -51,11 +67,14 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ContainerPermanentlyOffLimits: return "ContainerPermanentlyOffLimits";
 	case Lootability::CorruptArrowPosition: return "CorruptArrowPosition";
 	case Lootability::CannotMineTwiceInSameCellVisit: return "CannotMineTwiceInSameCellVisit";
+	case Lootability::AutoMiningDisabledByIncompatibleMod: return "AutoMiningDisabledByIncompatibleMod";
+	case Lootability::CannotMineIfSneaking: return "CannotMineIfSneaking";
 	case Lootability::ReferenceBlacklisted : return "ReferenceBlacklisted";
 	case Lootability::UnnamedReference : return "UnnamedReference";
 	case Lootability::ReferenceIsPlayer : return "ReferenceIsPlayer";
 	case Lootability::ReferenceIsLiveActor : return "ReferenceIsLiveActor";
 	case Lootability::FloraHarvested : return "FloraHarvested";
+	case Lootability::SyntheticFloraHarvested : return "SyntheticFloraHarvested";
 	case Lootability::PendingHarvest : return "PendingHarvest";
 	case Lootability::ContainerLootedAlready : return "ContainerLootedAlready";
 	case Lootability::DynamicReferenceLootedAlready : return "DynamicReferenceLootedAlready";
@@ -92,6 +111,7 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::ValueWeightPreventsLooting : return "ValueWeightPreventsLooting";
 	case Lootability::ItemTheftTriggered : return "ItemTheftTriggered";
 	case Lootability::HarvestOperationPending : return "HarvestOperationPending";
+	case Lootability::HarvestOperationTimeout : return "HarvestOperationTimeout";
 	case Lootability::ContainerHasNoLootableItems : return "ContainerHasNoLootableItems";
 	case Lootability::ContainerIsLocked : return "ContainerIsLocked";
 	case Lootability::ContainerIsBossChest : return "ContainerIsBossChest";
@@ -110,13 +130,19 @@ std::string LootabilityName(const Lootability lootability)
 	case Lootability::OutOfScope: return "OutOfScope";
 	case Lootability::PlayerHouseRestrictsLooting: return "PlayerHouseRestrictsLooting";
 	case Lootability::ReferenceActivationBlocked: return "ReferenceActivationBlocked";
-	case Lootability::NPCIsAGhost: return "NPCIsAGhost";
+	case Lootability::NPCIsDisintegrating: return "NPCIsDisintegrating";
 	default: return "";
 	}
 }
 
-bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType)
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType, const double weight)
 {
+	// lockpicks get tested here, other exempt types do not
+	if (!AlwaysValueWeightExempt(objectType) && weight == 0.0 && SettingsCache::Instance().CheckWeightlessValue())
+	{
+		DBG_VMESSAGE("Must check weightless item value > {}", SettingsCache::Instance().WeightlessMinimumValue());
+		return true;
+	}
 	if (IsValueWeightExempt(objectType))
 	{
 		DBG_VMESSAGE("No V/W check for objType {}", GetObjectTypeName(objectType));
@@ -152,6 +178,8 @@ std::string ExcessInventoryExemptionString(const ExcessInventoryExemption excess
 		return "Ineligible";
 	case ExcessInventoryExemption::IsLeveledItem:
 		return "IsLeveledItem";
+	case ExcessInventoryExemption::Anchored:
+		return "Anchored";
 	case ExcessInventoryExemption::NotFound:
 		return "NotFound";
 	default:
@@ -192,5 +220,7 @@ std::string EnchantedObjectHandlingString(const EnchantedObjectHandling enchante
 		return "OutOfRange";
 	}
 }
+
+const char* ScanStatusNames[] = { "GoodToGo", "MCMOpen", "GamePaused" };
 
 }

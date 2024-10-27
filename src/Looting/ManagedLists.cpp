@@ -280,7 +280,6 @@ bool ManagedList::HasEntryWithSameName(const RE::TESForm* form) const
 
 void ManagedTargets::Reset()
 {
-	REL_MESSAGE("Reset TransferList");
 	ManagedList::Reset();
 	m_orderedList.clear();
 	m_containers.clear();

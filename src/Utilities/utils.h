@@ -143,7 +143,7 @@ namespace JSONUtils
 			{
 				// schema enforces 8-char HEX format
 				RE::FormID formID(StringUtils::ToFormID(nextID));
-				const FORMTYPE* form(RE::TESDataHandler::GetSingleton()->LookupForm<FORMTYPE>(shse::LoadOrder::Instance().AsRaw(formID), entry.first));
+				const FORMTYPE* form(shse::LoadOrder::Instance().LookupForm<FORMTYPE>(shse::LoadOrder::Instance().AsRaw(formID), entry.first));
 				if (!form)
 				{
 					REL_WARNING("FormsCondition requires valid Forms, got {}/0x{:08x}", entry.first.c_str(), formID);

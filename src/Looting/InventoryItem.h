@@ -34,7 +34,7 @@ public:
 	InventoryItem(const InventoryItem& rhs);
 
 	// returns number of objects added
-	size_t TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool collectible, const bool inlineTransfer);
+	size_t TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool inlineTransfer);
 
 	inline RE::TESBoundObject* BoundObject() const { return m_entry->GetObject(); }
 	inline ObjectType LootObjectType() const { return m_objectType; }
@@ -42,8 +42,8 @@ public:
 	void MakeCopies(RE::TESObjectREFR* target, size_t count);
 
 private:
-	void Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList,
-		ptrdiff_t count, const bool collectible);
+	void Remove(
+		RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count);
 
 	bool m_inlineTransfer;
 	mutable std::unique_ptr<RE::InventoryEntryData> m_entry;

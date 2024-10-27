@@ -40,14 +40,14 @@
     },
     {
       "name": "Canticle Bark",
-      "description": "Canticle Bark",
+      "description": "Canticle Bark and Soul Fissure",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "forms": [
             {
               "plugin": "Dawnguard.esm",
-              "form": [ "00019328" ]
+              "form": [ "00019328", "00002842" ]
             }
           ]
         }
@@ -55,7 +55,7 @@
     },
     {
       "name": "LoTD Excavation Sites and Icy Shards",
-      "description": "LoTD Excavation Sites and Icy Shards",
+      "description": "LoTD Excavation Sites, Crystalline Repository and Icy Shards",
       "rootFilter": {
         "operator": "AND",
         "condition": {
@@ -67,6 +67,10 @@
             {
               "plugin": "LegacyoftheDragonborn.esm",
               "form": [ "004f05e5" ]
+            },
+            {
+              "plugin": "LegacyoftheDragonborn.esm",
+              "form": [ "0050f44e" ]
             }
           ]
         }
@@ -112,6 +116,21 @@
             {
               "plugin": "SkyrimsUniqueTreasures.esp",
               "form": [ "0000F700" ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Thirteen Oranges Sea of Ghosts",
+      "description": "Padomaic Flower",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "quest_seaofghosts.esp",
+              "form": [ "00045d6c" ]
             }
           ]
         }

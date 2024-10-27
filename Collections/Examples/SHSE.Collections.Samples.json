@@ -293,6 +293,23 @@
           }
         }
       }
+    },
+    {
+      "$comment": "Leave behind OBIS facemasks",
+      "name": "Facemasks",
+      "description": "",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "plugin": [ "OBIS SE.esp" ],
+          "signature": [ "ARMO" ],
+          "nameMatch": {
+            "isNPC": false,
+            "matchIf": "startsWith",
+            "names": [ "Face" ]
+          }
+        }
+      }
     }
   ]
 }

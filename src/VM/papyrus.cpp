@@ -36,9 +36,11 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/TheftCoordinator.h"
 #include "Collections/CollectionManager.h"
+#include "VM/TaskDispatcher.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
+#include "Ver.h"
 
 namespace
 {
@@ -92,7 +94,7 @@ namespace papyrus
 
 	RE::BSFixedString GetPluginVersion(RE::StaticFunctionTag*)
 	{
-		return RE::BSFixedString(VersionInfo::Instance().GetPluginVersionString());
+		return RE::BSFixedString(Version::NAME);
 	}
 
 	RE::BSFixedString GetTextObjectType(RE::StaticFunctionTag*, RE::TESForm* thisForm)
@@ -298,9 +300,43 @@ namespace papyrus
 		INIFile::GetInstance()->SaveFile();
 	}
 
-	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* critter, RE::TESForm* lootable)
+	void ClearLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* producer)
 	{
-		shse::ProducerLootables::Instance().SetLootableForProducer(critter, lootable ? lootable->As<RE::TESBoundObject>() : nullptr);
+		shse::ProducerLootables::Instance().ClearLootableForProducer(producer);
+		return;
+	}
+
+	void SetLootableForProducer(RE::StaticFunctionTag*, RE::TESForm* producer, RE::TESForm* lootable)
+	{
+		if (!producer)
+		{
+			REL_ERROR("SetLootableForProducer requires Producer");
+			return;
+		}
+		if (!lootable)
+		{
+			REL_ERROR("SetLootableForProducer requires Lootable");
+			return;
+		}
+		REL_MESSAGE("Store Lootable 0x{:08x} for producer 0x{:08x}", lootable->GetFormID(), producer->GetFormID());
+		RE::TESLevItem* leveledItem( lootable->As<RE::TESLevItem>());
+		if (leveledItem)
+		{
+			shse::ProducerLootables::Instance().ResolveLootableForProducer(producer, leveledItem);
+			return;
+		}
+		RE::TESBoundObject* item( lootable->As<RE::TESBoundObject>());
+		if (item)
+		{
+			shse::ProducerLootables::Instance().SetLootableForProducer(producer, item);
+			return;
+		}
+		REL_WARNING("Lootable 0x{:08x} for producer 0x{:08x} has invalid Form Type", producer->GetFormID(), lootable->GetFormID());
+	}
+
+	void SetHarvested(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
+	{
+		shse::DataCase::GetInstance()->SetSyntheticFloraHarvested(refr, true);
 	}
 
 	void PrepareSPERGMining(RE::StaticFunctionTag*)
@@ -311,6 +347,26 @@ namespace papyrus
 	void PostprocessSPERGMining(RE::StaticFunctionTag*)
 	{
 		shse::ScanGovernor::Instance().SPERGMiningEnd();
+	}
+
+	void PeriodicReminder(RE::StaticFunctionTag*, RE::BGSMessage* mesg)
+	{
+		// bail if MESG missing or requires MessageBox
+		if (!mesg || (mesg->flags & RE::BGSMessage::MessageFlag::kMessageBox))
+			return;
+		RE::BSString description;
+		mesg->GetDescription(description, nullptr);
+		shse::ScanGovernor::Instance().PeriodicReminder(description.c_str());
+	}
+
+	void PeriodicReminderString(RE::StaticFunctionTag*, RE::BSFixedString msg)
+	{
+		shse::ScanGovernor::Instance().PeriodicReminder(msg.c_str());
+	}
+
+	void UnblockMineable(RE::StaticFunctionTag*, RE::TESObjectREFR* mineable)
+	{
+		shse::DataCase::GetInstance()->ForgetFirehoseSource(mineable);
 	}
 
 	void AllowSearch(RE::StaticFunctionTag*)
@@ -411,16 +467,119 @@ namespace papyrus
 	{
 		return shse::LocationTracker::Instance().CurrentPlayerPlace();
 	}
-
-	bool UnlockHarvest(RE::StaticFunctionTag*, const int refrID, const int baseID,
-		const RE::BSFixedString baseName, const bool isSilent)
+	
+	void NotifyActivated(RE::StaticFunctionTag*, RE::TESForm* itemForm, int itemType, bool collectible, int refrID, int baseID,
+		bool notify, RE::BSFixedString baseName, int count, bool activated, bool isSilent, bool isWhitelisted)
 	{
-		return shse::ScanGovernor::Instance().UnlockHarvest(RE::FormID(refrID), RE::FormID(baseID), baseName.c_str(), isSilent);
+		DBG_VMESSAGE("NotifyActivated={} for REFR 0x{:08x} to 0x{:08x}/{}", activated, refrID, baseID, baseName.c_str());
+		if (activated)
+		{
+			if (notify)
+			{
+				std::string activateMsg;
+				if (count >= 2)
+				{
+					activateMsg = shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG");
+					StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
+					StringUtils::Replace(activateMsg, "{COUNT}", std::to_string(count));
+				}
+				else
+				{
+					activateMsg = shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE_MSG");
+					StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
+				}
+				if (!activateMsg.empty())
+				{
+					RE::DebugNotification(activateMsg.c_str());
+				}
+			}
+			if (isWhitelisted)
+			{
+				std::string whitelistMsg = shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE(COUNT)_MSG");
+				StringUtils::Replace(whitelistMsg, "{ITEMNAME}", baseName.c_str());
+				if (!whitelistMsg.empty())
+				{
+					RE::DebugNotification(whitelistMsg.c_str());
+				}
+			}
+			if (collectible)
+			{
+				shse::CollectionManager::Collectibles().CheckEnqueueAddedItem(
+					itemForm->As<RE::TESBoundObject>(), INIFile::SecondaryType::containers, ObjectType(itemType));
+			}
+		}
+		shse::ScanGovernor::Instance().UnlockHarvest(RE::FormID(refrID), RE::FormID(baseID), baseName.c_str(), isSilent);
+	}
+
+	bool ActivateItem(const char* context, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		if (!target || !activator)
+		{
+			if (target)
+			{
+				REL_ERROR("{} target {}/0x{:08x} has no activator", context, target->GetName(), target->GetFormID());
+			}
+			else if (activator)
+			{
+				REL_ERROR("{} activator {}/0x{:08x} has no target", context, activator->GetName(), activator->GetFormID());
+			}
+			else
+			{
+				REL_ERROR("{} has neither activator nor target", context);
+			}
+			return false;
+		}
+		RE::Setting* setting(nullptr);
+		RE::INISettingCollection* iniSettingCollection(nullptr);
+		bool showHUD(false);
+		if (suppressMessage)
+		{
+			iniSettingCollection = RE::INISettingCollection::GetSingleton();
+			setting = iniSettingCollection ? iniSettingCollection->GetSetting("bShowHUDMessages:Interface") : nullptr;
+    		showHUD = (setting && setting->GetType() == RE::Setting::Type::kBool) ? setting->GetBool() : false;
+		}
+		if (showHUD)
+		{
+			setting->data.b = false;
+		}
+		DBG_VMESSAGE("{} target {}/0x{:08x} with activator {}/0x{:08x} count={}", context, target->GetName(), target->GetFormID(),
+			activator->GetName(), activator->GetFormID(), activateCount);
+		bool result(target->ActivateRef(activator, 0, nullptr, activateCount, false));
+		if (showHUD)
+		{
+			setting->data.b = true;
+		}
+		return result;
+	}
+	// identifiable entry points
+	bool ActivateItem1(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem1", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem2(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem2", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem3(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem3", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem4(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem4", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem5(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem5", target, activator, suppressMessage, activateCount);
+	}
+	bool ActivateItem6(RE::StaticFunctionTag*, RE::TESObjectREFR* target, RE::TESObjectREFR* activator, bool suppressMessage, int activateCount)
+	{
+		return ActivateItem("ActivateItem6", target, activator, suppressMessage, activateCount);
 	}
 
 	void ProcessContainerCollectibles(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
 	{
-		shse::CollectionManager::Instance().CollectFromContainer(refr);
+		shse::CollectionManager::Collectibles().CollectFromContainer(refr);
 	}
 
 	void TryForceHarvest(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -584,6 +743,11 @@ namespace papyrus
 		return true;
 	}
 
+	bool UseUnderwear(RE::StaticFunctionTag*)
+	{
+		return shse::DataCase::GetInstance()->UseUnderwear();
+	}
+
 	RE::BSFixedString PrintFormID(RE::StaticFunctionTag*, const int formID)
 	{
 		return RE::BSFixedString(StringUtils::FormIDString(RE::FormID(formID)).c_str());
@@ -623,128 +787,108 @@ namespace papyrus
 
 	bool CollectionsInUse(RE::StaticFunctionTag*)
 	{
-		return shse::CollectionManager::Instance().IsAvailable();
+		return shse::CollectionManager::Collectibles().IsAvailable();
 	}
 
-	void FlushAddedItems(RE::StaticFunctionTag*, const float gameTime, const std::vector<RE::TESForm*> forms,
-		const std::vector<int> scopes, const std::vector<int> objectTypes, const int itemCount)
-	{
-		DBG_MESSAGE("Flush {}/{} added items", itemCount, forms.size());
-		auto form(forms.cbegin());
-		auto scope(scopes.cbegin());
-		auto objectType(objectTypes.cbegin());
-		int current(0);
-		shse::PlayerState::Instance().UpdateGameTime(gameTime);
-		while (current < itemCount)
-		{
-			// checked API
-			shse::CollectionManager::Instance().CheckEnqueueAddedItem(
-				(*form)->As<RE::TESBoundObject>(), INIFile::SecondaryType(*scope), ObjectType(*objectType));
-			++current;
-			++form;
-			++scope;
-			++objectType;
-		}
-	}
-
-	void PushGameTime(RE::StaticFunctionTag*, const float gameTime)
-	{
-		shse::PlayerState::Instance().UpdateGameTime(gameTime);
-	}
+	// void RecordAddedItem(RE::StaticFunctionTag*, RE::TESForm* baseItem, int scope, int objectType)
+	// {
+	// 	shse::CollectionManager::Collectibles().CheckEnqueueAddedItem(
+	// 		baseItem->As<RE::TESBoundObject>(), INIFile::SecondaryType(scope), ObjectType(objectType));
+	// }
 
 	int CollectionGroups(RE::StaticFunctionTag*)
 	{
-		return shse::CollectionManager::Instance().NumberOfFiles();
+		return shse::CollectionManager::Collectibles().NumberOfFiles();
 	}
 
 	std::string CollectionGroupName(RE::StaticFunctionTag*, const int fileIndex)
 	{
-		return shse::CollectionManager::Instance().GroupNameByIndex(fileIndex);
+		return shse::CollectionManager::Collectibles().GroupNameByIndex(fileIndex);
 	}
 
 	std::string CollectionGroupFile(RE::StaticFunctionTag*, const int fileIndex)
 	{
-		return shse::CollectionManager::Instance().GroupFileByIndex(fileIndex);
+		return shse::CollectionManager::Collectibles().GroupFileByIndex(fileIndex);
 	}
 
-	int CollectionsInGroup(RE::StaticFunctionTag*, const std::string fileName)
+	int CollectionsInGroup(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return shse::CollectionManager::Instance().NumberOfActiveCollections(fileName);
+		return shse::CollectionManager::Collectibles().NumberOfActiveCollections(groupName);
 	}
 
 	std::string CollectionNameByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
 	{
-		return shse::CollectionManager::Instance().NameByIndexInGroup(groupName, collectionIndex);
+		return shse::CollectionManager::Collectibles().NameByIndexInGroup(groupName, collectionIndex);
 	}
 
 	std::string CollectionDescriptionByIndexInGroup(RE::StaticFunctionTag*, const std::string groupName, const int collectionIndex)
 	{
-		return shse::CollectionManager::Instance().DescriptionByIndexInGroup(groupName, collectionIndex);
+		return shse::CollectionManager::Collectibles().DescriptionByIndexInGroup(groupName, collectionIndex);
 	}
 
 	bool CollectionAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return shse::CollectionManager::Instance().PolicyRepeat(groupName, collectionName);
+		return shse::CollectionManager::Collectibles().PolicyRepeat(groupName, collectionName);
 	}
 	bool CollectionNotifies(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return shse::CollectionManager::Instance().PolicyNotify(groupName, collectionName);
+		return shse::CollectionManager::Collectibles().PolicyNotify(groupName, collectionName);
 	}
 	int CollectionAction(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().PolicyAction(groupName, collectionName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().PolicyAction(groupName, collectionName));
 	}
 	void PutCollectionAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const bool allowRepeats)
 	{
-		shse::CollectionManager::Instance().PolicySetRepeat(groupName, collectionName, allowRepeats);
+		shse::CollectionManager::Collectibles().PolicySetRepeat(groupName, collectionName, allowRepeats);
 	}
 	void PutCollectionNotifies(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const bool notifies)
 	{
-		shse::CollectionManager::Instance().PolicySetNotify(groupName, collectionName, notifies);
+		shse::CollectionManager::Collectibles().PolicySetNotify(groupName, collectionName, notifies);
 	}
 	void PutCollectionAction(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName, const int action)
 	{
-		shse::CollectionManager::Instance().PolicySetAction(groupName, collectionName, shse::CollectibleHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Collectibles().PolicySetAction(groupName, collectionName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
 	bool CollectionGroupAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return shse::CollectionManager::Instance().GroupPolicyRepeat(groupName);
+		return shse::CollectionManager::Collectibles().GroupPolicyRepeat(groupName);
 	}
 	bool CollectionGroupNotifies(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return shse::CollectionManager::Instance().GroupPolicyNotify(groupName);
+		return shse::CollectionManager::Collectibles().GroupPolicyNotify(groupName);
 	}
 	int CollectionGroupAction(RE::StaticFunctionTag*, const std::string groupName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().GroupPolicyAction(groupName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().GroupPolicyAction(groupName));
 	}
 	void PutCollectionGroupAllowsRepeats(RE::StaticFunctionTag*, const std::string groupName, const bool allowRepeats)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetRepeat(groupName, allowRepeats);
+		shse::CollectionManager::Collectibles().GroupPolicySetRepeat(groupName, allowRepeats);
 	}
 	void PutCollectionGroupNotifies(RE::StaticFunctionTag*, const std::string groupName, const bool notifies)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetNotify(groupName, notifies);
+		shse::CollectionManager::Collectibles().GroupPolicySetNotify(groupName, notifies);
 	}
 	void PutCollectionGroupAction(RE::StaticFunctionTag*, const std::string groupName, const int action)
 	{
-		shse::CollectionManager::Instance().GroupPolicySetAction(groupName, shse::CollectibleHandlingFromIniSetting(double(action)));
+		shse::CollectionManager::Collectibles().GroupPolicySetAction(groupName, shse::CollectibleHandlingFromIniSetting(double(action)));
 	}
 
 	int CollectionTotal(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().TotalItems(groupName, collectionName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().TotalItems(groupName, collectionName));
 	}
 
 	std::string CollectionStatus(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return shse::CollectionManager::Instance().StatusMessage(groupName, collectionName);
+		return shse::CollectionManager::Collectibles().StatusMessage(groupName, collectionName);
 	}
 
 	int CollectionObtained(RE::StaticFunctionTag*, const std::string groupName, const std::string collectionName)
 	{
-		return static_cast<int>(shse::CollectionManager::Instance().ItemsObtained(groupName, collectionName));
+		return static_cast<int>(shse::CollectionManager::Collectibles().ItemsObtained(groupName, collectionName));
 	}
 
 	int AdventureTypeCount(RE::StaticFunctionTag*)
@@ -797,21 +941,14 @@ namespace papyrus
 		shse::ScanGovernor::Instance().InvokeLootSense();
 	}
 
-	const RE::Actor* GetDetectingActor(RE::StaticFunctionTag*, const int actorIndex, const bool dryRun)
+	void SyncShader(RE::StaticFunctionTag*, const int index, RE::TESEffectShader* shader)
 	{
-		if (dryRun)
-		{
-			return shse::ScanGovernor::Instance().ActorByIndex(static_cast<size_t>(actorIndex));
-		}
-		else
-		{
-			return shse::TheftCoordinator::Instance().ActorByIndex(static_cast<size_t>(actorIndex));
-		}
+		shse::TaskDispatcher::Instance().SetShader(index, shader);
 	}
 
-	void ReportPlayerDetectionState(RE::StaticFunctionTag*, const bool detected)
+	void SetPlayer(RE::StaticFunctionTag*, RE::Actor* player)
 	{
-		shse::TheftCoordinator::Instance().StealOrForgetItems(detected);
+		shse::TaskDispatcher::Instance().SetPlayer(player);
 	}
 
 	void CheckLootable(RE::StaticFunctionTag*, RE::TESObjectREFR* refr)
@@ -858,11 +995,18 @@ namespace papyrus
 		a_vm->RegisterFunction("GetPluginVersion", SHSE_PROXY, papyrus::GetPluginVersion);
 		a_vm->RegisterFunction("GetTextObjectType", SHSE_PROXY, papyrus::GetTextObjectType);
 
-		a_vm->RegisterFunction("UnlockHarvest", SHSE_PROXY, papyrus::UnlockHarvest);
+		a_vm->RegisterFunction("NotifyActivated", SHSE_PROXY, papyrus::NotifyActivated);
+		a_vm->RegisterFunction("ActivateItem1", SHSE_PROXY, papyrus::ActivateItem1);
+		a_vm->RegisterFunction("ActivateItem2", SHSE_PROXY, papyrus::ActivateItem2);
+		a_vm->RegisterFunction("ActivateItem3", SHSE_PROXY, papyrus::ActivateItem3);
+		a_vm->RegisterFunction("ActivateItem4", SHSE_PROXY, papyrus::ActivateItem4);
+		a_vm->RegisterFunction("ActivateItem5", SHSE_PROXY, papyrus::ActivateItem5);
+		a_vm->RegisterFunction("ActivateItem6", SHSE_PROXY, papyrus::ActivateItem6);
 		a_vm->RegisterFunction("NotifyManualLootItem", SHSE_PROXY, papyrus::NotifyManualLootItem);
 		a_vm->RegisterFunction("IsQuestTarget", SHSE_PROXY, papyrus::IsQuestTarget);
 		a_vm->RegisterFunction("IsDynamic", SHSE_PROXY, papyrus::IsDynamic);
 		a_vm->RegisterFunction("IsLootableObject", SHSE_PROXY, papyrus::IsLootableObject);
+		a_vm->RegisterFunction("UseUnderwear", SHSE_PROXY, papyrus::UseUnderwear);
 		a_vm->RegisterFunction("ValidTransferTargetLocation", SHSE_PROXY, papyrus::ValidTransferTargetLocation);
 		a_vm->RegisterFunction("SupportsExcessHandling", SHSE_PROXY, papyrus::SupportsExcessHandling);
 		a_vm->RegisterFunction("SellItem", SHSE_PROXY, papyrus::SellItem);
@@ -888,8 +1032,13 @@ namespace papyrus
 		a_vm->RegisterFunction("SaveIniFile", SHSE_PROXY, papyrus::SaveIniFile);
 
 		a_vm->RegisterFunction("SetLootableForProducer", SHSE_PROXY, papyrus::SetLootableForProducer);
+		a_vm->RegisterFunction("ClearLootableForProducer", SHSE_PROXY, papyrus::ClearLootableForProducer);
+		a_vm->RegisterFunction("SetHarvested", SHSE_PROXY, papyrus::SetHarvested);
 		a_vm->RegisterFunction("PrepareSPERGMining", SHSE_PROXY, papyrus::PrepareSPERGMining);
 		a_vm->RegisterFunction("PostprocessSPERGMining", SHSE_PROXY, papyrus::PostprocessSPERGMining);
+		a_vm->RegisterFunction("PeriodicReminder", SHSE_PROXY, papyrus::PeriodicReminder);
+		a_vm->RegisterFunction("PeriodicReminderString", SHSE_PROXY, papyrus::PeriodicReminderString);
+		a_vm->RegisterFunction("UnblockMineable", SHSE_PROXY, papyrus::UnblockMineable);
 
 		a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
 		a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);
@@ -910,8 +1059,6 @@ namespace papyrus
 		a_vm->RegisterFunction("ReplaceArray", SHSE_PROXY, papyrus::ReplaceArray);
 
 		a_vm->RegisterFunction("CollectionsInUse", SHSE_PROXY, papyrus::CollectionsInUse);
-		a_vm->RegisterFunction("FlushAddedItems", SHSE_PROXY, papyrus::FlushAddedItems);
-		a_vm->RegisterFunction("PushGameTime", SHSE_PROXY, papyrus::PushGameTime);
 		a_vm->RegisterFunction("CollectionGroups", SHSE_PROXY, papyrus::CollectionGroups);
 		a_vm->RegisterFunction("CollectionGroupName", SHSE_PROXY, papyrus::CollectionGroupName);
 		a_vm->RegisterFunction("CollectionGroupFile", SHSE_PROXY, papyrus::CollectionGroupFile);
@@ -945,9 +1092,9 @@ namespace papyrus
 		a_vm->RegisterFunction("ToggleCalibration", SHSE_PROXY, papyrus::ToggleCalibration);
 		a_vm->RegisterFunction("ShowLocation", SHSE_PROXY, papyrus::ShowLocation);
 		a_vm->RegisterFunction("GlowNearbyLoot", SHSE_PROXY, papyrus::GlowNearbyLoot);
+		a_vm->RegisterFunction("SyncShader", SHSE_PROXY, papyrus::SyncShader);
+		a_vm->RegisterFunction("SetPlayer", SHSE_PROXY, papyrus::SetPlayer);
 
-		a_vm->RegisterFunction("GetDetectingActor", SHSE_PROXY, papyrus::GetDetectingActor);
-		a_vm->RegisterFunction("ReportPlayerDetectionState", SHSE_PROXY, papyrus::ReportPlayerDetectionState);
 		a_vm->RegisterFunction("CheckLootable", SHSE_PROXY, papyrus::CheckLootable);
 
 		a_vm->RegisterFunction("StartTimer", SHSE_PROXY, papyrus::StartTimer);

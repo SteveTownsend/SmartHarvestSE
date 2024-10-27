@@ -29,7 +29,8 @@ http://www.fsf.org/licensing/licenses
 namespace shse
 {
        
-LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) : m_ref(ref), m_scope(scope), m_lootable(nullptr)
+LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) :
+m_ref(ref), m_scope(scope), m_lootable(nullptr)
 {
 	// Projectile REFRs need to be mapped to lootable Ammo
 	const RE::Projectile* projectile(ref->As<RE::Projectile>());
@@ -106,10 +107,10 @@ bool LootableREFR::IsFlora() const
 bool LootableREFR::HasIngredient() const
 {
 	// flora, but not those that produce cash money
-	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
 	auto target(GetTarget());
 	bool hasIngredient(false);
-	if (m_typeName != septimsName && (target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>()))
+	if (m_objectType != ObjectType::septims &&
+		(target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>() || DataCase::GetInstance()->IsSyntheticFlora(target)))
 	{
 		hasIngredient = true;
 	}
@@ -120,8 +121,7 @@ bool LootableREFR::HasIngredient() const
 bool LootableREFR::HarvestForbiddenForForm() const
 {
 	// flora, but not those that produce cash money
-	static const std::string septimsName(GetObjectTypeName(ObjectType::septims));
-	if (m_typeName != septimsName && m_flora)
+	if (m_objectType != ObjectType::septims && m_flora)
 	{
 		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
 	}
@@ -173,6 +173,10 @@ const RE::TESBoundObject* LootableREFR::GetTarget() const
 void LootableREFR::SetLootable(const RE::TESBoundObject* lootable)
 {
 	m_lootable = lootable;
+	m_objectType = GetBaseObjectType(m_lootable);
+	m_typeName = GetObjectTypeName(m_objectType);
+	DBG_MESSAGE("Producer REFR 0x{:08x} Base {}/0x{:08x} yields Object Type {}",
+		m_ref->GetFormID(), m_lootable->GetName(), m_lootable->GetFormID(), m_typeName);
 }
 
 uint32_t LootableREFR::CalculateWorth(void) const

@@ -56,7 +56,8 @@ CosaveData::CosaveData()
 void CosaveData::Clear()
 {
 	// Clear state that we will reseed. LoadOrder preserves current state and compares to cosave version.
-	CollectionManager::Instance().Clear();
+	CollectionManager::Collectibles().Clear();
+	CollectionManager::ExcessInventory().Clear();
 	VisitedPlaces::Instance().Reset();
 	PartyMembers::Instance().Reset();
 	ActorTracker::Instance().ClearVictims();
@@ -79,7 +80,7 @@ void CosaveData::SeedState()
 				LoadOrder::Instance().UpdateFrom(record.second);
 				break;
 			case SerializationRecordType::Collections:
-				CollectionManager::Instance().UpdateFrom(record.second);
+				CollectionManager::Collectibles().UpdateFrom(record.second);
 				break;
 			case SerializationRecordType::PlacesVisited:
 				VisitedPlaces::Instance().UpdateFrom(record.second);
@@ -92,6 +93,9 @@ void CosaveData::SeedState()
 				break;
 			case SerializationRecordType::Adventures:
 				AdventureTargets::Instance().UpdateFrom(record.second);
+				break;
+			case SerializationRecordType::ExcessInventory:
+				CollectionManager::ExcessInventory().UpdateFrom(record.second);
 				break;
 			default:
 				break;
@@ -123,7 +127,7 @@ bool CosaveData::Serialize(SKSE::SerializationInterface* intf)
 		REL_MESSAGE("Wrote LORD record {} bytes", record.length());
 	}
 	// output Collection Groups - Definitions and Members
-	if (!CompressionUtils::EncodeBrotli(shse::CollectionManager::Instance(), record))
+	if (!CompressionUtils::EncodeBrotli(shse::CollectionManager::Collectibles(), record))
 	{
 		return false;
 	}
@@ -190,6 +194,20 @@ bool CosaveData::Serialize(SKSE::SerializationInterface* intf)
 	{
 		REL_MESSAGE("Wrote ADVN record {} bytes", record.length());
 	}
+	// output Excess Inventory Collection Groups - Definitions and Members
+	if (!CompressionUtils::EncodeBrotli(shse::CollectionManager::ExcessInventory(), record))
+	{
+		return false;
+	}
+	if (!intf->WriteRecord('EXCS', 1, record.c_str(), static_cast<uint32_t>(record.length())))
+	{
+		REL_ERROR("Failed to serialize EXCS");
+		return false;
+	}
+	else
+	{
+		REL_MESSAGE("Wrote EXCS record {} bytes", record.length());
+	}
 	return true;
 }
 
@@ -237,6 +255,11 @@ bool CosaveData::Deserialize(SKSE::SerializationInterface* intf)
 			// Adventure Events
 			REL_MESSAGE("Read ADVN record {} bytes", length);
 			recordType = shse::SerializationRecordType::Adventures;
+			break;
+		case 'EXCS':
+			// Excess Inventory - Definitions and Members
+			REL_MESSAGE("Read EXCS record {} bytes", length);
+			recordType = shse::SerializationRecordType::ExcessInventory;
 			break;
 		default:
 			REL_ERROR("Unrecognized signature type {}", readType);

@@ -31,7 +31,8 @@ inline bool IsBookObject(ObjectType objType)
 
 PlayerAffinity GetPlayerAffinity(const RE::Actor* actor);
 bool IsSummoned(const RE::Actor* actor);
-bool IsGhost(const RE::Actor* actor);
+bool StartsDead(const RE::TESObjectREFR* refr);
+bool IsDisintegrating(const RE::Actor* actor);
 bool IsQuestTargetNPC(const RE::Actor* actor);
 
 bool HasAshPile(const RE::TESObjectREFR* refr);
@@ -62,6 +63,15 @@ inline bool IsValueWeightExempt(ObjectType objectType)
 	return objectType == ObjectType::critter ||
 		objectType == ObjectType::flora ||
 		objectType == ObjectType::lockpick ||
+		objectType == ObjectType::key ||
+		objectType == ObjectType::oreVein ||
+		objectType == ObjectType::septims;
+}
+
+inline bool AlwaysValueWeightExempt(ObjectType objectType)
+{
+	return objectType == ObjectType::critter ||
+		objectType == ObjectType::flora ||
 		objectType == ObjectType::key ||
 		objectType == ObjectType::oreVein ||
 		objectType == ObjectType::septims;

@@ -182,17 +182,26 @@ bool IsSummoned(const RE::Actor* actor)
 {
 	const RE::TESNPC* npc(actor->GetActorBase());
 	bool result(npc && npc->IsSummonable());
-	DBG_DMESSAGE("Actor summoned = {}", result ? "true" : "false");
+	DBG_DMESSAGE("Actor summoned = {}", result);
 	return result;
 }
 
 // applies only if NPC
-bool IsGhost(const RE::Actor* actor)
+bool StartsDead(const RE::TESObjectREFR* refr)
 {
-	const RE::TESNPC* npc(actor->GetActorBase());
-	const bool result(npc && npc->HasKeyword(DataCase::GetInstance()->GhostKeyword()));
-	DBG_DMESSAGE("Actor is a ghost = {}", result ? "true" : "false");
+	bool result(refr && refr->loadedData && ((refr->loadedData->flags & RE::TESObjectREFR::RecordFlags::kStartsDead) == 0));
+	DBG_DMESSAGE("Actor starts dead = {}", result);
 	return result;
+}
+
+// applies only if NPC
+bool IsDisintegrating(const RE::Actor* actor)
+{
+	if (actor)
+	{
+		return actor->GetActorRuntimeData().criticalStage == RE::ACTOR_CRITICAL_STAGE::kDisintegrateStart;
+	}
+	return false;
 }
 
 // applies only if NPC

@@ -1,6 +1,6 @@
 /*************************************************************************
 SmartHarvest SE
-Copyright (c) Steve Townsend 2020
+Copyright (c) Steve Townsend 2024
 
 >>> SOURCE LICENSE >>>
 This program is free software; you can redistribute it and/or modify
@@ -17,23 +17,27 @@ A copy of the GNU General Public License is available at
 http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
-#include "PrecompiledHeaders.h"
-#include "LogStackWalker.h"
+#pragma once
 
-LogStackWalker::LogStackWalker() : StackWalker() {}
-
-LogStackWalker::~LogStackWalker() {
-	REL_MESSAGE("Callstack dump :\n{}", m_fullStack.str().c_str());
-}
-
-void LogStackWalker::OnOutput(LPCSTR szText) {
-	m_fullStack << szText;
-	StackWalker::OnOutput(szText);
-}
-
-DWORD LogStackWalker::LogStack(LPEXCEPTION_POINTERS exceptionInfo)
+namespace shse
 {
-	LogStackWalker stackWalker;
-	stackWalker.ShowCallstack(GetCurrentThread(), exceptionInfo->ContextRecord);
-	return EXCEPTION_CONTINUE_SEARCH;
+
+class LeveledItemCategorizer
+{
+public:
+	LeveledItemCategorizer(const RE::TESLevItem* rootItem);
+	virtual ~LeveledItemCategorizer();
+	void CategorizeContents();
+
+private:
+	void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
+
+protected:
+	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) = 0;
+
+	const RE::TESLevItem* m_rootItem;
+	// prevent infinite recursion
+	std::unordered_set<const RE::TESLevItem*> m_lvliSeen;
+};
+
 }

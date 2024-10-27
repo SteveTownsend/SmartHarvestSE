@@ -23,6 +23,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "WorldState/PlacedObjects.h"
 #include "Utilities/utils.h"
+#include "Data/LoadOrder.h"
 
 namespace shse
 {
@@ -192,13 +193,13 @@ void QuestTargets::Analyze()
 					}
 					DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item {}/0x{:08x} has type kAt",
 						targetItem->GetName(), targetItem->GetFormID());
-					// if item is in permitted LVLI, do not blacklist it
 					size_t itemCount(PlacedObjects::Instance().NumberOfInstances(targetItem));
 					if (itemCount >= BoringQuestTargetThreshold)
 					{
 						DBG_VMESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} ignored, too many ({} placed vs threshold {})",
 							targetItem->GetName(), targetItem->GetFormID(), itemCount, BoringQuestTargetThreshold);
 					}
+					// if item is in permitted LVLI, do not blacklist it
 					else if (lvliMembers.contains(targetItem->GetFormID()))
 					{
 						DBG_VMESSAGE("RefAlias ALCO excluded as Quest Target Item {}/0x{:08x}, member of LVLI",
@@ -264,7 +265,66 @@ void QuestTargets::Analyze()
 			}
 		}
 	}
+	BlacklistFavorItems();
 	BlacklistOutliers();
+}
+
+void QuestTargets::BlacklistFavorItems()
+{
+	// https://github.com/SteveTownsend/SmartHarvestSE/issues/387
+	// anything required to satisfy a Favor quest must be handled as a Quest Item irrespective of QUST state.
+	// Otherwise, excess inventory handling may flush them unexpectedly, breaking the QUST.
+	std::vector<std::tuple<std::string, RE::FormID>> favorTargets = {
+		{"Skyrim.esm", 0x3f4bd},	// Double-Distilled Skooma
+		{"Skyrim.esm", 0x403a9},	// Viola's Gold Ring
+		{"Skyrim.esm", 0x403af},	// Adonato's Book
+		{"Skyrim.esm", 0xcadfb},	// Spiced Beef
+		{"Skyrim.esm", 0x64796},	// Ogmund's Amulet of Talos
+		{"Skyrim.esm", 0x647ac},	// Amren's Family Sword
+		{"Skyrim.esm", 0x64b71},	// Hrolfdir's Shield
+		{"Skyrim.esm", 0x931c2},	// Rogatus's Letter
+		{"Skyrim.esm", 0x69007},	// Sondas's Note
+		{"Skyrim.esm", 0x6901d},	// Roggi's Ancestral Shield
+		{"Skyrim.esm", 0x3ad6c},	// Mammoth Tusk
+		{"Skyrim.esm", 0x6a8fd},	// Ghorbash's Ancestral Axe
+		{"Skyrim.esm", 0x6fe72},	// Noster's Helmet
+		{"Skyrim.esm", 0x705b7},	// Berit's Ashes
+		{"Skyrim.esm", 0x705c3},	// Runil's Journal
+		{"Skyrim.esm", 0x2c35a},	// Black-Briar Mead
+		{"Skyrim.esm", 0x1afe4},	// "Night Falls on Sentinel"
+		{"Skyrim.esm", 0x90e32},	// Ring of Pure Mixtures
+		{"Skyrim.esm", 0x90e52},	// Aeri's Note
+		{"Skyrim.esm", 0x940d5},	// Helm of Winterhold
+		{"Skyrim.esm", 0x940d8},	// Staff of Arcane Authority
+		{"Skyrim.esm", 0x940dd},	// Idgrod's Note
+		{"Skyrim.esm", 0x1afc6},	// "Song of the Alchemists"
+		{"Skyrim.esm", 0x1afde},	// "The Mirror"
+		{"Skyrim.esm", 0xcc848},	// Amulet of Arkay
+		{"Skyrim.esm", 0xab85d},	// Queen Freydis's Sword
+		{"Skyrim.esm", 0xbfa0a},	// Shavee's Amulet of Zenithar
+		{"Skyrim.esm", 0xd9399},	// Private Letter
+		{"Dragonborn.esm", 0x1cd72},	// Netch Jelly
+		{"Dragonborn.esm", 0x24e0b},	// Sadri's Sujamma
+		{"Dragonborn.esm", 0x24fa4}		// East Empire Pendant
+	};
+	for (const auto& favorTarget : favorTargets)
+	{
+		std::string espName;
+		RE::FormID formID;
+		std::tie(espName, formID) = favorTarget;
+		RE::TESForm* targetItem(LoadOrder::Instance().LookupForm(formID, espName));
+		if (targetItem)
+		{
+			RE::TESBoundObject* boundObject(targetItem->As<RE::TESBoundObject>());
+			if (boundObject)
+			{
+				REL_VMESSAGE("Blacklist Favor Quest Target {}/0x{:08x}", boundObject->GetName(), boundObject->GetFormID());
+				BlacklistQuestTargetItem(boundObject);
+				continue;
+			}
+		}
+		REL_VMESSAGE("FormID {}/0x{:06x} for Favor Quest does not identify Bound Object", espName, formID);
+	}
 }
 
 void QuestTargets::BlacklistOutliers()
@@ -335,6 +395,8 @@ bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject* item)
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
+	// record in omnibus list for Excess Inventory, dup calls are OK
+	m_questTargetAllItems.insert(item->GetFormID());
 	if (m_questTargetItems.insert(item->GetFormID()).second)
 	{
 		m_userCannotPermission.insert(item->GetFormID());
@@ -356,6 +418,8 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* 
 {
 	if (!FormUtils::IsConcrete(item))
 		return false;
+	// record in omnibus list for Excess Inventory, dup calls are OK
+	m_questTargetAllItems.insert(item->GetFormID());
 	return BlacklistQuestTargetReferencedItemByID(item->GetFormID(), refr->GetFormID());
 }
 
@@ -363,6 +427,8 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* 
 // to preserve immersion and avoid breaking Quests.
 bool QuestTargets::BlacklistQuestTargetReferencedItemByID(const RE::FormID itemID, const RE::FormID refrID)
 {
+	// record in omnibus list for Excess Inventory, dup calls are OK
+	m_questTargetAllItems.insert(itemID);
 	return m_questTargetReferenced[itemID].insert(refrID).second;
 }
 
@@ -374,6 +440,8 @@ bool QuestTargets::BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr)
 	// record the base object
 	if (m_questTargetREFRs.insert(refr->GetFormID()).second)
 	{
+		// record in omnibus list for Excess Inventory, dup calls are OK
+		m_questTargetAllItems.insert(refr->GetBaseObject()->GetFormID());
 		m_userCannotPermission.insert(refr->GetBaseObject()->GetFormID());
 		return true;
 	}
@@ -424,6 +492,12 @@ Lootability QuestTargets::QuestTargetLootability(const RE::TESForm* form, const 
 		return Lootability::CannotLootQuestTarget;
 	}
 	// check for items that can be conditionally excluded
+	return ConditionalQuestItemLootability(form);
+}
+
+Lootability QuestTargets::ConditionalQuestItemLootability(const RE::TESForm* form) const
+{
+	// check for items that can be conditionally excluded
 	const auto condition(m_conditionalQuestTargetItems.find(form->GetFormID()));
 	if (condition != m_conditionalQuestTargetItems.cend() && (condition->second)())
 	{
@@ -442,8 +516,9 @@ bool QuestTargets::AllowsExcessHandling(const RE::TESForm* form) const
 	if (form->IsDynamicForm())
 		return true;
 	RecursiveLockGuard guard(m_questLock);
-	// check for universal item match
-	return !m_questTargetAllItems.contains(form->GetFormID());
+	// check universal item list unmatched and no active conditional handling
+	return !m_questTargetAllItems.contains(form->GetFormID()) &&
+		   (ConditionalQuestItemLootability(form) == Lootability::Lootable);
 }
 
 bool QuestTargets::UserCannotPermission(const RE::TESForm* form) const

@@ -54,6 +54,7 @@ public:
 private:
 	void RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter);
 	InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject* target) const;
+	InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject* target, const bool isDestructive) const;
 
 	const RE::TESObjectREFR* m_refr;
 	INIFile::SecondaryType m_targetType;

@@ -1,0 +1,37 @@
+#pragma once
+
+namespace Version
+{
+	inline constexpr std::size_t MAJOR = @PROJECT_VERSION_MAJOR@;
+	inline constexpr std::size_t MINOR = @PROJECT_VERSION_MINOR@;
+	inline constexpr std::size_t PATCH = @PROJECT_VERSION_PATCH@;
+	inline constexpr auto NAME = "@PROJECT_VERSION@"sv;
+	inline constexpr auto PROJECT = "@PROJECT_NAME@"sv;
+#if _DEBUG
+	inline constexpr auto BUILDTYPE = "Debug"sv;
+#elif defined(_FULL_LOGGING)
+	inline constexpr auto BUILDTYPE = "Logging"sv;
+#else
+	inline constexpr auto BUILDTYPE = "Release"sv;
+#endif
+
+	inline std::string GetExeVersionString()
+	{
+		static std::string versionString;
+		if (versionString.empty())
+		{
+			versionString = "unknown";
+			wchar_t exePath[MAX_PATH+1];
+			DWORD pathLength = REX::W32::GetModuleFileNameW(NULL, exePath, DWORD(MAX_PATH));
+			if (pathLength != 0)
+			{
+				std::optional<REL::Version> exeVersion = REL::GetFileVersion(std::wstring(exePath, exePath + pathLength));
+				if (exeVersion)
+				{
+					versionString = exeVersion->string();
+				}
+			}
+		}
+		return versionString;
+	}
+}

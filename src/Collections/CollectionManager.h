@@ -26,12 +26,64 @@ namespace shse {
 
 typedef std::tuple<RE::TESBoundObject*, const INIFile::SecondaryType, const ObjectType> OwnedItem;
 
+// case-insensitive indexing for std::map and std::multimap is required because strings passed from
+// Papyrus VM are non-deterministic in case
+// see https://stackoverflow.com/questions/1801892/how-can-i-make-the-mapfind-operation-case-insensitive and
+// https://stackoverflow.com/questions/11635/case-insensitive-string-comparison-in-c and
+// https://github.com/Rukan/Grimy-Skyrim-Papyrus-Source/blob/master/StringUtil.psc#L3
+
+// case-independent (ci) "<" binary function
+inline bool ichar_less(const unsigned char &c1, const unsigned char &c2)
+{
+	return std::tolower(c1) < std::tolower(c2);
+}
+struct ci_less
+{
+	bool operator()(const std::string_view lhs, const std::string_view rhs) const
+	{
+		return std::ranges::lexicographical_compare(lhs,		 // source range
+													rhs,		 // dest range
+													ichar_less); // comparison
+	}
+};
+
+// case-independent (ci) equality binary function
+inline bool ichar_equals(char a, char b)
+{
+	return std::tolower(static_cast<unsigned char>(a)) ==
+		   std::tolower(static_cast<unsigned char>(b));
+}
+// equality
+struct ci_equals
+{
+	bool operator()(const std::string& lhs, const std::string& rhs) const
+	{
+		return std::ranges::equal(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(), ichar_equals);
+	}
+};
+// hasher
+struct ci_hash
+{
+	size_t operator()(const std::string &s) const
+	{
+		static std::hash<std::string> hf;
+		std::string myStr(s);
+		StringUtils::ToLower(myStr);
+		return hf(myStr);
+	}
+};
+
 class CollectionManager {
 public:
-	static CollectionManager& Instance();
+	static CollectionManager& Collectibles();
+	static CollectionManager& ExcessInventory();
+	static CollectionManager& SpecialCases();
+	static bool LoadSchema(void);
 
-	CollectionManager();
+	CollectionManager() = delete;
+	CollectionManager(const std::wstring& filePattern);
 	void ProcessDefinitions(void);
+	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher);
 	std::pair<bool, CollectibleHandling> TreatAsCollectible(const ConditionMatcher& matcher, const bool recordDups);
 	void Refresh() const;
 	void CollectFromContainer(const RE::TESObjectREFR* refr);
@@ -54,6 +106,8 @@ public:
 	std::string NameByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	std::string DescriptionByIndexInGroup(const std::string& groupName, const int collectionIndex) const;
 	static std::string MakeLabel(const std::string& groupName, const std::string& collectionName);
+	const Collection* CollectionByLabel(const std::string& groupName, const std::string& collectionName) const;
+	Collection* MutableCollectionByLabel(const std::string& groupName, const std::string& collectionName);
 
 	bool PolicyRepeat(const std::string& groupName, const std::string& collectionName) const;
 	bool PolicyNotify(const std::string& groupName, const std::string& collectionName) const;
@@ -78,6 +132,7 @@ public:
 
 private:
 	bool LoadData(void);
+	void LoadCollectionFiles(const std::wstring& pattern, nlohmann::json_schema::json_validator& validator);
 	bool LoadCollectionGroup(
 		const std::filesystem::path& defFile, const std::string& groupName, nlohmann::json_schema::json_validator& validator);
 	void BuildDecisionTrees(const std::shared_ptr<CollectionGroup>& collectionGroup);
@@ -91,15 +146,21 @@ private:
 	static constexpr size_t CollectedSpamLimit = 10;
 	size_t m_notifications;
 
-	static std::unique_ptr<CollectionManager> m_instance;
+	static std::unique_ptr<CollectionManager> m_collectibles;
+	static std::unique_ptr<CollectionManager> m_excessInventory;
+	static std::unique_ptr<CollectionManager> m_specialCases;
+
+	static nlohmann::json_schema::json_validator m_validator;
+
 	// data loaded ok?
 	bool m_ready;
 
 	mutable RecursiveLock m_collectionLock;
-	std::unordered_map<std::string, std::shared_ptr<Collection>> m_allCollectionsByLabel;
-	mutable std::multimap<std::string, std::string> m_activeCollectionsByGroupName;
-	std::unordered_map<std::string, std::string> m_mcmVisibleFileByGroupName;
-	std::unordered_map<std::string, std::shared_ptr<CollectionGroup>> m_allGroupsByName;
+	// case-insensitive indexing to account for Papyrus sourced strings being mon-deterministic in case
+	std::unordered_map<std::string, std::shared_ptr<Collection>, ci_hash, ci_equals> m_allCollectionsByLabel;
+	mutable std::multimap<std::string, std::string, ci_less> m_activeCollectionsByGroupName;
+	std::unordered_map<std::string, std::string, ci_hash, ci_equals> m_mcmVisibleFileByGroupName;
+	std::unordered_map<std::string, std::shared_ptr<CollectionGroup>, ci_hash, ci_equals> m_allGroupsByName;
 	// Link each Form to the Collections in which it belongs
 	std::unordered_multimap<RE::FormID, std::shared_ptr<Collection>> m_collectionsByFormID;
 	std::unordered_multimap<ObjectType, std::shared_ptr<Collection>> m_collectionsByObjectType;
@@ -108,6 +169,7 @@ private:
 	std::unordered_set<const RE::TESForm*> m_lastInventoryCollectibles;
 	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastInventoryCheck;
 	std::unordered_set<RE::FormID> m_collectedOnThisScan;
+	const std::wstring m_filePattern;
 };
 
 void to_json(nlohmann::json& j, const CollectionManager& collectionManager);

@@ -1,199 +1,248 @@
 {
-  "version": 2,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 23,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "vcpkg",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows-skse",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/cmake/ports/",
-        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake",
-        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
-      }
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28,
+        "patch": 1
     },
-    {
-      "name": "msvc",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "/permissive- /Zc:preprocessor /EHa $penv{CXXFLAGS}"
-      },
-      "vendor": {
-        "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "intelliSenseMode": "windows-msvc-x64",
-          "enableMicrosoftCodeAnalysis": true,
-          "enableClangTidyCodeAnalysis": true
-        }
-      }
-    },
-    {
-      "name": "clang",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "/permissive- /EHa -Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor $penv{CXXFLAGS}",
-        "CMAKE_C_COMPILER": "clang-cl",
-        "CMAKE_CXX_COMPILER": "clang-cl"
-      },
-      "vendor": {
-        "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "intelliSenseMode": "windows-clang-x64",
-          "enableMicrosoftCodeAnalysis": true,
-          "enableClangTidyCodeAnalysis": true
-        }
-      }
-    },
-    {
-      "name": "Debug-MSVC",
-      "inherits": [
-        "vcpkg",
-        "msvc"
-      ],
-      "displayName": "Debug",
-      "description": "Debug build for testing.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/debug-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": {
-          "type": "STRING",
-          "value": "Debug"
-        }
-      }
-    },
-    {
-      "name": "Release-MSVC",
-      "inherits": [
-        "vcpkg",
-        "msvc"
-      ],
-      "displayName": "Release",
-      "description": "Optimized release build.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/release-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": {
-          "type": "STRING",
-          "value": "Release"
-        }
-      }
-    },
-    {
-      "name": "Logging-MSVC",
-      "inherits": [
-        "vcpkg",
-        "msvc"
-      ],
-      "displayName": "Logging",
-      "description": "Optimized release build with logging.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/logging-msvc",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": {
-          "type": "STRING",
-          "value": "Logging"
+    "configurePresets": [
+        {
+            "name": "common",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
+            },
+            "errors": {
+                "deprecated": false
+            },
+            "warnings": {
+                "deprecated": true,
+                "dev": true
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "intelliSenseMode": "$env{PROJECT_PLATFORM}-$env{PROJECT_COMPILER}-$env{PROJECT_ARCHITECTURE}",
+                    "enableMicrosoftCodeAnalysis": true,
+                    "enableClangTidyCodeAnalysis": true
+                }
+            }
         },
-        "CMAKE_CXX_FLAGS": {
-          "type": "STRING",
-          "value": "/D_FULL_LOGGING"
-        }
-      }
-    },
-    {
-      "name": "Debug-Clang",
-      "inherits": [
-        "vcpkg",
-        "clang"
-      ],
-      "displayName": "Debug",
-      "description": "Debug build for testing.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/debug-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": {
-          "type": "STRING",
-          "value": "Debug"
-        }
-      }
-    },
-    {
-      "name": "Release-Clang",
-      "inherits": [
-        "vcpkg",
-        "clang"
-      ],
-      "displayName": "Release",
-      "description": "Optimized release build.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/release-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": {
-          "type": "STRING",
-          "value": "Release"
-        }
-      }
-    },
-    {
-      "name": "Logging-Clang",
-      "inherits": [
-        "vcpkg",
-        "clang"
-      ],
-      "displayName": "Logging",
-      "description": "Optimized release build with logging.",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/logging-clang",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": {
-          "type": "STRING",
-          "value": "Logging"
+        {
+            "name": "architecture-x64",
+            "hidden": true,
+            "environment": {
+                "PROJECT_ARCHITECTURE": "x64"
+            }
         },
-        "CMAKE_CXX_FLAGS": {
-          "type": "STRING",
-          "value": "/D_FULL_LOGGING"
+        {
+            "name": "packaging-vcpkg",
+            "hidden": true,
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "USE_VCPKG": "ON",
+                "VCPKG_HOST_TRIPLET": "$env{PROJECT_ARCHITECTURE}-$env{PROJECT_PLATFORM}-static-md",
+                "VCPKG_TARGET_TRIPLET": "$env{PROJECT_ARCHITECTURE}-$env{PROJECT_PLATFORM}-static-md"
+            }
+        },
+        {
+            "name": "platform-win32",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+            },
+            "environment": {
+                "PROJECT_PLATFORM_FLAGS": "-DWIN32_LEAN_AND_MEAN -DNOMINMAX",
+                "PROJECT_PLATFORM": "windows"
+            }
+        },
+        {
+            "name": "platform-win32-unicode",
+            "hidden": true,
+            "inherits": "platform-win32",
+            "environment": {
+                "PROJECT_TEXT_FLAGS": "-DUNICODE -D_UNICODE"
+            }
+        },
+        {
+            "name": "generator-ninja",
+            "hidden": true,
+            "generator": "Ninja"
+        },
+        {
+            "name": "generator-visualstudio",
+            "hidden": true,
+            "generator": "Visual Studio 17 2022"
+        },
+        {
+            "name": "compiler-clang",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            },
+            "environment": {
+                "PROJECT_COMPILER": "clang",
+                "PROJECT_COMPILER_FLAGS": "-Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor -Wno-inconsistent-missing-override -Wno-reinterpret-base-class -D__cpp_lib_char8_t -D__cpp_consteval -D__cpp_lib_format"
+            }
+        },
+        {
+            "name": "compiler-clang-cl",
+            "hidden": true,
+            "inherits": "compiler-clang",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl"
+            },
+            "environment": {
+                "CC": "clang-cl",
+                "CXX": "clang-cl",
+                "PROJECT_COMPILER_FLAGS": "/permissive- /EHsc /W4 /WX -Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor -Wno-inconsistent-missing-override -Wno-reinterpret-base-class -D__cpp_lib_char8_t -D__cpp_consteval -D__cpp_lib_format"
+            }
+        },
+        {
+            "name": "compiler-msvc",
+            "hidden": true,
+            "environment": {
+                "PROJECT_COMPILER_FLAGS": "/permissive- /Zc:preprocessor /EHsc /MP /W4 /external:anglebrackets /external:W0 /bigobj",
+                "PROJECT_COMPILER": "msvc"
+            }
+        },
+        {
+            "name": "buildtype-debug",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "buildtype-release",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "buildtype-relwithdebinfo",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "Debug-MSVC",
+            "inherits": [
+                "buildtype-debug",
+                "architecture-x64",
+                "platform-win32-unicode",
+                "generator-visualstudio",
+                "compiler-msvc",
+                "common"
+            ],
+            "description": "Debug build for testing.",
+            "binaryDir": "${sourceDir}/build/debug-msvc"
+        },
+        {
+            "name": "Release-MSVC",
+            "inherits": [
+                "buildtype-release",
+                "architecture-x64",
+                "platform-win32-unicode",
+                "generator-visualstudio",
+                "compiler-msvc",
+                "common"
+            ],
+            "description": "Optimized release build.",
+            "binaryDir": "${sourceDir}/build/release-msvc"
+        },
+        {
+            "name": "Logging-MSVC",
+            "inherits": [
+                "buildtype-relwithdebinfo",
+                "architecture-x64",
+                "platform-win32-unicode",
+                "generator-visualstudio",
+                "compiler-msvc",
+                "common"
+            ],
+            "description": "Optimized release build with logging.",
+            "binaryDir": "${sourceDir}/build/logging-msvc"
+        },
+        {
+            "name": "Debug-Clang",
+            "inherits": [
+                "buildtype-debug",
+                "architecture-x64",
+                "platform-win32-unicode",
+                "generator-ninja",
+                "compiler-clang-cl",
+                "common"
+            ],
+            "description": "Debug build for testing.",
+            "binaryDir": "${sourceDir}/build/debug-clang"
+        },
+        {
+            "name": "Release-Clang",
+            "inherits": [
+                "buildtype-release",
+                "architecture-x64",
+                "platform-win32-unicode",
+                "generator-ninja",
+                "compiler-clang-cl",
+                "common"
+            ],
+            "description": "Optimized release build.",
+            "binaryDir": "${sourceDir}/build/release-clang"
+        },
+        {
+            "name": "Logging-Clang",
+            "inherits": [
+                "buildtype-relwithdebinfo",
+                "architecture-x64",
+                "platform-win32-unicode",
+                "generator-ninja",
+                "compiler-clang-cl",
+                "common"
+            ],
+            "description": "Optimized release build with logging.",
+            "binaryDir": "${sourceDir}/build/logging-clang"
         }
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "Release-MSVC",
-      "displayName": "Release (MSVC)",
-      "configurePreset": "Release-MSVC",
-      "description": "Optimized release build."
-    },
-    {
-      "name": "Logging-MSVC",
-      "displayName": "Logging (MSVC)",
-      "configurePreset": "Logging-MSVC",
-      "description": "Optimized release build with logging."
-    },
-    {
-      "name": "Debug-MSVC",
-      "displayName": "Debug (MSVC)",
-      "configurePreset": "Debug-MSVC",
-      "description": "Debug build for testing."
-    },
-    {
-      "name": "Release-Clang",
-      "displayName": "Release (Clang)",
-      "configurePreset": "Release-Clang",
-      "description": "Optimized release build."
-    },
-    {
-      "name": "Logging-Clang",
-      "displayName": "Logging (Clang)",
-      "configurePreset": "Logging-Clang",
-      "description": "Optimized release build with logging."
-    },
-    {
-      "name": "Debug-Clang",
-      "displayName": "Debug (Clang)",
-      "configurePreset": "Debug-Clang",
-      "description": "Debug build for testing."
-    }
-  ]
+    ],
+    "buildPresets": [
+        {
+            "name": "rel-msvc",
+            "displayName": "Release (MSVC)",
+            "configurePreset": "Release-MSVC",
+            "description": "Optimized release build."
+        },
+        {
+            "name": "log-msvc",
+            "displayName": "Logging (MSVC)",
+            "configurePreset": "Logging-MSVC",
+            "description": "Optimized release build with logging."
+        },
+        {
+            "name": "deb-msvc",
+            "displayName": "Debug (MSVC)",
+            "configurePreset": "Debug-MSVC",
+            "description": "Debug build for testing."
+        },
+        {
+            "name": "rel-clang",
+            "displayName": "Release (Clang)",
+            "configurePreset": "Release-Clang",
+            "description": "Optimized release build."
+        },
+        {
+            "name": "log-clang",
+            "displayName": "Logging (Clang)",
+            "configurePreset": "Logging-Clang",
+            "description": "Optimized release build with logging."
+        },
+        {
+            "name": "deb-clang",
+            "displayName": "Debug (Clang)",
+            "configurePreset": "Debug-Clang",
+            "description": "Debug build for testing."
+        }
+    ]
 }

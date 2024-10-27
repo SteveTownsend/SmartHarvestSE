@@ -26,6 +26,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
+#include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
 #include "WorldState/CraftingItems.h"
@@ -34,6 +35,9 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/ScanGovernor.h"
 #include "Looting/objects.h"
 #include "Looting/NPCFilter.h"
+
+const std::string MissivesGroup("BlackList");
+const std::string MissivesCollection("SHSE-Missives");
 
 namespace
 {
@@ -61,7 +65,8 @@ namespace shse
 
 DataCase* DataCase::s_pInstance = nullptr;
 
-DataCase::DataCase() : m_spellTomeKeyword(nullptr), m_ghostNpcKeyword(nullptr)
+DataCase::DataCase() :
+m_spellTomeKeyword(nullptr), m_underwear(nullptr), m_missivesBoards(nullptr)
 {
 }
 
@@ -185,11 +190,18 @@ void DataCase::StoreActivationVerbs()
 	//ActivationVerbsByType("$SHSE_ACTIVATE_VERBS_MANUAL", ObjectType::manualLoot);
 }
 
-ObjectType DataCase::GetObjectTypeForActivationText(const RE::BSString& activationText) const
+ObjectType DataCase::GetObjectTypeForActivationText(const std::string& verb) const
 {
-	std::string verb(GetVerbFromActivationText(activationText));
-	const auto verbMatched(m_objectTypeByActivationVerb.find(verb));
-	if (verbMatched != m_objectTypeByActivationVerb.cend())
+	// #436 support Oblivion Interaction Icons alt text by extending logic to match as Posix Basic RE
+	// for use with std::basic_regex
+	auto verbMatched(std::find_if(m_objectTypeByActivationVerb.cbegin(),
+								   m_objectTypeByActivationVerb.cend(),
+								   [&](const decltype(m_objectTypeByActivationVerb)::value_type &vt) -> bool
+								   {
+									   return std::regex_match(verb,
+															   std::basic_regex(vt.first));
+								   }));
+	if (verbMatched != m_objectTypeByActivationVerb.end())
 	{
 		return verbMatched->second;
 	}
@@ -210,12 +222,18 @@ void DataCase::CategorizeByActivationVerb()
 		if (!activator->GetFullNameLength())
 			continue;
 		const char* formName(activator->GetFullName());
-		DBG_VMESSAGE("Categorizing {}/0x{:08x} by activation verb", formName, activator->GetFormID());
 
 		RE::BSString activationText;
 		if (activator->GetActivateText(RE::PlayerCharacter::GetSingleton(), activationText))
 		{
-			ObjectType activatorType(GetObjectTypeForActivationText(activationText));
+			// read Activation Text up to newline - the text we see is the data in the ESP file, plus a newline, plus the target
+			std::istringstream input;
+			input.str(std::string(activationText));
+			std::string verb;
+			std::getline(input, verb);
+			DBG_VMESSAGE("Categorizing {}/0x{:08x} by activation verb {}", formName, activator->GetFormID(), verb);
+			
+			ObjectType activatorType(GetObjectTypeForActivationText(verb));
 			if (activatorType != ObjectType::unknown)
 			{
 				if (SetObjectTypeForForm(activator, activatorType))
@@ -236,16 +254,22 @@ void DataCase::CategorizeByActivationVerb()
 						}
 						else
 						{
-						resourceType = ResourceType::ore;
+							resourceType = ResourceType::ore;
 						}
 						m_resourceTypeByOreVein.insert(std::make_pair(activator, resourceType));
 						REL_VMESSAGE("{}/0x{:08x} has ResourceType {}", formName, activator->GetFormID(), PrintResourceType(resourceType));
+					}
+					// Creation Club and others use Harvest for ACTI. We bucket as flora but need custom harvesting logic, like critter.
+					else if (activatorType == ObjectType::flora)
+					{
+						m_syntheticFlora.insert(activator);
+						REL_VMESSAGE("ACTI {}/0x{:08x} must be treated as flora", formName, activator->GetFormID());
 					}
 				}
 				continue;
 			}
 		}
-		DBG_MESSAGE("{}/0x{:08x} not mappable, uses verb '{}'", formName, activator->GetFormID(), GetVerbFromActivationText(activationText).c_str());
+		DBG_MESSAGE("{}/0x{:08x} not mappable, uses verb '{}'", formName, activator->GetFormID(), std::string(activationText));
 	}
 }
 
@@ -297,7 +321,7 @@ void DataCase::AnalyzePerks(void)
 			if (entryPoint->entryData.entryPoint == RE::BGSEntryPoint::ENTRY_POINT::kModIngredientsHarvested)
 			{
 				if (entryPoint->entryData.function == RE::BGSEntryPointPerkEntry::EntryData::Function::kSetValue && 
-					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::FunctionType::kOneValue)
+					entryPoint->functionData && entryPoint->functionData->GetType() == RE::BGSEntryPointFunctionData::ENTRY_POINT_FUNCTION_DATA::kOneValue)
 				{
 					const RE::BGSEntryPointFunctionDataOneValue* oneValued(static_cast<const RE::BGSEntryPointFunctionDataOneValue*>(entryPoint->functionData));
 					REL_MESSAGE("Modify Harvested Ingredients factor {:0.2f} from perk {}/0x{:08x}", oneValued->data, perk->GetName(), perk->GetFormID());
@@ -365,7 +389,28 @@ void DataCase::ExcludeFactionContainers()
 bool DataCase::ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const
 {
 	RecursiveLockGuard guard(m_blockListLock);
-	return m_containerBlackList.contains(refr->GetContainer());
+	if (m_containerBlackList.contains(refr->GetContainer()))
+	{
+		return true;
+	}
+	const RE::TESObjectCONT* container(refr->GetBaseObject()->As<RE::TESObjectCONT>());
+	if (container && m_missivesBoards)
+	{
+		DBG_VMESSAGE("Is Container {}/{:08x} member of Missive Boards? {}",
+			container->GetName(), container->GetFormID(), m_missivesBoards->IsMemberOf(container));
+		return m_missivesBoards->IsEnabled() && m_missivesBoards->IsMemberOf(container);
+	}
+	else if (!container)
+	{
+		REL_WARNING("Base Object for {:08x} is not TESObjectCONT", refr->GetFormID());
+	}
+	return false;
+}
+
+bool DataCase::IsContainerAlwaysLootable(const RE::FormID container) const
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	return m_containerWhiteList.contains(container);
 }
 
 void DataCase::ExcludeVendorContainers()
@@ -378,7 +423,7 @@ void DataCase::ExcludeVendorContainers()
 	// because for LVLI records, EDID is not loaded
 	// Check for exact match in Load Order using {plugin file, plugin-relative Form ID} tuple
 	// TODO assumes no merge - core game, probably OK
-	std::vector<std::tuple<std::string, RE::FormID>> vendorGoldLVLI = {
+	std::vector<std::tuple<std::string, RE::FormID>> vendorItemLVLI = {
 		{"Skyrim.esm", 0x17102},	// VendorGoldBlacksmithTown
 		{"Skyrim.esm", 0x72ae7},	// VendorGoldMisc
 		{"Skyrim.esm", 0x72ae8},	// VendorGoldApothecary
@@ -391,10 +436,11 @@ void DataCase::ExcludeVendorContainers()
 		{"Skyrim.esm", 0xd54c0},	// VendorGoldFenceStage01
 		{"Skyrim.esm", 0xd54c1},	// VendorGoldFenceStage02
 		{"Skyrim.esm", 0xd54c2},	// VendorGoldFenceStage03
-		{"Skyrim.esm", 0xd54c3}		// VendorGoldFenceStage04
+		{"Skyrim.esm", 0xd54c3},	// VendorGoldFenceStage04
+		{"Skyrim.esm", 0x9af0f}		// LItemMiscVendorLockpicks75 - catches a lot of mod-added vendor/merchant CONT
 	};
-	std::unordered_set<RE::TESLevItem*> vendorGoldForms;
-	for (const auto& lvliDef : vendorGoldLVLI)
+	std::unordered_set<RE::TESLevItem*> vendorSentinels;
+	for (const auto& lvliDef : vendorItemLVLI)
 	{
 		std::string espName(std::get<0>(lvliDef));
 		RE::FormID formID(std::get<1>(lvliDef));
@@ -402,32 +448,39 @@ void DataCase::ExcludeVendorContainers()
 		if (lvliForm)
 		{
 			REL_MESSAGE("LVLI {}:0x{:08x} found for Vendor Container contents", espName, lvliForm->GetFormID());
-			vendorGoldForms.insert(lvliForm);
+			vendorSentinels.insert(lvliForm);
 		}
 		else
 		{
 			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
-	if (vendorGoldForms.size() != vendorGoldLVLI.size())
+	if (vendorSentinels.size() != vendorItemLVLI.size())
 	{
-		REL_ERROR("LVLI count {} (base game) for Vendor Gold inconsistent with expected {}",
-			vendorGoldLVLI.size(), vendorGoldForms.size());
+		REL_ERROR("LVLI count {} (base game) for Vendor Sentinels inconsistent with expected {}",
+			vendorItemLVLI.size(), vendorSentinels.size());
 	}
 
 	// check mod-specific LVLI
 	// TODO assumes no merge - mods, could be a problem
 	// Trade & Barter.esp is well-behaved, using only core forms
-	std::vector<std::tuple<std::string, RE::FormID>> modVendorGoldLVLI = {
-		{"Wyrmstooth.esp", 0x5D0598},	// WTVendorGoldMudcrabMerchant
+	std::vector<std::tuple<std::string, RE::FormID>> modVendorSentinelLVLI = {
 		{"Midwood Isle.esp", 0x142430},	// VendorGoldHermitMidwoodIsle
-		{"Midwood Isle.esp", 0x19B10A},	// VendorGoldHunterMidwoodIsle
-		{"AAX_Arweden.esp", 0x041DD1},	// AAX_VendorGold
-		{"Complete Alchemy & Cooking Overhaul.esp", 0x97AFE1}	// VendorGoldFarmer
+		{"Midwood Isle.esp", 0x19b10a},	// VendorGoldHunterMidwoodIsle
+		{"AAX_Arweden.esp", 0x041dd1},	// AAX_VendorGold
+		{"Complete Alchemy & Cooking Overhaul.esp", 0x97afe1},	// VendorGoldFarmer
+		{"ccbgssse001-fish.esm", 0x1223de},	// ccBGSSSE001_LItemVendorFishingClothes50
+		{"summersetisles.esp", 0x219171},	// VendorSSICoin
+		{"summersetisles.esp", 0x3ffc4f},	// VendorGoldApothecarySSI
+		{"summersetisles.esp", 0x3ffc50},	// VendorGoldBlacksmithSSI
+		{"summersetisles.esp", 0x3ffc51},	// VendorGoldInnSSI
+		{"summersetisles.esp", 0x3ffc52},	// VendorGoldMiscSSI
+		{"summersetisles.esp", 0x3ffc53},	// VendorGoldSpellsSSI
+		{"MiyapsDungeon.esm", 0x45155b},	// aaaaMDMVendorGoldMisc
+		{"JerallMountainsCitadelPart1.esm", 0x26bef0}	// _JMCVendorGold
 	};
 
-	size_t interimSize(vendorGoldForms.size());
-	for (const auto& lvliDef : modVendorGoldLVLI)
+	for (const auto& lvliDef : modVendorSentinelLVLI)
 	{
 		std::string espName(std::get<0>(lvliDef));
 		RE::FormID formID(std::get<1>(lvliDef));
@@ -435,40 +488,107 @@ void DataCase::ExcludeVendorContainers()
 		if (lvliForm)
 		{
 			REL_MESSAGE("LVLI {}:0x{:08x} found for Vendor Container contents", espName, lvliForm->GetFormID());
-			vendorGoldForms.insert(lvliForm);
+			vendorSentinels.insert(lvliForm);
 		}
 		else
 		{
 			REL_ERROR("LVLI {}/0x{:08x} not found, should be Vendor Container contents", espName, formID);
 		}
 	}
-	ptrdiff_t expectedFromMods(std::count_if(modVendorGoldLVLI.cbegin(), modVendorGoldLVLI.cend(),
-		[&](const auto& espForm) -> bool { return shse::LoadOrder::Instance().IncludesMod(std::get<0>(espForm)); }));
-	if (vendorGoldForms.size() - interimSize != static_cast<size_t>(expectedFromMods))
-	{
-		REL_ERROR("LVLI count {} (mods) for Vendor Gold inconsistent with expected {}",
-			vendorGoldForms.size() - interimSize, expectedFromMods);
-	}
 
-	// mod-added Containers to avoid looting
-	std::vector<std::tuple<std::string, RE::FormID>> modContainers = {
+	// special and mod-added Containers to avoid looting
+	std::vector<std::tuple<std::string, RE::FormID>> oneOffContainers = {
+		// WEMerchantChest
+		{"Skyrim.esm", 0xbbcd0},
+		// DLC1dunRedwaterDenMerchantChest
+		{"Dawnguard.esm", 0x13941},
+		// DLC2dunFrostmoonVendorChest
+		{"Dragonborn.esm", 0x1dc65},
+		// DLC2MerchantDremoraChest
+		{"Dragonborn.esm", 0x1eec0},
 		// LoTD Museum Shipments
 		{"LegacyoftheDragonborn.esm", 0x1772a6},	// Incoming
-		{"LegacyoftheDragonborn.esm", 0x1772a7}		// Outgoing
+		{"LegacyoftheDragonborn.esm", 0x1772a7},	// Outgoing
+		// HLIORemielVendorChest
+		{"HLIORemi.esp", 0x4c786},
+		//SL00MerchantGenericAmuletChest
+		{"SL01AmuletsSkyrim.esp", 0x1de80},
+		// SL00MerchantHoldNecklaceChest
+		{"SL01AmuletsSkyrim.esp", 0x420c1},
+		// SL00MerchantSolitudeGenericAmuletChest
+		{"SL01AmuletsSkyrim.esp", 0x471e0},
+		// ccVSVSSE001_MerchantPack
+		{"ccvsvsse001-winter.esl", 0x809},
+		// CYRMerchantBrumaMuseumChest
+		{"BSHeartland.esm", 0xd24d1},
+		// CYRMerchantBrumaLeoNewspaperChest
+		{"BSHeartland.esm", 0xd3743},
+		// CYRMerchantKvatchTheRightfulRemedyChest
+		{"BSHeartland.esm", 0xf9704},
+		// CYRMerchantKvatchTheRightfulRemedyChestExtra
+		{"BSHeartland.esm", 0xf970f},
+		// CYRMerchantKvatchFireheartHotelBarChest
+		{"BSHeartland.esm", 0xf973f},
+		// CH_IssalMerchantChest
+		{"Coldhaven.esm", 0x3a84dc},
+		// FSMerchantAudmund
+		{"Falskaar.esm", 0x15c536},
+		// Yadamerchantchest
+		{"Jehanna.esp", 0x1ca84},
+		// MerchantFlorinIarraChest
+		{"Midwood Isle.esp", 0x56971},
+		// MidwoodIsleMerchantTradesmanChest
+		{"Midwood Isle.esp", 0x7f166e},
+		// NyhusMerchantAreathchest
+		{"Nyhus.esp", 0x7341a9},
+		// NyhusMerchantTG04EECDockworker03
+		{"Nyhus.esp", 0x8fdb65},
+		// SB_SamMerchantChest
+		{"SkyrimBounties.esp", 0x6b808},
+		// SB_RedLanternMerchantChest
+		{"SkyrimBounties.esp", 0x18acf4},
+		// <N78HelheimGanglotMerchantChest>
+		{"TrueHel.esp", 0x162e75},
+		// MerchantWhiterunQuintus
+		{"SurWR.esp", 0x2ecda0},
+		// RiftenExtMerchantChestAnjiir
+		{"RiftenExtension.esp", 0x105530},
+		// 000FCLukiMerchantContainer
+		{"ForgottenCity.esp", 0x2cc87},
+		// 000FCStoreroomMerchantContainer
+		{"ForgottenCity.esp", 0x2f3c8},
+		// 000FCTailorMerchantContainer
+		{"ForgottenCity.esp", 0x2f950},
+		// LAMIOzirianaMerchantChest
+		{"BetalillesHammerfellQuestBundle.esp", 0x1298},
+		// ASHGMerchantDarkElfChest01
+		{"BetalillesHammerfellQuestBundle.esp", 0x1733},
+		// ASHGMerchantDarkElfChest02
+		{"BetalillesHammerfellQuestBundle.esp", 0x1734},
+		// aaaCJGMerchant1Chest1
+		{"ClefJs Karthwasten.esp", 0x72e63},
+		// SRC_LKHCharcoalMerchantChest
+		{"SRC - All In One.esp", 0xeedc6},
+		// _LP_MerchantBardWaresChest
+		{"BecomeABard.esp", 0x5075b},
+		// BSMMerchantChest
+		{"BeyondSkyrimMerchant.esp", 0x55aa},
+		// BUV_MerchantTGTuldinwaeChest,
+		{"BUVARP SE RE.esp", 0x1254aa}
 	};
-	for (const auto& container : modContainers)
+	for (const auto& container : oneOffContainers)
 	{
 		std::string espName(std::get<0>(container));
 		RE::FormID formID(std::get<1>(container));
 		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
 		if (chestForm)
 		{
-			REL_MESSAGE("CONT {}:0x{:08x} added to Mod Blacklist", espName, chestForm->GetFormID());
+			REL_MESSAGE("CONT {}:0x{:08x} added to Blacklist", espName, chestForm->GetFormID());
 			m_containerBlackList.insert(chestForm);
 		}
 		else
 		{
-			DBG_MESSAGE("CONT {}/0x{:08x} for mod not found", espName, formID);
+			DBG_MESSAGE("CONT {}/0x{:08x} not found", espName, formID);
 		}
 	}
 
@@ -479,11 +599,11 @@ void DataCase::ExcludeVendorContainers()
 			DBG_MESSAGE("Skip already-blacklisted Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 			continue;
 		}
-		// does container have VendorGold?
+		// does container have any sentinel Vendor Item?
 		bool matched(false);
 		container->ForEachContainerObject([&](RE::ContainerObject& entry) -> RE::BSContainer::ForEachResult {
 			auto entryContents(entry.obj);
-			if (vendorGoldForms.find(entryContents->As<RE::TESLevItem>()) != vendorGoldForms.cend())
+			if (vendorSentinels.find(entryContents->As<RE::TESLevItem>()) != vendorSentinels.cend())
 			{
 				REL_MESSAGE("Block Vendor Container {}/0x{:08x}", container->GetName(), container->GetFormID());
 				matched = true;
@@ -493,7 +613,7 @@ void DataCase::ExcludeVendorContainers()
 			}
 			else
 			{
-				DBG_MESSAGE("{}/0x{:08x} in Container {}/0x{:08x} not VendorGold", entryContents->GetName(), entryContents->GetFormID(),
+				DBG_MESSAGE("{}/0x{:08x} in Container {}/0x{:08x} not sentinel Vendor Item", entryContents->GetName(), entryContents->GetFormID(),
 					container->GetName(), container->GetFormID());
 			}
 			// continue the scan
@@ -506,10 +626,43 @@ void DataCase::ExcludeVendorContainers()
 	}
 }
 
+void DataCase::IncludeLootableContainers()
+{
+	RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
+	if (!dhnd)
+		return;
+	// special and mod-added Containers to allow looting
+	std::vector<std::tuple<std::string, RE::FormID>> oneOffContainers = {
+		// Frozen Electrocuted Combustion victim loot CONT get marked player-owned
+		{"FEC.esp", 0x817},
+		{"FEC.esp", 0x825},
+		{"FEC.esp", 0x843},
+		{"FEC.esp", 0x844},
+		{"FEC.esp", 0x86a},
+		{"FEC.esp", 0x876},
+		{"FEC.esp", 0x908}
+	};
+	for (const auto& container : oneOffContainers)
+	{
+		std::string espName(std::get<0>(container));
+		RE::FormID formID(std::get<1>(container));
+		RE::TESObjectCONT* chestForm(FindExactMatch<RE::TESObjectCONT>(espName, formID));
+		if (chestForm)
+		{
+			REL_MESSAGE("CONT {}:0x{:08x} added to Whitelist", espName, chestForm->GetFormID());
+			m_containerWhiteList.insert(chestForm->GetFormID());
+		}
+		else
+		{
+			DBG_MESSAGE("Whitelist CONT {}/0x{:08x} not found", espName, formID);
+		}
+	}
+}
+
 void DataCase::ExcludeImmersiveArmorsGodChest()
 {
-	// check for best matching candidate in Load Order
-	RE::TESObjectCONT* godChestForm(FindBestMatch<RE::TESObjectCONT>("Hothtrooper44_ArmorCompilation.esp", 0x4b352, "Auxiliary Armor Storage"));
+	// check for form in Load Order
+	RE::TESObjectCONT* godChestForm(FindExactMatch<RE::TESObjectCONT>("Hothtrooper44_ArmorCompilation.esp", 0x4b352));
 	if (godChestForm)
 	{
 		REL_MESSAGE("Block Immersive Armors 'all the loot' chest {}/0x{:08x}", godChestForm->GetName(), godChestForm->GetFormID());
@@ -532,29 +685,32 @@ void DataCase::ExcludeMissivesBoards()
 {
 	// if Missives is installed and loads later than SHSE, conditionally blacklist the Noticeboards to avoid auto-looting of non-quest Missives
 	static constexpr const char* modName = "Missives.esp";
-	if (!LoadOrder::Instance().IncludesMod(modName))
-		return;
-	if (LoadOrder::Instance().ModPrecedesSHSE(modName))
+	m_missivesBoards = CollectionManager::Collectibles().MutableCollectionByLabel(MissivesGroup, MissivesCollection);
+	if (m_missivesBoards && (!LoadOrder::Instance().IncludesMod(modName) || LoadOrder::Instance().ModPrecedesSHSE(modName)))
 	{
-		REL_MESSAGE("Missive Boards lootable: Missives loads before SHSE");
-		return;
+		REL_MESSAGE("Missives absent or loads before SHSE: disable Missive Board blacklist");
+		// must disable the related Blacklist Collection
+		m_missivesBoards->Disable();
 	}
+}
 
-	// if SHSE loads ahead of Missives (and by extension its patches), blacklist the relevant containers. This relies on CONT
-	// name "Missive Board" to tag these across base mod and its patches. Patches may be merged, so plugin name is no help.
-	static constexpr const char * containerName = "Missive Board";
-	std::unordered_set<RE::TESObjectCONT*> missivesBoards(FindExactMatchesByName<RE::TESObjectCONT>(containerName));
-	for (const auto missivesBoard : missivesBoards)
-	{
-		REL_MESSAGE("Block Missive Board {}/0x{:08x}", missivesBoard->GetName(), missivesBoard->GetFormID());
-		m_containerBlackList.insert(missivesBoard);
-	}
+void DataCase::CheckAutoMiningOK()
+{
+	// check for incompatible Mining mods and disable auto-mining if any are active
+	static constexpr const char* modName = "Advanced Mining.esp";
+	m_miningDisabled = LoadOrder::Instance().IncludesMod(modName);
+	REL_MESSAGE("Auto-mining disabled, found incompatible mod {}", modName);
+}
+
+bool DataCase::AutoMiningDisabled() const
+{
+	return m_miningDisabled;
 }
 
 void DataCase::ExcludeBuildYourNobleHouseIncomeChest()
 {
-	// check for best matching candidate in Load Order
-	RE::TESObjectCONT* incomeChestForm(FindBestMatch<RE::TESObjectCONT>("LC_BuildYourNobleHouse.esp", 0xaacdd, "Income "));
+	// check for matching form in Load Order
+	RE::TESObjectCONT* incomeChestForm(FindExactMatch<RE::TESObjectCONT>("LC_BuildYourNobleHouse.esp", 0xaacdd));
 	if (incomeChestForm)
 	{
 		REL_MESSAGE("Block 'Build Your Noble House' Income Chest {}/0x{:08x}", incomeChestForm->GetName(), incomeChestForm->GetFormID());
@@ -566,7 +722,7 @@ void DataCase::IncludeFossilMiningExcavation()
 {
 	static std::string espName("Fossilsyum.esp");
 	static RE::FormID excavationSiteFormID(0x3f41b);
-	RE::TESForm* excavationSiteForm(RE::TESDataHandler::GetSingleton()->LookupForm(excavationSiteFormID, espName));
+	RE::TESForm* excavationSiteForm(LoadOrder::Instance().LookupForm(excavationSiteFormID, espName));
 	if (excavationSiteForm)
 	{
 		REL_MESSAGE("Record Fossil Mining Excavation Site {}/0x{:08x} as oreVein:volcanicDigSite", excavationSiteForm->GetName(), excavationSiteForm->GetFormID());
@@ -575,7 +731,7 @@ void DataCase::IncludeFossilMiningExcavation()
 	}
 }
 
-void DataCase::IncludePileOfGold()
+void DataCase::IncludeSeptimSpecialCases()
 {
 	static std::string espName("Dragonborn.esm");
 	static std::vector<RE::FormID> pilesOfGold({ 0x18486, 0x18488 });
@@ -584,18 +740,27 @@ void DataCase::IncludePileOfGold()
 		RE::TESForm* goldPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(goldPileFormID, espName));
 		if (goldPileForm)
 		{
-			SetObjectTypeForForm(goldPileForm, ObjectType::septims);
+			ForceObjectTypeForForm(goldPileForm, ObjectType::septims);
 		}
 	}
+	IncludeCoinReplacerRedux();
+	IncludeCorpseCoinage();
+	IncludeBSBruma();
+	IncludeToolsOfKagrenac();
+	IncludeCOIN();
+}
+
+void DataCase::IncludeCoinReplacerRedux()
+{
 	// Coin Replacer Redux adds similar
 	static std::string crrName("SkyrimCoinReplacerRedux.esp");
 	static std::vector<RE::FormID> pilesOfCoin({ 0x800, 0x801, 0x802 });
 	for (const auto coinPileFormID : pilesOfCoin)
 	{
-		RE::TESForm* coinPileForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinPileFormID, crrName));
+		RE::TESForm* coinPileForm(LoadOrder::Instance().LookupForm(coinPileFormID, crrName));
 		if (coinPileForm)
 		{
-			SetObjectTypeForForm(coinPileForm, ObjectType::septims);
+			ForceObjectTypeForForm(coinPileForm, ObjectType::septims);
 		}
 	}
 }
@@ -604,24 +769,10 @@ void DataCase::IncludeCorpseCoinage()
 {
 	static std::string espName("CorpseToCoinage.esp");
 	static RE::FormID corpseCoinageFormID(0xaa03);
-	RE::TESForm* corpseCoinageForm(RE::TESDataHandler::GetSingleton()->LookupForm(corpseCoinageFormID, espName));
+	RE::TESForm* corpseCoinageForm(LoadOrder::Instance().LookupForm(corpseCoinageFormID, espName));
 	if (corpseCoinageForm)
 	{
-		SetObjectTypeForForm(corpseCoinageForm, ObjectType::septims);
-	}
-}
-
-void DataCase::IncludeHearthfireExtendedApiary()
-{
-	static std::string espName("hearthfireextended.esp");
-	static RE::FormID apiaryFormID(0xd62);
-	RE::TESForm* apiaryForm(RE::TESDataHandler::GetSingleton()->LookupForm(apiaryFormID, espName));
-	if (apiaryForm)
-	{
-		// force object type - this was already categorized incorrectly using Activation Verb
-		ForceObjectTypeForForm(apiaryForm, ObjectType::critter);
-		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
-		AddFirehose(apiaryForm);
+		ForceObjectTypeForForm(corpseCoinageForm, ObjectType::septims);
 	}
 }
 
@@ -632,7 +783,7 @@ void DataCase::IncludeBSBruma()
 	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
 	if (ayleidGoldForm)
 	{
-		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+		ForceObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
 	}
 }
 
@@ -643,8 +794,53 @@ void DataCase::IncludeToolsOfKagrenac()
 	RE::TESForm* ayleidGoldForm(RE::TESDataHandler::GetSingleton()->LookupForm(ayleidGoldFormID, espName));
 	if (ayleidGoldForm)
 	{
-		SetObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
+		ForceObjectTypeForForm(ayleidGoldForm, ObjectType::septims);
 	}
+}
+
+void DataCase::IncludeCOIN()
+{
+	static std::string crrName("C.O.I.N.esp");
+	static std::vector<RE::FormID> pilesOfInterestingCoin({ 0x810, 0x9c6 });
+	for (const auto coinPileFormID : pilesOfInterestingCoin)
+	{
+		RE::TESForm* coinPileForm(LoadOrder::Instance().LookupForm(coinPileFormID, crrName));
+		if (coinPileForm)
+		{
+			ForceObjectTypeForForm(coinPileForm, ObjectType::septims);
+		}
+	}
+	static std::string injectedName("Update.esm");
+	static std::vector<RE::FormID> interestingCoins({
+		0xde5012, 0xde5013, 0xde5014, 0xde5015, 0xde5016, 0xde5017,
+	 	0xde5018, 0xde5019, 0xde5020, 0xde5021, 0xde5022, 0xde5023, 0xde5024 });
+	for (const auto coinFormID : interestingCoins)
+	{
+		RE::TESForm* coinForm(RE::TESDataHandler::GetSingleton()->LookupForm(coinFormID, injectedName));
+		if (coinForm)
+		{
+			ForceObjectTypeForForm(coinForm, ObjectType::septims);
+		}
+	}
+}
+
+void DataCase::HandleHearthfireExtendedApiary()
+{
+	static std::string espName("hearthfireextended.esp");
+	static RE::FormID apiaryFormID(0xd62);
+	const RE::TESForm* apiaryForm(LoadOrder::Instance().LookupForm(apiaryFormID, espName));
+	if (apiaryForm && apiaryForm->Is(RE::FormType::Activator))
+	{
+		// the ACTI can be inspected repeatedly and (after first pass) fruitlessly if we do not prevent it
+		AddFirehose(apiaryForm);
+	}
+}
+
+void DataCase::RecordUnderwear()
+{
+	const std::string GroupName("SpecialCases");
+	const std::string CollectionName("SHSE-Underwear");
+	m_underwear = CollectionManager::SpecialCases().CollectionByLabel(GroupName, CollectionName);
 }
 
 void DataCase::RecordOffLimitsLocations()
@@ -671,7 +867,7 @@ void DataCase::RecordOffLimitsLocations()
 	}
 }
 
-void DataCase::RecordPlayerHouseCells(void)
+void DataCase::RecordPlayerHouses(void)
 {
 	DBG_MESSAGE("Record free CELLs that are actually Player Houses");
 	std::vector<std::tuple<std::string, RE::FormID>> houseCells = {
@@ -686,8 +882,23 @@ void DataCase::RecordPlayerHouseCells(void)
 		const RE::TESObjectCELL* cell(FindExactMatch<RE::TESObjectCELL>(espName, formID));
 		if (cell)
 		{
-			REL_MESSAGE("Cell {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
-			PlayerHouses::Instance().SetCell(cell);
+			REL_MESSAGE("CELL {}/0x{:08x} treated as Player House", cell->GetName(), cell->GetFormID());
+			PlayerHouses::Instance().AddCell(cell);
+		}
+	}
+	DBG_MESSAGE("Record LCTN records that are actually Player Houses");
+	std::vector<std::tuple<std::string, RE::FormID>> houseLocations = {
+		{"ccvsvsse004-beafarmer.esl", 0xd38}			// ccVSVSSE004_BunkhouseInteriorLocation
+	};
+	for (const auto& pluginForm : houseLocations)
+	{
+		std::string espName(std::get<0>(pluginForm));
+		RE::FormID formID(std::get<1>(pluginForm));
+		const RE::BGSLocation* location(FindExactMatch<RE::BGSLocation>(espName, formID));
+		if (location)
+		{
+			REL_MESSAGE("LCTN {}/0x{:08x} treated as Player House", location->GetName(), location->GetFormID());
+			PlayerHouses::Instance().AddLocation(location);
 		}
 	}
 }
@@ -712,6 +923,14 @@ void DataCase::BlockFirehoseSource(const RE::TESObjectREFR* refr)
 	BlockReference(refr, Lootability::CannotRelootFirehoseSource);
 }
 
+// unblock mineable - may or may not actually be firehose
+void DataCase::ForgetFirehoseSource(const RE::TESObjectREFR* refr)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	m_firehoseSources.erase(refr->GetFormID());
+	m_blockRefr.erase(refr->GetFormID());
+}
+
 void DataCase::ForgetFirehoseSources()
 {
 	RecursiveLockGuard guard(m_blockListLock);
@@ -733,8 +952,12 @@ void DataCase::AddFirehose(const RE::TESForm* form)
 
 void DataCase::BlockReference(const RE::TESObjectREFR* refr, const Lootability reason)
 {
+	if (!refr
+#if NDEBUG && !defined(_FULL_LOGGING)
 	// dynamic forms must never be recorded as their FormID may be reused
-	if (!refr || refr->IsDynamicForm())
+	 || refr->IsDynamicForm()
+#endif	 
+	 )
 		return;
 	BlockReferenceByID(refr->GetFormID(), reason);
 }
@@ -759,11 +982,13 @@ Lootability DataCase::IsReferenceBlocked(const RE::TESObjectREFR* refr) const
 void DataCase::ResetBlockedReferences(const bool gameReload)
 {
 	RecursiveLockGuard guard(m_blockListLock);
+	// settings change may make things lootable
 	m_blockRefr.clear();
 	if (gameReload)
 	{
 		DBG_MESSAGE("Reset entire list of blocked REFRs");
 		ForgetFirehoseSources();
+		m_syntheticFloraHarvested.clear();
 		return;
 	}
 	// Volcanic dig sites from Fossil Mining and firehose item sources are only cleared on game reload,
@@ -794,13 +1019,32 @@ void DataCase::ResetBlockedReferences(const bool gameReload)
 	BlockOffLimitsContainers();
 }
 
+void DataCase::UnblockReferences(const Lootability reason)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	for (auto refr = m_blockRefr.begin(); refr != m_blockRefr.end(); ) 
+	{
+		if (refr->second == reason)
+		{
+			DBG_VMESSAGE("Reset blocked REFR 0x{:08x} with reason {}", refr->first, LootabilityName(reason));
+			refr = m_blockRefr.erase(refr);
+		}
+		else
+		{
+			++refr;
+		}
+	}
+}
+
 bool DataCase::BlacklistReference(const RE::TESObjectREFR* refr)
 {
 	if (!refr)
 		return false;
+#if NDEBUG && !defined(_FULL_LOGGING)
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (refr->IsDynamicForm())
 		return false;
+#endif	 
 	RecursiveLockGuard guard(m_blockListLock);
 	return (m_blacklistRefr.insert(refr->GetFormID())).second;
 }
@@ -809,9 +1053,11 @@ bool DataCase::IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const
 {
 	if (!refr)
 		return false;
+#if NDEBUG && !defined(_FULL_LOGGING)
 	// dynamic forms must never be recorded as their FormID may be reused
 	if (refr->IsDynamicForm())
 		return false;
+#endif	 
 	RecursiveLockGuard guard(m_blockListLock);
 	return m_blacklistRefr.contains(refr->GetFormID());
 }
@@ -821,6 +1067,25 @@ void DataCase::ClearReferenceBlacklist()
 	DBG_MESSAGE("Reset blacklisted REFRs");
 	RecursiveLockGuard guard(m_blockListLock);
 	m_blacklistRefr.clear();
+}
+
+void DataCase::ClearReferenceBlacklistEphemeral()
+{
+#if DEBUG || defined(_FULL_LOGGING)
+	DBG_MESSAGE("Reset ephemeral blacklisted REFRs");
+	RecursiveLockGuard guard(m_blockListLock);
+	for (auto refr = m_blacklistRefr.begin(); refr != m_blacklistRefr.end(); )
+	{
+		if ((*refr) < 0xFF000000)
+		{
+			refr = m_blacklistRefr.erase(refr);
+		}
+		else
+		{
+			++refr;
+		}
+	}
+#endif
 }
 
 void DataCase::RefreshKnownIngredients()
@@ -923,9 +1188,11 @@ bool DataCase::BlockFormPermanently(const RE::TESForm* form, const Lootability r
 {
 	if (!form)
 		return false;
-	// dynamic forms must never be recorded as they are not consistent across games, or FormID may be reused if ephemeral
+#if NDEBUG && !defined(_FULL_LOGGING)
+	// dynamic forms must never be recorded as their FormID may be reused
 	if (form->IsDynamicForm())
 		return false;
+#endif	 
 	RecursiveLockGuard guard(m_blockListLock);
 	BlockForm(form, reason);
 	return (m_permanentBlockedForms.insert({ form, reason })).second;
@@ -964,6 +1231,56 @@ void DataCase::RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable)
 	ObjectType objectType(ConsumableObjectType<RE::AlchemyItem>(consumable));
 	REL_MESSAGE("Register player-created ALCH {}/0x{:08x} as {}", consumable->GetFullName(), consumable->GetFormID(), GetObjectTypeName(objectType));
 	SetObjectTypeForForm(consumable, objectType);
+}
+
+[[nodiscard]] bool DataCase::IsSyntheticFlora(const RE::TESBoundObject* boundObject) const
+{
+	if (!boundObject)
+		return false;
+	RecursiveLockGuard guard(m_blockListLock);
+	const RE::TESObjectACTI* activator(boundObject->As<RE::TESObjectACTI>());
+	return activator && m_syntheticFlora.contains(activator);
+}
+
+void DataCase::ClearSyntheticFlora(const RE::TESBoundObject* boundObject)
+{
+	if (!boundObject)
+		return;
+	RecursiveLockGuard guard(m_blockListLock);
+	const RE::TESObjectACTI* activator(boundObject->As<RE::TESObjectACTI>());
+	m_syntheticFlora.erase(activator);
+}
+
+[[nodiscard]] bool DataCase::IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	if (candidate)
+	{
+		auto harvestedState(m_syntheticFloraHarvested.find(candidate));
+		if (harvestedState != m_syntheticFloraHarvested.end())
+		{
+			// reset after a sensible interval so we can check if the synthetic flora script has respawned the yielded loot
+			constexpr float SyntheticFloraResetInterval(5.0);
+			float elapsed(RE::Calendar::GetSingleton()->GetCurrentGameTime() - harvestedState->second.second);
+			if (elapsed > SyntheticFloraResetInterval)
+			{
+				REL_MESSAGE("Reset Harvested flag for REFR 0x{:08x} synthetic Flora 0x{:08x} after {:.2f} game-days",
+					candidate->GetFormID(), candidate->GetBaseObject()->GetFormID(), elapsed);
+				harvestedState->second.first = false;
+			}
+			return harvestedState->second.first;
+		}
+	}
+	return false;
+}
+
+void DataCase::SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested)
+{
+	RecursiveLockGuard guard(m_blockListLock);
+	if (candidate)
+	{
+		m_syntheticFloraHarvested[candidate] = {isHarvested, RE::Calendar::GetSingleton()->GetCurrentGameTime()};
+	}
 }
 
 bool DataCase::SetObjectTypeForForm(const RE::TESForm* form, const ObjectType objectType)
@@ -1087,6 +1404,7 @@ void DataCase::ListsClear(const bool gameReload)
 	// reset blocked Base Objects and REFRs, reseed with off-limits containers
 	ResetBlockedForms();
 	ResetBlockedReferences(gameReload);
+	ClearReferenceBlacklistEphemeral();
 }
 
 bool DataCase::SkipAmmoLooting(RE::TESObjectREFR* refr)
@@ -1167,8 +1485,12 @@ void DataCase::CategorizeLootables()
 	REL_MESSAGE("*** LOAD *** Categorize by Keyword: MISC");
 	CategorizeByKeyword<RE::TESObjectMISC>();
 
+	// force-categorize all special cases yielding gold or coins
+	IncludeSeptimSpecialCases();
+
 	// Classes inheriting from TESProduceForm may have an ingredient, categorized as the appropriate consumable
 	// This 'ingredient' can be MISC (e.g. Coin Replacer Redux Coin Purses) so those must be done first, as above by keyword
+	// or forcing as septims
 	REL_MESSAGE("*** LOAD *** Categorize by Ingredient: FLOR");
 	CategorizeByIngredient<RE::TESFlora>();
 
@@ -1208,33 +1530,50 @@ void DataCase::CategorizeLootables()
 	HandleExceptions();
 }
 
+void DataCase::RefreshBuiltinSpecialCases()
+{
+	CollectionManager::SpecialCases().OnGameReload();
+
+	// blacklist underwear in case user has "don't show me their junk" setting turned on
+	RecordUnderwear();
+	// Blacklist Missives Boards, if present and so ordered 
+	ExcludeMissivesBoards();
+}
+
+bool DataCase::UseUnderwear() const
+{
+	return m_underwear && m_underwear->IsActive();
+}
+
+bool DataCase::IsUnderwear(const RE::TESForm* armour) const
+{
+	ConditionMatcher matcher(armour);
+	return m_underwear->IsMemberOf(matcher);
+}
+
 void DataCase::HandleExceptions()
 {
 	// on first pass, detect off limits containers and other special cases to avoid rescan on game reload
 	DBG_MESSAGE("Pre-emptively handle special cases from Load Order");
 	ExcludeImmersiveArmorsGodChest();
 	ExcludeGrayCowlStonesChest();
-	ExcludeMissivesBoards();
 	ExcludeBuildYourNobleHouseIncomeChest();
 
 	ExcludeFactionContainers();
 	ExcludeVendorContainers();
+	IncludeLootableContainers();
 
 	shse::PlayerState::Instance().ExcludeMountedIfForbidden();
 	RecordOffLimitsLocations();
-	RecordPlayerHouseCells();
+	RecordPlayerHouses();
 
-	// whitelist Dragonborn Pile of Gold
-	IncludePileOfGold();
 	// whitelist Fossil sites
 	IncludeFossilMiningExcavation();
-	// whitelist CorpseToCoinage producer
-	IncludeCorpseCoinage();
 	// whitelist Hearthfire Extended Apiary
-	IncludeHearthfireExtendedApiary();
-	// categorize custom Gold forms
-	IncludeBSBruma();
-	IncludeToolsOfKagrenac();
+	HandleHearthfireExtendedApiary();
+
+	// exclude auto-mining if incompatible mods loaded
+	CheckAutoMiningOK();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm* form, const ObjectType rawType)
@@ -1333,10 +1672,10 @@ void DataCase::SetObjectTypeByKeywords()
 			continue;
 		}
 		// Store player house keyword for SearchTask usage
-		if (keywordName == "LocTypePlayerHouse")
+		if (keywordName == "LocTypePlayerHouse" || keywordName == "BYOHHouseLocationKeyword")
 		{
 			REL_VMESSAGE("Found PlayerHouse KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
-			PlayerHouses::Instance().SetKeyword(keywordDef);
+			PlayerHouses::Instance().AddLocationKeyword(keywordDef);
 			continue;
 		}
 		// Immersive Armors gives some armors the VendorItemSpellTome keyword. No, they are not spellBook
@@ -1344,12 +1683,6 @@ void DataCase::SetObjectTypeByKeywords()
 		{
 			REL_VMESSAGE("Found Spell Tome KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
 			m_spellTomeKeyword = keywordDef;
-		}
-		// Do not loot ghost NPCs
-		if (keywordName == "ActorTypeGhost")
-		{
-			REL_VMESSAGE("Found Ghost NPC KYWD {}/0x{:08x}", keywordName, keywordDef->GetFormID());
-			m_ghostNpcKeyword = keywordDef;
 		}
 		// SPERG mining resource types
 		if (keywordName == "VendorItemOreIngot" || keywordName == "VendorItemGem")
@@ -1516,7 +1849,12 @@ void DataCase::CategorizeStatics()
 	// Map well-known forms to ObjectType
 	SetObjectTypeForFormID(LockPick, ObjectType::lockpick);
 	SetObjectTypeForFormID(Gold, ObjectType::septims);
-	SetObjectTypeForFormID(WispCore, ObjectType::critter);
+	auto wispCoreForm(RE::TESDataHandler::GetSingleton()->LookupForm(WispCore, "Skyrim.esm"));
+	if (wispCoreForm->Is(RE::FormType::Activator))
+	{
+		ForceObjectTypeForForm(wispCoreForm, ObjectType::flora);
+		m_syntheticFlora.insert(wispCoreForm->As<RE::TESObjectACTI>());
+	}
 	// WACCF makes this a Scroll. It's not a Scroll.
 	SetObjectTypeForFormID(RollOfPaper, ObjectType::clutter);
 
@@ -1572,54 +1910,6 @@ template <>
 ObjectType DataCase::DefaultIngredientObjectType(const RE::TESObjectTREE*)
 {
 	return ObjectType::food;
-}
-
-void LeveledItemCategorizer::CategorizeContents()
-{
-	ProcessContentsAtLevel(m_rootItem);
-}
-
-LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem) :
-	m_rootItem(rootItem)
-{
-	m_lvliSeen.insert(m_rootItem);
-}
-
-LeveledItemCategorizer::~LeveledItemCategorizer()
-{
-}
-
-void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
-{
-	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
-	{
-		RE::TESForm* itemForm(leveledObject.form);
-		if (!itemForm)
-			continue;
-		// Handle nesting of leveled items
-		RE::TESLevItem* leveledItemForm(itemForm->As<RE::TESLevItem>());
-		if (leveledItemForm)
-		{
-			// only process LVLI if not already seen
-			if (m_lvliSeen.insert(leveledItemForm).second)
-			{
-				ProcessContentsAtLevel(leveledItemForm);
-			}
-			continue;
-		}
-		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
-		if (itemType != ObjectType::unknown)
-		{
-			RE::TESBoundObject* boundItem = itemForm->As<RE::TESBoundObject>();
-			if (!boundItem)
-			{
-				REL_WARNING("LVLI 0x{:08x} has content leaf {}/0x{:08x} that is not TESBoundObject", m_rootItem->GetFormID(),
-					itemForm->GetName(), itemForm->GetFormID());
-				return;
-			}
-			ProcessContentLeaf(boundItem, itemType);
-		}
-	}
 }
 
 DataCase::ProduceFormCategorizer::ProduceFormCategorizer(

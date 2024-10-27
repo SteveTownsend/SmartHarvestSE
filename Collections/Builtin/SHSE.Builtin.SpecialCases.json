@@ -1,0 +1,33 @@
+{
+  "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+  "$schema": "./SHSE.SchemaCollections.json",
+  "groupPolicy": {
+    "action": "take",
+    "notify": false,
+    "repeat": true
+  },
+  "useMCM": false,
+  "collections": [
+    {
+      "name": "SHSE-Underwear",
+      "description": "Underwear items to be left behind on NPC if configured for modesty",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+            "plugin": [
+                "PROUD NUDE.esp",
+                "NPC Underwear Engine.esp",
+                "NUDE for DLL.esp",
+                "Underwear.esp",
+                "zzzUnderwear.esp",
+                "Ultimate Lingerie Collection 2.esp",
+                "Ultimate Lingerie Collection 2 BHUNP.esp",
+                "NUDE-ULC 2.0 Addon.esp",
+                "underwearforeveryone.esp"
+            ],
+            "signature": [ "ARMO" ]
+        }
+      }
+    }
+  ]
+}

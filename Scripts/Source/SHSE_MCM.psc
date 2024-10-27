@@ -47,6 +47,10 @@ bool enableHarvest
 bool enableLootContainer
 int enableLootDeadbody
 string[] s_lootDeadBodyArray
+int excludeNPCAll
+int excludeNPCArmour
+int excludeNPCNone
+int excludeNPCUnderwear
 
 bool unencumberedInCombat
 bool unencumberedInPlayerHome
@@ -122,6 +126,10 @@ int valueWeightDefault
 int valueWeightDefaultDefault
 int maxMiningItems
 int maxMiningItemsDefault
+bool miningToolsRequired
+bool miningToolsRequiredDefault
+bool disallowMiningIfSneaking
+bool disallowMiningIfSneakingDefault
 
 int excessLeave
 int excessSell
@@ -179,6 +187,10 @@ bool fortuneHuntNPC
 bool fortuneHuntContainer
 bool unlockGlowColours
 
+bool checkWeightlessValue
+bool checkWeightlessValueDefault
+int weightlessMinimumValue
+int weightlessMinimumValueDefault
 int[] id_valueWeightArray
 float[] valueWeightSettingArray
 
@@ -217,7 +229,7 @@ string currentSagaDayName
 int currentSagaDayPage
 int sagaDayPageCount
 
-Actor player
+Actor thisPlayer
 bool logMCM
 
 int Function CycleInt(int num, int max)
@@ -243,6 +255,16 @@ endFunction
 function updateMaxMiningItems(int maxItems)
     maxMiningItems = maxItems
     eventScript.updateMaxMiningItems(maxItems)
+endFunction
+
+function updateMiningToolsRequired(bool toolsRequired)
+    miningToolsRequired = toolsRequired
+    eventScript.updateMiningToolsRequired(toolsRequired)
+endFunction
+
+function updateDisallowMiningIfSneaking(bool noSneakyMining)
+    disallowMiningIfSneaking = noSneakyMining
+    eventScript.updateDisallowMiningIfSneaking(noSneakyMining)
 endFunction
 
 float[] function GetSettingToObjectArray(int section1, int section2)
@@ -371,6 +393,8 @@ function LoadSettingsFromNative()
     whiteListTargetNotify = GetSetting(type_Harvest, type_Config, "WhiteListTargetNotify") as bool
     valueWeightDefault = GetSetting(type_Harvest, type_Config, "ValueWeightDefault") as int
     updateMaxMiningItems(GetSetting(type_Harvest, type_Config, "MaxMiningItems") as int)
+    updateMiningToolsRequired(GetSetting(type_Harvest, type_Config, "MiningToolsRequired") as bool)
+    updateDisallowMiningIfSneaking(GetSetting(type_Harvest, type_Config, "DisallowMiningIfSneaking") as bool)
     saleValuePercent = GetSetting(type_Harvest, type_Config, "SaleValuePercent") as int
 
     verticalRadiusFactor = GetSetting(type_Harvest, type_Config, "VerticalRadiusFactor")
@@ -379,6 +403,8 @@ function LoadSettingsFromNative()
     lootAllowedItemsInPlayerHouse = GetSetting(type_Harvest, type_Config, "LootAllowedItemsInPlayerHouse") as bool
 
     objectSettingArray = GetSettingToObjectArray(type_Harvest, type_ItemObject)
+    checkWeightlessValue = GetSetting(type_Harvest, type_ValueWeight, "CheckWeightlessValue") as bool
+    weightlessMinimumValue = GetSetting(type_Harvest, type_ValueWeight, "WeightlessMinimumValue") as int
     valueWeightSettingArray = GetSettingToObjectArray(type_Harvest, type_ValueWeight)
     excessHandlingArray = GetSettingToExcessHandlingArray(type_Harvest, type_Handling)
     excessCountArray = GetSettingToExcessHandlingArray(type_Harvest, type_MaxItems)
@@ -417,10 +443,6 @@ function CheckFirstTimeEver()
         g_InitComplete.SetValue(1)
     endif
     ;DebugTrace("FirstTimeEver finished")
-endFunction
-
-bool Function ManagesCarryWeight()
-    return unencumberedInCombat || unencumberedInPlayerHome || unencumberedIfWeaponDrawn
 endFunction
 
 Function SaveSettingsToNative()
@@ -479,6 +501,10 @@ Function SaveSettingsToNative()
     PutSetting(type_Harvest, type_Config, "ValueWeightDefault", valueWeightDefault as float)
     PutSetting(type_Harvest, type_Config, "SaleValuePercent", saleValuePercent as float)
     PutSetting(type_Harvest, type_Config, "MaxMiningItems", maxMiningItems as float)
+    PutSetting(type_Harvest, type_Config, "MiningToolsRequired", miningToolsRequired as float)
+    PutSetting(type_Harvest, type_Config, "DisallowMiningIfSneaking", disallowMiningIfSneaking as float)
+    PutSetting(type_Harvest, type_ValueWeight, "CheckWeightlessValue", checkWeightlessValue as float)
+    PutSetting(type_Harvest, type_ValueWeight, "WeightlessMinimumValue", weightlessMinimumValue as float)
     PutSettingObjectArray(type_Harvest, type_ValueWeight, 30, valueWeightSettingArray)
 
     PutSetting(type_Common, type_Config, "CollectionsEnabled", collectionsEnabled as float)
@@ -509,12 +535,8 @@ Function ApplySetting()
     ; correct for any weight adjustments saved into this file, plugin will reinstate if/as needed
     ; Do this before plugin becomes aware of player home list
     logMCM = LoggingEnabled()
-    player = Game.GetPlayer()
-    eventScript.Prepare(player, logMCM)
-    ; Only adjust weight if we are in any way responsible for it
-    if ManagesCarryWeight()
-        eventScript.RemoveCarryWeightDelta()
-    endIf
+    thisPlayer = Game.GetPlayer()
+    eventScript.Prepare(thisPlayer, logMCM)
     eventScript.ApplySetting()
     eventScript.SyncShaders(glowReasonSettingArray)
 
@@ -574,10 +596,18 @@ Function AugmentExcessDisposalChoices()
 EndFunction
 
 Function SetDeadBodyChoices()
-    s_lootDeadBodyArray = New String[3]
-    s_lootDeadBodyArray[0] = "$SHSE_DONT_PICK_UP"
-    s_lootDeadBodyArray[1] = "$SHSE_EXCLUDING_ARMOR"
-    s_lootDeadBodyArray[2] = "$SHSE_PICK_UP"
+    DebugTrace("SetDeadBodyChoices called")
+    excludeNPCAll = 0
+    excludeNPCArmour = 1
+    excludeNPCNone = 2
+    excludeNPCUnderwear = 3
+
+    s_lootDeadBodyArray = New String[4]
+    ; values match the C++ enumeration and INI file
+    s_lootDeadBodyArray[excludeNPCAll] = "$SHSE_DONT_PICK_UP"
+    s_lootDeadBodyArray[excludeNPCArmour] = "$SHSE_EXCLUDING_ARMOR"
+    s_lootDeadBodyArray[excludeNPCUnderwear] = "$SHSE_EXCLUDING_UNDERWEAR"
+    s_lootDeadBodyArray[excludeNPCNone] = "$SHSE_PICK_UP"
 EndFunction
 
 Function AllocateItemCategoryArrays()
@@ -657,6 +687,13 @@ Function SetObjectTypeData()
     s_objectTypeNameArray[29] = "$SHSE_OREVEIN"
 EndFunction
 
+Function SetCheckWeightless()
+    checkWeightlessValueDefault = false
+    checkWeightlessValue = checkWeightlessValueDefault
+    weightlessMinimumValueDefault = 10
+    weightlessMinimumValue = weightlessMinimumValueDefault
+EndFunction
+
 Function SetMiscDefaults(bool firstTime)
     ; New or clarified defaults and constants
     manualLootTargetNotify = true
@@ -677,7 +714,11 @@ Function SetMiscDefaults(bool firstTime)
     valueWeightDefaultDefault = 10
 
     maxMiningItemsDefault = 8
-    eventScript.UpdateMaxMiningItems(maxMiningItems)
+    miningToolsRequiredDefault = false
+    disallowMiningIfSneakingDefault = false
+    updateMaxMiningItems(maxMiningItemsDefault)
+    updateMiningToolsRequired(miningToolsRequiredDefault)
+    updateDisallowMiningIfSneaking(disallowMiningIfSneakingDefault)
 
     notifyLocationChange = false
     enchantedItemLoot = 1
@@ -686,6 +727,8 @@ Function SetMiscDefaults(bool firstTime)
     valuableItemThreshold = 500
     lootAllowedItemsInSettlement = true
     lootAllowedItemsInPlayerHouse = false
+
+    SetCheckWeightless()
 
     InstallCollections()
     InstallCollectionGroupPolicy()
@@ -842,7 +885,7 @@ Function InitPages()
     Pages[1] = "$SHSE_SPECIALS_REALISM_PAGENAME"
     Pages[2] = "$SHSE_SHARED_SETTINGS_PAGENAME"
     Pages[3] = "$SHSE_COLLECTIONS_PAGENAME"
-    Pages[4] = Replace(GetTranslation("$SHSE_PLAYER_SAGA_PAGENAME"), "{PLAYERNAME}", player.GetBaseObject().GetName())
+    Pages[4] = Replace(GetTranslation("$SHSE_PLAYER_SAGA_PAGENAME"), "{PLAYERNAME}", thisPlayer.GetBaseObject().GetName())
     Pages[5] = "$SHSE_LOOT_SENSE_PAGENAME"
     Pages[6] = "$SHSE_WHITELIST_PAGENAME"
     Pages[7] = "$SHSE_BLACKLIST_PAGENAME"
@@ -1076,7 +1119,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 53
+    return 55
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1085,7 +1128,7 @@ Event OnVersionUpdate(int a_version)
     if (a_version >= 25 && CurrentVersion < 25)
         ; clean up after release with bad upgrade/install workflow and MCM bugs
         ; logic required to support existing saves, as well as the update per se
-        Debug.Trace(self + ": Updating script to version " + a_version)
+        ;DebugTrace(self + ": Updating script to version " + a_version)
         CheckFirstTimeEver()
         SetOreVeinChoices()
         SetMiscDefaults(false)
@@ -1221,6 +1264,15 @@ Event OnVersionUpdate(int a_version)
     if a_version >= 53 && CurrentVersion < 53
         lootAllowedItemsInPlayerHouse = false
     endIf
+    if a_version >= 54 && CurrentVersion < 54
+        updateMiningToolsRequired(false)
+    endIf
+    if a_version >= 55 && CurrentVersion < 55
+        updateDisallowMiningIfSneaking(False)
+        ; this got a new option
+        SetDeadBodyChoices()
+        SetCheckWeightless()
+    endif
 endEvent
 
 ; when mod is applied mid-playthrough, this gets called after OnVersionUpdate/OnConfigInit
@@ -1243,15 +1295,17 @@ endEvent
 
 Function PopulateLists()
     int max_size = eventScript.GetWhiteListSize()
+    int validSize = 0
+    int index = max_size
+    string name
+    int entry = 0
     if max_size > 0
         Form[] currentList = eventScript.GetWhiteList()
         ; assume max size initially, resize if bad entries are found
-        int validSize = 0
-        int index = max_size
         while index > 0
             index -= 1
             Form nextEntry = currentList[index]
-            string name = GetNameForListForm(nextEntry)
+            name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
             else
@@ -1267,10 +1321,9 @@ Function PopulateLists()
             index = max_size
             ; iterate forwards, to preserve order
             index = 0
-            int entry = 0
             while index < max_size
                 Form nextEntry = currentList[index]
-                string name = GetNameForListForm(nextEntry)
+                name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     whiteList_form_array[entry] = nextEntry
                     whiteList_name_array[entry] = name
@@ -1287,16 +1340,16 @@ Function PopulateLists()
         whiteListEntries = 0
     endIf
 
+    validSize = 0
     max_size = eventScript.GetBlackListSize()
+    index = max_size
     if max_size > 0
         ; assume max size initially, resize if bad entries are found
         Form[] currentList = eventScript.GetBlackList()
-        int validSize = 0
-        int index = max_size
         while index > 0
             index -= 1
             Form nextEntry = currentList[index]
-            string name = GetNameForListForm(nextEntry)
+            name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
             else
@@ -1312,10 +1365,10 @@ Function PopulateLists()
             index = max_size
             ; iterate forwards, to preserve order
             index = 0
-            int entry = 0
+            entry = 0
             while index < max_size
                 Form nextEntry = currentList[index]
-                string name = GetNameForListForm(nextEntry)
+                name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     blackList_form_array[entry] = nextEntry
                     blackList_name_array[entry] = name
@@ -1335,8 +1388,8 @@ Function PopulateLists()
     ; Transfer List can be sparse
     Form[] currentList = eventScript.GetTransferList()
     string[] currentNames = eventScript.GetTransferNames()
-    int validSize = 0
-    int index = 0
+    validSize = 0
+    index = 0
     max_size = 64
     while index < max_size
         Form nextEntry = currentList[index]
@@ -1357,7 +1410,7 @@ Function PopulateLists()
         transferList_flag_array = Utility.CreateBoolArray(validSize)
         ; iterate forwards, order must be preserved to ensure correct linkage to target
         index = 0
-        int entry = 0
+        entry = 0
         while index < max_size
             Form nextEntry = currentList[index]
             if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
@@ -1377,9 +1430,9 @@ EndFunction
 
 Event OnConfigOpen()
     ;DebugTrace("OnConfigOpen")
+    eventScript.OnMCMOpen()
     InitPages()
     PopulateLists()
-    eventScript.OnMCMOpen()
 endEvent
 
 Function PopulateCollectionGroups()
@@ -1615,6 +1668,8 @@ event OnPageReset(string currentPage)
         AddToggleOptionST("DoorsPreventLootingState", "$SHSE_DOORS_PREVENT_LOOTING", doorsPreventLooting as bool)
         AddToggleOptionST("LootAllowedItemsInSettlementState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_SETTLEMENT", lootAllowedItemsInSettlement as bool)
         AddToggleOptionST("LootAllowedItemsInPlayerHouseState", "$SHSE_LOOT_ALLOWED_ITEMS_IN_PLAYER_HOUSE", lootAllowedItemsInPlayerHouse as bool)
+        AddToggleOptionST("MiningToolsRequired", "$SHSE_MINING_TOOLS_REQUIRED", miningToolsRequired)
+        AddToggleOptionST("DisallowMiningIfSneaking", "$SHSE_NO_SNEAKY_MINING", disallowMiningIfSneaking)
 
     elseif (currentPage == Pages[2]) ; object harvester
         
@@ -1622,6 +1677,7 @@ event OnPageReset(string currentPage)
         SetCursorFillMode(TOP_TO_BOTTOM)
 
         AddHeaderOption("$SHSE_PICK_UP_ITEM_TYPE_HEADER")
+        AddToggleOptionST("CheckWeightlessValue", "$SHSE_CHECK_WEIGHTLESS_VALUE", checkWeightlessValue as bool)
         
         int index = 0
         int objType = 1
@@ -1643,6 +1699,11 @@ event OnPageReset(string currentPage)
         SetCursorPosition(1)
 
         AddHeaderOption("$SHSE_VALUE/WEIGHT_HEADER")
+        int checkFlags = OPTION_FLAG_NONE
+        if !checkWeightlessValue
+            checkFlags = OPTION_FLAG_DISABLED
+        endif
+        AddSliderOptionST("WeightlessMinimumValue", "$SHSE_WEIGHTLESS_MINIMUM_VALUE", weightlessMinimumValue as float, "$SHSE_MONEY", checkFlags)
 
         index = 0
         objType = 1
@@ -2131,10 +2192,27 @@ state enableLootContainer
     endEvent
 endState
 
+; Custom logic: handle late addition of the 'leave underwear' option while keeping order in UI logical
+int Function CycleLootDeadbody(int num)
+    if num == excludeNPCUnderwear
+        return excludeNPCNone
+    elseif num == excludeNPCArmour
+        ; only enable the underwear option if there are relevant mods present
+        if UseUnderwear()
+            return excludeNPCUnderwear
+        else
+            return excludeNPCNone
+        endif
+    elseif num == excludeNPCNone
+        return excludeNPCAll
+    else ; excludeNPCNone
+        return excludeNPCArmour
+    endif
+endFunction
+
 state enableLootDeadbody
     event OnSelectST()
-        int size = s_lootDeadBodyArray.length
-        enableLootDeadbody = CycleInt(enableLootDeadbody, size)
+        enableLootDeadbody = CycleLootDeadbody(enableLootDeadbody)
         SetTextOptionValueST(s_lootDeadBodyArray[enableLootDeadbody])
     endEvent
 
@@ -2424,6 +2502,38 @@ state MaxMiningItems
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_MAX_MINING_ITEMS"))
+    endEvent
+endState
+
+state MiningToolsRequired
+    event OnSelectST()
+        updateMiningToolsRequired(!(miningToolsRequired as bool) as int)
+        SetToggleOptionValueST(miningToolsRequired as bool)
+    endEvent
+
+    event OnDefaultST()
+        updateMiningToolsRequired(miningToolsRequiredDefault)
+        SetToggleOptionValueST(miningToolsRequired as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_MINING_TOOLS_REQUIRED"))
+    endEvent
+endState
+
+state DisallowMiningIfSneaking
+    event OnSelectST()
+        updateDisallowMiningIfSneaking(!(disallowMiningIfSneaking as bool) as int)
+        SetToggleOptionValueST(disallowMiningIfSneaking as bool)
+    endEvent
+
+    event OnDefaultST()
+        updateDisallowMiningIfSneaking(disallowMiningIfSneaking)
+        SetToggleOptionValueST(disallowMiningIfSneaking as bool)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_DESC_NO_SNEAKY_MINING"))
     endEvent
 endState
 
@@ -2803,6 +2913,55 @@ state valuableItemThreshold
 
     event OnHighlightST()
         SetInfoText(GetTranslation("$SHSE_DESC_VALUABLE_ITEM_THRESHOLD"))
+    endEvent
+endState
+
+Function UpdateWeightlessItemValueSlider()
+    if checkWeightlessValue
+        SetOptionFlagsST(OPTION_FLAG_NONE, false, "WeightlessMinimumValue")
+    else
+        SetOptionFlagsST(OPTION_FLAG_DISABLED, false, "WeightlessMinimumValue")
+    endIf
+EndFunction
+
+state CheckWeightlessValue
+    event OnSelectST()
+        checkWeightlessValue = !(checkWeightlessValue as bool)
+        SetToggleOptionValueST(checkWeightlessValue)
+        UpdateWeightlessItemValueSlider()
+    endEvent
+
+    event OnDefaultST()
+        checkWeightlessValue = checkWeightlessValueDefault
+        SetToggleOptionValueST(checkWeightlessValue)
+        UpdateWeightlessItemValueSlider()
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_CHECK_WEIGHTLESS_VALUE_DESC"))
+    endEvent
+endState
+
+state WeightlessMinimumValue
+    event OnSliderOpenST()
+        SetSliderDialogStartValue(weightlessMinimumValue)
+        SetSliderDialogDefaultValue(weightlessMinimumValueDefault)
+        SetSliderDialogRange(0, 200)
+        SetSliderDialogInterval(1)
+    endEvent
+
+    event OnSliderAcceptST(float value)
+        weightlessMinimumValue = value as int
+        SetSliderOptionValueST(weightlessMinimumValue)
+    endEvent
+
+    event OnDefaultST()
+        weightlessMinimumValue = weightlessMinimumValueDefault
+        SetSliderOptionValueST(weightlessMinimumValue)
+    endEvent
+
+    event OnHighlightST()
+        SetInfoText(GetTranslation("$SHSE_WEIGHTLESS_MINIMUM_VALUE_DESC"))
     endEvent
 endState
 
@@ -3188,13 +3347,13 @@ state itemsCollected
 endState
 
 Function CheckAdventuresPower()
-    if !player
+    if !thisPlayer
         return
     endif
     if adventuresEnabled
-        player.AddSpell(AdventurersInstinctPower)
+        thisPlayer.AddSpell(AdventurersInstinctPower)
     else
-        player.RemoveSpell(AdventurersInstinctPower)
+        thisPlayer.RemoveSpell(AdventurersInstinctPower)
     endIf
 EndFunction
 
@@ -3204,13 +3363,13 @@ Function SetAdventuresStatus(bool inMCM)
 EndFunction
 
 Function CheckFortunePower()
-    if !player
+    if !thisPlayer
         return
     endif
     if fortuneHuntingEnabled
-        player.AddSpell(FortuneHuntersInstinctPower)
+        thisPlayer.AddSpell(FortuneHuntersInstinctPower)
     else
-        player.RemoveSpell(FortuneHuntersInstinctPower)
+        thisPlayer.RemoveSpell(FortuneHuntersInstinctPower)
     endIf
 EndFunction
 

@@ -57,7 +57,7 @@ std::string ItemCollected::AsString() const
 Collection::Collection(const CollectionGroup* owningGroup, const std::string& name, const std::string& description,
 	const CollectionPolicy& policy,	const bool overridesGroup, std::unique_ptr<ItemRule> itemRule) :
 	m_name(name), m_description(description), m_effectivePolicy(policy),
-	m_overridesGroup(overridesGroup), m_itemRule(std::move(itemRule)), m_owningGroup(owningGroup)
+	m_overridesGroup(overridesGroup), m_itemRule(std::move(itemRule)), m_owningGroup(owningGroup), m_disabled(false)
 {
 }
 
@@ -93,11 +93,17 @@ std::tuple<bool, bool, bool> Collection::InScopeAndCollectibleFor(const Conditio
 	return { inScope, repeat, observed };
 }
 
+void Collection::Disable()
+{
+	DBG_VMESSAGE("Collection {} disabled", m_name);
+	m_disabled = true;
+}
+
 bool Collection::IsActive() const
 {
 	// Collections with no Members are not considered active.
 	// Administrative groups are not MCM-managed and always-on. User Groups are active if Collections are MCM-enabled.
-	return HasMembers() && (!m_owningGroup->UseMCM() || CollectionManager::Instance().IsMCMEnabled());
+	return HasMembers() && (!m_owningGroup->UseMCM() || m_owningGroup->Manager().IsMCMEnabled());
 }
 
 bool Collection::HaveObserved(const RE::TESForm* form) const
@@ -405,8 +411,8 @@ void to_json(nlohmann::json& j, const Collection& collection)
 	collection.AsJSON(j);
 }
 
-CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy& policy, const bool useMCM, const nlohmann::json& collections) :
-	m_name(name), m_policy(policy), m_useMCM(useMCM)
+CollectionGroup::CollectionGroup(CollectionManager &manager, const std::string &name, const CollectionPolicy &policy,
+								 const bool useMCM, const nlohmann::json &collections) : m_manager(manager), m_name(name), m_policy(policy), m_useMCM(useMCM)
 {
 	// input is JSON array, by construction
 	m_collections.reserve(collections.size());
@@ -416,7 +422,7 @@ CollectionGroup::CollectionGroup(const std::string& name, const CollectionPolicy
 			// Group Policy is the default for Group Member Collection
 			auto newCollection(CollectionFactory::Instance().ParseCollection(this, collection, m_policy));
 			newCollection->Reset();
-			CollectionManager::Instance().RecordCollectibleObjectTypes(newCollection);
+			manager.RecordCollectibleObjectTypes(newCollection);
 			m_collections.push_back(newCollection);
 		}
 		catch (const std::exception& exc) {

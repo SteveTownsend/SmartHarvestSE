@@ -20,7 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "Looting/TheftCoordinator.h"
 #include "Looting/TryLootREFR.h"
-#include "VM/EventPublisher.h"
+#include "VM/TaskDispatcher.h"
 #include "WorldState/ActorTracker.h"
 #include "Utilities/utils.h"
 
@@ -54,12 +54,11 @@ void TheftCoordinator::StealIfUndetected(void)
 	{
 		m_refrsStealInProgress.swap(m_refrsToSteal);
 		m_stealInProgress = true;
-		m_detectingActors = ActorTracker::Instance().GetDetectives();
-		DBG_VMESSAGE("Steal {} items/containers under the nose of {} Actors", m_refrsStealInProgress.size(), m_detectingActors.size());
+		DBG_VMESSAGE("Steal {} items/containers", m_refrsStealInProgress.size());
 		// start timer before issuing event in case result comes back really quickly (however unlikely)
 		m_stealTimer = WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
 		static const bool dryRun(false);
-		EventPublisher::Instance().TriggerStealIfUndetected(m_detectingActors.size(), dryRun);
+		TaskDispatcher::Instance().EnqueueStealIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
 	}
 	else
 	{
@@ -68,18 +67,9 @@ void TheftCoordinator::StealIfUndetected(void)
 	}
 }
 
-const RE::Actor* TheftCoordinator::ActorByIndex(const size_t actorIndex) const
-{
-	RecursiveLockGuard guard(m_theftLock);
-	if (actorIndex < m_detectingActors.size())
-		return m_detectingActors[actorIndex];
-	return nullptr;
-}
-
-// after checking Player detection state with respect to eligible Actors, script will report status via this API
+// after checking Player detection state with respect to eligible Actors, Task will report status via this API
 void TheftCoordinator::StealOrForgetItems(const bool detected)
 {
-	WindowsUtils::ScopedTimerFactory::Instance().StopTimer(m_stealTimer);
 	decltype(m_refrsStealInProgress) items;
 	{
 		//hold lock only while using shared state. Item stealing should be thread-safe

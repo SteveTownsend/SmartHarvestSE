@@ -1,0 +1,47 @@
+{
+    "$comment": "Definitions are allowed for up to 128 rulesets for Collections",
+    "$schema": "./SHSE.SchemaCollections.json",
+    "groupPolicy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+    },
+    "useMCM": true,
+    "collections": [
+        {
+            "name": "COIN",
+            "description": "New coins added by C.O.I.N",
+            "rootFilter": {
+                "operator": "AND",
+                "condition": {
+                    "forms": [
+                        {
+                            "plugin": "Update.esm",
+                            "form": [
+                                "00DE5012",
+                                "00DE5013",
+                                "00DE5014",
+                                "00DE5015",
+                                "00DE5016",
+                                "00DE5017",
+                                "00DE5018",
+                                "00DE5019",
+                                "00DE5020",
+                                "00DE5021",
+                                "00DE5022",
+                                "00DE5023",
+                                "00DE5024"
+                            ]
+                        },
+                        {
+                            "plugin": "BSAssets.esm",
+                            "form": [
+                                "006028DC"
+                            ]
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

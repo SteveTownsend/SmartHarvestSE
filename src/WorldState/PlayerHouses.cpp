@@ -35,18 +35,23 @@ PlayerHouses& PlayerHouses::Instance()
 	return *m_instance;
 }
 
-PlayerHouses::PlayerHouses() : m_keyword(nullptr)
+PlayerHouses::PlayerHouses()
 {
 }
 
-void PlayerHouses::SetKeyword(RE::BGSKeyword* keyword)
+void PlayerHouses::AddLocationKeyword(RE::BGSKeyword* keyword)
 {
-	m_keyword = keyword;
+	m_locationKeywords.insert(keyword);
 }
 
-void PlayerHouses::SetCell(const RE::TESObjectCELL* houseCell)
+void PlayerHouses::AddCell(const RE::TESObjectCELL* houseCell)
 {
 	m_validHouseCells.insert(houseCell->GetFormID());
+}
+
+void PlayerHouses::AddLocation(const RE::BGSLocation* houseLocation)
+{
+	m_validHouseLocations.insert(houseLocation->GetFormID());
 }
 
 void PlayerHouses::Clear()
@@ -82,16 +87,42 @@ bool PlayerHouses::ContainsCell(const RE::FormID cellID) const
 	return m_houseCells.contains(cellID);
 }
 
-bool PlayerHouses::IsValidHouse(const RE::BGSLocation* location) const
+bool PlayerHouses::IsValidHouseLocation(const RE::BGSLocation* location) const
 {
+	if (!location)
+		return false;
 	RecursiveLockGuard guard(m_housesLock);
-	return location && location->HasKeyword(m_keyword);
+	if (m_validHouseLocations.contains(location->GetFormID()))
+		return true;
+	for (auto keyword : m_locationKeywords)
+	{
+		if (location->HasKeyword(keyword))
+			return true;
+	}
+	return false;
 }
 
-bool PlayerHouses::IsValidHouseCell(const RE::FormID cellID) const
+bool PlayerHouses::IsValidHouseCell(const RE::TESObjectCELL* cell) const
 {
+	constexpr RE::FormID PlayerFormId(0x7);
+	constexpr RE::FormID PlayerFactionFormId(0xdb1);
 	RecursiveLockGuard guard(m_housesLock);
-	return m_validHouseCells.contains(cellID);
+	if (cell)
+	{
+		// CELL Ownership may change so recheck each time
+		auto owner(const_cast<RE::TESObjectCELL*>(cell)->GetOwner());
+		if (owner)
+		{
+			RE::FormID ownerID(owner->GetFormID());
+			if (ownerID == PlayerFormId || ownerID == PlayerFactionFormId)
+			{
+				return true;
+			}
+		}
+		// special cases
+		return m_validHouseCells.contains(cell->GetFormID());
+	}
+	return false;
 }
 
 }

@@ -33,6 +33,8 @@ public:
 	static PlayerState& Instance();
 	PlayerState();
 
+	inline bool IsValid() const { return m_valid;}
+
 	void Refresh(const bool onMCMPush, const bool onGameReload);
 	bool PerksAddLeveledItemsOnDeath() const;
 	float PerkIngredientMultiplier() const;
@@ -45,19 +47,19 @@ public:
 	Position GetPosition() const;
 	const RE::TESRace* GetRace() const;
 	AlglibPosition GetAlglibPosition() const;
-	bool WithinDetectionRange(const double distance) const;
-	void UpdateGameTime(const float gameTime);
+	void UpdateGameTime();
 	inline float CurrentGameTime() const { return m_gameTime; }
 	int ItemHeadroom(RE::TESBoundObject* form, const int delta) const;
 	bool IsTimeSlowed() const { return m_slowedTime; }
 	double ArrowMovingThreshold() const;
+	inline RE::SpellItem* CarryWeightSpell() const { return m_carryWeightSpell; }
+	inline RE::EffectSetting* CarryWeightEffect() const { return m_carryWeightEffect; }
+	void ReviewExcessInventory(bool force);
 
 private:
 	void CheckPerks(const bool force);
-	void ResetCarryWeight();
-	void AdjustCarryWeight();
+	void ReconcileCarryWeight(const bool doReload);
 	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
-	void ReviewExcessInventory(bool force);
 	bool FortuneHuntOnly() const;
 
 	static std::unique_ptr<PlayerState> m_instance;
@@ -74,10 +76,9 @@ private:
 	mutable InventoryCache m_currentItems;
 	mutable InventoryUpdates m_updates;
 
-	bool m_carryAdjustedForCombat;
-	bool m_carryAdjustedForPlayerHome;
-	bool m_carryAdjustedForDrawnWeapon;
-	int m_currentCarryWeightChange;
+	bool m_currentlyBeefedUp;
+	RE::SpellItem* m_carryWeightSpell;
+	RE::EffectSetting* m_carryWeightEffect;
 
 	bool m_sneaking;
 	bool m_slowedTime;
@@ -87,6 +88,7 @@ private:
 
 	float m_gameTime;
 
+	bool m_valid;
 	mutable RecursiveLock m_playerLock;
 };
 

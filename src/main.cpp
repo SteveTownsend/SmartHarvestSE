@@ -22,17 +22,19 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
-#include "Utilities/LogStackWalker.h"
 #include "VM/papyrus.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"
+#include "Ver.h"
 
 #include <shlobj.h>
 #include <sstream>
 #include <KnownFolders.h>
 #include <filesystem>
+#include <psapi.h>
 
 #include <spdlog/sinks/basic_file_sink.h>
+#include "MergeMapperPluginAPI.h"
 
 #define DLLEXPORT __declspec(dllexport)
 
@@ -78,6 +80,19 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 		REL_MESSAGE("Game load starting");
 		shse::PluginFacade::Instance().PrepareForReloadOrNewGame();
 		break;
+		
+	case SKSE::MessagingInterface::kPostPostLoad:
+		MergeMapperPluginAPI::GetMergeMapperInterface001();  // Request interface
+		if (g_mergeMapperInterface)
+		{ // Use Interface
+			const auto version = g_mergeMapperInterface->GetBuildNumber();
+			REL_MESSAGE("Got MergeMapper interface buildnumber {}", version);
+		}
+		else
+		{
+			REL_MESSAGE("MergeMapper not detected");
+		}
+		break;
 
 	case SKSE::MessagingInterface::kNewGame:
 		REL_MESSAGE("New game starting");
@@ -99,23 +114,9 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message* msg)
 	}
 }
 
-#if _DEBUG
-int MyCrtReportHook(int, char*, int*)
-{
-	__try {
-		RaiseException(EXCEPTION_NONCONTINUABLE_EXCEPTION, EXCEPTION_NONCONTINUABLE, 0, NULL);
-	}
-	__except (LogStackWalker::LogStack(GetExceptionInformation())) {
-		REL_FATALERROR("JSON Collection Definitions threw structured exception");
-	}
-	return 0;
-}
-#endif
-
 void InitializeDiagnostics()
 {
 #if _DEBUG
-	_CrtSetReportHook(MyCrtReportHook);
 	// default Debug log level is TRACE
 	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #else
@@ -124,7 +125,7 @@ void InitializeDiagnostics()
 	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #else
 	// default Release log level is ERROR
-	spdlog::level::level_enum logLevel(spdlog::level::err);
+	spdlog::level::level_enum logLevel(spdlog::level::trace);
 #endif
 #endif
 	char* levelValue;
@@ -166,15 +167,15 @@ void InitializeDiagnostics()
 	catch (const spdlog::spdlog_ex&)
 	{
 	}
-	spdlog::set_level(logLevel); // Set global log level
-	spdlog::flush_on(logLevel);	// always flush
+	SHSELogger->set_level(logLevel); // Set mod's log level
+	SHSELogger->flush_on(logLevel);	// Set mod's log to always flush
 #if 0
 #if _DEBUG
 	SKSE::add_papyrus_sink();	// TODO what goes in here now
 #endif
 #endif
-
-	REL_MESSAGE("{} v{}", SHSE_NAME, VersionInfo::Instance().GetPluginVersionString().c_str());
+	// Get Process and DLL version
+	REL_MESSAGE("{} v{} in executable {}-{}", Version::PROJECT, Version::NAME, Version::GetExeVersionString(), Version::BUILDTYPE);
 }
 
 EXTERN_C __declspec(dllexport) bool SKSEAPI SKSEPlugin_Load(const SKSE::LoadInterface* skse)

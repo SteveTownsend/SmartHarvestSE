@@ -44,19 +44,27 @@ class ScanGovernor
 public:
 	static ScanGovernor& Instance();
 	ScanGovernor();
-#if _DEBUG
+
 	// make sure load spike handling works OK
-	static constexpr size_t MaxREFRSPerPass = 25;
+	// limit the outstanding Harvest or Glow Loot operations to spread the processing load
+#if _DEBUG
+	static constexpr size_t MaxREFRSPerPass = 20;
+#elif _FULL_LOGGING
+	// 75 was showing stack dumping in Logging DLL in Bards College on fast PC
+	static constexpr size_t MaxREFRSPerPass = 35;
 #else
-	static constexpr size_t MaxREFRSPerPass = 75;
+	static constexpr size_t MaxREFRSPerPass = 50;
 #endif
+	static constexpr size_t MaxHarvestREFRs = 2 * MaxREFRSPerPass;
+	static constexpr size_t MaxLootSenseREFRs = 2 * MaxREFRSPerPass;
 
 	void Clear(const bool gameReload);
 
 	static constexpr int HarvestSpamLimit = 10;
 	size_t PendingHarvestNotifications() const;
+	size_t PendingHarvestOperations() const;
 	// time allowed for PendingHarvest event to be unlocked by script
-	static constexpr int PendingHarvestTimeoutSeconds = 10;
+	static constexpr int PendingHarvestTimeoutSeconds = 60;
 	bool LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent);
 	bool IsLockedForHarvest(const RE::TESObjectREFR* refr) const;
 	bool UnlockHarvest(const RE::FormID refrID, const RE::FormID baseID, const std::string& baseName, const bool isSilent);
@@ -70,9 +78,8 @@ public:
 	bool CanSearch() const;
 	void SetScanActive(const bool isActive);
 	void DoPeriodicSearch(const ReferenceScanType scanType);
-	const RE::Actor* ActorByIndex(const size_t actorIndex) const;
 	inline bool Calibrating() const {
-		RecursiveLockGuard guard(m_searchLock);
+		RecursiveLockGuard guard(m_stateLock);
 		return m_calibrating;
 	}
 
@@ -85,14 +92,15 @@ public:
 	void ResetLootedDynamicREFRs();
 	void ResetLootedContainers();
 	void ForgetLockedContainers();
-	void ClearPendingHarvestNotifications(const bool gameReload);
-	void GlowObject(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
+	void ClearPendingHarvestInfo(const bool gameReload);
+	void GlowObject(RE::TESObjectREFR* refr, const int duration, const ObjectType objectType, const GlowReason glowReason);
 	void ClearGlowExpiration();
 
 	void SetSPERGKeyword(const RE::BGSKeyword* keyword);
 	void SPERGMiningStart(void);
 	void SPERGMiningEnd(void);
 	void ReconcileSPERGMined(void);
+	void PeriodicReminder(const std::string& msg);
 
 private:
 	void ProgressGlowDemo();
@@ -100,7 +108,7 @@ private:
 	void TrackActors();
 
 	Lootability ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly);
-	static Lootability CanLootActor(const RE::Actor* actor);
+	static Lootability CanLootActor(const RE::TESObjectREFR* refr, const RE::Actor* actor);
 	void MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const;
 
 	void RegisterActorTimeOfDeath(RE::TESObjectREFR* refr);
@@ -109,17 +117,18 @@ private:
 
 	// record time limit for each harvest operation, indexed on REFR and Base FormID
 	mutable std::unordered_map<std::pair<RE::FormID, RE::FormID>,
-		std::chrono::time_point<std::chrono::high_resolution_clock>, pair_hash> m_harvestRequested;
-	size_t m_pendingNotifies;
+		std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>, bool>, pair_hash> m_harvestRequested;
+	mutable size_t m_pendingNotifies;
+	mutable size_t m_pendingHarvests;
 
 	bool m_searchAllowed;
 	bool m_searchNotPaused;
 	INIFile::SecondaryType m_targetType;
 
-	// for dry run - ordered by proximity to player at time of recording
-	std::vector<const RE::Actor*> m_detectiveWannabes;
-
-	mutable RecursiveLock m_searchLock;
+	// coarse grain lock to stop multiple scans running concurrently
+	mutable RecursiveLock m_scanLock;
+	// fine grain lock for blocked REFR lists and similar
+	mutable RecursiveLock m_stateLock;
 	mutable std::atomic<bool> m_fhiRunning;
 
 	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_glowExpiration;
@@ -129,6 +138,9 @@ private:
 	mutable std::unordered_set<std::pair<RE::FormID, RE::FormID>, pair_hash> m_lootedDynamicREFRs;
 	// Non-dynamic - reset on game reload or MCM settings update. Handle reglow of partially-looted containers
 	std::unordered_map<const RE::TESObjectREFR*, std::chrono::time_point<std::chrono::high_resolution_clock>> m_lootedContainers;
+
+	// Delay redisplay of Message Forms that are automated by this mod
+	std::unordered_map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>> m_regulatedMessages;
 
 	// BlackList for Locked Containers. Never auto-loot unless config permits. Reset on game reload.
 	mutable std::unordered_map<const RE::TESObjectREFR*, size_t> m_lockedContainers;

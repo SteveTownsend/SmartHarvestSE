@@ -26,7 +26,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "FormHelpers/FormHelper.h"
 #include "WorldState/LocationTracker.h"
-#include "VM/EventPublisher.h"
+#include "VM/TaskDispatcher.h"
 #include "Looting/ScanGovernor.h"
 #include "Utilities/utils.h"
 
@@ -47,16 +47,29 @@ PlayerState& PlayerState::Instance()
 PlayerState::PlayerState() :
 	m_perksAddLeveledItemsOnDeath(false),
 	m_harvestedIngredientMultiplier(1.),
-	m_carryAdjustedForCombat(false),
-	m_carryAdjustedForPlayerHome(false),
-	m_carryAdjustedForDrawnWeapon(false),
-	m_currentCarryWeightChange(0),
+	m_currentlyBeefedUp(false),
 	m_sneaking(false),
+	m_valid(false),
 	m_ownershipRule(OwnershipRule::MAX),
 	m_belongingsCheck(SpecialObjectHandling::MAX),
 	m_disableWhileMounted(false),
 	m_gameTime(0.0)
 {
+	m_carryWeightSpell = DataCase::GetInstance()->FindExactMatch<RE::SpellItem>("SmartHarvestSE.esp", 0xd7d);
+	if (!m_carryWeightSpell)
+	{
+		REL_FATALERROR("Cannot find Smart Harvest CarryWeight SPEL - make sure SmartHarvestSE.esp is enabled");
+		return;
+	}
+	REL_MESSAGE("Smart Harvest CarryWeight SPEL {}/0x{:08x}", m_carryWeightSpell->GetName(), m_carryWeightSpell->GetFormID());
+	m_carryWeightEffect = DataCase::GetInstance()->FindExactMatch<RE::EffectSetting>("SmartHarvestSE.esp", 0xd7e);
+	if (!m_carryWeightEffect)
+	{
+		REL_FATALERROR("Cannot find Smart Harvest CarryWeight MGEF - make sure SmartHarvestSE.esp is enabled");
+		return;
+	}
+	REL_MESSAGE("Smart Harvest CarryWeight MGEF {}/0x{:08x}", m_carryWeightEffect->GetName(), m_carryWeightEffect->GetFormID());
+	m_valid = true;
 }
 
 double PlayerState::SneakDistanceInterior() const
@@ -79,23 +92,12 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 
 	if (onGameReload || onMCMPush)
 	{
-		// reset carry weight state and recache settings
-		ResetCarryWeight();
 		SettingsCache::Instance().Refresh();
 	}
-	else
-	{
-		AdjustCarryWeight();
-	}
+	// reconcile carry-weight delta if it does not reflect current settings
+	ReconcileCarryWeight(onGameReload);
 
-	// Check excess inventory - always check known item updates, full review periodically and on possible state changes
-	// Do not process excess inventory if scanning is not allowed for any reason
-	// Player may be trying to manually sell items or doing other stuff that does not favour inventory manipulation
-	// per https://github.com/SteveTownsend/SmartHarvestSE/issues/252
-	if (PluginFacade::Instance().ScanAllowed())
-	{
-		ReviewExcessInventory(onGameReload || onMCMPush);
-	}
+	TaskDispatcher::Instance().EnqueueReviewExcessInventory(onGameReload || onMCMPush);
 
 	// Update state cache if sneak state or settings may have changed. Affected REFRs were not blacklisted so we will recheck them on next pass.
 	const bool sneaking(RE::PlayerCharacter::GetSingleton()->IsSneaking());
@@ -105,6 +107,11 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload)
 		// no player detection by NPC is a prerequisite for autoloot of crime-to-activate items
 		m_ownershipRule = sneaking ? SettingsCache::Instance().CrimeCheckSneaking() : SettingsCache::Instance().CrimeCheckNotSneaking();
 		m_belongingsCheck = SettingsCache::Instance().PlayerBelongingsLoot();
+		// revisit ore-veins blocked while sneaking
+		if (!m_sneaking && SettingsCache::Instance().DisallowMiningIfSneaking())
+		{
+			DataCase::GetInstance()->UnblockReferences(Lootability::CannotMineIfSneaking);
+		}
 	}
 	auto target(RE::PlayerCharacter::GetSingleton()->As<RE::MagicTarget>());
 	m_slowedTime = target && target->HasEffectWithArchetype(RE::EffectSetting::Archetype::kSlowTime);
@@ -180,64 +187,70 @@ void PlayerState::ReviewExcessInventory(bool force)
 	}
 }
 
-void PlayerState::AdjustCarryWeight()
+// The shift to SPEL use to adjust carry weight under Github issue #480 means it's a simple toggle on/off
+// However, we must check there is no residual delta from the old manual Actor-Value adjustment
+void PlayerState::ReconcileCarryWeight(const bool doReload)
 {
 	bool managePlayerHome(SettingsCache::Instance().UnencumberedInPlayerHome());
 	bool manageIfWeaponDrawn(SettingsCache::Instance().UnencumberedIfWeaponDrawn());
 	bool manageDuringCombat(SettingsCache::Instance().UnencumberedInCombat());
-
-	// no op if this is not in use at all
-	if (!manageDuringCombat && !manageIfWeaponDrawn && !managePlayerHome)
-	{
-		DBG_DMESSAGE("Carry weight not managed, skip checks");
-		return;
-	}
+	bool needsBeefUp(false);
 
 	RecursiveLockGuard guard(m_playerLock);
-	int carryWeightChange(m_currentCarryWeightChange);
-	if (managePlayerHome)
+	DBG_DMESSAGE("Carry weight beefed up? {}", m_currentlyBeefedUp);
+
+	// may need to reset if this is not in use at all
+	if (!manageDuringCombat && !manageIfWeaponDrawn && !managePlayerHome)
 	{
-		// when location changes to/from player house, adjust carry weight accordingly
-		bool playerInOwnHouse(LocationTracker::Instance().IsPlayerAtHome());
-		if (playerInOwnHouse != m_carryAdjustedForPlayerHome)
+		DBG_DMESSAGE("Carry weight not managed");
+	}
+	else
+	{
+		if (managePlayerHome)
 		{
-			carryWeightChange += playerInOwnHouse ? InfiniteWeight : -InfiniteWeight;
-			m_carryAdjustedForPlayerHome = playerInOwnHouse;
-			DBG_MESSAGE("Carry weight delta after in-player-home adjustment {}", carryWeightChange);
+			// when location changes to/from player house, adjust carry weight accordingly
+			bool playerInOwnHouse(LocationTracker::Instance().IsPlayerAtHome());
+			if (playerInOwnHouse)
+			{
+				needsBeefUp = true;
+				DBG_MESSAGE("Beef up player at-home");
+			}
+		}
+
+		if (manageDuringCombat)
+		{
+			bool playerInCombat(RE::PlayerCharacter::GetSingleton()->IsInCombat() && !RE::PlayerCharacter::GetSingleton()->IsDead(true));
+			// when state changes in/out of combat, adjust carry weight accordingly
+			if (playerInCombat)
+			{
+				needsBeefUp = true;
+				DBG_MESSAGE("Beef up player in-combat");
+			}
+		}
+
+		if (manageIfWeaponDrawn)
+		{
+			auto actorState(RE::PlayerCharacter::GetSingleton()->AsActorState());
+			if (actorState)
+			{
+				DBG_VMESSAGE("Player WeaponState {}", static_cast<uint32_t>(actorState->GetWeaponState()));
+				bool isWeaponDrawn(actorState->IsWeaponDrawn());
+				// when state changes between drawn/sheathed, adjust carry weight accordingly
+				if (isWeaponDrawn)
+				{
+					needsBeefUp = true;
+					DBG_MESSAGE("Beef up player with weapon drawn");
+				}
+			}
 		}
 	}
 
-	if (manageDuringCombat)
+	if (needsBeefUp != m_currentlyBeefedUp)
 	{
-	    bool playerInCombat(RE::PlayerCharacter::GetSingleton()->IsInCombat() && !RE::PlayerCharacter::GetSingleton()->IsDead(true));
-		// when state changes in/out of combat, adjust carry weight accordingly
-		if (playerInCombat != m_carryAdjustedForCombat)
-		{
-			carryWeightChange += playerInCombat ? InfiniteWeight : -InfiniteWeight;
-			m_carryAdjustedForCombat = playerInCombat;
-			DBG_MESSAGE("Carry weight delta after in-combat adjustment {}", carryWeightChange);
-		}
-	}
-
-	if (manageIfWeaponDrawn)
-	{
-		auto actorState(RE::PlayerCharacter::GetSingleton()->As<RE::ActorState>());
-	    bool isWeaponDrawn(actorState && actorState->IsWeaponDrawn());
-		// when state changes between drawn/sheathed, adjust carry weight accordingly
-		if (isWeaponDrawn != m_carryAdjustedForDrawnWeapon)
-		{
-			carryWeightChange += isWeaponDrawn ? InfiniteWeight : -InfiniteWeight;
-			m_carryAdjustedForDrawnWeapon = isWeaponDrawn;
-			DBG_MESSAGE("Carry weight delta after drawn weapon adjustment {}", carryWeightChange);
-		}
-	}
-	if (carryWeightChange != m_currentCarryWeightChange)
-	{
-		int requiredWeightDelta(carryWeightChange - m_currentCarryWeightChange);
-		m_currentCarryWeightChange = carryWeightChange;
-		// handle carry weight update via a script event
-		DBG_MESSAGE("Adjust carry weight by delta {}", requiredWeightDelta);
-		EventPublisher::Instance().TriggerCarryWeightDelta(requiredWeightDelta);
+		// update Player's CarryWeight SPEL state via Task Interface
+		DBG_MESSAGE("Reconcile carry weight");
+		TaskDispatcher::Instance().EnqueueCarryWeightStateChange(doReload, needsBeefUp);
+		m_currentlyBeefedUp = !m_currentlyBeefedUp;
 	}
 }
 
@@ -337,34 +350,6 @@ float PlayerState::PerkIngredientMultiplier() const
 	return m_harvestedIngredientMultiplier;
 }
 
-// reset carry weight adjustments - scripts will handle the Player Actor Value, scan will reinstate as needed when we resume
-void PlayerState::ResetCarryWeight()
-{
-	bool managePlayerHome(SettingsCache::Instance().UnencumberedInPlayerHome());
-	bool manageIfWeaponDrawn(SettingsCache::Instance().UnencumberedIfWeaponDrawn());
-	bool manageDuringCombat(SettingsCache::Instance().UnencumberedInCombat());
-
-	// do not adjust if this is not in use at all
-	if (manageDuringCombat || manageIfWeaponDrawn || managePlayerHome)
-	{
-		RecursiveLockGuard guard(m_playerLock);
-		DBG_MESSAGE("Reset carry weight delta {}, in-player-home={}, in-combat={}, weapon-drawn={}", m_currentCarryWeightChange,
-			m_carryAdjustedForPlayerHome ? "true" : "false", m_carryAdjustedForCombat ? "true" : "false", m_carryAdjustedForDrawnWeapon ? "true" : "false");
-		m_carryAdjustedForCombat = false;
-		m_carryAdjustedForPlayerHome = false;
-		m_carryAdjustedForDrawnWeapon = false;
-		if (m_currentCarryWeightChange != 0)
-		{
-			m_currentCarryWeightChange = 0;
-			EventPublisher::Instance().TriggerResetCarryWeight();
-		}
-	}
-	else
-	{
-		DBG_VMESSAGE("Reset carry weight skipped, it's not managed");
-	}
-}
-
 // used for PlayerCharacter
 bool PlayerState::IsMagicallyConcealed(RE::MagicTarget* target) const
 {
@@ -416,15 +401,10 @@ AlglibPosition PlayerState::GetAlglibPosition() const
 	return { player->GetPositionX(), player->GetPositionY(), player->GetPositionZ() };
 }
 
-bool PlayerState::WithinDetectionRange(const double distance) const
-{
-	double maxDistance(LocationTracker::Instance().IsPlayerIndoors() ? SneakDistanceInterior() : SneakDistanceExterior());
-	return distance <= maxDistance;
-}
-
-void PlayerState::UpdateGameTime(const float gameTime)
+void PlayerState::UpdateGameTime()
 {
 	RecursiveLockGuard guard(m_playerLock);
+	auto gameTime(RE::Calendar::GetSingleton()->GetCurrentGameTime());
 	DBG_MESSAGE("GameTime is now {:0.3f}/{}", gameTime, GameCalendar::Instance().DateTimeString(gameTime));
 	m_gameTime = gameTime;
 }

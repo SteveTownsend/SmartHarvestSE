@@ -49,6 +49,8 @@ public:
 	bool NotifyLocationChange() const;
 
 	double ValuableItemThreshold() const;
+	bool CheckWeightlessValue() const;
+	int WeightlessMinimumValue() const;
 	double ValueWeightDefault() const;
 	double ValueWeight(ObjectType objectType) const;
 	LootingType ObjectLootingType(ObjectType objectType) const;
@@ -84,6 +86,8 @@ public:
 	bool ManualLootTargetNotify() const;
 	PopulationCenterSize PreventPopulationCenterLooting() const;
 	int16_t MaxMiningItems() const;
+	bool MiningToolsRequired() const;
+	bool DisallowMiningIfSneaking() const;
 
 private:
 	static std::unique_ptr<SettingsCache> m_instance;
@@ -104,6 +108,8 @@ private:
 	bool m_collectionsEnabled;
 	bool m_notifyLocationChange;
 	double m_valuableItemThreshold;
+	bool m_checkWeightlessValue;
+	int m_weightlessMinimumValue;
 	double m_valueWeightDefault;
 	DeadBodyLooting m_deadBodyLooting;
 	EnchantedObjectHandling m_enchantedObjectHandling;
@@ -130,6 +136,8 @@ private:
 	bool m_manualLootTargetNotify;
 	PopulationCenterSize m_preventPopulationCenterLooting;
 	int16_t m_maxMiningItems;
+	bool m_miningToolsRequired;
+	bool m_disallowMiningIfSneaking;
 
 	static constexpr size_t TypeCount = size_t(ObjectType::oreVein);
 

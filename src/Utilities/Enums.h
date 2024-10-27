@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "Looting/ObjectType.h"
+#include "brotli/decode.h"
 
 namespace shse
 {
@@ -34,7 +35,8 @@ enum class GlowReason {
 	EnchantedItem,
 	PlayerProperty,
 	SimpleTarget,
-	None
+	None,
+	NumberOfShaders = None		// for shader array
 };
 
 inline GlowReason CycleGlow(const GlowReason current)
@@ -80,6 +82,7 @@ enum class LootingType {
 	MAX = 5
 };
 std::string LootingTypeString(const LootingType lootingType);
+std::string BrotliDecoderResultString(const BrotliDecoderResult brotliDecoderResult);
 
 inline bool LootingRequiresNotification(const LootingType lootingType)
 {
@@ -154,6 +157,7 @@ enum class ExcessInventoryExemption : uint8_t {
 	CountIsZero,
 	Ineligible,
 	IsLeveledItem,
+	Anchored,
 	NotFound
 };
 
@@ -283,7 +287,9 @@ inline bool CanLootCollectible(const CollectibleHandling collectibleHandling)
 
 inline bool CollectibleHistoryNeeded(const CollectibleHandling collectibleHandling)
 {
-	return collectibleHandling == CollectibleHandling::Take || collectibleHandling == CollectibleHandling::Glow;
+	return collectibleHandling == CollectibleHandling::Take ||
+		   collectibleHandling == CollectibleHandling::Glow ||
+		   collectibleHandling == CollectibleHandling::Print;
 }
 
 inline std::string CollectibleHandlingString(const CollectibleHandling collectibleHandling)
@@ -445,12 +451,13 @@ inline bool UseTransferForExcess(const ExcessInventoryHandling handling)
 		handling != ExcessInventoryHandling::NoLimits;
 }
 
-bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType);
+bool LootingDependsOnValueWeight(const LootingType lootingType, ObjectType objectType, const double weight);
 
 enum class DeadBodyLooting {
 	DoNotLoot = 0,
 	LootExcludingArmor,
 	LootAll,
+	LootExcludingUnderwear,
 	MAX
 };
 
@@ -461,6 +468,8 @@ inline std::string DeadBodyLootingString(const DeadBodyLooting deadBodyLooting)
 		return "DoNotLoot";
 	case DeadBodyLooting::LootExcludingArmor:
 		return "LootExcludingArmor";
+	case DeadBodyLooting::LootExcludingUnderwear:
+		return "LootExcludingUnderwear";
 	case DeadBodyLooting::LootAll:
 		return "LootAll";
 	default:
@@ -587,11 +596,14 @@ enum class Lootability {
 	ContainerPermanentlyOffLimits,
 	CorruptArrowPosition,
 	CannotMineTwiceInSameCellVisit,
+	AutoMiningDisabledByIncompatibleMod,
+	CannotMineIfSneaking,
 	ReferenceBlacklisted,
 	UnnamedReference,
 	ReferenceIsPlayer,
 	ReferenceIsLiveActor,
 	FloraHarvested,
+	SyntheticFloraHarvested,
 	PendingHarvest,
 	ContainerLootedAlready,
 	DynamicReferenceLootedAlready,
@@ -628,6 +640,7 @@ enum class Lootability {
 	ValueWeightPreventsLooting,
 	ItemTheftTriggered,
 	HarvestOperationPending,
+	HarvestOperationTimeout,
 	ContainerHasNoLootableItems,
 	ContainerIsLocked,
 	ContainerIsBossChest,
@@ -646,7 +659,7 @@ enum class Lootability {
 	OutOfScope,
 	PlayerHouseRestrictsLooting,
 	ReferenceActivationBlocked,
-	NPCIsAGhost,
+	NPCIsDisintegrating,
 	MAX
 };
 
@@ -691,6 +704,7 @@ enum class SerializationRecordType
 	PartyUpdates,
 	Victims,
 	Adventures,
+	ExcessInventory,
 	MAX
 };
 
@@ -709,9 +723,26 @@ inline std::string SerializationRecordName(const SerializationRecordType recordT
 		return "VCTM";
 	case SerializationRecordType::Adventures:
 		return "ADVN";
+	case SerializationRecordType::ExcessInventory:
+		return "EXCS";
 	default:
 		return "????";
 	}
 }
 
+enum class ScanStatus : unsigned int {
+	GoodToGo,
+	MCMOpen,
+	GamePaused
+};
+extern const char* ScanStatusNames[];
+ 
 }
+
+template<> struct std::formatter<shse::ScanStatus> : std::formatter<const char*> {
+  auto format(shse::ScanStatus scanStatus, std::format_context& ctx) const {
+    return std::formatter<const char*>::format(shse::ScanStatusNames[(unsigned int)scanStatus], ctx);
+  }
+};
+
+

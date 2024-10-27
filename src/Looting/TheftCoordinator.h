@@ -30,7 +30,6 @@ public:
 	TheftCoordinator() : m_stealInProgress(false), m_stealTimer(-1) {}
 	void DelayStealableItem(RE::TESObjectREFR * target, INIFile::SecondaryType targetType);
 	void StealIfUndetected(void);
-	const RE::Actor* ActorByIndex(const size_t actorIndex) const;
 	void StealOrForgetItems(const bool detected);
 	bool StealingItems() const;
 
@@ -40,8 +39,6 @@ private:
 
 	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_refrsToSteal;
 	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_refrsStealInProgress;
-	// ordered by proximity to player at time of recording
-	std::vector<const RE::Actor*> m_detectingActors;
 	bool m_stealInProgress;
 	int m_stealTimer;
 };

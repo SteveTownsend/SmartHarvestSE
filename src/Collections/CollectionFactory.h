@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/Collection.h"
 namespace shse
 {
+class CollectionManager;
 
 class CollectionFactory {
 public:
@@ -29,7 +30,8 @@ public:
 
 	std::shared_ptr<Collection> ParseCollection(
 		const CollectionGroup* owningGroup, const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const;
-	std::shared_ptr<CollectionGroup> ParseGroup(const nlohmann::json& group, const std::string& groupName) const;
+	std::shared_ptr<CollectionGroup> ParseGroup(
+		CollectionManager& manager, const nlohmann::json& group, const std::string& groupName) const;
 	CollectionPolicy ParsePolicy(const nlohmann::json& policy) const;
 
 private:

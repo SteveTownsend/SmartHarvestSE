@@ -20,8 +20,6 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 #include "PluginFacade.h"
 
-#include "Utilities/versiondb.h"
-#include "Utilities/LogStackWalker.h"
 #include "Collections/CollectionManager.h"
 #include "Data/CosaveData.h"
 #include "Data/dataCase.h"
@@ -52,27 +50,20 @@ PluginFacade& PluginFacade::Instance()
 	return *m_instance;
 }
 
-PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted), m_threadStarted(false), m_pluginSynced(false), m_loadedSettings(false)
+PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted),
+	m_threadStarted(false), m_pluginSynced(false), m_loadedSettings(false), m_ready(false)
 {
 }
 
 bool PluginFacade::OneTimeLoad(void)
 {
-	__try
-	{
-		// Use structured exception handling during game data load
-		REL_MESSAGE("Plugin not initialized - Game Data load executing");
-		WindowsUtils::LogProcessWorkingSet();
-		if (!Load())
-			return false;
-		m_loadProgress = LoadProgress::Complete;
-		WindowsUtils::LogProcessWorkingSet();
-	}
-	__except (LogStackWalker::LogStack(GetExceptionInformation()))
-	{
-		REL_FATALERROR("Fatal Exception during Game Data load");
+	// Use structured exception handling during game data load
+	REL_MESSAGE("Plugin not initialized - Game Data load executing");
+	WindowsUtils::LogProcessWorkingSet();
+	if (!Load())
 		return false;
-	}
+	m_loadProgress = LoadProgress::Complete;
+	WindowsUtils::LogProcessWorkingSet();
 	return true;
 }
 
@@ -97,7 +88,7 @@ bool PluginFacade::Init()
 	}
 	if (loadRequired)
 	{
-		if (!OneTimeLoad())
+		if (!OneTimeLoad() || !PlayerState::Instance().IsValid())
 			return false;
 	}
 
@@ -115,6 +106,9 @@ bool PluginFacade::Init()
 	}
 	// here we go
 	EventPublisher::Instance().TriggerGameReady();
+	PlayerState::Instance().UpdateGameTime();
+	// we are now ready for interaction with the Papyrus VM
+	m_ready = true;
 	return true;
 }
 
@@ -123,17 +117,13 @@ void PluginFacade::Start()
 {
 	// do not start the thread if we failed to initialize
 	if (!Loaded())
+	{
+		REL_FATALERROR("SmartHarvest startup failed, cannot start scan thread");
 		return;
+	}
 	std::thread([]()
 	{
-		// use structured exception handling to get stack walk on windows exceptions
-		__try
-		{
-			ScanThread();
-		}
-		__except (LogStackWalker::LogStack(GetExceptionInformation()))
-		{
-		}
+		ScanThread();
 	}).detach();
 }
 
@@ -141,20 +131,6 @@ bool PluginFacade::Load()
 {
 #ifdef _PROFILING
 	WindowsUtils::ScopedTimer elapsed("Startup: Load Game Data");
-#endif
-#if _DEBUG
-	VersionDb db;
-
-	// Try to load database of version 1.5.97.0 regardless of running executable version.
-	if (!db.Load(1, 5, 97, 0))
-	{
-		DBG_FATALERROR("Failed to load database for 1.5.97.0!");
-		return false;
-	}
-
-	// Write out a file called offsets-1.5.97.0.txt where each line is the ID and offset.
-	db.Dump("offsets-1.5.97.0.txt");
-	DBG_MESSAGE("Dumped offsets for 1.5.97.0");
 #endif
 	if (!LoadOrder::Instance().Analyze())
 	{
@@ -173,8 +149,14 @@ bool PluginFacade::Load()
 	QuestTargets::Instance().Analyze();
 
 	// Collections are layered on top of categorized and placed objects
+	// Excess Inventory and Collectibles processing share a JSON schema
 	REL_MESSAGE("*** LOAD *** Build Collections");
-	CollectionManager::Instance().ProcessDefinitions();
+	if (CollectionManager::LoadSchema())
+	{
+		CollectionManager::Collectibles().ProcessDefinitions();
+		CollectionManager::ExcessInventory().ProcessDefinitions();
+		CollectionManager::SpecialCases().ProcessDefinitions();
+	}
 
 	REL_MESSAGE("Plugin Data load complete!");
 	return true;
@@ -208,6 +190,11 @@ bool PluginFacade::ScanAllowed() const {
 	return true;
 }
 
+bool PluginFacade::Loaded() const
+{
+	return m_loadProgress == LoadProgress::Complete && PlayerState::Instance().IsValid();
+}
+
 void PluginFacade::ScanThread()
 {
 	REL_MESSAGE("Starting SHSE Worker Thread");
@@ -229,7 +216,7 @@ void PluginFacade::ScanThread()
 		}
 
 		// block until UI is good to go
-		bool delayed(UIState::Instance().WaitUntilVMGoodToGo());
+		UIState::Instance().WaitUntilVMGoodToGo();
 
 		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
 		if (!LocationTracker::Instance().Refresh())
@@ -238,12 +225,12 @@ void PluginFacade::ScanThread()
 			continue;
 		}
 
-		const bool onMCMPush(delayed);
+		static const bool onMCMPush(false);
 		static const bool onGameReload(false);
 		PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
 		// process any queued added items since last time
-		CollectionManager::Instance().ProcessAddedItems();
+		CollectionManager::Collectibles().ProcessAddedItems();
 
 		// reconcile SPERG mined items
 		ScanGovernor::Instance().ReconcileSPERGMined();
@@ -287,7 +274,19 @@ void PluginFacade::ResetTransientState(const bool gameReload)
 
 void PluginFacade::OnVMSync()
 {
-	REL_MESSAGE("Plugin sync, VM ready");
+	// This can get called via SHSE_MCM.OnGameReload if player consoles into the game using coc.
+	// In that case, the script state is consistent but the C++ code is unprepared, meaning undefined behaviour.
+	// Don't do this processing before the SKSE plugin has reached a stable state.
+	if (!m_ready)
+	{
+		REL_ERROR("Plugin sync from VM, skip until we are ready");
+		return;
+	}
+	else
+	{
+		REL_MESSAGE("Plugin sync, VM ready");
+	}
+
 	WindowsUtils::LogProcessWorkingSet();
 	ResetTransientState(true);
 	// reset player state
@@ -303,7 +302,10 @@ void PluginFacade::OnVMSync()
 	// seed state using cosave data
 	CosaveData::Instance().SeedState();
 	// Update Collections State, including saved-game data if present
-	CollectionManager::Instance().OnGameReload();
+	CollectionManager::Collectibles().OnGameReload();
+	CollectionManager::ExcessInventory().OnGameReload();
+	DataCase::GetInstance()->RefreshBuiltinSpecialCases();
+	
 	// need to wait for the scripts to sync up before performing player house checks
 	m_pluginSynced = true;
 	REL_MESSAGE("Plugin sync completed");

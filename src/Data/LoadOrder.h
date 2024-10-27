@@ -36,6 +36,20 @@ public:
 	LoadOrder();
 	bool Analyze(void);
 	RE::FormID GetFormIDMask(const std::string& modName) const;
+
+	// Proxies for CommonLibSSE-NG to handle merged plugins using MergeMapper
+	RE::TESForm* LookupForm(RE::FormID a_localFormID, std::string_view a_modName);
+	template <class T>
+	T* LookupForm(RE::FormID a_localFormID, std::string_view a_modName)
+	{
+		auto form = LookupForm(a_localFormID, a_modName);
+		if (!form) {
+			return nullptr;
+		}
+
+		return form->Is(T::FORMTYPE) ? static_cast<T*>(form) : nullptr;
+	}
+
 	bool IncludesMod(const std::string& modName) const;
 	bool ModPrecedesSHSE(const std::string& modName) const;
 	bool ModOwnsForm(const std::string& modName, const RE::FormID formID) const;

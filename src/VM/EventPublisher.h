@@ -36,13 +36,13 @@ public:
 	bool GoodToGo();
 
 	void TriggerGetProducerLootable(RE::TESObjectREFR* refr);
-	void TriggerCarryWeightDelta(const int delta);
-	void TriggerResetCarryWeight();
 	void TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify, const bool isFirehose);
 	void TriggerHarvest(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
 		const bool collectible, const float ingredientCount, const bool isWhitelisted);
-	void TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const bool collectible);
-	void TriggerFlushAddedItems(void);
+	void TriggerHarvestSyntheticFlora(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
+		const bool collectible, const bool isWhitelisted);
+	void TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount, const bool isSilent,
+		const bool collectible, const bool isWhitelisted);
 	void TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason);
 	void TriggerCheckOKToScan(const int nonce);
 	void TriggerStealIfUndetected(const size_t actorCount, const bool dryRun);
@@ -56,15 +56,12 @@ private:
 	RE::BGSRefAlias* m_eventTarget;
 
 	SKSE::RegistrationSet<RE::TESObjectREFR*> m_onGetProducerLootable;
-	SKSE::RegistrationSet<int> m_onCarryWeightDelta;
-	SKSE::RegistrationSet<> m_onResetCarryWeight;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, float, bool> m_onHarvest;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, bool> m_onHarvestSyntheticFlora;
+	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, std::string, int, int, bool, bool, bool> m_onHarvestCritter;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, bool, bool> m_onMining;
-	SKSE::RegistrationSet<RE::TESObjectREFR*, RE::TESForm*, int, int, bool> m_onLootFromNPC;
-	SKSE::RegistrationSet<> m_onFlushAddedItems;
 	SKSE::RegistrationSet<RE::TESObjectREFR*, int, int> m_onObjectGlow;
 	SKSE::RegistrationSet<int> m_onCheckOKToScan;
-	SKSE::RegistrationSet<int, bool> m_onStealIfUndetected;
 	SKSE::RegistrationSet<> m_onGameReady;
 };
 

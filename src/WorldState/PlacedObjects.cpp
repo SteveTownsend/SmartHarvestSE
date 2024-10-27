@@ -39,7 +39,7 @@ PlacedObjects& PlacedObjects::Instance()
 	return *m_instance;
 }
 
-PlacedObjects::PlacedObjects()
+PlacedObjects::PlacedObjects() : m_emptyREFRList(new std::unordered_set<RE::TESObjectREFR*>)
 {
 }
 
@@ -53,7 +53,45 @@ void PlacedObjects::RecordPlacedItem(const RE::TESForm* item, const RE::TESObjec
 	}
 }
 
-void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
+void PlacedObjects::SavePersistentREFR(const RE::TESWorldSpace* worldSpace, RE::TESObjectREFR* refr)
+{
+	// convert REFR position to CELL X/Y
+	std::int32_t cellX(static_cast<std::int32_t>(std::floor(refr->GetPositionX() / 4096.0f)));
+	std::int32_t cellY(static_cast<std::int32_t>(std::floor(refr->GetPositionY() / 4096.0f)));
+	WorldspaceCell refrCell = {worldSpace, cellX, cellY};
+	auto refrs(m_persistentPlacedObjects.find(refrCell));
+	if (refrs == m_persistentPlacedObjects.cend())
+	{
+		refrs = m_persistentPlacedObjects.insert({refrCell, std::make_shared<std::unordered_set<RE::TESObjectREFR*>>()}).first;
+	}
+	if (refrs->second->insert(refr).second)
+	{
+		REL_VMESSAGE("Persistent REFR 0x{:08x} to item {}/0x{:08x} Placed in CELL ({},{})", refr->GetFormID(), refr->GetBaseObject()->GetName(),
+			refr->GetBaseObject()->GetFormID(), cellX, cellY);
+	}
+	else
+	{
+		REL_VMESSAGE("Cannot save Persistent REFR 0x{:08x} to item {}/0x{:08x} as Placed in CELL ({},{})", refr->GetFormID(), refr->GetBaseObject()->GetName(),
+			refr->GetBaseObject()->GetFormID(), cellX, cellY);
+	}
+}
+
+std::shared_ptr<std::unordered_set<RE::TESObjectREFR*>> PlacedObjects::CellPersistentREFRs(RE::TESObjectCELL* cell)
+{
+	auto coordinates(cell->GetCoordinates());
+	if (coordinates)
+	{
+		WorldspaceCell  refrCell = {cell->GetRuntimeData().worldSpace, coordinates->cellX, coordinates->cellY};
+		auto refrs(m_persistentPlacedObjects.find(refrCell));
+		if (refrs != m_persistentPlacedObjects.cend())
+		{
+			return refrs->second;
+		}
+	}
+	return m_emptyREFRList;
+}
+
+void PlacedObjects::SaveREFRIfPlaced(const RE::TESWorldSpace* worldSpace, RE::TESObjectREFR* refr)
 {
 	// skip if empty REFR
 	if (!refr)
@@ -67,6 +105,24 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 		DBG_VMESSAGE("REFR 0x{:08x} Base 0x{:08x} is missing, non-playable or unnamed",
 			refr->GetFormID(), refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm);
 		return;
+	}
+
+	// record persistent REFRs by CELL X/Y
+	// Actors are problematic, on new game they show up with NULL base object
+	// Dynamic REFRs and Base Objects likewise
+	if (worldSpace)
+	{
+		if (refr->GetFormType() != RE::FormType::ActorCharacter &&
+			!refr->IsDynamicForm() &&
+			refr->GetBaseObject() &&
+			!refr->GetBaseObject()->IsDynamicForm())
+		{
+			SavePersistentREFR(worldSpace, refr);
+		}
+		else
+		{
+			REL_VMESSAGE("Skip persistent REFR 0x{:08x}", refr->GetFormID());
+		}
 	}
 
 	// skip if not a valid BaseObject for Collections, or a placed Container or Corpse that we need to introspect
@@ -124,10 +180,14 @@ void PlacedObjects::SaveREFRIfPlaced(const RE::TESObjectREFR* refr)
 	}
 }
 
+// 2024/06/16 this is broken for Temp REFRs, which load on-demand. Only useful for recording persistent exterior REFRs.
+// If worldSpace is set, this is the special persistent REFR CELL
 // This logic works at startup for non-Masters. If the REFR is from a master, temp REFRs are loaded on demand and we could
 // check again then.
-void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
+void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESWorldSpace* worldSpace, const RE::TESObjectCELL* cell)
 {
+	if (!worldSpace)
+		return;
 	if (!cell)
 		return;
 	if (!m_checkedForPlacedObjects.insert(cell).second)
@@ -138,16 +198,26 @@ void PlacedObjects::RecordPlacedObjectsForCell(const RE::TESObjectCELL* cell)
 
 	if (DataCase::GetInstance()->IsOffLimitsLocation(cell))
 		return;
-#if _DEBUG
+#if _DEBUG || defined(_FULL_LOGGING)
 	ptrdiff_t actors(std::count_if(cell->GetRuntimeData().references.cbegin(), cell->GetRuntimeData().references.cend(),
 		[&](const auto refr) -> bool { return refr->GetFormType() == RE::FormType::ActorCharacter; }));
-	DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->GetRuntimeData().references.size(), actors,
-		FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
-#endif
+	if (worldSpace)
+	{
+		DBG_MESSAGE("Process {} REFRs including {} actors in WRLD {}/0x{:08x} persistent CELL {}/0x{:08x}",
+			cell->GetRuntimeData().references.size(), actors, worldSpace->GetName(), worldSpace->GetFormID(),
+			FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	}
+	else
+	{
+		DBG_MESSAGE("Process {} REFRs including {} actors in CELL {}/0x{:08x}", cell->GetRuntimeData().references.size(), actors,
+			FormUtils::SafeGetFormEditorID(cell).c_str(), cell->GetFormID());
+	}
+#endif		
+
 	for (const RE::TESObjectREFRPtr& refptr : cell->GetRuntimeData().references)
 	{
-		const RE::TESObjectREFR* refr(refptr.get());
-		SaveREFRIfPlaced(refr);
+		RE::TESObjectREFR* refr(refptr.get());
+		SaveREFRIfPlaced(worldSpace, refr);
 	}
 }
 
@@ -157,20 +227,23 @@ void PlacedObjects::RecordPlacedObjects(void)
 	WindowsUtils::ScopedTimer elapsed("Record Placed Objects");
 #endif
 
-	// Process CELLs to list all placed objects of interest for Quest Target checking
 	for (const auto worldSpace : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESWorldSpace>())
 	{
+		// Process persistent REFRs off WLRD record
+		RecordPlacedObjectsForCell(worldSpace, worldSpace->persistentCell);
+		// Process CELLs to list all placed objects of interest for Quest Target checking
 		DBG_MESSAGE("Process {} CELLs in WorldSpace Map for {}/0x{:08x}", worldSpace->cellMap.size(), worldSpace->GetName(), worldSpace->GetFormID());
 		for (const auto cellEntry : worldSpace->cellMap)
 		{
-			RecordPlacedObjectsForCell(cellEntry.second);
+			RecordPlacedObjectsForCell(nullptr, cellEntry.second);
 		}
 	}
 	DBG_MESSAGE("Process {} Interior CELLs", RE::TESDataHandler::GetSingleton()->interiorCells.size());
 	for (const auto cell : RE::TESDataHandler::GetSingleton()->interiorCells)
 	{
-		RecordPlacedObjectsForCell(cell);
+		RecordPlacedObjectsForCell(nullptr, cell);
 	}
+
 	size_t placed(0);
 	placed = std::accumulate(m_placedObjects.cbegin(), m_placedObjects.cend(), placed,
 		[&] (const size_t& result, const auto& keyList) { return result + keyList.second.size(); });

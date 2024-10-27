@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/ScanGovernor.h"
 #include "Collections/CollectionManager.h"
 #include "FormHelpers/FormHelper.h"
+#include "VM/TaskDispatcher.h"
 
 namespace shse
 {
@@ -73,7 +74,7 @@ InventoryItem::InventoryItem(const InventoryItem& rhs) :
 	m_inlineTransfer(rhs.m_inlineTransfer), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
 // returns number of objects added
-size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool collectible, const bool inlineTransfer)
+size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool inlineTransfer)
 {
 	m_inlineTransfer = inlineTransfer;
 	auto toRemove = m_count;
@@ -146,28 +147,28 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 	*/
 	for (auto& elem : queued) {
 		DBG_VMESSAGE("Move extra list {} ({})", elem.first->GetDisplayName(BoundObject()), elem.second);
-		Remove(container, target, elem.first, elem.second, collectible);
+		Remove(container, target, elem.first, elem.second);
 	}
 	if (toRemove > 0) {
 		DBG_VMESSAGE("Move item {} ({})", BoundObject()->GetName(), toRemove);
-		Remove(container, target, nullptr, toRemove, collectible);
+		Remove(container, target, nullptr, toRemove);
 	}
 	return static_cast<size_t>(toRemove + queued.size());
 }
 
-void InventoryItem::Remove(RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList,
-	ptrdiff_t count, const bool collectible)
+void InventoryItem::Remove(
+	RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count)
 {
 	if (m_inlineTransfer)
 	{
 		// safe to handle here - record the item for Collection correlation before moving
-		shse::CollectionManager::Instance().CheckEnqueueAddedItem(BoundObject(), INIFile::SecondaryType::containers, m_objectType);
+		CollectionManager::Collectibles().CheckEnqueueAddedItem(BoundObject(), INIFile::SecondaryType::containers, m_objectType);
 		container->RemoveItem(BoundObject(), static_cast<int32_t>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
 	}
 	else
 	{
-		// apparent thread safety issues for NPC item transfer - use Script event dispatch
-		EventPublisher::Instance().TriggerLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType, collectible);
+		// apparent thread safety issues for NPC item transfer - use TaskInterface dispatch
+		TaskDispatcher::Instance().EnqueueLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
 	}
 }
 

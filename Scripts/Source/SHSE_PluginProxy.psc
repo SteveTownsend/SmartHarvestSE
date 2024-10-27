@@ -8,11 +8,11 @@ string Function GetPluginVersion() global native
 string Function GetPluginName(Form thisForm) global native
 string Function GetTextObjectType(Form thisForm) global native
 
-bool Function UnlockHarvest(int refrID, int baseID, string baseName, bool isSilent) global native
 Function NotifyManualLootItem(ObjectReference manualREFR) global native
 bool Function IsQuestTarget(Form item) global native
 bool Function IsDynamic(ObjectReference refr) global native
 bool Function IsLootableObject(ObjectReference refr) global native
+bool Function UseUnderwear() global native
 string Function ValidTransferTargetLocation(ObjectReference refr, bool linksChest, bool knownGood) global native
 bool Function SupportsExcessHandling(int objectType) global native
 string Function SellItem(Form item, bool excessOnly) global native
@@ -37,9 +37,14 @@ Function LoadIniFile(bool useDefaults) global native
 Function SaveIniFile() global native
 
 Function SetLootableForProducer(Form producer, Form lootable) global native
+Function ClearLootableForProducer(Form producer) global native
+Function SetHarvested(ObjectReference refr) global native
 
 Function PrepareSPERGMining() global native
 Function PostprocessSPERGMining() global native
+Function PeriodicReminder(Message mesg) global native
+Function PeriodicReminderString(String msg) global native
+Function UnblockMineable(ObjectReference mineable) global native
 
 Function AllowSearch() global native
 Function DisallowSearch() global native
@@ -57,10 +62,16 @@ String Function GetTranslation(String key) global native
 String Function Replace(String str, String target, String replacement) global native
 String Function ReplaceArray(String str, String[] targets, String[] replacements) global native
 
+Function NotifyActivated(Form itemForm, int itemType, bool collectible, int refrID, int baseID, bool notify, string baseName, int count, bool activated, bool silent, bool isWhitelisted) global native
+bool Function ActivateItem1(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem2(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem3(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem4(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem5(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+bool Function ActivateItem6(ObjectReference akTarget, ObjectReference akActivator, bool suppressMessage, int activateCount) global native
+
 ;Collection Management
 bool Function CollectionsInUse() global native
-Function FlushAddedItems(float gameTime, Form[] forms, int[] scopes, int[] types, int itemCount) global native
-Function PushGameTime(float gameTime) global native
 int Function CollectionGroups() global native
 String Function CollectionGroupName(int fileIndex) global native
 String Function CollectionGroupFile(int fileIndex) global native
@@ -95,9 +106,9 @@ Function ToggleCalibration(bool shaderTest) global native
 Form Function GetPlayerPlace() global native
 Function ShowLocation() global native
 Function GlowNearbyLoot() global native
+Function SyncShader(int index, EffectShader shader) global native
+Function SetPlayer(Actor player) global native
 
-Actor Function GetDetectingActor(int actorIndex, bool dryRun) global native    
-Function ReportPlayerDetectionState(bool detected) global native
 Function CheckLootable(ObjectReference refr) global native
 
 ; Script operation timing

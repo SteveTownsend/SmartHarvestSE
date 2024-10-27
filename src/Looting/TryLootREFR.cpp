@@ -64,22 +64,27 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	{
 		LootableREFR refrEx(m_candidate, m_targetType);
 		ObjectType objType = refrEx.GetObjectType();
+		ObjectType originalType = objType;
 		m_typeName = refrEx.GetTypeName();
 		// Various form types contain an ingredient or FormList that is the final lootable item
+		bool isSyntheticFlora(DataCase::GetInstance()->IsSyntheticFlora(m_candidate->GetBaseObject()));
 		if (!dryRun && refrEx.IsHarvestable())
 		{
 			RE::TESBoundObject* lootable(ProducerLootables::Instance().GetLootableForProducer(m_candidate->GetBaseObject()));
 			if (lootable)
 			{
+				// process other checks based on what is yielded
+				refrEx.SetLootable(lootable);
+				objType = refrEx.GetObjectType();
 				DBG_VMESSAGE("producer {}/0x{:08x} has lootable {}/0x{:08x} of type {}", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID,
 					lootable->GetName(), lootable->formID, GetObjectTypeName(objType));
 			}
-			// resolve here if critter and not yet known
-			else if (refrEx.IsCritter())
+			// resolve here if critter or other special-case scripted Producer, ie. synthetic Flora, and not yet known
+			else if (refrEx.IsCritter() || isSyntheticFlora)
 			{
-				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve recorded using nullptr,
+				// trigger critter -> ingredient resolution and skip until it's resolved - pending resolve state is recorded using nullptr,
 				// only trigger if not already pending
-				DBG_VMESSAGE("resolve critter {}/0x{:08x} to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
+				DBG_VMESSAGE("resolve critter/scripted producer {}/0x{:08x} to ingredient", m_candidate->GetBaseObject()->GetName(), m_candidate->GetBaseObject()->formID);
 				if (ProducerLootables::Instance().SetLootableForProducer(m_candidate->GetBaseObject(), nullptr))
 				{
 					EventPublisher::Instance().TriggerGetProducerLootable(m_candidate);
@@ -268,15 +273,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
-
-		// Check if this is an item harvestable in player home - this setting ignores player-ownership for flora, critters etc
-		bool atHome(LocationTracker::Instance().IsPlayerAtHome());
-		bool allowHarvestAtHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse() &&
-			refrEx.IsItemLootableInPlayerHouse(objType));
-
-		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result.
-		Lootability forbidden(atHome && allowHarvestAtHome ?
-			Lootability::Lootable : ItemLootingLegality(collectible.first, m_targetType));
+		// Order is important to ensure we glow correctly even if blocked. Collectibility may override the initial result,
+		// but should not result in a crime being committed.
+		Lootability forbidden(ItemLootingLegality(collectible.first, m_targetType));
 		if (forbidden != Lootability::Lootable)
 		{
 			skipLooting = true;
@@ -286,7 +285,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// Force-Harvest hotkey is used to pick up loose Quest Targets, at user's discretion and own risk
 		if (!dryRun && !m_forceHarvest && m_glowReason != GlowReason::None)
 		{
-			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objType, m_glowReason);
 			// further checks redundant if we have a glowable target
 			if (m_glowOnly)
 			{
@@ -294,13 +293,20 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 		}
 
+		// Check if this is an item harvestable in player home - this setting ignores player-ownership for flora, critters etc
+		// The original type is used here as objType now represents the type yielded, in the case of critter and flora
+		bool atHome(LocationTracker::Instance().IsPlayerAtHome());
+		bool allowHarvestAtHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse() &&
+			refrEx.IsItemLootableInPlayerHouse(originalType));
+
 		// Harvesting and mining is allowed in settlements. We really just want to not auto-loot entire
 		// buildings of friendly factions, and the like. Mines and farms mostly self-identify as Settlements.
 		// Harvesting in player house is a special-case.
+		// The original type is used here, as objType now represents the type yielded, in the case of critter and flora
 		bool whitelistedPlace(LocationTracker::Instance().IsPlayerInWhitelistedPlace());
 		if ((!atHome || !allowHarvestAtHome) && !whitelistedPlace &&
 			LocationTracker::Instance().IsPlayerInRestrictedLootSettlement() &&
-			!refrEx.IsItemLootableInPopulationCenter(objType))
+			!refrEx.IsItemLootableInPopulationCenter(originalType))
 		{
 			DBG_VMESSAGE("Player location is excluded as restricted population center for this item");
 			result = Lootability::PopulousLocationRestrictsLooting;
@@ -357,7 +363,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		else if (!skipLooting)
 		{
 			// check if final output of harvest is lootable
-			lootingType = forceIngredientLoot ? LootingType::LootAlwaysNotify : SettingsCache::Instance().ObjectLootingType(objType);
+			// The original type is used here, as objType now represents the type yielded, in the case of critter and flora
+			// We distinguish critter/flora from their yielded INGRs to respect player's aesthetic preference
+			lootingType = forceIngredientLoot ? LootingType::LootAlwaysNotify : SettingsCache::Instance().ObjectLootingType(originalType);
 			if (lootingType == LootingType::LeaveBehind)
 			{
 				if (!dryRun)
@@ -380,7 +388,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				skipLooting = true;
 				result = Lootability::HarvestDisallowedForBaseObjectType;
 			}
-			else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType))
+			else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType, refrEx.GetWeight()))
 			{
 				if (refrEx.ValueWeightTooLowToLoot())
 				{
@@ -409,7 +417,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			// we would loot this - glow and exit if we are using Loot Sense
 			if (m_glowOnly)
 			{
-				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objType, GlowReason::SimpleTarget);
 				return result;
 			}
 
@@ -429,18 +437,33 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// don't try to re-harvest excluded, depleted or malformed ore vein again until we revisit the cell
 		if (objType == ObjectType::oreVein)
 		{
-			DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
-			data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
-			const bool manualLootNotify(SettingsCache::Instance().ManualLootTargetNotify());
-			const bool mineAll(SettingsCache::Instance().ObjectLootingType(ObjectType::oreVein) == LootingType::LootOreVeinAlways);
-			if (!isFirehose || mineAll)
+			if (DataCase::GetInstance()->AutoMiningDisabled())
 			{
-				EventPublisher::Instance().TriggerMining(
-					m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify, isFirehose);
-				if (isFirehose)
+				DBG_VMESSAGE("loot oreVein - mining disabled due to conflict with another mod: 0x{:08x}", m_candidate->formID);
+				data->BlockReference(m_candidate, Lootability::AutoMiningDisabledByIncompatibleMod);
+				return Lootability::AutoMiningDisabledByIncompatibleMod;
+			}
+			else if (RE::PlayerCharacter::GetSingleton()->IsSneaking() && SettingsCache::Instance().DisallowMiningIfSneaking())
+			{
+				DBG_VMESSAGE("loot oreVein prevented because player is sneaking : 0x{:08x}", m_candidate->formID);
+				data->BlockReference(m_candidate, Lootability::CannotMineIfSneaking);
+				return Lootability::CannotMineIfSneaking;
+			}
+			else 
+			{
+				DBG_VMESSAGE("loot oreVein - do not process again during this cell visit: 0x{:08x}", m_candidate->formID);
+				data->BlockReference(m_candidate, Lootability::CannotMineTwiceInSameCellVisit);
+				const bool manualLootNotify(SettingsCache::Instance().ManualLootTargetNotify());
+				const bool mineAll(SettingsCache::Instance().ObjectLootingType(ObjectType::oreVein) == LootingType::LootOreVeinAlways);
+				if (!isFirehose || mineAll)
 				{
-					// do not revisit over-generous sources any time soon - this is stronger than the oreVein temp block
-					DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+					if (isFirehose)
+					{
+						// do not revisit over-generous sources any time soon - this is stronger than the oreVein temp block
+						DataCase::GetInstance()->BlockFirehoseSource(m_candidate);
+					}
+					EventPublisher::Instance().TriggerMining(
+						m_candidate, data->OreVeinResourceType(m_candidate->GetBaseObject()->As<RE::TESObjectACTI>()), manualLootNotify, isFirehose);
 				}
 			}
 		}
@@ -460,13 +483,33 @@ Lootability TryLootREFR::Process(const bool dryRun)
 				data->BlockReference(m_candidate, Lootability::InventoryLimitsEnforced);
 				return Lootability::InventoryLimitsEnforced;
 			}
-			DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
-				m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
-				GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
 			const bool whiteListNotify(SettingsCache::Instance().WhiteListTargetNotify());
-			EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
-				isSilent,
-				collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
+			// Here we pass along the yieled item ObjectType in lieu of the REFR's. In the case of Producer ACTIs, this ensures
+			// Collections are properly handled at the afar end of the harvesting pipeline.
+			if (isSyntheticFlora)
+			{
+				DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for Synthetic Flora REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
+				EventPublisher::Instance().TriggerHarvestSyntheticFlora(m_candidate, refrEx.GetTarget(), objType, itemCount,
+					isSilent, collectible.first, whiteListNotify && whitelisted);
+			}
+			else if (refrEx.IsCritter())
+			{
+				DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for Critter REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
+				EventPublisher::Instance().TriggerHarvestCritter(m_candidate, refrEx.GetTarget(), objType, itemCount,
+					isSilent, collectible.first, whiteListNotify && whitelisted);
+			}
+			else
+			{
+				DBG_VMESSAGE("SmartHarvest {}/0x{:08x} for REFR 0x{:08x}, collectible={}, type {}, notify {}, pending {}", m_candidate->GetBaseObject()->GetName(),
+					m_candidate->GetBaseObject()->GetFormID(), m_candidate->GetFormID(), collectible.first ? "true" : "false",
+					GetObjectTypeName(objType), LootingRequiresNotification(lootingType), ScanGovernor::Instance().PendingHarvestNotifications());
+				EventPublisher::Instance().TriggerHarvest(m_candidate, refrEx.GetTarget(), objType, itemCount,
+					isSilent, collectible.first, PlayerState::Instance().PerkIngredientMultiplier(), whiteListNotify && whitelisted);
+			}
 			if (isFirehose)
 			{
 				// do not revisit over-generous sources any time soon
@@ -476,6 +519,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 	}
 	else if (m_targetType == INIFile::SecondaryType::containers || m_targetType == INIFile::SecondaryType::deadbodies)
 	{
+		ObjectType objectType(m_targetType == INIFile::SecondaryType::containers ? ObjectType::container : ObjectType::actor);
 		if (m_candidate->IsActivationBlocked())
 		{
 			DBG_MESSAGE("skip activation-blocked container {}/0x{:08x}", m_candidate->GetName(), m_candidate->formID);
@@ -491,6 +535,9 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		// INI defaults exclude nudity by not looting armor from dead bodies
 		bool excludeArmor(m_targetType == INIFile::SecondaryType::deadbodies &&
 			SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::LootExcludingArmor);
+		// User may alternatively choose to leave the victim their dignity via underwear
+		bool excludeUnderwear(excludeArmor || (m_targetType == INIFile::SecondaryType::deadbodies &&
+			SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::LootExcludingUnderwear));
 		EnchantedObjectHandling enchantedLoot = SettingsCache::Instance().EnchantedObjectHandlingType();
 		ContainerLister lister(m_targetType, m_candidate);
 		size_t lootableItems(lister.AnalyzeLootableItems(enchantedLoot));
@@ -677,7 +724,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 
 		if (!dryRun && m_glowReason != GlowReason::None)
 		{
-			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, m_glowReason);
+			ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objectType, m_glowReason);
 			if (m_glowOnly)
 			{
 				return result;
@@ -719,6 +766,12 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			}
 
 			ObjectType objType = targetItemInfo.LootObjectType();
+			if (excludeUnderwear && DataCase::GetInstance()->UseUnderwear() && DataCase::GetInstance()->IsUnderwear(target))
+			{
+				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update
+				DBG_VMESSAGE("block looting of underwear from dead body {}/0x{:08x}", target->GetName(), target->GetFormID());
+				continue;
+			}
 			if (excludeArmor && (objType == ObjectType::armor || objType == ObjectType::enchantedArmor))
 			{
 				// obey SFW setting, for this REFR on this pass - state resets on game reload/cell re-entry/MCM update
@@ -740,7 +793,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 			LootingType lootingType(LootingType::LeaveBehind);
 			bool sendWhiteListNotify(false);
 			static const bool recordDups(true);		// final decision to loot the item happens here
-			const auto collectible(CollectionManager::Instance().TreatAsCollectible(
+			const auto collectible(CollectionManager::Collectibles().TreatAsCollectible(
 				ConditionMatcher(target, m_targetType, objType), recordDups));
 			if (collectible.first)
 			{
@@ -790,12 +843,15 @@ Lootability TryLootREFR::Process(const bool dryRun)
 					data->BlockForm(target, Lootability::ItemTypeIsSetToPreventLooting);
 					continue;
 				}
-				else if (!forceIngredientLoot && LootingDependsOnValueWeight(lootingType, objType) &&
-					TESFormHelper(target, objType, m_targetType).ValueWeightTooLowToLoot())
+				else if (!forceIngredientLoot)
 				{
-					DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
-					data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
-					continue;
+					TESFormHelper helper(target, objType, m_targetType);
+					if (LootingDependsOnValueWeight(lootingType, objType, helper.GetWeight()) && helper.ValueWeightTooLowToLoot())
+					{
+						DBG_VMESSAGE("block - v/w excludes for 0x{:08x}", target->formID);
+						data->BlockForm(target, Lootability::ValueWeightPreventsLooting);
+						continue;
+					}
 				}
 			}
 
@@ -819,7 +875,7 @@ Lootability TryLootREFR::Process(const bool dryRun)
 		{
 			if (!targets.empty())
 			{
-				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, GlowReason::SimpleTarget);
+				ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationSpecialSeconds, objectType, GlowReason::SimpleTarget);
 			}
 			return result;
 		}
@@ -894,7 +950,8 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 	else if (animationType == ContainerAnimationHandling::Glow)
 	{
 		// glow looted object briefly after looting
-		ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationLootedSeconds, GlowReason::SimpleTarget);
+		ScanGovernor::Instance().GlowObject(m_candidate, ObjectGlowDurationLootedSeconds,
+			inlineTransfer ? ObjectType::container : ObjectType::actor, GlowReason::SimpleTarget);
 	}
 
 	// avoid sound spam
@@ -904,7 +961,6 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 		// Play sound first as this uses InventoryItemData on the source container
 		InventoryItem& itemInfo(std::get<0>(target));
 		bool notify(std::get<1>(target));
-		bool collectible(std::get<2>(target));
 		bool whiteListNotify(std::get<3>(target));
 		if (!madeSound)
 		{
@@ -912,7 +968,7 @@ void TryLootREFR::GetLootFromContainer(std::vector<std::tuple<InventoryItem, boo
 			madeSound = true;
 		}
 		std::string name(itemInfo.BoundObject()->GetName());
-		size_t count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), collectible, inlineTransfer));
+		size_t count(itemInfo.TakeAll(m_candidate, RE::PlayerCharacter::GetSingleton(), inlineTransfer));
 		// save count in case we have to copy these after failure to transfer (e.g. MrB's Lootable Things)
 		std::get<4>(target) = count;
 		std::string notificationText;
@@ -997,6 +1053,16 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 		}
 		return Lootability::Lootable;
 	}
+	// Some CONT base objects are marked PlayerOwned but are lootable eg. Frozen Electrocuted Combustion
+	if (targetType == INIFile::SecondaryType::containers)
+	{
+		if (DataCase::GetInstance()->IsContainerAlwaysLootable(m_candidate->GetBaseObject()->GetFormID()))
+		{
+			DBG_VMESSAGE("Player-owned Lootable CONT {}/0x{:08x}", m_candidate->GetBaseObject()->GetName(),
+				m_candidate->GetBaseObject()->formID);
+			return Lootability::Lootable;
+		}
+	}
 
 	Lootability legality(Lootability::Lootable);
 	// Perform crime checks - this is done after checks for quest object glowing, as many quest-related objects are owned.
@@ -1037,7 +1103,7 @@ Lootability TryLootREFR::LootingLegality(const INIFile::SecondaryType targetType
 			else if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::Ownerless)
 			{
 				if (!playerOwned && !firedArrow &&
-					(m_candidate->GetOwner() != nullptr || !LocationTracker::Instance().IsPlayerInFriendlyCell()))
+					(m_candidate->GetOwner() || !LocationTracker::Instance().IsPlayerInFriendlyCell()))
 				{
 					// owner of item or cell is not player/player-friendly - disallow owned item
 					DBG_VMESSAGE("REFR or Cell is not player-owned, cannot loot");

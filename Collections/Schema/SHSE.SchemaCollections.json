@@ -61,7 +61,7 @@
 
     "categoryType": {
       "type": "string",
-      "enum": [ "book", "skillbook", "spellbook", "bookRead", "spellbookRead", "skillbookRead", "weapon", "enchantedWeapon", "armor", "enchantedArmor", "jewelry", "enchantedJewelry" ]
+      "enum": [ "book", "skillbook", "spellbook", "bookRead", "spellbookRead", "skillbookRead", "weapon", "enchantedWeapon", "armor", "enchantedArmor", "jewelry", "enchantedJewelry", "orevein" ]
     },
 
     "signatureType": {

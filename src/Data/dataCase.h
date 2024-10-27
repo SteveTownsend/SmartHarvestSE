@@ -22,29 +22,15 @@ http://www.fsf.org/licensing/licenses
 #include <mutex>
 #include <chrono>
 
+#include "Data/LeveledItemCategorizer.h"
+#include "Data/LoadOrder.h"
 #include "Looting/ProducerLootables.h"
 #include "Looting/objects.h"
 
 namespace shse
 {
-
-class LeveledItemCategorizer
-{
-public:
-	LeveledItemCategorizer(const RE::TESLevItem* rootItem);
-	virtual ~LeveledItemCategorizer();
-	void CategorizeContents();
-
-private:
-	void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
-
-protected:
-	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) = 0;
-
-	const RE::TESLevItem* m_rootItem;
-	// prevent infinite recursion
-	std::unordered_set<const RE::TESLevItem*> m_lvliSeen;
-};
+class Collection;
+class CollectionManager;
 
 class DataCase
 {
@@ -59,6 +45,7 @@ public:
 	typedef std::unordered_set<const RE::TESForm*> FormCategory;
 
 	void BlockFirehoseSource(const RE::TESObjectREFR* refr);
+	void ForgetFirehoseSource(const RE::TESObjectREFR* refr);
 	void ForgetFirehoseSources();
 	bool IsFirehose(const RE::TESForm* form) const;
 	void AddFirehose(const RE::TESForm* form);
@@ -67,11 +54,13 @@ public:
 	void BlockReferenceByID(const RE::FormID refrID, const Lootability reason);
 	Lootability IsReferenceBlocked(const RE::TESObjectREFR* refr) const;
 	void ResetBlockedReferences(const bool gameReload);
+	void UnblockReferences(const Lootability reason);
 
 	// permanent REFR blacklist, reset on game reload
 	bool BlacklistReference(const RE::TESObjectREFR* refr);
 	bool IsReferenceOnBlacklist(const RE::TESObjectREFR* refr) const;
 	void ClearReferenceBlacklist();
+	void ClearReferenceBlacklistEphemeral();
 
 	void RefreshKnownIngredients();
 	bool IsIngredientKnown(const RE::TESForm* form) const;
@@ -83,6 +72,7 @@ public:
 	bool BlockFormPermanently(const RE::TESForm* form, const Lootability reason);
 
 	bool ReferencesBlacklistedContainer(const RE::TESObjectREFR* refr) const;
+	bool IsContainerAlwaysLootable(const RE::FormID container) const;
 
 	ObjectType GetFormObjectType(const RE::FormID formID) const;
 	bool SetObjectTypeForFormID(const RE::FormID formID, const ObjectType objectType);
@@ -123,13 +113,14 @@ public:
 		return m_offLimitsContainers.contains(containerRef->GetFormID());
 	}
 	bool IsSlowTimeEffectActive() const;
+	bool AutoMiningDisabled() const;
 
 	template <typename T>
 	T* FindExactMatch(const std::string& defaultESP, const RE::FormID maskedFormID)
 	{
 		if (defaultESP == "Skyrim.esm")
 			return RE::TESForm::LookupByID<T>(maskedFormID);
-		T* typedForm(RE::TESDataHandler::GetSingleton()->LookupForm<T>(maskedFormID, defaultESP));
+		T* typedForm(LoadOrder::Instance().LookupForm<T>(maskedFormID, defaultESP));
 		if (typedForm)
 		{
 			DBG_MESSAGE("Found exact match 0x{:08x} for {}:0x{:06x}", typedForm->GetFormID(), defaultESP.c_str(), maskedFormID);
@@ -143,23 +134,35 @@ public:
 
 	void RegisterPlayerCreatedALCH(RE::AlchemyItem* consumable);
 
-	inline const RE::BGSKeyword* GhostKeyword() const { return m_ghostNpcKeyword; }
-
 	// special case statics
 	static constexpr RE::FormID LockPick = 0x0A;
 	static constexpr RE::FormID Gold = 0x0F;
 	static constexpr RE::FormID WispCore = 0x10EB2A;
 	static constexpr RE::FormID RollOfPaper = 0x33761;
 
+	bool IsSyntheticFlora(const RE::TESBoundObject* boundObject) const;
+	void ClearSyntheticFlora(const RE::TESBoundObject* boundObject);
+	bool IsSyntheticFloraHarvested(const RE::TESObjectREFR* candidate) const;
+	void SetSyntheticFloraHarvested(const RE::TESObjectREFR* candidate, const bool isHarvested);
+
+	// Collections used for special case Form aggregegation
+	void RefreshBuiltinSpecialCases(void);
+
+	bool UseUnderwear() const;
+	bool IsUnderwear(const RE::TESForm* armour) const;
+
 private:
 	std::unordered_map<std::string, std::string> m_translations;
 
 	std::unordered_map<const RE::TESObjectREFR*, RE::NiPoint3> m_arrowCheck;
 
+	const Collection* m_underwear;
+	Collection* m_missivesBoards;
 	std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
 	std::unordered_set<RE::FormID> m_offLimitsContainers;
 	std::unordered_set<RE::EffectSetting*> m_slowTimeEffects;
 	std::unordered_set<RE::TESContainer*> m_containerBlackList;
+	std::unordered_set<RE::FormID> m_containerWhiteList;
 	std::unordered_map<const RE::TESForm*, Lootability> m_permanentBlockedForms;
 	std::unordered_map<const RE::TESForm*, Lootability> m_blockForm;
 	std::unordered_set<const RE::TESForm*> m_firehoseForms;
@@ -178,12 +181,12 @@ private:
 	// assume simple setters for now, like vanilla Green Thumb
 	std::unordered_map<const RE::BGSPerk*, float> m_modifyHarvestedPerkMultipliers;
 	RE::BGSKeyword* m_spellTomeKeyword;
-	RE::BGSKeyword* m_ghostNpcKeyword;
+	bool m_miningDisabled;
 
 	mutable RecursiveLock m_blockListLock;
 
 	void RecordOffLimitsLocations(void);
-	void RecordPlayerHouseCells(void);
+	void RecordPlayerHouses(void);
 	void BlockOffLimitsContainers(void);
 
 	bool AllEffectsKnown(const RE::IngredientItem* ingredient) const;
@@ -329,22 +332,12 @@ private:
 	std::unordered_map<std::string, ObjectType> m_objectTypeByActivationVerb;
 	mutable std::unordered_set<std::string> m_unhandledActivationVerbs;
 	std::unordered_map<const RE::TESObjectACTI*, ResourceType> m_resourceTypeByOreVein;
+	// Many scripted ACTI are categorized as flora but require special handling
+	std::unordered_set<const RE::TESObjectACTI*> m_syntheticFlora;
+	// Mirror the kHarvested check we get for free on FLOR/TREE records - store REFR state and game-time-of-record
+	mutable std::unordered_map<const RE::TESObjectREFR*, std::pair<bool, float>> m_syntheticFloraHarvested;
 
-	ObjectType GetObjectTypeForActivationText(const RE::BSString& activationText) const;
-
-	inline std::string GetVerbFromActivationText(const RE::BSString& activationText) const
-	{
-		std::string strActivation;
-		const char* nextChar(activationText.c_str());
-		size_t index(0);
-		while (!isspace(*nextChar) && index < activationText.size())
-		{
-			strActivation.push_back(*nextChar);
-			++nextChar;
-			++index;
-		}
-		return strActivation;
-	}
+	ObjectType GetObjectTypeForActivationText(const std::string& verb) const;
 
 	template <typename T>
 	void CategorizeByKeyword()
@@ -444,74 +437,23 @@ private:
 	void SetPermanentBlockedItems();
 	void ExcludeFactionContainers();
 	void ExcludeVendorContainers();
+	void IncludeLootableContainers();
 	void ExcludeImmersiveArmorsGodChest();
 	void ExcludeGrayCowlStonesChest();
 	void ExcludeMissivesBoards();
+	void CheckAutoMiningOK();
 	void ExcludeBuildYourNobleHouseIncomeChest();
 
-	template <typename T>
-	T* FindBestMatch(const std::string& defaultESP, const RE::FormID maskedFormID, const std::string& name)
-	{
-		T* match(FindExactMatch<T>(defaultESP, maskedFormID));
-		// supplied EDID and Name not checked if we match plugin/formID
-		if (match)
-		{
-			DBG_MESSAGE("Returning exact match 0x{:08x}/{} for {}:0x{:06x}", match->GetFormID(), match->GetName(),
-				defaultESP.c_str(), maskedFormID);
-			return match;
-		}
-
-		// look for merged form
-		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-		if (!dhnd)
-			return nullptr;
-
-		// Check for match on name. FormID can change if this is in a merge output. Cannot use EDID as it is not loaded.
-		for (T* container : dhnd->GetFormArray<T>())
-		{
-			if (container->GetName() == name)
-			{
-				if (match)
-				{
-					REL_MESSAGE("Ambiguity in best match 0x{:08x} vs for 0x{:08x} for {}:0x{:06x}/{}",
-						match->GetFormID(), container->GetFormID(), defaultESP.c_str(), maskedFormID, name);
-					return nullptr;
-				}
-				else
-				{
-					REL_MESSAGE("Found best match 0x{:08x} for {}:0x{:06x}", container->GetFormID(),
-						defaultESP.c_str(), maskedFormID, name);
-					match = container;
-				}
-			}
-		}
-		return match;
-	}
-
-	template <typename T>
-	std::unordered_set<T*> FindExactMatchesByName(const std::string& name)
-	{
-		std::unordered_set<T*> matches;
-		RE::TESDataHandler* dhnd = RE::TESDataHandler::GetSingleton();
-		if (!dhnd)
-			return matches;
-
-		// Check for match on name. FormID can change if this is in a merge output.
-		std::for_each(dhnd->GetFormArray<T>().cbegin(), dhnd->GetFormArray<T>().cend(), [&](T* entry) {
-			if (entry->GetName() == name)
-			{
-				matches.insert(entry);
-			}
-		});
-		return matches;
-	}
-
-	void IncludeFossilMiningExcavation();
+	void IncludeSeptimSpecialCases();
+	void IncludeCoinReplacerRedux();
 	void IncludeCorpseCoinage();
-	void IncludeHearthfireExtendedApiary();
-	void IncludePileOfGold();
 	void IncludeBSBruma();
 	void IncludeToolsOfKagrenac();
+	void IncludeCOIN();
+
+	void IncludeFossilMiningExcavation();
+	void HandleHearthfireExtendedApiary();
+	void RecordUnderwear();
 
 	DataCase(void);
 };

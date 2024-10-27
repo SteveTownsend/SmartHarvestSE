@@ -1,10 +1,13 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.28.1)
 
 # #######################################################################################################################
 # # Define project
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
-set(VERSION 5.0.1)
+set(PRETTY_NAME "Smart Harvest SE")
+set(VERSION 5.9.5)
+
+set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 project(
         ${NAME}
@@ -18,10 +21,23 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
 set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
 
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
         @ONLY)
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Ver.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/include/Ver.h
+        @ONLY)
+
+# #######################################################################################################################
+# # Find dependencies
+# #######################################################################################################################
+include(shseDependencies.cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(sources
         src/alglib/alglibinternal.cpp
@@ -44,6 +60,8 @@ set(sources
         src/Data/dataCase.h
         src/Data/iniSettings.cpp
         src/Data/iniSettings.h
+        src/Data/LeveledItemCategorizer.cpp
+        src/Data/LeveledItemCategorizer.h
         src/Data/LoadOrder.cpp
         src/Data/LoadOrder.h
         src/Data/SettingsCache.cpp
@@ -91,22 +109,18 @@ set(sources
         src/Utilities/Enums.h
         src/Utilities/Exception.cpp
         src/Utilities/Exception.h
-        src/Utilities/LogStackWalker.cpp
-        src/Utilities/LogStackWalker.h
         src/Utilities/LogWrapper.h
         src/Utilities/RecursiveLock.cpp
         src/Utilities/RecursiveLock.h
-        src/Utilities/StackWalker.cpp
-        src/Utilities/StackWalker.h
         src/Utilities/utils.cpp
         src/Utilities/utils.h
-        src/Utilities/version.cpp
         src/Utilities/version.h
-        src/Utilities/versiondb.h
         src/VM/EventPublisher.cpp
         src/VM/EventPublisher.h
         src/VM/papyrus.cpp
         src/VM/papyrus.h
+        src/VM/TaskDispatcher.cpp
+        src/VM/TaskDispatcher.h
         src/VM/UIState.cpp
         src/VM/UIState.h
         src/WorldState/ActorTracker.cpp
@@ -140,10 +154,8 @@ set(sources
         src/WorldState/VisitedPlaces.h
         src/main.cpp
         src/PluginFacade.cpp
-        src/PrecompiledHeaders.h
-        src/PrecompiledHeaders.cpp
-        src/PrecompiledHeaders.h
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
+        ${CMAKE_CURRENT_BINARY_DIR}/include/Ver.h
 )
 
 source_group(
@@ -152,19 +164,22 @@ source_group(
         ${sources}
 )
 
+set(mergemappersources
+        ${mergemapper_SOURCE_DIR}/src/MergeMapperPluginAPI.cpp
+        ${mergemapper_SOURCE_DIR}/include/MergeMapperPluginAPI.h
+)
+
+source_group(
+        TREE ${mergemapper_SOURCE_DIR}
+        FILES
+        ${mergemappersources}
+)
+
 # #######################################################################################################################
 # # Add CMake features
 # #######################################################################################################################
 include(CheckIPOSupported)
 include(GNUInstallDirs)
-
-# #######################################################################################################################
-# # Find dependencies
-# #######################################################################################################################
-find_package(CommonLibSSE CONFIG REQUIRED)
-find_package(nlohmann_json_schema_validator REQUIRED)
-find_package(unofficial-brotli REQUIRED)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # #######################################################################################################################
 # # Configuration for all targets
@@ -176,9 +191,15 @@ if(WIN32)
                 NOMINMAX
                 _AMD64_
                 WIN32_LEAN_AND_MEAN)
+        if(${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+                add_compile_definitions(
+                        _FULL_LOGGING
+                        NDEBUG
+                )
+        endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
         add_compile_definitions(
                 __cpp_lib_char8_t
                 __cpp_consteval
@@ -196,13 +217,14 @@ endif()
 # #######################################################################################################################
 # # Configure target DLL
 # #######################################################################################################################
+include(${commonlibsse_SOURCE_DIR}/cmake/CommonLibSSE.cmake)
 add_commonlibsse_plugin(${PROJECT_NAME}
     NAME ${PROJECT_NAME}
     AUTHOR "Steve Townsend, wskeever, bobbyclue"
     EMAIL "SteveTownsend0@gmail.com"
     USE_ADDRESS_LIBRARY
     USE_SIGNATURE_SCANNING
-    SOURCES ${sources}
+    SOURCES ${sources} ${mergemappersources}
 )
 
 add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
@@ -215,19 +237,29 @@ target_include_directories(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+# uncomment for assembler/source listing
+#target_compile_options(${PROJECT_NAME} PUBLIC /Fas /FA)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        CommonLibSSE
         Dbghelp.lib
         nlohmann_json_schema_validator
-        unofficial::brotli::brotlidec-static
-        unofficial::brotli::brotlienc-static
-        unofficial::brotli::brotlicommon-static
+        brotlidec
+        brotlienc
+        brotlicommon
+        spdlog
 )
+
 target_precompile_headers(${PROJECT_NAME}
         PRIVATE
         src/PrecompiledHeaders.h)
+
+# Uncomment as needed for crash log debugging
+#target_link_options(${PROJECT_NAME} PRIVATE "/MAP:${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.map")
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/Sample"
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
@@ -236,77 +268,10 @@ install(TARGETS ${PROJECT_NAME}
         DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
 # #######################################################################################################################
-# # Automatic plugin deployment
+# # Build plugin archive for Nexus, for Release only
 # #######################################################################################################################
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(BUILD_NAME "Debug")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Logging")
-        set(BUILD_NAME "Logging")
-else()
-        set(BUILD_NAME "Release")
+if (${CMAKE_BUILD_TYPE} STREQUAL Release)
+        include(shseBuildArchive.cmake)
+elseif (${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+        include(shseBuildLoggingArchive.cmake)
 endif()
-
-install(DIRECTORY DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/Papyrus${BUILD_NAME}/")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/Plugin${BUILD_NAME}/")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/Plugin${BUILD_NAME}/")
-
-if(${CMAKE_BUILD_TYPE} STREQUAL Debug OR ${CMAKE_BUILD_TYPE} STREQUAL Logging OR ${CMAKE_BUILD_TYPE} STREQUAL Release)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/Plugin${BUILD_NAME}/")
-endif()
-
-file(GLOB_RECURSE CONFIG_FILES "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/Config/*.yaml")
-file(GLOB_RECURSE OUTPUT_DLLS "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/**/*.dll")
-file(GLOB_RECURSE OUTPUT_PDBS "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/**/*.pdb")
-file(GLOB_RECURSE OUTPUT_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/contrib/Distribution/**/*.pex")
-set_property(TARGET ${PROJECT_NAME}
-        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_DLLS}")
-set_property(TARGET ${PROJECT_NAME}
-        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_PDBS}")
-set_property(TARGET ${PROJECT_NAME}
-        APPEND PROPERTY ADDITIONAL_CLEAN_FILES "${OUTPUT_SCRIPTS}")
-
-# Automatic deployment to Mod Organizer 2 mod directory.
-foreach(DEPLOY_TARGET $ENV{SkyrimPluginTargets})
-        message("Adding deployment target ${DEPLOY_TARGET}.")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/")
-
-        if(${CMAKE_BUILD_TYPE} STREQUAL Debug OR ${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo OR ${CMAKE_BUILD_TYPE} STREQUAL Release)
-                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${DEPLOY_TARGET}/SKSE/Plugins/")
-        endif()
-endforeach()
-
-set(ZIP_DIR "${CMAKE_CURRENT_BINARY_DIR}/zip")
-add_custom_target(build-time-make-directory ALL
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${ZIP_DIR}"
-        "${ZIP_DIR}/SKSE/Plugins/"
-)
-
-message("Copying mod into ${ZIP_DIR}.")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${PROJECT_NAME}> "${ZIP_DIR}/SKSE/Plugins/"
-)
-
-if(CONFIG_FILES)
-        message("Copying default config files ${CONFIG_FILES} into ${ZIP_DIR}.")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy ${CONFIG_FILES} "${ZIP_DIR}/SKSE/Plugins/")
-endif()
-
-if(${CMAKE_BUILD_TYPE} STREQUAL Debug OR ${CMAKE_BUILD_TYPE} STREQUAL Logging OR ${CMAKE_BUILD_TYPE} STREQUAL Release)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PDB_FILE:${PROJECT_NAME}> "${ZIP_DIR}/SKSE/Plugins/")
-endif()
-
-set(TARGET_ZIP "${PROJECT_NAME}_${PROJECT_VERSION}.7z")
-message("Zipping ${ZIP_DIR} to ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_ZIP}.")
-ADD_CUSTOM_COMMAND(
-        TARGET ${PROJECT_NAME}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E tar cf ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_ZIP} --format=7zip -- .
-        WORKING_DIRECTORY ${ZIP_DIR}
-)

@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
+#include "Data/LoadOrder.h"
 #include "VM/EventPublisher.h"
 #include "Collections/CollectionManager.h"
 #include "Utilities/utils.h"
@@ -52,15 +53,12 @@ EventPublisher& EventPublisher::Instance()
 
 EventPublisher::EventPublisher() : m_eventTarget(nullptr),
 	m_onGetProducerLootable("OnGetProducerLootable"),
-	m_onCarryWeightDelta("OnCarryWeightDelta"),
-	m_onResetCarryWeight("OnResetCarryWeight"),
 	m_onHarvest("OnHarvest"),
+	m_onHarvestSyntheticFlora("OnHarvestSyntheticFlora"),
+	m_onHarvestCritter("OnHarvestCritter"),
 	m_onMining("OnMining"),
-	m_onLootFromNPC("OnLootFromNPC"),
-	m_onFlushAddedItems("OnFlushAddedItems"),
 	m_onObjectGlow("OnObjectGlow"),
 	m_onCheckOKToScan("OnCheckOKToScan"),
-	m_onStealIfUndetected("OnStealIfUndetected"),
 	m_onGameReady("OnGameReady")
 {
 }
@@ -71,7 +69,7 @@ RE::BGSRefAlias* EventPublisher::GetScriptTarget(const char* espName, RE::FormID
 	static RE::BGSRefAlias* alias(nullptr);
 	if (!quest)
 	{
-		RE::TESForm* questForm(RE::TESDataHandler::GetSingleton()->LookupForm(questID, espName));
+		RE::TESForm* questForm(LoadOrder::Instance().LookupForm(questID, espName));
 		if (questForm)
 		{
 			DBG_MESSAGE("Got Base Form {}", questForm ? FormUtils::SafeGetFormEditorID(questForm).c_str() : "nullptr");
@@ -118,31 +116,18 @@ bool EventPublisher::GoodToGo()
 void EventPublisher::HookUp()
 {
 	m_onGetProducerLootable.Register(m_eventTarget);
-	m_onCarryWeightDelta.Register(m_eventTarget);
-	m_onResetCarryWeight.Register(m_eventTarget);
 	m_onObjectGlow.Register(m_eventTarget);
 	m_onHarvest.Register(m_eventTarget);
+	m_onHarvestSyntheticFlora.Register(m_eventTarget);
+	m_onHarvestCritter.Register(m_eventTarget);
 	m_onMining.Register(m_eventTarget);
-	m_onLootFromNPC.Register(m_eventTarget);
-	m_onFlushAddedItems.Register(m_eventTarget);
 	m_onCheckOKToScan.Register(m_eventTarget);
-	m_onStealIfUndetected.Register(m_eventTarget);
 	m_onGameReady.Register(m_eventTarget);
 }
 
 void EventPublisher::TriggerGetProducerLootable(RE::TESObjectREFR* refr)
 {
 	m_onGetProducerLootable.SendEvent(refr);
-}
-
-void EventPublisher::TriggerCarryWeightDelta(const int delta)
-{
-	m_onCarryWeightDelta.SendEvent(delta);
-}
-
-void EventPublisher::TriggerResetCarryWeight()
-{
-	m_onResetCarryWeight.SendEvent();
 }
 
 void EventPublisher::TriggerMining(RE::TESObjectREFR* refr, const ResourceType resourceType, const bool manualLootNotify, const bool isFirehose)
@@ -159,14 +144,20 @@ void EventPublisher::TriggerHarvest(RE::TESObjectREFR* refr, const RE::TESBoundO
 		isSilent, collectible, ingredientCount, isWhitelisted);
 }
 
-void EventPublisher::TriggerFlushAddedItems()
+void EventPublisher::TriggerHarvestSyntheticFlora(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount,
+	const bool isSilent, const bool collectible, const bool isWhitelisted)
 {
-	m_onFlushAddedItems.SendEvent();
+	// We always lock the REFR from more harvesting before firing this
+	m_onHarvestSyntheticFlora.SendEvent(refr, const_cast<RE::TESBoundObject*>(lootable), lootable->GetName(), static_cast<int>(objType), itemCount,
+		isSilent, collectible, isWhitelisted);
 }
 
-void EventPublisher::TriggerLootFromNPC(RE::TESObjectREFR* npc, RE::TESForm* item, int itemCount, ObjectType objectType, const bool collectible)
+void EventPublisher::TriggerHarvestCritter(RE::TESObjectREFR* refr, const RE::TESBoundObject* lootable, const ObjectType objType, int itemCount,
+	const bool isSilent, const bool collectible, const bool isWhitelisted)
 {
-	m_onLootFromNPC.SendEvent(npc, item, itemCount, static_cast<int>(objectType), collectible);
+	// We always lock the REFR from more harvesting before firing this
+	m_onHarvestCritter.SendEvent(refr, const_cast<RE::TESBoundObject*>(lootable), lootable->GetName(), static_cast<int>(objType), itemCount,
+		isSilent, collectible, isWhitelisted);
 }
 
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int duration, const GlowReason glowReason)
@@ -177,11 +168,6 @@ void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR* refr, const int durati
 void EventPublisher::TriggerCheckOKToScan(const int nonce)
 {
 	m_onCheckOKToScan.SendEvent(nonce);
-}
-
-void EventPublisher::TriggerStealIfUndetected(const size_t actorCount, const bool dryRun)
-{
-	m_onStealIfUndetected.SendEvent(static_cast<int>(actorCount), dryRun);
 }
 
 void EventPublisher::TriggerGameReady()

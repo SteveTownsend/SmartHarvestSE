@@ -32,7 +32,7 @@ private:
 	void RecordAdjacentCells(const RE::TESObjectCELL* current);
 	void RecordMarkedPlaces();
 
-	float DistanceTo(RE::TESObjectCELL* cell) const;
+	bool IsAdjacent(RE::TESObjectCELL* cell) const;
 	bool IsPlaceBlacklisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
 	void PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const;
 	const RE::BGSLocation* PlayerLocationRelativeToAdventureTarget(void) const;
@@ -56,10 +56,10 @@ private:
 
 	static std::unique_ptr<LocationTracker> m_instance;
 	// 3x3 CELL adjacency check - 8 nearest CELLs are treated as adjacent to player's CELL, if exterior
-	std::array<std::pair<float,RE::TESObjectCELL*>, 8> m_adjacentCells;
+	std::array<RE::TESObjectCELL*, 8> m_adjacentCells;
 	RE::FormID m_playerCellID;
-	float m_playerCellX;
-	float m_playerCellY;
+	std::int32_t m_playerCellX;
+	std::int32_t m_playerCellY;
 	bool m_playerIndoors;
 	std::string m_playerPlaceName;
 	bool m_tellPlayerIfCanLootAfterLoad;
@@ -108,7 +108,7 @@ public:
 	std::string ConversationalDistance(const double milesAway) const;
 	std::string PlayerExactLocation() const;
 
-	const RE::TESObjectCELL* PlayerCell() const;
+	RE::TESObjectCELL* PlayerCell() const;
 };
 
 }
