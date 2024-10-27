@@ -33,4 +33,4 @@ If you edit *CMakeFiles.txt* or other CMake files, manually delete *./build/CMak
 ## Scripts
 Scripts can be built using the Visual Studio Code Papyrus extension. There is a Papyrus project file **SkyrimSE.ppj** that should be edited according to your local setup.
 
-_note: CMakeFiles is referring to all the generated CMakeFiles in your build directory... You are able to keep _deps around to save having to redownload the project _dependencies_
+Note: CMakeFiles is referring to all the generated CMakeFiles in your build directory... You are able to keep _deps_ around to save having to redownload the project dependencies
