@@ -25,7 +25,9 @@ If you edit *CMakeFiles.txt* or other CMake files, manually delete *./build/CMak
 
 ## Dependencies
 **CMake** minimum version per CMakeFiles.Txt
+
 **Visual Studio 2022**, for its CMake Generator
+
 **WinRAR** - rar.exe is used to compress the archive for release to Nexus. If you are just building locally, comment that part out at the end of *CmakeFiles.txt*
 
 ## Scripts
