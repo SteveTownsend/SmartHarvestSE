@@ -15,3 +15,10 @@ build
 /**/*.eps
 skyrimse.ppj
 /Scripts/*.code-workspace
+/Scripts/DES_CoinManager.pex
+/Scripts/DES_DefaultCoins.pex
+/Scripts/Source/DES_CoinExchanger.psc
+/Scripts/Source/DES_CoinManager.psc
+/Scripts/Source/DES_DefaultCoins.psc
+/Scripts/Source/qf_akhrtravelstqueststart_04b78f01.psc
+/Scripts/qf_akhrtravelstqueststart_04b78f01.pex

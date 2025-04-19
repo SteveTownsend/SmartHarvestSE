@@ -22,107 +22,96 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "FormHelpers/IHasValueWeight.h"
 
-namespace shse
-{
+namespace shse {
 
-ObjectType IHasValueWeight::GetObjectType() const
-{
-	return m_objectType;
+ObjectType IHasValueWeight::GetObjectType() const { return m_objectType; }
+
+std::string IHasValueWeight::GetTypeName() const { return m_typeName; }
+
+uint32_t IHasValueWeight::GetWorth(void) const {
+  if (!m_worthSetup) {
+    m_worth = CalculateWorth();
+    m_worthSetup = true;
+  }
+  return m_worth;
 }
 
-std::string IHasValueWeight::GetTypeName() const
-{
-	return m_typeName;
+bool IHasValueWeight::ValueWeightTooLowToLoot() const {
+  uint32_t worth(GetWorth());
+  DBG_VMESSAGE("V/W check for value: {}", worth);
+
+  // valuable objects overrides V/W checks
+  if (IsValuable())
+    return false;
+
+  double weight = GetWeight();
+  if (weight == 0.0) {
+    bool result(SettingsCache::Instance().CheckWeightlessValue() &&
+                worth <
+                    static_cast<uint32_t>(
+                        SettingsCache::Instance().WeightlessMinimumValue()));
+    DBG_VMESSAGE("Weightless item value too low to loot? {}", worth, result);
+    return result;
+  }
+  // A specified default for value-weight supersedes a missing type-specific
+  // value-weight
+  double valueWeight(SettingsCache::Instance().ValueWeight(m_objectType));
+  if (valueWeight <= 0.) {
+    valueWeight = SettingsCache::Instance().ValueWeightDefault();
+  }
+
+  if (valueWeight > 0.) {
+    if (m_objectType == ObjectType::ammo) {
+      // arrows use the value as an absolute threshold - in this case value
+      // represents damage done allow small tolerance for floating point
+      // uncertainty
+      DBG_VMESSAGE("{}/0x{:08x} ammo damage {} vs threshold {:0.2f}", GetName(),
+                   GetFormID(), worth, valueWeight);
+      return worth < valueWeight - 0.01;
+    }
+    if (worth > 0. && weight <= 0.) {
+      DBG_VMESSAGE("{}/0x{:08x} has value {}, weightless", GetName(),
+                   GetFormID(), worth);
+      return false;
+    }
+
+    if (worth <= 0.) {
+      if (weight <= 0.) {
+        // Harvest if non v/w criteria say we should do so.
+        DBG_VMESSAGE("{}/0x{:08x} - cannot calculate v/w from weight {:0.2f} "
+                     "and value {}",
+                     GetName(), GetFormID(), weight, worth);
+        return false;
+      } else {
+        // zero value object with strictly positive weight - do not auto-harvest
+        DBG_VMESSAGE("{}/0x{:08x} - has weight {:0.2f}, no value", GetName(),
+                     GetFormID(), weight);
+        return true;
+      }
+    }
+
+    double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.0;
+    DBG_VMESSAGE("{}/0x{:08x} item VW {:0.2f} vs threshold VW {:0.2f}",
+                 GetName(), GetFormID(), vw, valueWeight);
+    // allow small tolerance for floating point uncertainty
+    if (vw < valueWeight - 0.01)
+      return true;
+  }
+  return false;
 }
 
-uint32_t IHasValueWeight::GetWorth(void) const
-{
-	if (!m_worthSetup)
-	{
-		m_worth = CalculateWorth();
-		m_worthSetup = true;
-	}
-	return m_worth;
+bool IHasValueWeight::IsValuable() const {
+  uint32_t worth(GetWorth());
+  if (worth > 0) {
+    double minValue(SettingsCache::Instance().ValuableItemThreshold());
+    // allow small tolerance for floating point uncertainty
+    if (minValue > 0. && double(worth) >= minValue - 0.01) {
+      DBG_VMESSAGE("{}/0x{:08x} has value {} vs threshold {:0.2f}: Valuable",
+                   GetName(), GetFormID(), worth, minValue);
+      return true;
+    }
+  }
+  return false;
 }
 
-bool IHasValueWeight::ValueWeightTooLowToLoot() const
-{
-	uint32_t worth(GetWorth());
-	DBG_VMESSAGE("V/W check for value: {}", worth);
-
-	// valuable objects overrides V/W checks
-	if (IsValuable())
-		return false;
-
-	double weight = GetWeight();
-	if (weight == 0.0)
-	{
-		bool result(SettingsCache::Instance().CheckWeightlessValue() &&
-			worth < static_cast<uint32_t>(SettingsCache::Instance().WeightlessMinimumValue()));
-		DBG_VMESSAGE("Weightless item value too low to loot? {}", worth, result);
-		return result;
-	}
-	// A specified default for value-weight supersedes a missing type-specific value-weight
-	double valueWeight(SettingsCache::Instance().ValueWeight(m_objectType));
-	if (valueWeight <= 0.)
-	{
-		valueWeight = SettingsCache::Instance().ValueWeightDefault();
-	}
-
-	if (valueWeight > 0.)
-	{
-		if (m_objectType == ObjectType::ammo)
-		{
-			// arrows use the value as an absolute threshold - in this case value represents damage done
-			// allow small tolerance for floating point uncertainty
-			DBG_VMESSAGE("{}/0x{:08x} ammo damage {} vs threshold {:0.2f}", GetName(), GetFormID(), worth, valueWeight);
-			return worth < valueWeight - 0.01;
-		}
-		if (worth > 0. && weight <= 0.)
-		{
-			DBG_VMESSAGE("{}/0x{:08x} has value {}, weightless", GetName(), GetFormID(), worth);
-			return false;
-		}
-
-		if (worth <= 0.)
-		{
-			if (weight <= 0.)
-			{
-				// Harvest if non v/w criteria say we should do so.
-				DBG_VMESSAGE("{}/0x{:08x} - cannot calculate v/w from weight {:0.2f} and value {}", GetName(), GetFormID(), weight, worth);
-				return false;
-			}
-			else
-			{
-				// zero value object with strictly positive weight - do not auto-harvest
-				DBG_VMESSAGE("{}/0x{:08x} - has weight {:0.2f}, no value", GetName(), GetFormID(), weight);
-				return true;
-			}
-		}
-
-		double vw = (worth > 0. && weight > 0.) ? worth / weight : 0.0;
-		DBG_VMESSAGE("{}/0x{:08x} item VW {:0.2f} vs threshold VW {:0.2f}", GetName(), GetFormID(), vw, valueWeight);
-		// allow small tolerance for floating point uncertainty
-		if (vw < valueWeight - 0.01)
-			return true;
-	}
-	return false;
-}
-
-bool IHasValueWeight::IsValuable() const
-{
-	uint32_t worth(GetWorth());
-	if (worth > 0)
-	{
-		double minValue(SettingsCache::Instance().ValuableItemThreshold());
-		// allow small tolerance for floating point uncertainty
-		if (minValue > 0. && double(worth) >= minValue - 0.01)
-		{
-			DBG_VMESSAGE("{}/0x{:08x} has value {} vs threshold {:0.2f}: Valuable", GetName(), GetFormID(), worth, minValue);
-			return true;
-		}
-	}
-	return false;
-}
-
-}
+} // namespace shse

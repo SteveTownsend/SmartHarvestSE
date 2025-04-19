@@ -23,35 +23,43 @@ http://www.fsf.org/licensing/licenses
 #include "Data/iniSettings.h"
 #include "Collections/Condition.h"
 
-namespace shse
-{
+namespace shse {
 
-class TESFormHelper : public IHasValueWeight
-{
+class TESFormHelper : public IHasValueWeight {
 public:
-	TESFormHelper(const RE::TESBoundObject* form, const INIFile::SecondaryType scope);
-	TESFormHelper(const RE::TESBoundObject* form, ObjectType effectiveType, const INIFile::SecondaryType scope);
+  TESFormHelper(const RE::TESBoundObject *form,
+                const INIFile::SecondaryType scope);
+  TESFormHelper(const RE::TESBoundObject *form, ObjectType effectiveType,
+                const INIFile::SecondaryType scope);
 
-	RE::BGSKeywordForm* GetKeywordForm(void) const;
-	RE::EnchantmentItem* GetEnchantment(void);
-	static bool ConfirmEnchanted(const RE::EnchantmentItem* item, const EnchantedObjectHandling handling);
-	static ObjectType EnchantedREFREffectiveType(const RE::TESObjectREFR* refr, const ObjectType objectType, const EnchantedObjectHandling handling);
-	static ObjectType EnchantedItemEffectiveType(const RE::TESBoundObject* obj, const ObjectType objectType, const EnchantedObjectHandling handling);
-	uint32_t GetGoldValue(void) const;
-	std::pair<bool, CollectibleHandling> TreatAsCollectible(const bool recordDups) const;
-	inline const RE::TESForm* Form() const { return m_form; }
+  RE::BGSKeywordForm *GetKeywordForm(void) const;
+  RE::EnchantmentItem *GetEnchantment(void);
+  static bool ConfirmEnchanted(const RE::EnchantmentItem *item,
+                               const EnchantedObjectHandling handling);
+  static ObjectType
+  EnchantedREFREffectiveType(const RE::TESObjectREFR *refr,
+                             const ObjectType objectType,
+                             const EnchantedObjectHandling handling);
+  static ObjectType
+  EnchantedItemEffectiveType(const RE::TESBoundObject *obj,
+                             const ObjectType objectType,
+                             const EnchantedObjectHandling handling);
+  uint32_t GetGoldValue(void) const;
+  std::pair<bool, CollectibleHandling>
+  TreatAsCollectible(const bool recordDups) const;
+  inline const RE::TESForm *Form() const { return m_form; }
 
-	virtual double GetWeight(void) const override;
+  virtual double GetWeight(void) const override;
 
 protected:
-	void init();
+  void init();
 
-	const RE::TESBoundObject* m_form;
-	const shse::ConditionMatcher m_matcher;
+  const RE::TESBoundObject *m_form;
+  const shse::ConditionMatcher m_matcher;
 
-	virtual const char* GetName() const override;
-	virtual uint32_t GetFormID() const override;
-	virtual uint32_t CalculateWorth(void) const override;
+  virtual const char *GetName() const override;
+  virtual uint32_t GetFormID() const override;
+  virtual uint32_t CalculateWorth(void) const override;
 };
 
-}
+} // namespace shse

@@ -19,46 +19,45 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
 class PartyUpdate {
 public:
-	PartyUpdate(const RE::Actor* follower, const PartyUpdateType eventType, const float gameTime);
-	inline float GameTime() const { return m_gameTime; }
-	std::string AsString() const;
+  PartyUpdate(const RE::Actor *follower, const PartyUpdateType eventType,
+              const float gameTime);
+  inline float GameTime() const { return m_gameTime; }
+  std::string AsString() const;
 
-	void AsJSON(nlohmann::json& j) const;
+  void AsJSON(nlohmann::json &j) const;
 
 private:
-	const RE::Actor* m_follower;
-	const PartyUpdateType m_eventType;
-	const float m_gameTime;
+  const RE::Actor *m_follower;
+  const PartyUpdateType m_eventType;
+  const float m_gameTime;
 };
 
-void to_json(nlohmann::json& j, const PartyUpdate& partyUpdate);
+void to_json(nlohmann::json &j, const PartyUpdate &partyUpdate);
 
-typedef std::unordered_set<const RE::Actor*> Followers;
-class PartyMembers
-{
+typedef std::unordered_set<const RE::Actor *> Followers;
+class PartyMembers {
 public:
-	static PartyMembers& Instance();
-	PartyMembers() {}
+  static PartyMembers &Instance();
+  PartyMembers() {}
 
-	void Reset();
-	void RecordUpdate(const PartyUpdate& partyUpdate);
-	void AdjustParty(const Followers& followers, const float gameTime);
+  void Reset();
+  void RecordUpdate(const PartyUpdate &partyUpdate);
+  void AdjustParty(const Followers &followers, const float gameTime);
 
-	void AsJSON(nlohmann::json& j) const;
-	void UpdateFrom(const nlohmann::json& j);
+  void AsJSON(nlohmann::json &j) const;
+  void UpdateFrom(const nlohmann::json &j);
 
 private:
-	static std::unique_ptr<PartyMembers> m_instance;
-	std::vector<PartyUpdate> m_partyUpdates;
-	Followers m_followers;
-	mutable RecursiveLock m_partyLock;
+  static std::unique_ptr<PartyMembers> m_instance;
+  std::vector<PartyUpdate> m_partyUpdates;
+  Followers m_followers;
+  mutable RecursiveLock m_partyLock;
 };
 
-void to_json(nlohmann::json& j, const PartyMembers& partyMembers);
+void to_json(nlohmann::json &j, const PartyMembers &partyMembers);
 
-}
+} // namespace shse

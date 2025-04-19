@@ -19,10 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace papyrus
-{
-	RE::BSFixedString GetTranslation(RE::StaticFunctionTag*, RE::BSFixedString key);
-	bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine* a_vm);
-}
-
-
+namespace papyrus {
+RE::BSFixedString GetTranslation(RE::StaticFunctionTag *,
+                                 RE::BSFixedString key);
+bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine *a_vm);
+} // namespace papyrus

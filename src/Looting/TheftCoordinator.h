@@ -20,27 +20,28 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 #include "Data/iniSettings.h"
 
-namespace shse
-{
+namespace shse {
 
-class TheftCoordinator
-{
+class TheftCoordinator {
 public:
-	static TheftCoordinator& Instance();
-	TheftCoordinator() : m_stealInProgress(false), m_stealTimer(-1) {}
-	void DelayStealableItem(RE::TESObjectREFR * target, INIFile::SecondaryType targetType);
-	void StealIfUndetected(void);
-	void StealOrForgetItems(const bool detected);
-	bool StealingItems() const;
+  static TheftCoordinator &Instance();
+  TheftCoordinator() : m_stealInProgress(false), m_stealTimer(-1) {}
+  void DelayStealableItem(RE::TESObjectREFR *target,
+                          INIFile::SecondaryType targetType);
+  void StealIfUndetected(void);
+  void StealOrForgetItems(const bool detected);
+  bool StealingItems() const;
 
 private:
-	static std::unique_ptr<TheftCoordinator> m_instance;
-	mutable RecursiveLock m_theftLock;
+  static std::unique_ptr<TheftCoordinator> m_instance;
+  mutable RecursiveLock m_theftLock;
 
-	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_refrsToSteal;
-	std::vector<std::pair<RE::TESObjectREFR*, INIFile::SecondaryType>> m_refrsStealInProgress;
-	bool m_stealInProgress;
-	int m_stealTimer;
+  std::vector<std::pair<RE::TESObjectREFR *, INIFile::SecondaryType>>
+      m_refrsToSteal;
+  std::vector<std::pair<RE::TESObjectREFR *, INIFile::SecondaryType>>
+      m_refrsStealInProgress;
+  bool m_stealInProgress;
+  int m_stealTimer;
 };
 
-}
+} // namespace shse

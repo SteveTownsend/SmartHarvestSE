@@ -19,17 +19,15 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
-class TESObjectARMOHelper
-{
+class TESObjectARMOHelper {
 public:
-	TESObjectARMOHelper(const RE::TESObjectARMO* armor) : m_armor(armor) {}
-	uint32_t GetGoldValue(void) const;
+  TESObjectARMOHelper(const RE::TESObjectARMO *armor) : m_armor(armor) {}
+  uint32_t GetGoldValue(void) const;
 
 private:
-	const RE::TESObjectARMO* m_armor;
+  const RE::TESObjectARMO *m_armor;
 };
 
-}
+} // namespace shse

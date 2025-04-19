@@ -28,214 +28,217 @@ http://www.fsf.org/licensing/licenses
 #include "Collections/CollectionManager.h"
 #include "Looting/objects.h"
 
-namespace shse
-{
+namespace shse {
 
-TESFormHelper::TESFormHelper(const RE::TESBoundObject* form, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, GetEffectiveObjectType(form))
-{
-	init();
+TESFormHelper::TESFormHelper(const RE::TESBoundObject *form,
+                             const INIFile::SecondaryType scope)
+    : m_form(form), m_matcher(form, scope, GetEffectiveObjectType(form)) {
+  init();
 }
 
-TESFormHelper::TESFormHelper(const RE::TESBoundObject* form, ObjectType effectiveType, const INIFile::SecondaryType scope) : m_form(form), m_matcher(form, scope, effectiveType)
-{
-	init();
+TESFormHelper::TESFormHelper(const RE::TESBoundObject *form,
+                             ObjectType effectiveType,
+                             const INIFile::SecondaryType scope)
+    : m_form(form), m_matcher(form, scope, effectiveType) {
+  init();
 }
 
-void TESFormHelper::init()
-{
-	// If this is a leveled item, try to redirect to its contents
-	m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
-	m_objectType = m_matcher.GetObjectType();
-	m_typeName = GetObjectTypeName(m_objectType);
-	DBG_VMESSAGE("TESFormHelper for {}/0x{:08x} set as {}", m_form->GetName(), m_form->GetFormID(), m_typeName);
+void TESFormHelper::init() {
+  // If this is a leveled item, try to redirect to its contents
+  m_form = DataCase::GetInstance()->ConvertIfLeveledItem(m_form);
+  m_objectType = m_matcher.GetObjectType();
+  m_typeName = GetObjectTypeName(m_objectType);
+  DBG_VMESSAGE("TESFormHelper for {}/0x{:08x} set as {}", m_form->GetName(),
+               m_form->GetFormID(), m_typeName);
 }
 
-RE::BGSKeywordForm* TESFormHelper::GetKeywordForm() const
-{
-	return dynamic_cast<RE::BGSKeywordForm*>(const_cast<RE::TESBoundObject*>(m_form));
+RE::BGSKeywordForm *TESFormHelper::GetKeywordForm() const {
+  return dynamic_cast<RE::BGSKeywordForm *>(
+      const_cast<RE::TESBoundObject *>(m_form));
 }
 
-RE::EnchantmentItem* TESFormHelper::GetEnchantment()
-{
-	if (!m_form)
-		return nullptr;
+RE::EnchantmentItem *TESFormHelper::GetEnchantment() {
+  if (!m_form)
+    return nullptr;
 
-	if (m_form->formType == RE::FormType::Weapon || m_form->formType == RE::FormType::Armor)
-	{
-		const RE::TESEnchantableForm* enchanted(m_form->As<RE::TESEnchantableForm>());
-		if (enchanted)
-   		    return enchanted->formEnchanting;
-	}
-	return nullptr;
+  if (m_form->formType == RE::FormType::Weapon ||
+      m_form->formType == RE::FormType::Armor) {
+    const RE::TESEnchantableForm *enchanted(
+        m_form->As<RE::TESEnchantableForm>());
+    if (enchanted)
+      return enchanted->formEnchanting;
+  }
+  return nullptr;
 }
 
-bool TESFormHelper::ConfirmEnchanted(const RE::EnchantmentItem* item, const EnchantedObjectHandling handling)
-{
-	if (!item)
-		return false;
-	// Player may not be interested in known enchantments - treat item with known enchantment as unenchanted
-	if (IncludeEnchantedObjectIfKnown(handling))
-	{
-		DBG_DMESSAGE("Skip Enchantment check for {}/0x{:08x} due to loot handling {}", item->GetName(), item->GetFormID(),
-			EnchantedObjectHandlingString(handling));
-		return true;
-	}
-	if (item->data.baseEnchantment)
-	{
-		bool known(item->data.baseEnchantment->GetKnown());
-		DBG_DMESSAGE("Base Enchantment {}/0x{:08x} known={} for {}/0x{:08x}", item->data.baseEnchantment->GetName(),
-			item->data.baseEnchantment->GetFormID(), known, item->GetName(), item->GetFormID());
-		return !known;
-	}
-	else
-	{
-		bool known(item->GetKnown());
-		DBG_DMESSAGE("Enchantment {}/0x{:08x} known={}", item->GetName(), item->GetFormID(), known);
-		return !known;
-	}
+bool TESFormHelper::ConfirmEnchanted(const RE::EnchantmentItem *item,
+                                     const EnchantedObjectHandling handling) {
+  if (!item)
+    return false;
+  // Player may not be interested in known enchantments - treat item with known
+  // enchantment as unenchanted
+  if (IncludeEnchantedObjectIfKnown(handling)) {
+    DBG_DMESSAGE(
+        "Skip Enchantment check for {}/0x{:08x} due to loot handling {}",
+        item->GetName(), item->GetFormID(),
+        EnchantedObjectHandlingString(handling));
+    return true;
+  }
+  if (item->data.baseEnchantment) {
+    bool known(item->data.baseEnchantment->GetKnown());
+    DBG_DMESSAGE("Base Enchantment {}/0x{:08x} known={} for {}/0x{:08x}",
+                 item->data.baseEnchantment->GetName(),
+                 item->data.baseEnchantment->GetFormID(), known,
+                 item->GetName(), item->GetFormID());
+    return !known;
+  } else {
+    bool known(item->GetKnown());
+    DBG_DMESSAGE("Enchantment {}/0x{:08x} known={}", item->GetName(),
+                 item->GetFormID(), known);
+    return !known;
+  }
 }
 
 // modified from RE::TESObjectREFR::IsEnchanted
-ObjectType TESFormHelper::EnchantedREFREffectiveType(const RE::TESObjectREFR* refr, const ObjectType objectType, const EnchantedObjectHandling handling)
-{
-	// no mapping except for 'enchanted*'
-	if (!TypeIsEnchanted(objectType))
-		return objectType;
+ObjectType TESFormHelper::EnchantedREFREffectiveType(
+    const RE::TESObjectREFR *refr, const ObjectType objectType,
+    const EnchantedObjectHandling handling) {
+  // no mapping except for 'enchanted*'
+  if (!TypeIsEnchanted(objectType))
+    return objectType;
 
-	auto xEnch = refr->extraList.GetByType<RE::ExtraEnchantment>();
-	if (xEnch && xEnch->enchantment && ConfirmEnchanted(xEnch->enchantment, handling)) {
-		DBG_DMESSAGE("ExtraList Enchantment 0x{:08x} for {}/0x{:08x}",
-			xEnch->enchantment->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return objectType;
-	}
+  auto xEnch = refr->extraList.GetByType<RE::ExtraEnchantment>();
+  if (xEnch && xEnch->enchantment &&
+      ConfirmEnchanted(xEnch->enchantment, handling)) {
+    DBG_DMESSAGE("ExtraList Enchantment 0x{:08x} for {}/0x{:08x}",
+                 xEnch->enchantment->GetFormID(),
+                 refr->GetBaseObject()->GetName(),
+                 refr->GetBaseObject()->GetFormID());
+    return objectType;
+  }
 
-	auto obj = refr->GetObjectReference();
-	if (obj) {
-		auto ench = obj->As<RE::TESEnchantableForm>();
-		if (ench && ench->formEnchanting && ConfirmEnchanted(ench->formEnchanting, handling)) {
-			DBG_DMESSAGE("Enchantment Form 0x{:08x} for {}/0x{:08x}",
-				ench->formEnchanting->GetFormID(), refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-			return objectType;
-		}
-	}
+  auto obj = refr->GetObjectReference();
+  if (obj) {
+    auto ench = obj->As<RE::TESEnchantableForm>();
+    if (ench && ench->formEnchanting &&
+        ConfirmEnchanted(ench->formEnchanting, handling)) {
+      DBG_DMESSAGE("Enchantment Form 0x{:08x} for {}/0x{:08x}",
+                   ench->formEnchanting->GetFormID(),
+                   refr->GetBaseObject()->GetName(),
+                   refr->GetBaseObject()->GetFormID());
+      return objectType;
+    }
+  }
 
-	return ConvertToUnenchanted(objectType);
+  return ConvertToUnenchanted(objectType);
 }
 
-ObjectType TESFormHelper::EnchantedItemEffectiveType(const RE::TESBoundObject* obj, const ObjectType objectType, const EnchantedObjectHandling handling)
-{
-	if (obj) {
-		auto ench = obj->As<RE::TESEnchantableForm>();
-		if (ench && ench->formEnchanting && ConfirmEnchanted(ench->formEnchanting, handling)) {
-			DBG_DMESSAGE("Enchantment Form 0x{:08x} for {}/0x{:08x}", ench->formEnchanting->GetFormID(), obj->GetName(), obj->GetFormID());
-			return objectType;
-		}
-	}
+ObjectType TESFormHelper::EnchantedItemEffectiveType(
+    const RE::TESBoundObject *obj, const ObjectType objectType,
+    const EnchantedObjectHandling handling) {
+  if (obj) {
+    auto ench = obj->As<RE::TESEnchantableForm>();
+    if (ench && ench->formEnchanting &&
+        ConfirmEnchanted(ench->formEnchanting, handling)) {
+      DBG_DMESSAGE("Enchantment Form 0x{:08x} for {}/0x{:08x}",
+                   ench->formEnchanting->GetFormID(), obj->GetName(),
+                   obj->GetFormID());
+      return objectType;
+    }
+  }
 
-	return ConvertToUnenchanted(objectType);
+  return ConvertToUnenchanted(objectType);
 }
 
-uint32_t TESFormHelper::GetGoldValue() const
-{
-	if (!m_form)
-		return 0;
+uint32_t TESFormHelper::GetGoldValue() const {
+  if (!m_form)
+    return 0;
 
-	switch (m_form->GetFormType())
-	{
-	case RE::FormType::Armor:
-	case RE::FormType::Weapon:
-	case RE::FormType::Enchantment:
-	case RE::FormType::Spell:
-	case RE::FormType::Scroll:
-	case RE::FormType::Ingredient:
-	case RE::FormType::AlchemyItem:
-	case RE::FormType::Misc:
-	case RE::FormType::Apparatus:
-	case RE::FormType::KeyMaster:
-	case RE::FormType::SoulGem:
-	case RE::FormType::Ammo:
-	case RE::FormType::Book:
-		break;
-	default:
-		DBG_VMESSAGE("No value for {}/0x{:08x}", m_form->GetName(), m_form->GetFormID());
-		return 0;
-	}
+  switch (m_form->GetFormType()) {
+  case RE::FormType::Armor:
+  case RE::FormType::Weapon:
+  case RE::FormType::Enchantment:
+  case RE::FormType::Spell:
+  case RE::FormType::Scroll:
+  case RE::FormType::Ingredient:
+  case RE::FormType::AlchemyItem:
+  case RE::FormType::Misc:
+  case RE::FormType::Apparatus:
+  case RE::FormType::KeyMaster:
+  case RE::FormType::SoulGem:
+  case RE::FormType::Ammo:
+  case RE::FormType::Book:
+    break;
+  default:
+    DBG_VMESSAGE("No value for {}/0x{:08x}", m_form->GetName(),
+                 m_form->GetFormID());
+    return 0;
+  }
 
-	const RE::TESValueForm* pValue(m_form->As<RE::TESValueForm>());
-	if (!pValue)
-	{
-		DBG_VMESSAGE("No TESValueForm for {}/0x{:08x}", m_form->GetName(), m_form->GetFormID());
-		return 0;
-	}
+  const RE::TESValueForm *pValue(m_form->As<RE::TESValueForm>());
+  if (!pValue) {
+    DBG_VMESSAGE("No TESValueForm for {}/0x{:08x}", m_form->GetName(),
+                 m_form->GetFormID());
+    return 0;
+  }
 
-	DBG_VMESSAGE("TESValueForm for {}/0x{:08x} has {}", m_form->GetName(), m_form->GetFormID(), pValue->value);
-	return static_cast<uint32_t>(pValue->value);
+  DBG_VMESSAGE("TESValueForm for {}/0x{:08x} has {}", m_form->GetName(),
+               m_form->GetFormID(), pValue->value);
+  return static_cast<uint32_t>(pValue->value);
 }
 
-std::pair<bool, CollectibleHandling> TESFormHelper::TreatAsCollectible(const bool recordDups) const
-{
-	// ignore whitelist - we need the underlying object type
-	return shse::CollectionManager::Collectibles().TreatAsCollectible(m_matcher, recordDups);
+std::pair<bool, CollectibleHandling>
+TESFormHelper::TreatAsCollectible(const bool recordDups) const {
+  // ignore whitelist - we need the underlying object type
+  return shse::CollectionManager::Collectibles().TreatAsCollectible(m_matcher,
+                                                                    recordDups);
 }
 
-double TESFormHelper::GetWeight() const
-{
-	if (!m_form)
-		return 0.0;
+double TESFormHelper::GetWeight() const {
+  if (!m_form)
+    return 0.0;
 
-	const RE::TESWeightForm* pWeight(m_form->As<RE::TESWeightForm>());
-	if (!pWeight)
-	{
-		DBG_VMESSAGE("No TESWeightForm for {}/0x{:08x}", m_form->GetName(), m_form->GetFormID());
-		return 0.0;
-	}
+  const RE::TESWeightForm *pWeight(m_form->As<RE::TESWeightForm>());
+  if (!pWeight) {
+    DBG_VMESSAGE("No TESWeightForm for {}/0x{:08x}", m_form->GetName(),
+                 m_form->GetFormID());
+    return 0.0;
+  }
 
-	DBG_VMESSAGE("TESWeightForm for {}/0x{:08x} has weight {} (floored at zero)", m_form->GetName(), m_form->GetFormID(), pWeight->weight);
-	return std::max(pWeight->weight, 0.0f);
+  DBG_VMESSAGE("TESWeightForm for {}/0x{:08x} has weight {} (floored at zero)",
+               m_form->GetName(), m_form->GetFormID(), pWeight->weight);
+  return std::max(pWeight->weight, 0.0f);
 }
 
-uint32_t TESFormHelper::CalculateWorth(void) const 
-{
-	if (!m_form)
-		return 0;
+uint32_t TESFormHelper::CalculateWorth(void) const {
+  if (!m_form)
+    return 0;
 
-	if (m_form->formType == RE::FormType::Ammo)
-	{
-		const RE::TESAmmo* ammo(m_form->As<RE::TESAmmo>());
-		if (ammo)
-		{
-			DBG_VMESSAGE("Ammo {}({:08x}) damage = {:0.2f}", GetName(), GetFormID(), ammo->data.damage);
-			return static_cast<uint32_t>(ammo->data.damage);
-		}
-		return 0;
-	}
-	else
-	{
-		uint32_t result(0);
-		if (m_form->formType == RE::FormType::Weapon)
-		{
-			result = TESObjectWEAPHelper(m_form->As<RE::TESObjectWEAP>()).GetGoldValue();
-		}
-		else if (m_form->formType == RE::FormType::Armor)
-		{
-			result = TESObjectARMOHelper(m_form->As<RE::TESObjectARMO>()).GetGoldValue();
-		}
-		else if (m_form->formType == RE::FormType::AlchemyItem)
-		{
-			result = AlchemyItemHelper(m_form->As<RE::AlchemyItem>()).GetGoldValue();
-		}
-		return result == 0 ? GetGoldValue() : result;
-	}
+  if (m_form->formType == RE::FormType::Ammo) {
+    const RE::TESAmmo *ammo(m_form->As<RE::TESAmmo>());
+    if (ammo) {
+      DBG_VMESSAGE("Ammo {}({:08x}) damage = {:0.2f}", GetName(), GetFormID(),
+                   ammo->GetRuntimeData().data.damage);
+      return static_cast<uint32_t>(ammo->GetRuntimeData().data.damage);
+    }
+    return 0;
+  } else {
+    uint32_t result(0);
+    if (m_form->formType == RE::FormType::Weapon) {
+      result =
+          TESObjectWEAPHelper(m_form->As<RE::TESObjectWEAP>()).GetGoldValue();
+    } else if (m_form->formType == RE::FormType::Armor) {
+      result =
+          TESObjectARMOHelper(m_form->As<RE::TESObjectARMO>()).GetGoldValue();
+    } else if (m_form->formType == RE::FormType::AlchemyItem) {
+      result = AlchemyItemHelper(m_form->As<RE::AlchemyItem>()).GetGoldValue();
+    }
+    return result == 0 ? GetGoldValue() : result;
+  }
 }
 
-const char* TESFormHelper::GetName() const
-{
-	return m_form->GetName();
-}
+const char *TESFormHelper::GetName() const { return m_form->GetName(); }
 
-uint32_t TESFormHelper::GetFormID() const
-{
-	return m_form->formID;
-}
+uint32_t TESFormHelper::GetFormID() const { return m_form->formID; }
 
-}
+} // namespace shse

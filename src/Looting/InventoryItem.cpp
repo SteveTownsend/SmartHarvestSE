@@ -26,92 +26,103 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/FormHelper.h"
 #include "VM/TaskDispatcher.h"
 
-namespace shse
-{
+namespace shse {
 
 InventoryItem::InventoryItem(
-	std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count, const EnchantedObjectHandling enchantedObjectHandling) :
-	m_inlineTransfer(false), m_entry(std::move(a_entry)), m_count(a_count),
-	m_objectType(GetEffectiveObjectType(m_entry->GetObject()))
-{
-	// Decorate objectType for player-created enchantments: promote vanilla object if it has enchantment.
-	DBG_VMESSAGE("{}/0x{:08x} has type {}", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), GetObjectTypeName(m_objectType));
-	if (m_objectType == ObjectType::weapon || m_objectType == ObjectType::armor || m_objectType == ObjectType::jewelry)
-	{
-		// player-created enchantments are always known, so treat as unenchanted unless we collect Known enchantments
-		if (IncludeEnchantedObjectIfKnown(enchantedObjectHandling) &&
-			TESFormHelper::ConfirmEnchanted(GetEnchantmentFromExtraLists(m_entry->extraLists), enchantedObjectHandling))
-		{
-			DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID());
-			switch (m_objectType)
-			{
-			case ObjectType::weapon:
-				m_objectType = ObjectType::enchantedWeapon;
-				break;
-			case ObjectType::armor:
-				m_objectType = ObjectType::enchantedArmor;
-				break;
-			case ObjectType::jewelry:
-				m_objectType = ObjectType::enchantedJewelry;
-				break;
-			default:
-				break;
-			}
-		}
-	}
-	// we may need to treat an item with vanilla enchantment as unenchanted
-	if (TypeIsEnchanted(m_objectType))
-	{
-		ObjectType newType = TESFormHelper::EnchantedItemEffectiveType(m_entry->GetObject(), m_objectType, enchantedObjectHandling);
-		if (newType != m_objectType)
-		{
-			m_objectType = newType;
-		}
-	}
-	DBG_VMESSAGE("{}/0x{:08x} final type {}", m_entry->GetObject()->GetName(), m_entry->GetObject()->GetFormID(), GetObjectTypeName(m_objectType));
+    std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count,
+    const EnchantedObjectHandling enchantedObjectHandling)
+    : m_inlineTransfer(false), m_entry(std::move(a_entry)), m_count(a_count),
+      m_objectType(GetEffectiveObjectType(m_entry->GetObject())) {
+  // Decorate objectType for player-created enchantments: promote vanilla object
+  // if it has enchantment.
+  DBG_VMESSAGE("{}/0x{:08x} has type {}", m_entry->GetObject()->GetName(),
+               m_entry->GetObject()->GetFormID(),
+               GetObjectTypeName(m_objectType));
+  if (m_objectType == ObjectType::weapon || m_objectType == ObjectType::armor ||
+      m_objectType == ObjectType::jewelry) {
+    // player-created enchantments are always known, so treat as unenchanted
+    // unless we collect Known enchantments
+    if (IncludeEnchantedObjectIfKnown(enchantedObjectHandling) &&
+        TESFormHelper::ConfirmEnchanted(
+            GetEnchantmentFromExtraLists(m_entry->extraLists),
+            enchantedObjectHandling)) {
+      DBG_VMESSAGE("{}/0x{:08x} has player-created enchantment",
+                   m_entry->GetObject()->GetName(),
+                   m_entry->GetObject()->GetFormID());
+      switch (m_objectType) {
+      case ObjectType::weapon:
+        m_objectType = ObjectType::enchantedWeapon;
+        break;
+      case ObjectType::armor:
+        m_objectType = ObjectType::enchantedArmor;
+        break;
+      case ObjectType::jewelry:
+        m_objectType = ObjectType::enchantedJewelry;
+        break;
+      default:
+        break;
+      }
+    }
+  }
+  // we may need to treat an item with vanilla enchantment as unenchanted
+  if (TypeIsEnchanted(m_objectType)) {
+    ObjectType newType = TESFormHelper::EnchantedItemEffectiveType(
+        m_entry->GetObject(), m_objectType, enchantedObjectHandling);
+    if (newType != m_objectType) {
+      m_objectType = newType;
+    }
+  }
+  DBG_VMESSAGE("{}/0x{:08x} final type {}", m_entry->GetObject()->GetName(),
+               m_entry->GetObject()->GetFormID(),
+               GetObjectTypeName(m_objectType));
 }
-InventoryItem::InventoryItem(const InventoryItem& rhs) :
-	m_inlineTransfer(rhs.m_inlineTransfer), m_entry(std::move(rhs.m_entry)), m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
+InventoryItem::InventoryItem(const InventoryItem &rhs)
+    : m_inlineTransfer(rhs.m_inlineTransfer), m_entry(std::move(rhs.m_entry)),
+      m_count(rhs.m_count), m_objectType(rhs.m_objectType) {}
 
 // returns number of objects added
-size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool inlineTransfer)
-{
-	m_inlineTransfer = inlineTransfer;
-	auto toRemove = m_count;
-	if (toRemove <= 0) {
-		return 0;
-	}
+size_t InventoryItem::TakeAll(RE::TESObjectREFR *container,
+                              RE::TESObjectREFR *target,
+                              const bool inlineTransfer) {
+  m_inlineTransfer = inlineTransfer;
+  auto toRemove = m_count;
+  if (toRemove <= 0) {
+    return 0;
+  }
 
-	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
-	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), static_cast<int>(toRemove)));
-	if (limit <= 0)
-	{
-		DBG_VMESSAGE("Inventory Limits preclude looting of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
-		return 0;
-	}
-	else
-	{
-		toRemove = std::min(m_count, static_cast<ptrdiff_t>(limit));
-	}
+  // Check inventory limits. The container is already temp-blocked as 'looted'
+  // so just no-op here.
+  int limit(PlayerState::Instance().ItemHeadroom(BoundObject(),
+                                                 static_cast<int>(toRemove)));
+  if (limit <= 0) {
+    DBG_VMESSAGE("Inventory Limits preclude looting of {}/0x{:08x}",
+                 BoundObject()->GetName(), BoundObject()->GetFormID());
+    return 0;
+  } else {
+    toRemove = std::min(m_count, static_cast<ptrdiff_t>(limit));
+  }
 
-	DBG_VMESSAGE("get {}/0x{:08x} ({})", BoundObject()->GetName(), BoundObject()->GetFormID(), toRemove);
-	std::vector<std::pair<RE::ExtraDataList*, std::ptrdiff_t>> queued;
-	if (m_entry->extraLists) {
-		for (auto& xList : *m_entry->extraLists) {
-			if (xList) {
-				auto xCount = std::min<std::ptrdiff_t>(xList->GetCount(), toRemove);
-				DBG_VMESSAGE("Handle extra list {} ({})", xList->GetDisplayName(BoundObject()), xCount);
+  DBG_VMESSAGE("get {}/0x{:08x} ({})", BoundObject()->GetName(),
+               BoundObject()->GetFormID(), toRemove);
+  std::vector<std::pair<RE::ExtraDataList *, std::ptrdiff_t>> queued;
+  if (m_entry->extraLists) {
+    for (auto &xList : *m_entry->extraLists) {
+      if (xList) {
+        auto xCount = std::min<std::ptrdiff_t>(xList->GetCount(), toRemove);
+        DBG_VMESSAGE("Handle extra list {} ({})",
+                     xList->GetDisplayName(BoundObject()), xCount);
 
-				toRemove -= xCount;
-				queued.push_back(std::make_pair(xList, xCount));
+        toRemove -= xCount;
+        queued.push_back(std::make_pair(xList, xCount));
 
-				if (toRemove <= 0) {
-					break;
-				}
-			}
-		}
-	}
+        if (toRemove <= 0) {
+          break;
+        }
+      }
+    }
+  }
 
+  // clang-format off
 	// Removing items from NPCs here seems to be impossible to make stable, possibly because of thread safety issues with
 	// the game's unequip-item handling. Give up trying, and script this.
 	// RemoveItem inline soon after Actor death is problematic, I speculate that the game is sorting out the equipment state.
@@ -145,48 +156,53 @@ size_t InventoryItem::TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* t
 		[32]  0x7FF7A196F7B9     (SkyrimSE.exe + 5FF7B9)          Actor::RemoveItem_5FF750 + 69
 		[33]  0x17AC0056C3A      (SmartHarvestSE.dll + 6C3A)
 	*/
-	for (auto& elem : queued) {
-		DBG_VMESSAGE("Move extra list {} ({})", elem.first->GetDisplayName(BoundObject()), elem.second);
-		Remove(container, target, elem.first, elem.second);
-	}
-	if (toRemove > 0) {
-		DBG_VMESSAGE("Move item {} ({})", BoundObject()->GetName(), toRemove);
-		Remove(container, target, nullptr, toRemove);
-	}
-	return static_cast<size_t>(toRemove + queued.size());
+  // clang-format on
+  for (auto &elem : queued) {
+    DBG_VMESSAGE("Move extra list {} ({})",
+                 elem.first->GetDisplayName(BoundObject()), elem.second);
+    Remove(container, target, elem.first, elem.second);
+  }
+  if (toRemove > 0) {
+    DBG_VMESSAGE("Move item {} ({})", BoundObject()->GetName(), toRemove);
+    Remove(container, target, nullptr, toRemove);
+  }
+  return static_cast<size_t>(toRemove + queued.size());
 }
 
-void InventoryItem::Remove(
-	RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count)
-{
-	if (m_inlineTransfer)
-	{
-		// safe to handle here - record the item for Collection correlation before moving
-		CollectionManager::Collectibles().CheckEnqueueAddedItem(BoundObject(), INIFile::SecondaryType::containers, m_objectType);
-		container->RemoveItem(BoundObject(), static_cast<int32_t>(count), RE::ITEM_REMOVE_REASON::kRemove, extraDataList, target);
-	}
-	else
-	{
-		// apparent thread safety issues for NPC item transfer - use TaskInterface dispatch
-		TaskDispatcher::Instance().EnqueueLootFromNPC(container, BoundObject(), static_cast<int>(count), m_objectType);
-	}
+void InventoryItem::Remove(RE::TESObjectREFR *container,
+                           RE::TESObjectREFR *target,
+                           RE::ExtraDataList *extraDataList, ptrdiff_t count) {
+  if (m_inlineTransfer) {
+    // safe to handle here - record the item for Collection correlation before
+    // moving
+    CollectionManager::Collectibles().CheckEnqueueAddedItem(
+        BoundObject(), INIFile::SecondaryType::containers, m_objectType);
+    container->RemoveItem(BoundObject(), static_cast<int32_t>(count),
+                          RE::ITEM_REMOVE_REASON::kRemove, extraDataList,
+                          target);
+  } else {
+    // apparent thread safety issues for NPC item transfer - use TaskInterface
+    // dispatch
+    TaskDispatcher::Instance().EnqueueLootFromNPC(
+        container, BoundObject(), static_cast<int>(count), m_objectType);
+  }
 }
 
-void InventoryItem::MakeCopies(RE::TESObjectREFR* target, size_t count)
-{
+void InventoryItem::MakeCopies(RE::TESObjectREFR *target, size_t count) {
 
-	// Check inventory limits. The container is already temp-blocked as 'looted' so just no-op here.
-	int limit(PlayerState::Instance().ItemHeadroom(BoundObject(), static_cast<int>(count)));
-	if (limit <= 0)
-	{
-		DBG_VMESSAGE("Inventory Limits preclude copying of {}/0x{:08x}", BoundObject()->GetName(), BoundObject()->GetFormID());
-		return;
-	}
-	else
-	{
-		count = std::min(count, static_cast<size_t>(limit));
-	}
-	target->AddObjectToContainer(BoundObject(), nullptr, static_cast<int32_t>(count), nullptr);
+  // Check inventory limits. The container is already temp-blocked as 'looted'
+  // so just no-op here.
+  int limit(PlayerState::Instance().ItemHeadroom(BoundObject(),
+                                                 static_cast<int>(count)));
+  if (limit <= 0) {
+    DBG_VMESSAGE("Inventory Limits preclude copying of {}/0x{:08x}",
+                 BoundObject()->GetName(), BoundObject()->GetFormID());
+    return;
+  } else {
+    count = std::min(count, static_cast<size_t>(limit));
+  }
+  target->AddObjectToContainer(BoundObject(), nullptr,
+                               static_cast<int32_t>(count), nullptr);
 }
 
-}
+} // namespace shse

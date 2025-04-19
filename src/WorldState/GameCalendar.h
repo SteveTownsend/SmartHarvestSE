@@ -19,40 +19,37 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
-class GameCalendar
-{
+class GameCalendar {
 public:
+  static GameCalendar &Instance();
+  GameCalendar();
 
-	static GameCalendar& Instance();
-	GameCalendar();
-
-	std::string DateString(const unsigned int days) const;
-	std::string TimeString(const unsigned int timeOfDayMinutes) const;
-	std::string DateTimeString(const float gameTime) const;
-	unsigned int DayPartInMinutes(const float gameTime) const;
+  std::string DateString(const unsigned int days) const;
+  std::string TimeString(const unsigned int timeOfDayMinutes) const;
+  std::string DateTimeString(const float gameTime) const;
+  unsigned int DayPartInMinutes(const float gameTime) const;
 
 private:
-	constexpr unsigned int DaysPerYear() const;
+  constexpr unsigned int DaysPerYear() const;
 
-	// start date is 4E 201, 17th of Last Seed
-	/* start time logged in new game is 9.00 am or so:
-		2020-09-01 16:59:23.823     info  18628 GameTime is now 0.375/0.375352
-	*/
-	static constexpr unsigned int StartYear = 201;
-	static constexpr unsigned int StartDay = 17;
-	// zero-based offset
-	static constexpr unsigned int StartMonth = 7;
-	static constexpr float MinutesPerHour = 60.0f;
-	static constexpr float HoursPerDay = 24.0f;
-	static constexpr float MinutesPerDay = HoursPerDay * MinutesPerHour;
+  // start date is 4E 201, 17th of Last Seed
+  /* start time logged in new game is 9.00 am or so:
+          2020-09-01 16:59:23.823     info  18628 GameTime is now 0.375/0.375352
+  */
+  static constexpr unsigned int StartYear = 201;
+  static constexpr unsigned int StartDay = 17;
+  // zero-based offset
+  static constexpr unsigned int StartMonth = 7;
+  static constexpr float MinutesPerHour = 60.0f;
+  static constexpr float HoursPerDay = 24.0f;
+  static constexpr float MinutesPerDay = HoursPerDay * MinutesPerHour;
 
-	static std::unique_ptr<GameCalendar> m_instance;
-	static const std::vector<std::pair<std::string, unsigned int>> m_monthDays;
-	static const std::vector<std::string> m_dayNames;
-	static const std::vector<std::string> m_dayOfMonth;
+  static std::unique_ptr<GameCalendar> m_instance;
+  static const std::vector<std::pair<std::string, unsigned int>> m_monthDays;
+  static const std::vector<std::string> m_dayNames;
+  static const std::vector<std::string> m_dayOfMonth;
 };
 
-}
+} // namespace shse

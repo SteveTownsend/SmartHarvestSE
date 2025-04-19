@@ -19,11 +19,12 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-class AlchemyItemHelper
-{
+class AlchemyItemHelper {
 public:
-	AlchemyItemHelper(const RE::AlchemyItem* alchemyItem) : m_alchemyItem(alchemyItem) {}
-	uint32_t GetGoldValue(void) const;
+  AlchemyItemHelper(const RE::AlchemyItem *alchemyItem)
+      : m_alchemyItem(alchemyItem) {}
+  uint32_t GetGoldValue(void) const;
+
 private:
-	const RE::AlchemyItem* m_alchemyItem;
+  const RE::AlchemyItem *m_alchemyItem;
 };

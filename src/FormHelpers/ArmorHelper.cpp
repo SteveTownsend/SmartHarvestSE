@@ -22,33 +22,32 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/FormHelper.h"
 #include "FormHelpers/ArmorHelper.h"
 
-namespace shse
-{
+namespace shse {
 
-uint32_t TESObjectARMOHelper::GetGoldValue() const
-{
-	if (!m_armor)
-		return 0;
+uint32_t TESObjectARMOHelper::GetGoldValue() const {
+  if (!m_armor)
+    return 0;
 
-	RE::EnchantmentItem* ench = TESFormHelper(m_armor, INIFile::SecondaryType::itemObjects).GetEnchantment();
-	if (!ench)
-	{
-		return static_cast<uint32_t>(m_armor->value);
-	}
+  RE::EnchantmentItem *ench =
+      TESFormHelper(m_armor, INIFile::SecondaryType::itemObjects)
+          .GetEnchantment();
+  if (!ench) {
+    return static_cast<uint32_t>(m_armor->value);
+  }
 
-	double costPP = 0.0;
-	for (RE::Effect* effect : ench->effects)
-	{
-		if (!effect)
-			continue;
+  double costPP = 0.0;
+  for (RE::Effect *effect : ench->effects) {
+    if (!effect)
+      continue;
 
-		costPP += effect->cost;
-	}
+    costPP += effect->cost;
+  }
 
-	uint32_t result = (costPP > 0) ? static_cast<uint32_t>(costPP) : 0;
-	DBG_VMESSAGE("TESObjectARMOHelper::GetGoldValue()  {}  {}", m_armor->value, result);
+  uint32_t result = (costPP > 0) ? static_cast<uint32_t>(costPP) : 0;
+  DBG_VMESSAGE("TESObjectARMOHelper::GetGoldValue()  {}  {}", m_armor->value,
+               result);
 
-	return m_armor->value + result;
+  return m_armor->value + result;
 }
 
-}
+} // namespace shse

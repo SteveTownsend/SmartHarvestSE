@@ -10,7 +10,7 @@
             "name": "common",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
+                "CMAKE_CXX_FLAGS": "/DAE_CPU=AE_INTEL /arch:AVX2 $env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
             },
             "errors": {
                 "deprecated": false
@@ -21,7 +21,7 @@
             },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "intelliSenseMode": "$env{PROJECT_PLATFORM}-$env{PROJECT_COMPILER}-$env{PROJECT_ARCHITECTURE}",
+                    "intelliSenseMode": "windows-msvc-x64",
                     "enableMicrosoftCodeAnalysis": true,
                     "enableClangTidyCodeAnalysis": true
                 }

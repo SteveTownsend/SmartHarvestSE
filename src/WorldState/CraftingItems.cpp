@@ -21,37 +21,30 @@ http://www.fsf.org/licensing/licenses
 
 #include "WorldState/CraftingItems.h"
 
-namespace shse
-{
+namespace shse {
 
 std::unique_ptr<CraftingItems> CraftingItems::m_instance;
 
-CraftingItems& CraftingItems::Instance()
-{
-	if (!m_instance)
-	{
-		m_instance = std::make_unique<CraftingItems>();
-	}
-	return *m_instance;
+CraftingItems &CraftingItems::Instance() {
+  if (!m_instance) {
+    m_instance = std::make_unique<CraftingItems>();
+  }
+  return *m_instance;
 }
 
-CraftingItems::CraftingItems()
-{
+CraftingItems::CraftingItems() {}
+
+bool CraftingItems::IsCraftingItem(const RE::TESForm *item) const {
+  return m_craftingItems.contains(item->GetFormID());
 }
 
-bool CraftingItems::IsCraftingItem(const RE::TESForm* item) const
-{
-	return m_craftingItems.contains(item->GetFormID());
+bool CraftingItems::AddIfNew(const RE::TESForm *item) {
+  if (m_craftingItems.insert(item->GetFormID()).second) {
+    DBG_MESSAGE("Crafting item {}/0x{:08x}", item->GetName(),
+                item->GetFormID());
+    return true;
+  }
+  return false;
 }
 
-bool CraftingItems::AddIfNew(const RE::TESForm* item)
-{
-	if (m_craftingItems.insert(item->GetFormID()).second)
-	{
-		DBG_MESSAGE("Crafting item {}/0x{:08x}", item->GetName(), item->GetFormID());
-		return true;
-	}
-	return false;
-}
-
-}
+} // namespace shse

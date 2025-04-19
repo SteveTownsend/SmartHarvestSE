@@ -21,22 +21,22 @@ http://www.fsf.org/licensing/licenses
 
 #include "AlchemyItemHelper.h"
 
-uint32_t AlchemyItemHelper::GetGoldValue() const
-{
-	if (!m_alchemyItem)
-		return 0;
+uint32_t AlchemyItemHelper::GetGoldValue() const {
+  if (!m_alchemyItem)
+    return 0;
 
-	if ((m_alchemyItem->data.flags & RE::AlchemyItem::AlchemyFlag::kCostOverride) == RE::AlchemyItem::AlchemyFlag::kCostOverride)
-		return static_cast<uint32_t>(m_alchemyItem->data.costOverride);
+  if ((m_alchemyItem->data.flags &
+       RE::AlchemyItem::AlchemyFlag::kCostOverride) ==
+      RE::AlchemyItem::AlchemyFlag::kCostOverride)
+    return static_cast<uint32_t>(m_alchemyItem->data.costOverride);
 
-	double costPP(0.0);
-	for (RE::Effect* effect : m_alchemyItem->effects)
-	{
-		if (!effect)
-			continue;
-		costPP += effect->cost;
-	}
+  double costPP(0.0);
+  for (RE::Effect *effect : m_alchemyItem->effects) {
+    if (!effect)
+      continue;
+    costPP += effect->cost;
+  }
 
-	uint32_t result = std::max<uint32_t>(static_cast<uint32_t>(costPP), 0);
-	return result;
+  uint32_t result = std::max<uint32_t>(static_cast<uint32_t>(costPP), 0);
+  return result;
 }

@@ -21,22 +21,20 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 
-namespace shse
-{
+namespace shse {
 
-class CraftingItems
-{
+class CraftingItems {
 public:
-	static CraftingItems& Instance();
-	CraftingItems();
+  static CraftingItems &Instance();
+  CraftingItems();
 
-	bool IsCraftingItem(const RE::TESForm* item) const;
-	bool AddIfNew(const RE::TESForm* item);
+  bool IsCraftingItem(const RE::TESForm *item) const;
+  bool AddIfNew(const RE::TESForm *item);
 
 private:
-	static std::unique_ptr<CraftingItems> m_instance;
-	// lock not required, this is seeded at start and thereafter read-only
-	std::unordered_set<RE::FormID> m_craftingItems;
+  static std::unique_ptr<CraftingItems> m_instance;
+  // lock not required, this is seeded at start and thereafter read-only
+  std::unordered_set<RE::FormID> m_craftingItems;
 };
 
-}
+} // namespace shse

@@ -47,663 +47,671 @@ http://www.fsf.org/licensing/licenses
 #include <chrono>
 #include <thread>
 
-namespace shse
-{
+namespace shse {
 
 std::unique_ptr<ScanGovernor> ScanGovernor::m_instance;
 
-ScanGovernor& ScanGovernor::Instance()
-{
-	if (!m_instance)
-	{
-		m_instance = std::make_unique<ScanGovernor>();
-	}
-	return *m_instance;
+ScanGovernor &ScanGovernor::Instance() {
+  if (!m_instance) {
+    m_instance = std::make_unique<ScanGovernor>();
+  }
+  return *m_instance;
 }
 
-ScanGovernor::ScanGovernor() : m_pendingNotifies(0), m_pendingHarvests(0), m_searchAllowed(false), m_searchNotPaused(false),
-	m_targetType(INIFile::SecondaryType::NONE2), m_spergInProgress(0), m_calibrating(false),
-	m_calibrateRadius(CalibrationRangeDelta), m_calibrateDelta(ScanGovernor::CalibrationRangeDelta),
-	m_glowDemo(false), m_nextGlow(GlowReason::SimpleTarget), m_fhiRunning(false)
-{
+ScanGovernor::ScanGovernor()
+    : m_pendingNotifies(0), m_pendingHarvests(0), m_searchAllowed(false),
+      m_searchNotPaused(false), m_targetType(INIFile::SecondaryType::NONE2),
+      m_spergInProgress(0), m_calibrating(false),
+      m_calibrateRadius(CalibrationRangeDelta),
+      m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false),
+      m_nextGlow(GlowReason::SimpleTarget), m_fhiRunning(false) {}
+
+// Dynamic REFR looting is not delayed - the visuals may be less appealing, but
+// delaying risks CTD as REFRs can be recycled very quickly.
+bool ScanGovernor::HandleAsDynamicData(RE::TESObjectREFR *refr) const {
+  // do not reregister known REFR
+  if (LootedDynamicREFRFormID(refr) != InvalidForm)
+    return true;
+
+  // risk exists if REFR or its concrete object is dynamic. This is only called
+  // for Container or Actor, so check for Dynamic Base is correct
+  if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm()) {
+    DBG_VMESSAGE("dynamic REFR 0x{:08x} or base 0x{:08x} for {}",
+                 refr->GetFormID(), refr->GetBaseObject()->GetFormID(),
+                 refr->GetBaseObject()->GetName());
+    // record looting so we don't rescan
+    MarkDynamicREFRLooted(refr);
+    return true;
+  }
+  return false;
 }
 
-// Dynamic REFR looting is not delayed - the visuals may be less appealing, but delaying risks CTD as REFRs can
-// be recycled very quickly.
-bool ScanGovernor::HandleAsDynamicData(RE::TESObjectREFR* refr) const
-{
-	// do not reregister known REFR
-	if (LootedDynamicREFRFormID(refr) != InvalidForm)
-		return true;
-
-	// risk exists if REFR or its concrete object is dynamic. This is only called for Container or Actor, so check for
-	// Dynamic Base is correct
-	if (refr->IsDynamicForm() || refr->GetBaseObject()->IsDynamicForm())
-	{
-		DBG_VMESSAGE("dynamic REFR 0x{:08x} or base 0x{:08x} for {}", refr->GetFormID(),
-			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
-		// record looting so we don't rescan
-		MarkDynamicREFRLooted(refr);
-		return true;
-	}
-	return false;
+void ScanGovernor::MarkDynamicREFRLooted(const RE::TESObjectREFR *refr) const {
+  RecursiveLockGuard guard(m_stateLock);
+  // record looting so we don't rescan
+  m_lootedDynamicREFRs.insert(
+      {refr->GetFormID(), refr->GetBaseObject()->GetFormID()});
 }
 
-void ScanGovernor::MarkDynamicREFRLooted(const RE::TESObjectREFR* refr) const
-{
-	RecursiveLockGuard guard(m_stateLock);
-	// record looting so we don't rescan
-	m_lootedDynamicREFRs.insert({ refr->GetFormID(), refr->GetBaseObject()->GetFormID()});
+RE::FormID
+ScanGovernor::LootedDynamicREFRFormID(const RE::TESObjectREFR *refr) const {
+  if (!refr)
+    return false;
+  RecursiveLockGuard guard(m_stateLock);
+  const auto looted(m_lootedDynamicREFRs.find(
+      {refr->GetFormID(), refr->GetBaseObject()->GetFormID()}));
+  return looted != m_lootedDynamicREFRs.cend() ? looted->first : InvalidForm;
 }
 
-RE::FormID ScanGovernor::LootedDynamicREFRFormID(const RE::TESObjectREFR* refr) const
-{
-	if (!refr)
-		return false;
-	RecursiveLockGuard guard(m_stateLock);
-	const auto looted(m_lootedDynamicREFRs.find({ refr->GetFormID(), refr->GetBaseObject()->GetFormID() }));
-	return looted != m_lootedDynamicREFRs.cend() ? looted->first : InvalidForm;
+// forget about dynamic containers we looted when cell changes. This is more
+// aggressive than static container looting as this list contains recycled
+// FormIDs, and hypothetically may grow unbounded.
+void ScanGovernor::ResetLootedDynamicREFRs() {
+  RecursiveLockGuard guard(m_stateLock);
+  m_lootedDynamicREFRs.clear();
 }
 
-// forget about dynamic containers we looted when cell changes. This is more aggressive than static container looting
-// as this list contains recycled FormIDs, and hypothetically may grow unbounded.
-void ScanGovernor::ResetLootedDynamicREFRs()
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_lootedDynamicREFRs.clear();
+void ScanGovernor::MarkContainerLootedRepeatGlow(const RE::TESObjectREFR *refr,
+                                                 const int glowDuration) {
+  RecursiveLockGuard guard(m_stateLock);
+  // record looting so we don't rescan - glow may prevent looting and require
+  // repeat processing after the glow wears off
+  std::chrono::steady_clock::time_point expiry;
+  if (glowDuration > 0) {
+    auto currentTime(std::chrono::high_resolution_clock::now());
+    expiry = currentTime + std::chrono::milliseconds(
+                               static_cast<long long>(glowDuration * 1000.0));
+  }
+  // overwrite existing to stop repeated glow if container no longer merits it
+  m_lootedContainers[refr] = expiry;
+  // this may be a locked container that we manually emptied, if so we should
+  // stop it glowing
+  m_lockedContainers.erase(refr);
 }
 
-void ScanGovernor::MarkContainerLootedRepeatGlow(const RE::TESObjectREFR* refr, const int glowDuration)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	// record looting so we don't rescan - glow may prevent looting and require repeat processing after the glow wears off
-	std::chrono::steady_clock::time_point expiry;
-	if (glowDuration > 0)
-	{
-		auto currentTime(std::chrono::high_resolution_clock::now());
-		expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(glowDuration * 1000.0));
-	}
-	// overwrite existing to stop repeated glow if container no longer merits it
-	m_lootedContainers[refr] = expiry;
-	// this may be a locked container that we manually emptied, if so we should stop it glowing
-	m_lockedContainers.erase(refr);
+void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR *refr) {
+  MarkContainerLootedRepeatGlow(refr, 0);
 }
 
-void ScanGovernor::MarkContainerLooted(const RE::TESObjectREFR* refr)
-{
-	MarkContainerLootedRepeatGlow(refr, 0);
+bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR *refr) const {
+  if (!refr)
+    return false;
+  RecursiveLockGuard guard(m_stateLock);
+  const auto looted(m_lootedContainers.find(refr));
+  if (looted != m_lootedContainers.cend()) {
+    const auto glowExpiry(looted->second);
+    return glowExpiry == std::chrono::steady_clock::time_point() ||
+           glowExpiry > std::chrono::high_resolution_clock::now();
+  } else {
+    return false;
+  }
 }
 
-bool ScanGovernor::IsLootedContainer(const RE::TESObjectREFR* refr) const
-{
-	if (!refr)
-		return false;
-	RecursiveLockGuard guard(m_stateLock);
-	const auto looted(m_lootedContainers.find(refr));
-	if (looted != m_lootedContainers.cend())
-	{
-		const auto glowExpiry(looted->second);
-		return glowExpiry == std::chrono::steady_clock::time_point() || glowExpiry > std::chrono::high_resolution_clock::now();
-	}
-	else
-	{
-		return false;
-	}
+// forget about containers we looted to allow rescan after game load or config
+// settings update
+void ScanGovernor::ResetLootedContainers() {
+  RecursiveLockGuard guard(m_stateLock);
+  m_lootedContainers.clear();
 }
 
-// forget about containers we looted to allow rescan after game load or config settings update
-void ScanGovernor::ResetLootedContainers()
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_lootedContainers.clear();
+// Remember locked containers so we do not auto-loot after player unlock, if
+// config forbids
+bool ScanGovernor::IsReferenceLockedContainer(
+    const RE::TESObjectREFR *refr,
+    const LockedContainerHandling lockedChestLoot) const {
+  if (!refr)
+    return false;
+  RecursiveLockGuard guard(m_stateLock);
+  // check instantaneous locked/unlocked state of the container
+  if (!IsLocked(refr)) {
+    // If container is not locked, but previously was stored as locked, continue
+    // to treat as unlocked until item count changes. For locked container, we
+    // want the player to have the enjoyment of manually looting after
+    // unlocking. If they don't want this, they should configure 'Loot locked
+    // container'. Such a container will no longer glow locked after player
+    // unlocks and loots it.
+    auto locked(m_lockedContainers.find(refr));
+    if (locked != m_lockedContainers.end()) {
+      // if set to loot once unlocked, go ahead
+      if (lockedChestLoot == LockedContainerHandling::LootOnceUnlocked) {
+        DBG_VMESSAGE(
+            "Forget REFR 0x{:08x} to now-unlocked container {}/0x{:08x}",
+            refr->GetFormID(), refr->GetBaseObject()->GetName(),
+            refr->GetBaseObject()->GetFormID());
+        m_lockedContainers.erase(locked);
+        return false;
+      }
+      // if item count has changed, remove from locked container list: manually
+      // looted, we assume
+      size_t items(ContainerLister(INIFile::SecondaryType::containers, refr)
+                       .CountLootableItems(
+                           [=](RE::TESBoundObject *) -> bool { return true; }));
+      if (items != locked->second) {
+        DBG_VMESSAGE("Forget REFR 0x{:08x} to locked container {}/0x{:08x} "
+                     "with {} items, was {}",
+                     refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                     refr->GetBaseObject()->GetFormID(), items, locked->second);
+        m_lockedContainers.erase(locked);
+        return false;
+      }
+      // item count unchanged - continue to glow
+      DBG_VMESSAGE("REFR 0x{:08x} to previously locked container {}/0x{:08x} "
+                   "still has {} items",
+                   refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                   refr->GetBaseObject()->GetFormID(), items);
+      return true;
+    }
+    // vanilla unlocked container
+    DBG_VMESSAGE("REFR 0x{:08x} was never a locked container {}/0x{:08x}",
+                 refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                 refr->GetBaseObject()->GetFormID());
+    return false;
+  }
+  // container is locked - save if not already known
+  else if (!m_lockedContainers.contains(refr)) {
+    size_t items(ContainerLister(INIFile::SecondaryType::containers, refr)
+                     .CountLootableItems(
+                         [=](RE::TESBoundObject *) -> bool { return true; }));
+    DBG_VMESSAGE(
+        "Remember REFR 0x{:08x} to locked container {}/0x{:08x} with {} items",
+        refr->GetFormID(), refr->GetBaseObject()->GetName(),
+        refr->GetBaseObject()->GetFormID(), items);
+    m_lockedContainers.insert({refr, items});
+  }
+  return true;
 }
 
-// Remember locked containers so we do not auto-loot after player unlock, if config forbids
-bool ScanGovernor::IsReferenceLockedContainer(const RE::TESObjectREFR* refr, const LockedContainerHandling lockedChestLoot) const
-{
-	if (!refr)
-		return false;
-	RecursiveLockGuard guard(m_stateLock);
-	// check instantaneous locked/unlocked state of the container
-	if (!IsLocked(refr))
-	{
-		// If container is not locked, but previously was stored as locked, continue to treat as unlocked until item count changes.
-		// For locked container, we want the player to have the enjoyment of manually looting after unlocking. If they don't
-		// want this, they should configure 'Loot locked container'.
-		// Such a container will no longer glow locked after player unlocks and loots it.
-		auto locked(m_lockedContainers.find(refr));
-		if (locked != m_lockedContainers.end())
-		{
-			// if set to loot once unlocked, go ahead
-			if (lockedChestLoot == LockedContainerHandling::LootOnceUnlocked)
-			{
-				DBG_VMESSAGE("Forget REFR 0x{:08x} to now-unlocked container {}/0x{:08x}", refr->GetFormID(),
-					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-				m_lockedContainers.erase(locked);
-				return false;
-			}
-			// if item count has changed, remove from locked container list: manually looted, we assume
-			size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
-				[=](RE::TESBoundObject*) -> bool { return true; }));
-			if (items != locked->second)
-			{
-				DBG_VMESSAGE("Forget REFR 0x{:08x} to locked container {}/0x{:08x} with {} items, was {}", refr->GetFormID(),
-					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items, locked->second);
-				m_lockedContainers.erase(locked);
-				return false;
-			}
-			// item count unchanged - continue to glow
-			DBG_VMESSAGE("REFR 0x{:08x} to previously locked container {}/0x{:08x} still has {} items", refr->GetFormID(),
-				refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items);
-			return true;
-		}
-		// vanilla unlocked container
-		DBG_VMESSAGE("REFR 0x{:08x} was never a locked container {}/0x{:08x}", refr->GetFormID(),
-			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		return false;
-	}
-	// container is locked - save if not already known
-	else if (!m_lockedContainers.contains(refr))
-	{
-		size_t items(ContainerLister(INIFile::SecondaryType::containers, refr).CountLootableItems(
-			[=](RE::TESBoundObject*) -> bool { return true; }));
-		DBG_VMESSAGE("Remember REFR 0x{:08x} to locked container {}/0x{:08x} with {} items", refr->GetFormID(),
-			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID(), items);
-		m_lockedContainers.insert({ refr, items });
-	}
-	return true;
+void ScanGovernor::ForgetLockedContainers() {
+  DBG_MESSAGE("Clear locked containers blacklist");
+  RecursiveLockGuard guard(m_stateLock);
+  m_lockedContainers.clear();
 }
 
-void ScanGovernor::ForgetLockedContainers()
-{
-	DBG_MESSAGE("Clear locked containers blacklist");
-	RecursiveLockGuard guard(m_stateLock);
-	m_lockedContainers.clear();
+void ScanGovernor::RegisterActorTimeOfDeath(RE::TESObjectREFR *refr) {
+  shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
+  // block REFR so we don't include in future scans
+  DataCase::GetInstance()->BlockReference(refr,
+                                          Lootability::DeadBodyDelayedLooting);
 }
 
-void ScanGovernor::RegisterActorTimeOfDeath(RE::TESObjectREFR* refr)
-{
-	shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
-	// block REFR so we don't include in future scans
-	DataCase::GetInstance()->BlockReference(refr, Lootability::DeadBodyDelayedLooting);
+void ScanGovernor::ProgressGlowDemo() {
+  // send the message first, it's super-slow compared to scan
+  if (m_glowDemo) {
+    m_nextGlow = CycleGlow(m_nextGlow);
+    std::ostringstream glowText;
+    glowText << "Glow demo: " << GlowName(m_nextGlow)
+             << ", hold Pause key for 1.5 seconds to terminate";
+    RE::DebugNotification(glowText.str().c_str());
+  } else {
+    static RE::BSFixedString rangeText(
+        papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
+    if (!rangeText.empty()) {
+      std::string notificationText("Range: ");
+      notificationText.append(rangeText);
+      StringUtils::Replace(notificationText, "{0}",
+                           std::to_string(m_calibrateRadius));
+      notificationText.append(", hold Pause key for 1.5 seconds to terminate");
+      if (!notificationText.empty()) {
+        RE::DebugNotification(notificationText.c_str());
+      }
+    }
+  }
+
+  // brain-dead item scan and brief glow - ignores doors for simplicity
+  BracketedRange rangeCheck(
+      RE::PlayerCharacter::GetSingleton(),
+      (double(m_calibrateRadius) - double(m_calibrateDelta)) /
+          DistanceUnitInFeet,
+      m_calibrateDelta / DistanceUnitInFeet);
+  DistanceToTarget targets;
+  ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass)
+      .FindAllCandidates();
+  for (auto target : targets) {
+    // Glow ore-vein even if depleted during the test run
+    DBG_VMESSAGE("Trigger glow for {}/0x{:08x} at distance {:0.2f} units",
+                 target.second->GetName(), target.second->formID, target.first);
+    GlowObject(target.second, ObjectGlowDurationCalibrationSeconds,
+               ObjectType::container,
+               m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
+  }
+  TaskDispatcher::Instance().GlowObjects();
+  TaskDispatcher::Instance().LootNPCs();
+
+  // glow demo runs forever at the same radius, range calibration stops after
+  // the outer limit
+  if (!m_glowDemo) {
+    m_calibrateRadius += m_calibrateDelta;
+    if (m_calibrateRadius > MaxCalibrationRange) {
+      REL_MESSAGE("Loot range calibration complete");
+      ToggleCalibration(false);
+    }
+  }
 }
 
-void ScanGovernor::ProgressGlowDemo()
-{
-	// send the message first, it's super-slow compared to scan
-	if (m_glowDemo)
-	{
-		m_nextGlow = CycleGlow(m_nextGlow);
-		std::ostringstream glowText;
-		glowText << "Glow demo: " << GlowName(m_nextGlow) << ", hold Pause key for 1.5 seconds to terminate";
-		RE::DebugNotification(glowText.str().c_str());
-	}
-	else
-	{
-		static RE::BSFixedString rangeText(papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
-		if (!rangeText.empty())
-		{
-			std::string notificationText("Range: ");
-			notificationText.append(rangeText);
-			StringUtils::Replace(notificationText, "{0}", std::to_string(m_calibrateRadius));
-			notificationText.append(", hold Pause key for 1.5 seconds to terminate");
-			if (!notificationText.empty())
-			{
-				RE::DebugNotification(notificationText.c_str());
-			}
-		}
-	}
-
-	// brain-dead item scan and brief glow - ignores doors for simplicity
-	BracketedRange rangeCheck(RE::PlayerCharacter::GetSingleton(),
-		(double(m_calibrateRadius) - double(m_calibrateDelta)) / DistanceUnitInFeet, m_calibrateDelta / DistanceUnitInFeet);
-	DistanceToTarget targets;
-	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindAllCandidates();
-	for (auto target : targets)
-	{
-		// Glow ore-vein even if depleted during the test run
-		DBG_VMESSAGE("Trigger glow for {}/0x{:08x} at distance {:0.2f} units", target.second->GetName(), target.second->formID, target.first);
-		GlowObject(target.second, ObjectGlowDurationCalibrationSeconds, ObjectType::container,
-			m_glowDemo ? m_nextGlow : GlowReason::SimpleTarget);
-	}
-	TaskDispatcher::Instance().GlowObjects();
-	TaskDispatcher::Instance().LootNPCs();
-
-	// glow demo runs forever at the same radius, range calibration stops after the outer limit
-	if (!m_glowDemo)
-	{
-		m_calibrateRadius += m_calibrateDelta;
-		if (m_calibrateRadius > MaxCalibrationRange)
-		{
-			REL_MESSAGE("Loot range calibration complete");
-			ToggleCalibration(false);
-		}
-	}
-}
-
-Lootability ScanGovernor::CanLootActor(const RE::TESObjectREFR* refr, const RE::Actor* actor)
-{
-	Lootability exclusionType(Lootability::Lootable);
-	const PlayerAffinity playerAffinity(GetPlayerAffinity(actor));
-	if (playerAffinity != PlayerAffinity::Unaffiliated && playerAffinity != PlayerAffinity::Player)
-	{
-		exclusionType = Lootability::DeadBodyIsPlayerAlly;
-	}
-	else if (actor->IsEssential())
-	{
-		exclusionType = Lootability::DeadBodyIsEssential;
-	}
-	// check before "Summoned" - the REFR might become lootable after the summoned BaseObject disintegrates
-	else if (IsDisintegrating(actor))
-	{
-		exclusionType = Lootability::NPCIsDisintegrating;
-	}
-	// Summons with ash pile or that start dead are lootable - we skip their ephemeral body for ash piles, though
-	else if (IsSummoned(actor) && !HasAshPile(actor) && !StartsDead(refr))
-	{
-		exclusionType = Lootability::DeadBodyIsSummoned;
-	}
-	else if (IsQuestTargetNPC(actor))
-	{
-		exclusionType = Lootability::CannotLootQuestTarget;
-	}
-	else if (!NPCFilter::Instance().IsLootable(actor->GetActorBase()))
-	{
-		exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
-	}
-	else
-	{
-		static const bool recordDups(false);
-		const auto collectible(CollectionManager::Collectibles().TreatAsCollectible(
-			ConditionMatcher(actor->GetActorBase(), INIFile::SecondaryType::deadbodies, ObjectType::actor), recordDups));
-		if (collectible.first)
-		{
-			CollectibleHandling collectibleAction(collectible.second);
-			if (!CanLootCollectible(collectibleAction))
-			{
-				exclusionType = Lootability::NPCIsInBlacklistCollection;
-			}
-		}
-	}
-	return exclusionType;
+Lootability ScanGovernor::CanLootActor(const RE::TESObjectREFR *refr,
+                                       const RE::Actor *actor) {
+  Lootability exclusionType(Lootability::Lootable);
+  const PlayerAffinity playerAffinity(GetPlayerAffinity(actor));
+  if (playerAffinity != PlayerAffinity::Unaffiliated &&
+      playerAffinity != PlayerAffinity::Player) {
+    exclusionType = Lootability::DeadBodyIsPlayerAlly;
+  } else if (actor->IsEssential()) {
+    exclusionType = Lootability::DeadBodyIsEssential;
+  }
+  // check before "Summoned" - the REFR might become lootable after the summoned
+  // BaseObject disintegrates
+  else if (IsDisintegrating(actor)) {
+    exclusionType = Lootability::NPCIsDisintegrating;
+  }
+  // Summons with ash pile or that start dead are lootable - we skip their
+  // ephemeral body for ash piles, though
+  else if (IsSummoned(actor) && !HasAshPile(actor) && !StartsDead(refr)) {
+    exclusionType = Lootability::DeadBodyIsSummoned;
+  } else if (IsQuestTargetNPC(actor)) {
+    exclusionType = Lootability::CannotLootQuestTarget;
+  } else if (!NPCFilter::Instance().IsLootable(actor->GetActorBase())) {
+    exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
+  } else {
+    static const bool recordDups(false);
+    const auto collectible(CollectionManager::Collectibles().TreatAsCollectible(
+        ConditionMatcher(actor->GetActorBase(),
+                         INIFile::SecondaryType::deadbodies, ObjectType::actor),
+        recordDups));
+    if (collectible.first) {
+      CollectibleHandling collectibleAction(collectible.second);
+      if (!CanLootCollectible(collectibleAction)) {
+        exclusionType = Lootability::NPCIsInBlacklistCollection;
+      }
+    }
+  }
+  return exclusionType;
 }
 
 // input may get updated for ashpile
-Lootability ScanGovernor::ValidateTarget(RE::TESObjectREFR*& refr, std::vector<RE::TESObjectREFR*>& possibleDupes, const bool dryRun, const bool glowOnly)
-{
-	if (!refr)
-		return Lootability::NullReference;
-	if (refr->GetFormID() == InvalidForm)
-	{
-		if (!dryRun)
-		{
-			DBG_WARNING("REFR has invalid FormID");
-			DataCase::GetInstance()->BlacklistReference(refr);
-		}
-		return Lootability::InvalidFormID;
-	}
-	else if (!refr->GetBaseObject())
-	{
-		if (!dryRun)
-		{
-			DBG_WARNING("REFR 0x{:08x} has no Base Object", refr->GetFormID());
-			DataCase::GetInstance()->BlacklistReference(refr);
-		}
-		return Lootability::NoBaseObject;
-	}
-	else
-	{
-		m_targetType = INIFile::SecondaryType::itemObjects;
-		DBG_VMESSAGE("Process REFR 0x{:08x} with base object {}/0x{:08x}", refr->GetFormID(),
-			refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-		if (refr->GetFormType() == RE::FormType::ActorCharacter)
-		{
-			// check whether out of scope
-			if (!dryRun && 
-				((glowOnly && !SettingsCache::Instance().FortuneHuntNPC()) || (!glowOnly && SettingsCache::Instance().FortuneHuntNPC())))
-			{
-				return Lootability::OutOfScope;
-			}
-			if (!refr->IsDead(true))
-			{
-				return Lootability::ReferenceIsLiveActor;
-			}
-			if (!glowOnly && SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
-			{
-				return Lootability::LootDeadBodyDisabled;
-			}
-			// REFR to Dead NPC may be blacklisted by user
-			if (ManagedList::BlackList().Contains(refr))
-			{
-				return Lootability::DeadBodyBlacklistedByUser;
-			}
+Lootability
+ScanGovernor::ValidateTarget(RE::TESObjectREFR *&refr,
+                             std::vector<RE::TESObjectREFR *> &possibleDupes,
+                             const bool dryRun, const bool glowOnly) {
+  if (!refr)
+    return Lootability::NullReference;
+  if (refr->GetFormID() == InvalidForm) {
+    if (!dryRun) {
+      DBG_WARNING("REFR has invalid FormID");
+      DataCase::GetInstance()->BlacklistReference(refr);
+    }
+    return Lootability::InvalidFormID;
+  } else if (!refr->GetBaseObject()) {
+    if (!dryRun) {
+      DBG_WARNING("REFR 0x{:08x} has no Base Object", refr->GetFormID());
+      DataCase::GetInstance()->BlacklistReference(refr);
+    }
+    return Lootability::NoBaseObject;
+  } else {
+    m_targetType = INIFile::SecondaryType::itemObjects;
+    DBG_VMESSAGE("Process REFR 0x{:08x} with base object {}/0x{:08x}",
+                 refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                 refr->GetBaseObject()->GetFormID());
+    if (refr->GetFormType() == RE::FormType::ActorCharacter) {
+      // check whether out of scope
+      if (!dryRun &&
+          ((glowOnly && !SettingsCache::Instance().FortuneHuntNPC()) ||
+           (!glowOnly && SettingsCache::Instance().FortuneHuntNPC()))) {
+        return Lootability::OutOfScope;
+      }
+      if (!refr->IsDead(true)) {
+        return Lootability::ReferenceIsLiveActor;
+      }
+      if (!glowOnly && SettingsCache::Instance().DeadBodyLootingType() ==
+                           DeadBodyLooting::DoNotLoot) {
+        return Lootability::LootDeadBodyDisabled;
+      }
+      // REFR to Dead NPC may be blacklisted by user
+      if (ManagedList::BlackList().Contains(refr)) {
+        return Lootability::DeadBodyBlacklistedByUser;
+      }
 
-			RE::Actor* actor(refr->As<RE::Actor>());
-			if (actor)
-			{
-				Lootability exclusionType(CanLootActor(refr, actor));
-				if (exclusionType != Lootability::Lootable)
-				{
-					if (!dryRun)
-					{
-						// if actor is disintegrating don't block it or loot it - retry when the ashpile is decoupled from the base NPC_
-						if (exclusionType == Lootability::NPCIsDisintegrating)
-						{
-							DBG_VMESSAGE("Skip disintegrating Actor 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-						}
-						else
-						{
-							DBG_VMESSAGE("Block ineligible Actor 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							DataCase::GetInstance()->BlockReference(refr, exclusionType);
-						}
-					}
-					return exclusionType;
-				}
-			}
+      RE::Actor *actor(refr->As<RE::Actor>());
+      if (actor) {
+        Lootability exclusionType(CanLootActor(refr, actor));
+        if (exclusionType != Lootability::Lootable) {
+          if (!dryRun) {
+            // if actor is disintegrating don't block it or loot it - retry when
+            // the ashpile is decoupled from the base NPC_
+            if (exclusionType == Lootability::NPCIsDisintegrating) {
+              DBG_VMESSAGE(
+                  "Skip disintegrating Actor 0x{:08x}, base = {}/0x{:08x}",
+                  refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                  refr->GetBaseObject()->GetFormID());
+            } else {
+              DBG_VMESSAGE(
+                  "Block ineligible Actor 0x{:08x}, base = {}/0x{:08x}",
+                  refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                  refr->GetBaseObject()->GetFormID());
+              DataCase::GetInstance()->BlockReference(refr, exclusionType);
+            }
+          }
+          return exclusionType;
+        }
+      }
 
-			m_targetType = INIFile::SecondaryType::deadbodies;
-			// Delay looting exactly once. We only return here after required time since death has expired.
-			// Only delay if the REFR represents an entity seen alive in this cell visit. The long-dead are fair game.
-			// If we are in glow-only mode it is safe to skip this.
-			if (!glowOnly && shse::ActorTracker::Instance().SeenAlive(refr) && !HandleAsDynamicData(refr) &&
-				DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
-			{
-				if (!dryRun)
-				{
-					// Use async looting to allow game to settle actor state and animate their untimely demise
-					RegisterActorTimeOfDeath(refr);
-				}
-				return Lootability::DeadBodyDelayedLooting;
-			}
-			// avoid double dipping for immediate-loot case
-			if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
-			{
-				DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-				return Lootability::DeadBodyPossibleDuplicate;
-			}
-			// record Killer of dynamic REFR that we will loot immediately
-			ActorTracker::Instance().RecordIfKilledByParty(actor);
-			possibleDupes.push_back(refr);
-		}
-		else if (refr->GetBaseObject()->As<RE::TESContainer>())
-		{
-			// check whether out of scope
-			if (!dryRun && 
-				((glowOnly && !SettingsCache::Instance().FortuneHuntContainer()) || (!glowOnly && SettingsCache::Instance().FortuneHuntContainer())))
-			{
-				return Lootability::OutOfScope;
-			}
-			if (!glowOnly && !SettingsCache::Instance().EnableLootContainer())
-			{
-				return Lootability::LootContainersDisabled;
-			}
-			// REFR to container may be blacklisted by user
-			if (ManagedList::BlackList().Contains(refr))
-			{
-				return Lootability::ContainerBlacklistedByUser;
-			}
-			// REFR to container may be a Loot Transfer Target assigned by user
-			if (ManagedList::TransferList().Contains(refr))
-			{
-				return Lootability::ContainerIsLootTransferTarget;
-			}
-			m_targetType = INIFile::SecondaryType::containers;
-		}
-		else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() && HasAshPile(refr))
-		{
-			// check whether out of scope
-			if (!dryRun &&
-				((glowOnly && !SettingsCache::Instance().FortuneHuntNPC()) || (!glowOnly && SettingsCache::Instance().FortuneHuntNPC())))
-			{
-				return Lootability::OutOfScope;
-			}
-			if (!glowOnly && SettingsCache::Instance().DeadBodyLootingType() == DeadBodyLooting::DoNotLoot)
-			{
-				return Lootability::LootDeadBodyDisabled;
-			}
-			m_targetType = INIFile::SecondaryType::deadbodies;
-			// Delay looting exactly once. We only return here after required time since death has expired.
-			// If we are in glow-only mode it is safe to skip this.
-			if (!glowOnly && !HandleAsDynamicData(refr) && DataCase::GetInstance()->IsReferenceBlocked(refr) == Lootability::Lootable)
-			{
-				if (!dryRun)
-				{
-					// Use async looting to allow game to settle actor state and animate their untimely demise
-					RegisterActorTimeOfDeath(refr);
-				}
-				return Lootability::DeadBodyDelayedLooting;
-			}
-			// deferred looting of dead bodies - introspect ExtraDataList to get the REFR
+      m_targetType = INIFile::SecondaryType::deadbodies;
+      // Delay looting exactly once. We only return here after required time
+      // since death has expired. Only delay if the REFR represents an entity
+      // seen alive in this cell visit. The long-dead are fair game. If we are
+      // in glow-only mode it is safe to skip this.
+      if (!glowOnly && shse::ActorTracker::Instance().SeenAlive(refr) &&
+          !HandleAsDynamicData(refr) &&
+          DataCase::GetInstance()->IsReferenceBlocked(refr) ==
+              Lootability::Lootable) {
+        if (!dryRun) {
+          // Use async looting to allow game to settle actor state and animate
+          // their untimely demise
+          RegisterActorTimeOfDeath(refr);
+        }
+        return Lootability::DeadBodyDelayedLooting;
+      }
+      // avoid double dipping for immediate-loot case
+      if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) !=
+          possibleDupes.cend()) {
+        DBG_MESSAGE("Skip immediate-loot deadbody, already looted on this pass "
+                    "0x{:08x}, base = {}/0x{:08x}",
+                    refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                    refr->GetBaseObject()->GetFormID());
+        return Lootability::DeadBodyPossibleDuplicate;
+      }
+      // record Killer of dynamic REFR that we will loot immediately
+      ActorTracker::Instance().RecordIfKilledByParty(actor);
+      possibleDupes.push_back(refr);
+    } else if (refr->GetBaseObject()->As<RE::TESContainer>()) {
+      // check whether out of scope
+      if (!dryRun &&
+          ((glowOnly && !SettingsCache::Instance().FortuneHuntContainer()) ||
+           (!glowOnly && SettingsCache::Instance().FortuneHuntContainer()))) {
+        return Lootability::OutOfScope;
+      }
+      if (!glowOnly && !SettingsCache::Instance().EnableLootContainer()) {
+        return Lootability::LootContainersDisabled;
+      }
+      // REFR to container may be blacklisted by user
+      if (ManagedList::BlackList().Contains(refr)) {
+        return Lootability::ContainerBlacklistedByUser;
+      }
+      // REFR to container may be a Loot Transfer Target assigned by user
+      if (ManagedList::TransferList().Contains(refr)) {
+        return Lootability::ContainerIsLootTransferTarget;
+      }
+      m_targetType = INIFile::SecondaryType::containers;
+    } else if (refr->GetBaseObject()->As<RE::TESObjectACTI>() &&
+               HasAshPile(refr)) {
+      // check whether out of scope
+      if (!dryRun &&
+          ((glowOnly && !SettingsCache::Instance().FortuneHuntNPC()) ||
+           (!glowOnly && SettingsCache::Instance().FortuneHuntNPC()))) {
+        return Lootability::OutOfScope;
+      }
+      if (!glowOnly && SettingsCache::Instance().DeadBodyLootingType() ==
+                           DeadBodyLooting::DoNotLoot) {
+        return Lootability::LootDeadBodyDisabled;
+      }
+      m_targetType = INIFile::SecondaryType::deadbodies;
+      // Delay looting exactly once. We only return here after required time
+      // since death has expired. If we are in glow-only mode it is safe to skip
+      // this.
+      if (!glowOnly && !HandleAsDynamicData(refr) &&
+          DataCase::GetInstance()->IsReferenceBlocked(refr) ==
+              Lootability::Lootable) {
+        if (!dryRun) {
+          // Use async looting to allow game to settle actor state and animate
+          // their untimely demise
+          RegisterActorTimeOfDeath(refr);
+        }
+        return Lootability::DeadBodyDelayedLooting;
+      }
+      // deferred looting of dead bodies - introspect ExtraDataList to get the
+      // REFR
 #if _DEBUG || defined(_FULL_LOGGING)
-			RE::TESObjectREFR* original(refr);
+      RE::TESObjectREFR *original(refr);
 #endif
-			refr = GetAshPile(refr);
-			if (!refr)
-			{
-				return Lootability::CannotGetAshPile;
-			}
-			DBG_MESSAGE("Got ash-pile REFR 0x{:08x} from REFR 0x{:08x}", refr->GetFormID(), original->GetFormID());
-			// per https://github.com/SteveTownsend/SmartHarvestSE/issues/354 this can be a summoned NPC_ linked to its
-			// ash-pile in defaultGhostScript.psc - do Actor checks again here to avoid looting NPC_ inventory illegally
-			RE::Actor* actor(refr->As<RE::Actor>());
-			if (actor)
-			{
-				Lootability exclusionType(CanLootActor(refr, actor));
-				if (exclusionType != Lootability::Lootable)
-				{
-					if (!dryRun)
-					{
-						// if actor is disintegrating don't block it or loot it - retry when the ashpile is decoupled from the base NPC_
-						if (exclusionType == Lootability::NPCIsDisintegrating)
-						{
-							DBG_VMESSAGE("Skip disintegrating Actor linked via ash-pile 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-						}
-						else
-						{
-							DBG_VMESSAGE("Block ineligible Actor linked via ash-pile 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-								refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-							DataCase::GetInstance()->BlockReference(refr, exclusionType);
-						}
-					}
-					return exclusionType;
-				}
-			}
+      refr = GetAshPile(refr);
+      if (!refr) {
+        return Lootability::CannotGetAshPile;
+      }
+      DBG_MESSAGE("Got ash-pile REFR 0x{:08x} from REFR 0x{:08x}",
+                  refr->GetFormID(), original->GetFormID());
+      // per https://github.com/SteveTownsend/SmartHarvestSE/issues/354 this can
+      // be a summoned NPC_ linked to its ash-pile in defaultGhostScript.psc -
+      // do Actor checks again here to avoid looting NPC_ inventory illegally
+      RE::Actor *actor(refr->As<RE::Actor>());
+      if (actor) {
+        Lootability exclusionType(CanLootActor(refr, actor));
+        if (exclusionType != Lootability::Lootable) {
+          if (!dryRun) {
+            // if actor is disintegrating don't block it or loot it - retry when
+            // the ashpile is decoupled from the base NPC_
+            if (exclusionType == Lootability::NPCIsDisintegrating) {
+              DBG_VMESSAGE("Skip disintegrating Actor linked via ash-pile "
+                           "0x{:08x}, base = {}/0x{:08x}",
+                           refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                           refr->GetBaseObject()->GetFormID());
+            } else {
+              DBG_VMESSAGE("Block ineligible Actor linked via ash-pile "
+                           "0x{:08x}, base = {}/0x{:08x}",
+                           refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                           refr->GetBaseObject()->GetFormID());
+              DataCase::GetInstance()->BlockReference(refr, exclusionType);
+            }
+          }
+          return exclusionType;
+        }
+      }
 
-			// avoid double dipping for immediate-loot case
-			if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) != possibleDupes.cend())
-			{
-				DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x{:08x}, base = {}/0x{:08x}", refr->GetFormID(),
-					refr->GetBaseObject()->GetName(), refr->GetBaseObject()->GetFormID());
-				return Lootability::DeadBodyPossibleDuplicate;
-			}
-			possibleDupes.push_back(refr);
-		}
-		else
-		{
-			// check whether out of scope
-			if (!dryRun &&
-				((glowOnly && !SettingsCache::Instance().FortuneHuntItem()) || (!glowOnly && SettingsCache::Instance().FortuneHuntItem())))
-			{
-				return Lootability::OutOfScope;
-			}
-			if (!glowOnly && !SettingsCache::Instance().EnableHarvest())
-			{
-				return Lootability::HarvestLooseItemDisabled;
-			}
-		}
-		return Lootability::Lootable;
-	}
+      // avoid double dipping for immediate-loot case
+      if (std::find(possibleDupes.cbegin(), possibleDupes.cend(), refr) !=
+          possibleDupes.cend()) {
+        DBG_MESSAGE("Skip ash-pile, already looted on this pass 0x{:08x}, base "
+                    "= {}/0x{:08x}",
+                    refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                    refr->GetBaseObject()->GetFormID());
+        return Lootability::DeadBodyPossibleDuplicate;
+      }
+      possibleDupes.push_back(refr);
+    } else {
+      // check whether out of scope
+      if (!dryRun &&
+          ((glowOnly && !SettingsCache::Instance().FortuneHuntItem()) ||
+           (!glowOnly && SettingsCache::Instance().FortuneHuntItem()))) {
+        return Lootability::OutOfScope;
+      }
+      if (!glowOnly && !SettingsCache::Instance().EnableHarvest()) {
+        return Lootability::HarvestLooseItemDisabled;
+      }
+    }
+    return Lootability::Lootable;
+  }
 }
 
-void ScanGovernor::LootAllEligible()
-{
-	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to loot in an orderly fashion than to get it all into inventory on
-	// one pass.
-	DistanceToTarget targets;
-	if (!SettingsCache::Instance().FortuneHuntNPC())
-	{
-		// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever.
-		// Skipped if NPCs are in glow-only mode
-		shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
-	}
-	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
-	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
-	// Limit on the ref count should account for pending-Harvest items which can otherwise cause significant slowdown, especially in the theft case
-	// We don't want to issue Harvest operations unbounded, this can be 100s of items if player has permissive settings in a CELL
-	// dense with loose items
-	size_t pending(PendingHarvestOperations());
-	size_t maxRefrs;
-	if (MaxHarvestREFRs <= pending)
-	{
-		DBG_VMESSAGE("Throttle Harvesting, {} operations pending", pending);
-		maxRefrs = 0;
-	}
-	else
-	{
-		maxRefrs = std::min(MaxREFRSPerPass, MaxHarvestREFRs - pending);
-		DBG_VMESSAGE("Harvesting up to {} items on this pass, {} operations pending", maxRefrs, pending);
-	}
+void ScanGovernor::LootAllEligible() {
+  // Stress tested using Jorrvaskr with personal property looting turned on.
+  // It's more important to loot in an orderly fashion than to get it all into
+  // inventory on one pass.
+  DistanceToTarget targets;
+  if (!SettingsCache::Instance().FortuneHuntNPC()) {
+    // Process any queued dead body that is dead long enough to have played kill
+    // animation. We do this first to avoid being queued up behind new info for
+    // ever. Skipped if NPCs are in glow-only mode
+    shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
+  }
+  double radius(LocationTracker::Instance().IsPlayerIndoors()
+                    ? SettingsCache::Instance().IndoorsRadius()
+                    : SettingsCache::Instance().OutdoorsRadius());
+  AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius,
+                           SettingsCache::Instance().VerticalFactor());
+  // Limit on the ref count should account for pending-Harvest items which can
+  // otherwise cause significant slowdown, especially in the theft case We don't
+  // want to issue Harvest operations unbounded, this can be 100s of items if
+  // player has permissive settings in a CELL dense with loose items
+  size_t pending(PendingHarvestOperations());
+  size_t maxRefrs;
+  if (MaxHarvestREFRs <= pending) {
+    DBG_VMESSAGE("Throttle Harvesting, {} operations pending", pending);
+    maxRefrs = 0;
+  } else {
+    maxRefrs = std::min(MaxREFRSPerPass, MaxHarvestREFRs - pending);
+    DBG_VMESSAGE(
+        "Harvesting up to {} items on this pass, {} operations pending",
+        maxRefrs, pending);
+  }
 
-	if (maxRefrs > 0)
-	{
-		ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), maxRefrs);
-		// this adds eligible REFRs ordered by distance from player
-		filter.FindLootableReferences();
-	}
+  if (maxRefrs > 0) {
+    ReferenceFilter filter(targets, rangeCheck,
+                           SettingsCache::Instance().RespectDoors(), maxRefrs);
+    // this adds eligible REFRs ordered by distance from player
+    filter.FindLootableReferences();
+  }
 
-	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
-	// This seems to do no harm but offends my aesthetic sensibilities, so prevent it.
+  // Prevent double dipping of ash pile creatures: we may loot the dying
+  // creature and then its ash pile on the same pass. This seems to do no harm
+  // but offends my aesthetic sensibilities, so prevent it.
 #ifdef _PROFILING
-	WindowsUtils::ScopedTimer elapsed("Loot Eligible Targets");
+  WindowsUtils::ScopedTimer elapsed("Loot Eligible Targets");
 #endif
-	std::unordered_map<RE::TESForm*, Lootability> checkedTargets;
-	std::vector<RE::TESObjectREFR*> possibleDupes;
-	for (auto target : targets)
-	{
-		// Filter out borked REFRs. PROJ repro observed in logs as below:
-		/*
+  std::unordered_map<RE::TESForm *, Lootability> checkedTargets;
+  std::vector<RE::TESObjectREFR *> possibleDupes;
+  for (auto target : targets) {
+    // clang-format off
+    // Filter out borked REFRs. PROJ repro observed in logs as below:
+    /*
 			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54419 micros
 			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\tasks.cpp(1037): [MESSAGE] Process REFR 0x00000000 with base object Iron Arrow/0x0003be11
 			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Process Auto-loot Candidate Iron Arrow/0x0003be11)=35 micros
 
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54195 micros
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
-		*/
-		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
-		RE::TESObjectREFR* refr(target.second);
-		static const bool dryRun(false);
-		static const bool glowOnly(false);
-		// Scan radius often includes repeated mundane objects e.g. loose septims, several plates. Optimize for that case here.
-		Lootability lootability(Lootability::Lootable);
-		const auto checkedTarget(checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
-		if (checkedTarget != checkedTargets.cend())
-		{
-			m_targetType = INIFile::SecondaryType::itemObjects;
-			lootability = checkedTarget->second;
-			DBG_VMESSAGE("0x{:08x}, base {}/0x{:08x} already checked: {}", refr ? refr->GetFormID() : InvalidForm,
-				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName() : ""),
-				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm), LootabilityName(lootability));
-		}
-		else
-		{
-			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
-			// do not process targets that are out of scope due to glow-only mode settings
-			if (lootability == Lootability::OutOfScope)
-			{
-				continue;
-			}
-			if (refr && refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
-			{
-				// different Actors and Chests have different loot
-				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
-			}
-		}
-		if (!refr || lootability != Lootability::Lootable)
-		{
-			continue;
-		}
+    */
+    // clang-format on
+    // Similar scenario seen when transitioning from indoors to outdoors (Blue
+    // Palace) - could this be any 'temp' REFRs being cleaned up, for various
+    // reasons?
+    RE::TESObjectREFR *refr(target.second);
+    static const bool dryRun(false);
+    static const bool glowOnly(false);
+    // Scan radius often includes repeated mundane objects e.g. loose septims,
+    // several plates. Optimize for that case here.
+    Lootability lootability(Lootability::Lootable);
+    const auto checkedTarget(
+        checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
+    if (checkedTarget != checkedTargets.cend()) {
+      m_targetType = INIFile::SecondaryType::itemObjects;
+      lootability = checkedTarget->second;
+      DBG_VMESSAGE(
+          "0x{:08x}, base {}/0x{:08x} already checked: {}",
+          refr ? refr->GetFormID() : InvalidForm,
+          (refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName()
+                                         : ""),
+          (refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID()
+                                         : InvalidForm),
+          LootabilityName(lootability));
+    } else {
+      lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
+      // do not process targets that are out of scope due to glow-only mode
+      // settings
+      if (lootability == Lootability::OutOfScope) {
+        continue;
+      }
+      if (refr && refr->GetFormType() != RE::FormType::ActorCharacter &&
+          !refr->GetContainer()) {
+        // different Actors and Chests have different loot
+        checkedTargets.insert(
+            {refr ? refr->GetBaseObject() : nullptr, lootability});
+      }
+    }
+    if (!refr || lootability != Lootability::Lootable) {
+      continue;
+    }
 
-		static const bool stolen(false);
-		static const bool forceHarvest(false);
-		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
-	}
-	TaskDispatcher::Instance().GlowObjects();
-	TaskDispatcher::Instance().LootNPCs();
+    static const bool stolen(false);
+    static const bool forceHarvest(false);
+    TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest)
+        .Process(dryRun);
+  }
+  TaskDispatcher::Instance().GlowObjects();
+  TaskDispatcher::Instance().LootNPCs();
 }
 
-void ScanGovernor::TrackActors()
-{
-	DistanceToTarget targets;
-	AlwaysInRange rangeCheck;
-	ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindActors();
+void ScanGovernor::TrackActors() {
+  DistanceToTarget targets;
+  AlwaysInRange rangeCheck;
+  ReferenceFilter(targets, rangeCheck, false, MaxREFRSPerPass).FindActors();
 }
 
-void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType)
-{
-	// Lock required - partial Fortune Hunter's Instinct can operate concurrently with auto-loot for other categories
-	RecursiveLockGuard guard(m_scanLock);
+void ScanGovernor::DoPeriodicSearch(const ReferenceScanType scanType) {
+  // Lock required - partial Fortune Hunter's Instinct can operate concurrently
+  // with auto-loot for other categories
+  RecursiveLockGuard guard(m_scanLock);
 
-	if (scanType == ReferenceScanType::Calibration)
-	{
-		ProgressGlowDemo();
-	}
-	else if (scanType == ReferenceScanType::Loot)
-	{
-		LootAllEligible();
+  if (scanType == ReferenceScanType::Calibration) {
+    ProgressGlowDemo();
+  } else if (scanType == ReferenceScanType::Loot) {
+    LootAllEligible();
 
-		// after checking all REFRs, trigger async undetected-theft
-		TheftCoordinator::Instance().StealIfUndetected();
-	}
-	else
-	{
-		// if not looting, run a more limited scan
-		TrackActors();
-	}
+    // after checking all REFRs, trigger async undetected-theft
+    TheftCoordinator::Instance().StealIfUndetected();
+  } else {
+    // if not looting, run a more limited scan
+    TrackActors();
+  }
 
-	// Refresh player party of followers
-	PartyMembers::Instance().AdjustParty(ActorTracker::Instance().GetFollowers(), PlayerState::Instance().CurrentGameTime());
-	// request added items to be pushed to us while we are sleeping - including items not auto-looted
-	CollectionManager::Collectibles().Refresh();
+  // Refresh player party of followers
+  PartyMembers::Instance().AdjustParty(
+      ActorTracker::Instance().GetFollowers(),
+      PlayerState::Instance().CurrentGameTime());
+  // request added items to be pushed to us while we are sleeping - including
+  // items not auto-looted
+  CollectionManager::Collectibles().Refresh();
 }
 
 // Glow-only, for Immersion enthusiasts
-void ScanGovernor::InvokeLootSense(void)
-{
-	// Do not execute if already in process (Lesser Power spam)
-	bool running(false);
-	if (!m_fhiRunning.compare_exchange_strong(running, true))
-	{
-		REL_MESSAGE("Fortune Hunter's Instinct already running, ignore request");
-		return;
-	}
-	running = true;
+void ScanGovernor::InvokeLootSense(void) {
+  // Do not execute if already in process (Lesser Power spam)
+  bool running(false);
+  if (!m_fhiRunning.compare_exchange_strong(running, true)) {
+    REL_MESSAGE("Fortune Hunter's Instinct already running, ignore request");
+    return;
+  }
+  running = true;
 
-	// Lock required - partial Fortune Hunter's Instinct can operate concurrently with auto-loot for other categories
-	RecursiveLockGuard guard(m_scanLock);
+  // Lock required - partial Fortune Hunter's Instinct can operate concurrently
+  // with auto-loot for other categories
+  RecursiveLockGuard guard(m_scanLock);
 
-	// Stress tested using Jorrvaskr with personal property looting turned on. It's more important to glow in an orderly fashion than to do it all on one pass.
-	// Process any queued dead body that is dead long enough to have played kill animation. We do this first to avoid being queued up behind new info for ever
-	DistanceToTarget targets;
-	shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
-	double radius(LocationTracker::Instance().IsPlayerIndoors() ? SettingsCache::Instance().IndoorsRadius() : SettingsCache::Instance().OutdoorsRadius());
-	AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius, SettingsCache::Instance().VerticalFactor());
-	ReferenceFilter filter(targets, rangeCheck, SettingsCache::Instance().RespectDoors(), MaxLootSenseREFRs);
-	// this adds eligible REFRs ordered by distance from player
-	filter.FindLootableReferences();
+  // Stress tested using Jorrvaskr with personal property looting turned on.
+  // It's more important to glow in an orderly fashion than to do it all on one
+  // pass. Process any queued dead body that is dead long enough to have played
+  // kill animation. We do this first to avoid being queued up behind new info
+  // for ever
+  DistanceToTarget targets;
+  shse::ActorTracker::Instance().ReleaseIfReliablyDead(targets);
+  double radius(LocationTracker::Instance().IsPlayerIndoors()
+                    ? SettingsCache::Instance().IndoorsRadius()
+                    : SettingsCache::Instance().OutdoorsRadius());
+  AbsoluteRange rangeCheck(RE::PlayerCharacter::GetSingleton(), radius,
+                           SettingsCache::Instance().VerticalFactor());
+  ReferenceFilter filter(targets, rangeCheck,
+                         SettingsCache::Instance().RespectDoors(),
+                         MaxLootSenseREFRs);
+  // this adds eligible REFRs ordered by distance from player
+  filter.FindLootableReferences();
 
-	// Prevent double dipping of ash pile creatures: we may loot the dying creature and then its ash pile on the same pass.
-	// This seems no harm apart but offends my aesthetic sensibilities, so prevent it.
+  // Prevent double dipping of ash pile creatures: we may loot the dying
+  // creature and then its ash pile on the same pass. This seems no harm apart
+  // but offends my aesthetic sensibilities, so prevent it.
 #ifdef _PROFILING
-	WindowsUtils::ScopedTimer elapsed("Glow Eligible Targets");
+  WindowsUtils::ScopedTimer elapsed("Glow Eligible Targets");
 #endif
-	std::unordered_map<RE::TESForm*, Lootability> checkedTargets;
-	std::vector<RE::TESObjectREFR*> possibleDupes;
-	for (auto target : targets)
-	{
+  std::unordered_map<RE::TESForm *, Lootability> checkedTargets;
+  std::vector<RE::TESObjectREFR *> possibleDupes;
+  for (auto target : targets) {
+    // clang-format off
 		// Filter out borked REFRs. PROJ repro observed in logs as below:
 		/*
 			0x15f0 (2020-05-17 14:05:27.290) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54419 micros
@@ -713,467 +721,446 @@ void ScanGovernor::InvokeLootSense(void)
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\utils.cpp(211): [MESSAGE] TIME(Filter loot candidates in/near cell)=54195 micros
 			0x15f0 (2020-05-17 14:05:31.950) J:\GitHub\SmartHarvestSE\tasks.cpp(1029): [MESSAGE] REFR 0x00000000 has no Base Object
 		*/
-		// Similar scenario seen when transitioning from indoors to outdoors (Blue Palace) - could this be any 'temp' REFRs being cleaned up, for various reasons?
-		RE::TESObjectREFR* refr(target.second);
-		static const bool dryRun(false);
-		static const bool glowOnly(true);
-		// Scan radius often includes repeated mundane objects e.g. loose septims, several plates. Optimize for that case here.
-		Lootability lootability(Lootability::Lootable);
-		const auto checkedTarget(checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
-		if (checkedTarget != checkedTargets.cend())
-		{
-			m_targetType = INIFile::SecondaryType::itemObjects;
-			lootability = checkedTarget->second;
-			DBG_VMESSAGE("0x{:08x}, base {}/0x{:08x} already checked: {}", refr ? refr->GetFormID() : InvalidForm,
-				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName() : ""),
-				(refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID() : InvalidForm), LootabilityName(lootability));
-		}
-		else
-		{
-			lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
-			// do not process targets that are out of scope due to glow-only mode settings
-			if (lootability == Lootability::OutOfScope)
-			{
-				continue;
-			}
-			if (refr && refr->GetFormType() != RE::FormType::ActorCharacter && !refr->GetContainer())
-			{
-				// different Actors and Chests have different loot
-				checkedTargets.insert({ refr ? refr->GetBaseObject() : nullptr, lootability });
-			}
-		}
-		if (!refr || lootability != Lootability::Lootable)
-		{
-			continue;
-		}
+    // clang-format on
+    // Similar scenario seen when transitioning from indoors to outdoors (Blue
+    // Palace) - could this be any 'temp' REFRs being cleaned up, for various
+    // reasons?
+    RE::TESObjectREFR *refr(target.second);
+    static const bool dryRun(false);
+    static const bool glowOnly(true);
+    // Scan radius often includes repeated mundane objects e.g. loose septims,
+    // several plates. Optimize for that case here.
+    Lootability lootability(Lootability::Lootable);
+    const auto checkedTarget(
+        checkedTargets.find(refr ? refr->GetBaseObject() : nullptr));
+    if (checkedTarget != checkedTargets.cend()) {
+      m_targetType = INIFile::SecondaryType::itemObjects;
+      lootability = checkedTarget->second;
+      DBG_VMESSAGE(
+          "0x{:08x}, base {}/0x{:08x} already checked: {}",
+          refr ? refr->GetFormID() : InvalidForm,
+          (refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetName()
+                                         : ""),
+          (refr && refr->GetBaseObject() ? refr->GetBaseObject()->GetFormID()
+                                         : InvalidForm),
+          LootabilityName(lootability));
+    } else {
+      lootability = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
+      // do not process targets that are out of scope due to glow-only mode
+      // settings
+      if (lootability == Lootability::OutOfScope) {
+        continue;
+      }
+      if (refr && refr->GetFormType() != RE::FormType::ActorCharacter &&
+          !refr->GetContainer()) {
+        // different Actors and Chests have different loot
+        checkedTargets.insert(
+            {refr ? refr->GetBaseObject() : nullptr, lootability});
+      }
+    }
+    if (!refr || lootability != Lootability::Lootable) {
+      continue;
+    }
 
-		static const bool stolen(false);
-		static const bool forceHarvest(false);
-		TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest).Process(dryRun);
-	}
-	TaskDispatcher::Instance().GlowObjects();
-	TaskDispatcher::Instance().LootNPCs();
-	if (!m_fhiRunning.compare_exchange_strong(running, false))
-	{
-		REL_ERROR("Fortune Hunter's Instinct reset failed");
-		return;
-	}
+    static const bool stolen(false);
+    static const bool forceHarvest(false);
+    TryLootREFR(refr, m_targetType, stolen, glowOnly, forceHarvest)
+        .Process(dryRun);
+  }
+  TaskDispatcher::Instance().GlowObjects();
+  TaskDispatcher::Instance().LootNPCs();
+  if (!m_fhiRunning.compare_exchange_strong(running, false)) {
+    REL_ERROR("Fortune Hunter's Instinct reset failed");
+    return;
+  }
 }
 
-void ScanGovernor::DisplayLootability(RE::TESObjectREFR* refr)
-{
+void ScanGovernor::DisplayLootability(RE::TESObjectREFR *refr) {
 #ifdef _PROFILING
-	WindowsUtils::ScopedTimer elapsed("Check Lootability", refr);
+  WindowsUtils::ScopedTimer elapsed("Check Lootability", refr);
 #endif
-	Lootability result(ReferenceFilter::CheckLootable(refr));
-	static const bool dryRun(true);
-	static const bool glowOnly(false);
-	static const bool forceHarvest(false);
-	std::string typeName;
-	if (result == Lootability::Lootable)
-	{
-		std::vector<RE::TESObjectREFR*> possibleDupes;
-		result = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
-	}
-	if (refr && result == Lootability::Lootable)
-	{
-		// flag to prevent mutation of state when just checking the rules
-		TryLootREFR runner(refr, m_targetType, false, glowOnly, forceHarvest);
-		result = runner.Process(dryRun);
-		typeName = runner.ObjectTypeName();
-	}
+  Lootability result(ReferenceFilter::CheckLootable(refr));
+  static const bool dryRun(true);
+  static const bool glowOnly(false);
+  static const bool forceHarvest(false);
+  std::string typeName;
+  if (result == Lootability::Lootable) {
+    std::vector<RE::TESObjectREFR *> possibleDupes;
+    result = ValidateTarget(refr, possibleDupes, dryRun, glowOnly);
+  }
+  if (refr && result == Lootability::Lootable) {
+    // flag to prevent mutation of state when just checking the rules
+    TryLootREFR runner(refr, m_targetType, false, glowOnly, forceHarvest);
+    result = runner.Process(dryRun);
+    typeName = runner.ObjectTypeName();
+  }
 
-	// check player detection state if relevant
-	if (PlayerState::Instance().EffectiveOwnershipRule() == OwnershipRule::AllowCrimeIfUndetected)
-	{
-		DBG_VMESSAGE("Detection check to steal");
-		TaskDispatcher::Instance().EnqueueStealIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
-	}
+  // check player detection state if relevant
+  if (PlayerState::Instance().EffectiveOwnershipRule() ==
+      OwnershipRule::AllowCrimeIfUndetected) {
+    DBG_VMESSAGE("Detection check to steal");
+    TaskDispatcher::Instance().EnqueueStealIfUndetected(
+        RE::PlayerCharacter::GetSingleton(), dryRun);
+  }
 
-	std::ostringstream resultStr;
-	resultStr << "REFR 0x" << StringUtils::FromFormID(refr ? refr->GetFormID() : InvalidForm);
-	const auto baseObject(refr ? refr->GetBaseObject() : nullptr);
-	if (baseObject)
-	{
-		resultStr << " -> " << baseObject->GetName() << "/0x" << StringUtils::FromFormID(baseObject->GetFormID());
-	}
-	if (!typeName.empty())
-	{
-		resultStr << " type=" << typeName;
-	}
-	std::string message(resultStr.str());
-	RE::DebugNotification(message.c_str());
-	REL_MESSAGE("Lootability checked for {}", message.c_str());
-	resultStr.str("");
+  std::ostringstream resultStr;
+  resultStr << "REFR 0x"
+            << StringUtils::FromFormID(refr ? refr->GetFormID() : InvalidForm);
+  const auto baseObject(refr ? refr->GetBaseObject() : nullptr);
+  if (baseObject) {
+    resultStr << " -> " << baseObject->GetName() << "/0x"
+              << StringUtils::FromFormID(baseObject->GetFormID());
+  }
+  if (!typeName.empty()) {
+    resultStr << " type=" << typeName;
+  }
+  std::string message(resultStr.str());
+  RE::DebugNotification(message.c_str());
+  REL_MESSAGE("Lootability checked for {}", message.c_str());
+  resultStr.str("");
 
-	resultStr << LootabilityName(result) << LocationTracker::Instance().PlayerExactLocation();
-	message = resultStr.str();
-	RE::DebugNotification(message.c_str());
-	REL_MESSAGE("Lootability result: {}", message.c_str());
+  resultStr << LootabilityName(result)
+            << LocationTracker::Instance().PlayerExactLocation();
+  message = resultStr.str();
+  RE::DebugNotification(message.c_str());
+  REL_MESSAGE("Lootability result: {}", message.c_str());
 }
 
-void ScanGovernor::Allow()
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_searchAllowed = true;
+void ScanGovernor::Allow() {
+  RecursiveLockGuard guard(m_stateLock);
+  m_searchAllowed = true;
 }
 
-void ScanGovernor::Disallow()
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_searchAllowed = false;
+void ScanGovernor::Disallow() {
+  RecursiveLockGuard guard(m_stateLock);
+  m_searchAllowed = false;
 }
-bool ScanGovernor::CanSearch() const
-{
-	RecursiveLockGuard guard(m_stateLock);
-	return m_searchAllowed && m_searchNotPaused;
+bool ScanGovernor::CanSearch() const {
+  RecursiveLockGuard guard(m_stateLock);
+  return m_searchAllowed && m_searchNotPaused;
 }
 
-void ScanGovernor::SetScanActive(const bool isActive)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_searchNotPaused = isActive;
+void ScanGovernor::SetScanActive(const bool isActive) {
+  RecursiveLockGuard guard(m_stateLock);
+  m_searchNotPaused = isActive;
 }
 
-bool ScanGovernor::LockHarvest(const RE::TESObjectREFR* refr, const bool isSilent)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	if (!refr)
-		return false;
-	constexpr std::chrono::milliseconds timeout(static_cast<long long>(PendingHarvestTimeoutSeconds * 1000.0));
-	auto expiry(std::chrono::high_resolution_clock::now() + timeout);
-	if (m_harvestRequested.insert( { { refr->GetFormID(), refr->GetBaseObject()->GetFormID() }, {expiry, isSilent} } ).second)
-	{
-		++m_pendingHarvests;
-		if (!isSilent)
-			++m_pendingNotifies;
-		return true;
-	}
-	else
-	{
-		REL_WARNING("LockHarvest failed for REFR 0x{:08x} to 0x{:08x}/{}", refr->GetFormID(),
-			refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName());
-		return false;
-	}
+bool ScanGovernor::LockHarvest(const RE::TESObjectREFR *refr,
+                               const bool isSilent) {
+  RecursiveLockGuard guard(m_stateLock);
+  if (!refr)
+    return false;
+  constexpr std::chrono::milliseconds timeout(
+      static_cast<long long>(PendingHarvestTimeoutSeconds * 1000.0));
+  auto expiry(std::chrono::high_resolution_clock::now() + timeout);
+  if (m_harvestRequested
+          .insert({{refr->GetFormID(), refr->GetBaseObject()->GetFormID()},
+                   {expiry, isSilent}})
+          .second) {
+    ++m_pendingHarvests;
+    if (!isSilent)
+      ++m_pendingNotifies;
+    return true;
+  } else {
+    REL_WARNING("LockHarvest failed for REFR 0x{:08x} to 0x{:08x}/{}",
+                refr->GetFormID(), refr->GetBaseObject()->GetFormID(),
+                refr->GetBaseObject()->GetName());
+    return false;
+  }
 }
 
-bool ScanGovernor::UnlockHarvest(const RE::FormID refrID, const RE::FormID baseID, const std::string& baseName, bool isSilent)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	if (m_harvestRequested.erase({ refrID, baseID }) > 0)
-	{
-		if (!isSilent)
-			--m_pendingNotifies;
-		--m_pendingHarvests;
-		REL_VMESSAGE("UnlockHarvest OK for REFR 0x{:08x} to 0x{:08x}/{}", refrID, baseID, baseName);
-		return true;
-	}
-	else
-	{
-		REL_WARNING("UnlockHarvest failed for REFR 0x{:08x} to 0x{:08x}/{}", refrID, baseID, baseName);
-	}
-	return false;
+bool ScanGovernor::UnlockHarvest(const RE::FormID refrID,
+                                 const RE::FormID baseID,
+                                 const std::string &baseName, bool isSilent) {
+  RecursiveLockGuard guard(m_stateLock);
+  if (m_harvestRequested.erase({refrID, baseID}) > 0) {
+    if (!isSilent)
+      --m_pendingNotifies;
+    --m_pendingHarvests;
+    REL_VMESSAGE("UnlockHarvest OK for REFR 0x{:08x} to 0x{:08x}/{}", refrID,
+                 baseID, baseName);
+    return true;
+  } else {
+    REL_WARNING("UnlockHarvest failed for REFR 0x{:08x} to 0x{:08x}/{}", refrID,
+                baseID, baseName);
+  }
+  return false;
 }
 
-void ScanGovernor::Clear(const bool gameReload)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	// unblock expired blocked auto-harvest objects
-	ClearPendingHarvestInfo(gameReload);
-	// Dynamic containers that we looted reset on cell change
-	ResetLootedDynamicREFRs();
-	// clean up the list of glowing objects, don't futz with EffectShader since cannot run scripts at this time
-	ClearGlowExpiration();
+void ScanGovernor::Clear(const bool gameReload) {
+  RecursiveLockGuard guard(m_stateLock);
+  // unblock expired blocked auto-harvest objects
+  ClearPendingHarvestInfo(gameReload);
+  // Dynamic containers that we looted reset on cell change
+  ResetLootedDynamicREFRs();
+  // clean up the list of glowing objects, don't futz with EffectShader since
+  // cannot run scripts at this time
+  ClearGlowExpiration();
 
-	// clear lists of looted and locked containers
-	ResetLootedContainers();
-	ForgetLockedContainers();
+  // clear lists of looted and locked containers
+  ResetLootedContainers();
+  ForgetLockedContainers();
 }
 
-bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR* refr) const
-{
-	RecursiveLockGuard guard(m_stateLock);
-	auto matched(m_harvestRequested.find({ refr->GetFormID(), refr->GetBaseObject()->GetFormID() }));
-	if (matched == m_harvestRequested.cend())
-	{
-		return false;
-	}
-	// ensure the matched harvest operation is not expired, if so remove and allow
-	auto currentTime(std::chrono::high_resolution_clock::now());
-	auto expiry(matched->second.first);
-	if (expiry < std::chrono::high_resolution_clock::now())
-	{
-		bool isSilent(matched->second.second);
-		m_harvestRequested.erase(matched);
-		if (!isSilent)
-			--m_pendingNotifies;
-		--m_pendingHarvests;
-		// block REFR so we don't include in future scans
-		DataCase::GetInstance()->BlockReference(refr, Lootability::HarvestOperationTimeout);
-		REL_WARNING("Harvest attempt for REFR 0x{:08x} to 0x{:08x}/{} timed out after {} seconds",
-			refr->GetFormID(), refr->GetBaseObject()->GetFormID(), refr->GetBaseObject()->GetName(),
-			std::chrono::duration_cast<std::chrono::seconds>(currentTime - expiry).count());
-		return false;
-	}
-	return true;
+bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR *refr) const {
+  RecursiveLockGuard guard(m_stateLock);
+  auto matched(m_harvestRequested.find(
+      {refr->GetFormID(), refr->GetBaseObject()->GetFormID()}));
+  if (matched == m_harvestRequested.cend()) {
+    return false;
+  }
+  // ensure the matched harvest operation is not expired, if so remove and allow
+  auto currentTime(std::chrono::high_resolution_clock::now());
+  auto expiry(matched->second.first);
+  if (expiry < std::chrono::high_resolution_clock::now()) {
+    bool isSilent(matched->second.second);
+    m_harvestRequested.erase(matched);
+    if (!isSilent)
+      --m_pendingNotifies;
+    --m_pendingHarvests;
+    // block REFR so we don't include in future scans
+    DataCase::GetInstance()->BlockReference(
+        refr, Lootability::HarvestOperationTimeout);
+    REL_WARNING(
+        "Harvest attempt for REFR 0x{:08x} to 0x{:08x}/{} timed out after {} "
+        "seconds",
+        refr->GetFormID(), refr->GetBaseObject()->GetFormID(),
+        refr->GetBaseObject()->GetName(),
+        std::chrono::duration_cast<std::chrono::seconds>(currentTime - expiry)
+            .count());
+    return false;
+  }
+  return true;
 }
 
-size_t ScanGovernor::PendingHarvestNotifications() const
-{
-	RecursiveLockGuard guard(m_stateLock);
-	return m_pendingNotifies;
+size_t ScanGovernor::PendingHarvestNotifications() const {
+  RecursiveLockGuard guard(m_stateLock);
+  return m_pendingNotifies;
 }
 
-size_t ScanGovernor::PendingHarvestOperations() const
-{
-	RecursiveLockGuard guard(m_stateLock);
-	return m_pendingHarvests;
+size_t ScanGovernor::PendingHarvestOperations() const {
+  RecursiveLockGuard guard(m_stateLock);
+  return m_pendingHarvests;
 }
 
-void ScanGovernor::ClearPendingHarvestInfo(const bool gameReload)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	if (gameReload)
-	{
-		DBG_MESSAGE("Cleared {} Pending-Harvest events", m_harvestRequested.size());
-		m_pendingNotifies = 0;
-		m_pendingHarvests = 0;
-		m_harvestRequested.clear();
-	}
-	else
-	{
-		auto currentTime(std::chrono::high_resolution_clock::now());
-		auto next(m_harvestRequested.begin());
-		size_t discarded(0);
-		while (next != m_harvestRequested.end())
-		{
-			if (next->second.first < currentTime)
-			{
-				bool isSilent(next->second.second);
-				next = m_harvestRequested.erase(next);
-				if (!isSilent)
-					--m_pendingNotifies;
-				++discarded;
-			}
-			else
-			{
-				++next;
-			}
-		}
-		DBG_MESSAGE("Expired {} Pending-Harvest events", discarded);
-	}
+void ScanGovernor::ClearPendingHarvestInfo(const bool gameReload) {
+  RecursiveLockGuard guard(m_stateLock);
+  if (gameReload) {
+    DBG_MESSAGE("Cleared {} Pending-Harvest events", m_harvestRequested.size());
+    m_pendingNotifies = 0;
+    m_pendingHarvests = 0;
+    m_harvestRequested.clear();
+  } else {
+    auto currentTime(std::chrono::high_resolution_clock::now());
+    auto next(m_harvestRequested.begin());
+    size_t discarded(0);
+    while (next != m_harvestRequested.end()) {
+      if (next->second.first < currentTime) {
+        bool isSilent(next->second.second);
+        next = m_harvestRequested.erase(next);
+        if (!isSilent)
+          --m_pendingNotifies;
+        ++discarded;
+      } else {
+        ++next;
+      }
+    }
+    DBG_MESSAGE("Expired {} Pending-Harvest events", discarded);
+  }
 }
 
-void ScanGovernor::ClearGlowExpiration()
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_glowExpiration.clear();
+void ScanGovernor::ClearGlowExpiration() {
+  RecursiveLockGuard guard(m_stateLock);
+  m_glowExpiration.clear();
 }
 
-// SPERG doubles mined item amounts based on KYWD values. Store those items beforehand and recheck afterwards, adjusting counts for Player.
-void ScanGovernor::SetSPERGKeyword(const RE::BGSKeyword* keyword)
-{
-	m_spergKeywords.push_back(keyword);
+// SPERG doubles mined item amounts based on KYWD values. Store those items
+// beforehand and recheck afterwards, adjusting counts for Player.
+void ScanGovernor::SetSPERGKeyword(const RE::BGSKeyword *keyword) {
+  m_spergKeywords.push_back(keyword);
 }
 
 // This is called from script but does not mutate anything in the game data.
 // Saves inventory items applicable for SPERG for later reconciliation.
-void ScanGovernor::SPERGMiningStart(void)
-{
-	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
-	if (!player)
-		return;
+void ScanGovernor::SPERGMiningStart(void) {
+  RE::PlayerCharacter *player(RE::PlayerCharacter::GetSingleton());
+  if (!player)
+    return;
 
-	RecursiveLockGuard guard(m_stateLock);
-	++m_spergInProgress;
-	if (m_spergInventory)
-	{
-		REL_MESSAGE("Pre-SPERG inventory snapshot already captured, {} in progress", m_spergInProgress);
-		return;
-	}
-	m_spergInventory = std::make_unique<ContainerLister>(INIFile::SecondaryType::deadbodies, player);
-	m_spergInventory->FilterLootableItems([&](RE::TESBoundObject* item) -> bool
-	{
-		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
-		if (keywordHolder)
-		{
-			for (const auto keyword : m_spergKeywords)
-			{
-				if (keywordHolder->HasKeyword(keyword))
-					return true;
-			}
-		}
-		return false;
-	});
-	DBG_DMESSAGE("SPERG KYWD matching items {}", m_spergInventory->GetLootableItems().size());
+  RecursiveLockGuard guard(m_stateLock);
+  ++m_spergInProgress;
+  if (m_spergInventory) {
+    REL_MESSAGE("Pre-SPERG inventory snapshot already captured, {} in progress",
+                m_spergInProgress);
+    return;
+  }
+  m_spergInventory = std::make_unique<ContainerLister>(
+      INIFile::SecondaryType::deadbodies, player);
+  m_spergInventory->FilterLootableItems([&](RE::TESBoundObject *item) -> bool {
+    const RE::BGSKeywordForm *keywordHolder(item->As<RE::BGSKeywordForm>());
+    if (keywordHolder) {
+      for (const auto keyword : m_spergKeywords) {
+        if (keywordHolder->HasKeyword(keyword))
+          return true;
+      }
+    }
+    return false;
+  });
+  DBG_DMESSAGE("SPERG KYWD matching items {}",
+               m_spergInventory->GetLootableItems().size());
 }
 
-void ScanGovernor::SPERGMiningEnd(void)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	if (m_spergInProgress > 0)
-	{
-		--m_spergInProgress;
-		if (m_spergInProgress > 0)
-		{
-			REL_MESSAGE("SPERG completion, {} still in progress", m_spergInProgress);
-		}
-	}
-	else
-	{
-		REL_WARNING("SPERG completion, no operations in progress");
-	}
+void ScanGovernor::SPERGMiningEnd(void) {
+  RecursiveLockGuard guard(m_stateLock);
+  if (m_spergInProgress > 0) {
+    --m_spergInProgress;
+    if (m_spergInProgress > 0) {
+      REL_MESSAGE("SPERG completion, {} still in progress", m_spergInProgress);
+    }
+  } else {
+    REL_WARNING("SPERG completion, no operations in progress");
+  }
 }
 
-// This runs in scan thread whenever there are no mining operations in progress, to avoid problems with player inventory contention
-void ScanGovernor::ReconcileSPERGMined(void)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	if (m_spergInProgress > 0)
-	{
-		REL_MESSAGE("Skip SPERG reconciliation, {} in progress", m_spergInProgress);
-		return;
-	}
-	if (!m_spergInventory)
-	{
-		DBG_DMESSAGE("No SPERG mining operations since last pass");
-		return;
-	}
-	RE::PlayerCharacter* player(RE::PlayerCharacter::GetSingleton());
-	if (!player)
-		return;
+// This runs in scan thread whenever there are no mining operations in progress,
+// to avoid problems with player inventory contention
+void ScanGovernor::ReconcileSPERGMined(void) {
+  RecursiveLockGuard guard(m_stateLock);
+  if (m_spergInProgress > 0) {
+    REL_MESSAGE("Skip SPERG reconciliation, {} in progress", m_spergInProgress);
+    return;
+  }
+  if (!m_spergInventory) {
+    DBG_DMESSAGE("No SPERG mining operations since last pass");
+    return;
+  }
+  RE::PlayerCharacter *player(RE::PlayerCharacter::GetSingleton());
+  if (!player)
+    return;
 
-	// get current inventory and duplicate any SPERG items added since snapshot was taken
-	ContainerLister lister(INIFile::SecondaryType::deadbodies, player);
-	lister.FilterLootableItems([&](RE::TESBoundObject* item) -> bool
-	{
-		const RE::BGSKeywordForm* keywordHolder(item->As<RE::BGSKeywordForm>());
-		if (keywordHolder)
-		{
-			for (const auto keyword : m_spergKeywords)
-			{
-				if (keywordHolder->HasKeyword(keyword))
-					return true;
-			}
-		}
-		return false;
-	});
-	const LootableItems& newInventory(lister.GetLootableItems());
-	for (const auto& newItem : newInventory)
-	{
-		int32_t delta(0);
-		if (std::find_if(m_spergInventory->GetLootableItems().cbegin(), m_spergInventory->GetLootableItems().cend(),
-			[&](const InventoryItem& item) -> bool {
-			if (item.BoundObject() == newItem.BoundObject())
-			{
-				delta = static_cast<int32_t>(std::max(int(newItem.Count()) - int(item.Count()), 0));
-				return true;
-			}
-			return false;
-		}) == m_spergInventory->GetLootableItems().cend())
-		{
-			delta = static_cast<int32_t>(newItem.Count());
-		}
-		if (delta > 0)
-		{
-			DBG_MESSAGE("SPERG mined {} extra of {}/0x{:08x}", delta, newItem.BoundObject()->GetName(), newItem.BoundObject()->GetFormID());
-			player->AddObjectToContainer(newItem.BoundObject(), nullptr, delta, nullptr);
-		}
-	}
-	// resets the cycle
-	m_spergInventory.reset();
+  // get current inventory and duplicate any SPERG items added since snapshot
+  // was taken
+  ContainerLister lister(INIFile::SecondaryType::deadbodies, player);
+  lister.FilterLootableItems([&](RE::TESBoundObject *item) -> bool {
+    const RE::BGSKeywordForm *keywordHolder(item->As<RE::BGSKeywordForm>());
+    if (keywordHolder) {
+      for (const auto keyword : m_spergKeywords) {
+        if (keywordHolder->HasKeyword(keyword))
+          return true;
+      }
+    }
+    return false;
+  });
+  const LootableItems &newInventory(lister.GetLootableItems());
+  for (const auto &newItem : newInventory) {
+    int32_t delta(0);
+    if (std::find_if(m_spergInventory->GetLootableItems().cbegin(),
+                     m_spergInventory->GetLootableItems().cend(),
+                     [&](const InventoryItem &item) -> bool {
+                       if (item.BoundObject() == newItem.BoundObject()) {
+                         delta = static_cast<int32_t>(std::max(
+                             int(newItem.Count()) - int(item.Count()), 0));
+                         return true;
+                       }
+                       return false;
+                     }) == m_spergInventory->GetLootableItems().cend()) {
+      delta = static_cast<int32_t>(newItem.Count());
+    }
+    if (delta > 0) {
+      DBG_MESSAGE("SPERG mined {} extra of {}/0x{:08x}", delta,
+                  newItem.BoundObject()->GetName(),
+                  newItem.BoundObject()->GetFormID());
+      player->AddObjectToContainer(newItem.BoundObject(), nullptr, delta,
+                                   nullptr);
+    }
+  }
+  // resets the cycle
+  m_spergInventory.reset();
 }
 
 // avoid spam for Message display that is now automated
-void ScanGovernor::PeriodicReminder(const std::string& msg)
-{
-	const std::chrono::high_resolution_clock::time_point currentTime(std::chrono::high_resolution_clock::now());
-	// Retrieve last display time if present, and compare to currrent
-	auto lastDisplayed(m_regulatedMessages.insert({msg, currentTime}));
-	bool doDisplay(false);
-	if (lastDisplayed.second)
-	{
-		// first time
-		doDisplay = true;
-	}
-	else
-	{
-		// Arbitrarily choose 30 seconds to regulate display spam
-		constexpr std::chrono::milliseconds delay(30000);
-		const std::chrono::milliseconds elapsed(
-			std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastDisplayed.first->second));
-		if (elapsed > delay)
-		{
-			doDisplay = true;
-			DBG_VMESSAGE("Redisplay of message {} allowed after {} milliseconds, delay is {}",
-						 msg, elapsed.count(), delay.count());
-		}
-		else
-		{
-			DBG_VMESSAGE("Redisplay of message {} disallowed after {} milliseconds, delay is {}",
-						 msg, elapsed.count(), delay.count());
-		}
-	}
-	if (doDisplay)
-	{
-		RE::DebugNotification(msg.c_str());
-		lastDisplayed.first->second = currentTime;
-	}
+void ScanGovernor::PeriodicReminder(const std::string &msg) {
+  const std::chrono::high_resolution_clock::time_point currentTime(
+      std::chrono::high_resolution_clock::now());
+  // Retrieve last display time if present, and compare to currrent
+  auto lastDisplayed(m_regulatedMessages.insert({msg, currentTime}));
+  bool doDisplay(false);
+  if (lastDisplayed.second) {
+    // first time
+    doDisplay = true;
+  } else {
+    // Arbitrarily choose 30 seconds to regulate display spam
+    constexpr std::chrono::milliseconds delay(30000);
+    const std::chrono::milliseconds elapsed(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            currentTime - lastDisplayed.first->second));
+    if (elapsed > delay) {
+      doDisplay = true;
+      DBG_VMESSAGE(
+          "Redisplay of message {} allowed after {} milliseconds, delay is {}",
+          msg, elapsed.count(), delay.count());
+    } else {
+      DBG_VMESSAGE("Redisplay of message {} disallowed after {} milliseconds, "
+                   "delay is {}",
+                   msg, elapsed.count(), delay.count());
+    }
+  }
+  if (doDisplay) {
+    RE::DebugNotification(msg.c_str());
+    lastDisplayed.first->second = currentTime;
+  }
 }
-
 
 // this triggers/stops loot range calibration cycle
-void ScanGovernor::ToggleCalibration(const bool glowDemo)
-{
-	RecursiveLockGuard guard(m_stateLock);
-	m_calibrating = !m_calibrating;
-	REL_MESSAGE("Calibration of Looting range {}, test shaders {}",	m_calibrating ? "started" : "stopped", m_glowDemo ? "true" : "false");
-	if (m_calibrating)
-	{
-		m_glowDemo = glowDemo;
-		m_calibrateDelta = m_glowDemo ? GlowDemoRange : CalibrationRangeDelta;
-		m_calibrateRadius = m_glowDemo ? GlowDemoRange : CalibrationRangeDelta;
-		m_nextGlow = GlowReason::SimpleTarget;
-	}
-	else
-	{
-		if (m_glowDemo)
-		{
-			std::string glowText("Glow demo stopped");
-			RE::DebugNotification(glowText.c_str());
-		}
-		else
-		{
-			std::string rangeText("Range Calibration stopped");
-			RE::DebugNotification(rangeText.c_str());
-		}
-		m_glowDemo = false;
-	}
+void ScanGovernor::ToggleCalibration(const bool glowDemo) {
+  RecursiveLockGuard guard(m_stateLock);
+  m_calibrating = !m_calibrating;
+  REL_MESSAGE("Calibration of Looting range {}, test shaders {}",
+              m_calibrating ? "started" : "stopped",
+              m_glowDemo ? "true" : "false");
+  if (m_calibrating) {
+    m_glowDemo = glowDemo;
+    m_calibrateDelta = m_glowDemo ? GlowDemoRange : CalibrationRangeDelta;
+    m_calibrateRadius = m_glowDemo ? GlowDemoRange : CalibrationRangeDelta;
+    m_nextGlow = GlowReason::SimpleTarget;
+  } else {
+    if (m_glowDemo) {
+      std::string glowText("Glow demo stopped");
+      RE::DebugNotification(glowText.c_str());
+    } else {
+      std::string rangeText("Range Calibration stopped");
+      RE::DebugNotification(rangeText.c_str());
+    }
+    m_glowDemo = false;
+  }
 }
 
-void ScanGovernor::GlowObject(RE::TESObjectREFR* refr, const int duration, const ObjectType objectType, const GlowReason glowReason)
-{
-	// only send the glow event once per N seconds. This will retrigger on later passes, but once we are out of
-	// range no more glowing will be triggered. The item remains in the list until we change cell but there should
-	// never be so many in a cell that this is a problem.
-	RecursiveLockGuard guard(m_stateLock);
-	const auto existingGlow(m_glowExpiration.find(refr));
-	auto currentTime(std::chrono::high_resolution_clock::now());
-	if (existingGlow != m_glowExpiration.cend() && existingGlow->second > currentTime)
-		return;
-	// lower this by 500ms so that it expires before container recheck timer
-	auto expiry = currentTime + std::chrono::milliseconds(static_cast<long long>(duration * 1000.0) - 500LL);
-	m_glowExpiration[refr] = expiry;
-	DBG_VMESSAGE("Trigger glow {} for {}/0x{:08x}", GlowName(glowReason), refr->GetName(), refr->formID);
-	if (objectType == ObjectType::oreVein)
-	{
-		// use script to check whether vein is depleted
-		EventPublisher::Instance().TriggerObjectGlow(refr, duration, glowReason);
-	}
-	else
-	{
-		TaskDispatcher::Instance().EnqueueObjectGlow(refr, duration, glowReason);
-	}
+void ScanGovernor::GlowObject(RE::TESObjectREFR *refr, const int duration,
+                              const ObjectType objectType,
+                              const GlowReason glowReason) {
+  // only send the glow event once per N seconds. This will retrigger on later
+  // passes, but once we are out of range no more glowing will be triggered. The
+  // item remains in the list until we change cell but there should never be so
+  // many in a cell that this is a problem.
+  RecursiveLockGuard guard(m_stateLock);
+  const auto existingGlow(m_glowExpiration.find(refr));
+  auto currentTime(std::chrono::high_resolution_clock::now());
+  if (existingGlow != m_glowExpiration.cend() &&
+      existingGlow->second > currentTime)
+    return;
+  // lower this by 500ms so that it expires before container recheck timer
+  auto expiry =
+      currentTime + std::chrono::milliseconds(
+                        static_cast<long long>(duration * 1000.0) - 500LL);
+  m_glowExpiration[refr] = expiry;
+  DBG_VMESSAGE("Trigger glow {} for {}/0x{:08x}", GlowName(glowReason),
+               refr->GetName(), refr->formID);
+  if (objectType == ObjectType::oreVein) {
+    // use script to check whether vein is depleted
+    EventPublisher::Instance().TriggerObjectGlow(refr, duration, glowReason);
+  } else {
+    TaskDispatcher::Instance().EnqueueObjectGlow(refr, duration, glowReason);
+  }
 }
 
-}
+} // namespace shse

@@ -103,6 +103,9 @@
 			"typeindex": "cpp",
 			"coroutine": "cpp",
 			"resumable": "cpp"
-		}
+		},
+		"C_Cpp.clang_format_sortIncludes": false,
+		"C_Cpp.codeAnalysis.clangTidy.fallbackConfig": "",
+		"C_Cpp.clang_format_style": ""
 	}
 }
