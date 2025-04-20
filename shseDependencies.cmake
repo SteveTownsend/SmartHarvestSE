@@ -24,9 +24,9 @@ FetchContent_Declare(
 )
 FetchContent_GetProperties(spdlog)
 if (NOT spdlog_POPULATED)
-        FetchContent_MakeAvailable(spdlog)
-        set(SPDLOG_INSTALL ON CACHE INTERNAL "Install SPDLOG for CommonLibSSE")
-        set(SPDLOG_USE_STD_FORMAT ON CACHE INTERNAL "Use std::format in SPDLOG, not fmt")
+  FetchContent_MakeAvailable(spdlog)
+  set(SPDLOG_INSTALL ON CACHE INTERNAL "Install SPDLOG for CommonLibSSE")
+  set(SPDLOG_USE_STD_FORMAT ON CACHE INTERNAL "Use std::format in SPDLOG, not fmt")
 endif()
 
 FetchContent_Declare(

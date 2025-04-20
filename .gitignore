@@ -22,3 +22,6 @@ skyrimse.ppj
 /Scripts/Source/DES_DefaultCoins.psc
 /Scripts/Source/qf_akhrtravelstqueststart_04b78f01.psc
 /Scripts/qf_akhrtravelstqueststart_04b78f01.pex
+debug-msvc
+logging-msvc
+release-msvc
