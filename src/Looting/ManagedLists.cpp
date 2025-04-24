@@ -330,6 +330,7 @@ bool ManagedTargets::HasContainer(RE::FormID container) const {
 }
 
 ManagedTarget ManagedTargets::ByIndex(const size_t index) const {
+  RecursiveLockGuard guard(m_listLock);
   if (index < m_orderedList.size())
     return m_orderedList[index];
   return {nullptr, ""};

@@ -140,6 +140,11 @@ void InventoryEntry::HandleExcess() {
       size_t index(static_cast<size_t>(m_excessHandling) -
                    static_cast<size_t>(ExcessInventoryHandling::Container1));
       RE::TESForm *form(ManagedList::TransferList().ByIndex(index).first);
+      if (!form) {
+        REL_ERROR("Bad index {} for Excess Inventory, no form present",
+                  std::to_underlying(m_excessHandling));
+        return;
+      }
       RE::TESObjectREFR *refr(form->As<RE::TESObjectREFR>());
       if (refr) {
         // script on REFR indicates we should check for ACTI with link to a
