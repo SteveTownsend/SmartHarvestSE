@@ -653,7 +653,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
         originalCellID, originalLocation, allowIfRestricted,
         allowIfRestricted));
     m_playerLocation = playerLocation;
-    m_playerPlaceName = PlaceName(CurrentPlayerPlaceCached());
+    m_playerPlaceName = PlaceName(CurrentPlayerPlace());
     DBG_MESSAGE("Player was at {}, lootable = {}, now at {}", originalPlaceName,
                 couldLootInPrior ? "true" : "false", m_playerPlaceName);
 
@@ -675,12 +675,12 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
         DBG_MESSAGE("Player House LCTN {}/0x{:08x} detected",
                     m_playerLocation->GetName(), m_playerLocation->GetFormID());
         PlayerHouses::Instance().Add(m_playerLocation);
-      } else if (m_playerCellID != InvalidForm &&
+      } else if (playerCell && m_playerCellID != InvalidForm &&
                  PlayerHouses::Instance().IsValidHouseCell(playerCell)) {
         // record Cell as a player house and notify as it is a new one in this
         // game load
         DBG_MESSAGE("Player House CELL {}/0x{:08x} detected",
-                    PlayerCell()->GetName(), m_playerCellID);
+                    playerCell->GetName(), m_playerCellID);
         PlayerHouses::Instance().AddCell(m_playerCellID);
       }
     }
