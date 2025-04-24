@@ -405,6 +405,10 @@ void ResetList(RE::StaticFunctionTag *, const int entryType) {
 }
 void AddEntryToList(RE::StaticFunctionTag *, const int entryType,
                     RE::TESForm *entry) {
+  if (!entry) {
+    REL_ERROR("AddEntryToList({}) requires entry non-null", entryType);
+    return;
+  }
   if (entryType == Black) {
     shse::ManagedList::BlackList().Add(entry);
   } else if (entryType == White) {
