@@ -111,18 +111,8 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
 }
 
 void InitializeDiagnostics() {
-#if _DEBUG
-  // default Debug log level is TRACE
+  // default log level is TRACE
   spdlog::level::level_enum logLevel(spdlog::level::trace);
-#else
-#ifdef _FULL_LOGGING
-  // default Full Logging log level is TRACE
-  spdlog::level::level_enum logLevel(spdlog::level::trace);
-#else
-  // default Release log level is ERROR
-  spdlog::level::level_enum logLevel(spdlog::level::trace);
-#endif
-#endif
   char *levelValue;
   size_t requiredSize;
   if (getenv_s(&requiredSize, NULL, 0, LogLevelVariable.c_str()) == 0 &&
@@ -151,7 +141,7 @@ void InitializeDiagnostics() {
     fileName.append(SHSE_NAME);
     fileName.append(".log");
     SHSELogger = spdlog::basic_logger_mt(LoggerName, fileName, true);
-    SHSELogger->set_pattern("%Y-%m-%d %T.%e %8l %6t %v");
+    SHSELogger->set_pattern("%T.%e %=5t %L %v");
   } catch (const spdlog::spdlog_ex &) {
   }
   SHSELogger->set_level(logLevel); // Set mod's log level
@@ -162,15 +152,12 @@ void InitializeDiagnostics() {
 #endif
 #endif
   // Get Process and DLL version
-  REL_MESSAGE("{} v{} in executable {}-{}", Version::PROJECT, Version::NAME,
-              Version::GetExeVersionString(), Version::BUILDTYPE);
+  REL_MESSAGE("{} v{}-{} in executable {}", Version::PROJECT, Version::NAME,
+              Version::BUILDTYPE, Version::GetExeVersionString());
 }
 
 EXTERN_C __declspec(dllexport) bool SKSEAPI
 SKSEPlugin_Load(const SKSE::LoadInterface *skse) {
-  InitializeDiagnostics();
-
-  REL_MESSAGE("{} plugin loaded", SHSE_NAME);
   SKSE::Init(skse);
   SKSE::GetMessagingInterface()->RegisterListener(SKSEMessageHandler);
 
@@ -178,6 +165,9 @@ SKSEPlugin_Load(const SKSE::LoadInterface *skse) {
   serialization->SetUniqueID('SHSE');
   serialization->SetSaveCallback(SaveCallback);
   serialization->SetLoadCallback(LoadCallback);
+
+  InitializeDiagnostics();
+  REL_MESSAGE("{} plugin loaded", SHSE_NAME);
 
   return true;
 }
