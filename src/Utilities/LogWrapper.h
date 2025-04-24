@@ -69,12 +69,12 @@ extern std::shared_ptr<spdlog::logger> SHSELogger;
     SHSELogger->trace(a_fmt __VA_OPT__(, ) __VA_ARGS__);                       \
   }
 #define REL_MESSAGE(a_fmt, ...)                                                \
-  if (SHSELogger->level() <= spdlog::level::warn) {                            \
-    SHSELogger->warn(a_fmt __VA_OPT__(, ) __VA_ARGS__);                        \
-  }
-#define REL_WARNING(a_fmt, ...)                                                \
   if (SHSELogger->level() <= spdlog::level::info) {                            \
     SHSELogger->info(a_fmt __VA_OPT__(, ) __VA_ARGS__);                        \
+  }
+#define REL_WARNING(a_fmt, ...)                                                \
+  if (SHSELogger->level() <= spdlog::level::warn) {                            \
+    SHSELogger->warn(a_fmt __VA_OPT__(, ) __VA_ARGS__);                        \
   }
 #define REL_ERROR(a_fmt, ...)                                                  \
   if (SHSELogger->level() <= spdlog::level::err) {                             \

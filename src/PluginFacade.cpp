@@ -191,9 +191,8 @@ void PluginFacade::ScanThread() {
     // block until UI is good to go
     UIState::Instance().WaitUntilVMGoodToGo();
 
-    // Player location checked for Cell/Location change on every loop, provided
-    // UI ready for status updates
-    if (!LocationTracker::Instance().Refresh()) {
+    // Do not progress if Player Cell is invalid
+    if (!RE::PlayerCharacter::GetSingleton()->parentCell) {
       REL_VMESSAGE("Location or cell not stable yet");
       continue;
     }

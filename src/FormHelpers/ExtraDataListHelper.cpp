@@ -33,7 +33,11 @@ RE::EnchantmentItem *GetEnchantment(const RE::ExtraDataList *extraData) {
                                                : nullptr;
 }
 
-bool IsItemQuestObject(const RE::TESBoundObject *item,
+bool IsItemQuestObject(const RE::TESBoundObject *
+#if DEBUG || defined(_FULL_LOGGING)
+                           item
+#endif
+                       ,
                        const RE::ExtraDataList *extraData) {
   if (!extraData)
     return false;
@@ -57,7 +61,12 @@ bool IsItemQuestObject(const RE::TESBoundObject *item,
              }) != exAliasArray->aliases.cend();
 }
 
-bool IsREFRQuestObject(const RE::TESObjectREFR *refr,
+bool IsREFRQuestObject(const RE::TESObjectREFR *
+#if DEBUG || defined(_FULL_LOGGING)
+                           refr
+#endif
+                       ,
+
                        const RE::ExtraDataList *extraData) {
   if (!extraData)
     return false;

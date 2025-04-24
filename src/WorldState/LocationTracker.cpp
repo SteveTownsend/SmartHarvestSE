@@ -51,7 +51,52 @@ LocationTracker::LocationTracker()
     : m_playerCellID(InvalidForm), m_playerCellX(0), m_playerCellY(0),
       m_playerIndoors(false), m_tellPlayerIfCanLootAfterLoad(false),
       m_playerLocation(nullptr), m_playerParentWorld(nullptr),
-      m_aiRunning(false) {}
+      m_aiRunning(false), m_cellSequence(0) {}
+
+void LocationTracker::Init() {
+  // wire up CELL change tracking
+  auto player = RE::PlayerCharacter::GetSingleton();
+
+  if (!player) {
+    REL_ERROR(
+        "Player Character not found, cannot listen for BGSActorCellEvent");
+    return;
+  }
+  player->AsBGSActorCellEventSource()->AddEventSink(this);
+  REL_MESSAGE("BGSActorCellEvent Sink registered");
+}
+
+RE::BSEventNotifyControl LocationTracker::ProcessEvent(
+    const RE::BGSActorCellEvent *a_event,
+    RE::BSTEventSource<RE::BGSActorCellEvent> *a_eventSource) {
+  if (!a_event || !a_eventSource) {
+    REL_ERROR("BGSActorCellEvent and its source must both be present");
+    return RE::BSEventNotifyControl::kContinue;
+  }
+  auto player = RE::PlayerCharacter::GetSingleton();
+  if (!player) {
+    REL_ERROR("PlayerCharacter not valid");
+    return RE::BSEventNotifyControl::kContinue;
+  }
+  auto cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(a_event->cellID);
+  if (!cell) {
+    REL_ERROR("Cell Not Found 0x{:08x}", a_event->cellID);
+    return RE::BSEventNotifyControl::kContinue;
+  }
+  // update sequence number to mark new CELL entry, or to abort async Tasks
+  // after exit
+  IncrementCellSequence();
+  if (a_event->flags == RE::BGSActorCellEvent::CellFlag::kEnter) {
+    DBG_MESSAGE("Entered CELL {}/0x{:08x}", cell->GetFormEditorID(),
+                cell->GetFormID());
+    RecursiveLockGuard guard(m_locationLock);
+    Refresh(cell);
+  } else if (a_event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
+    DBG_MESSAGE("Exited CELL {}/0x{:08x}", cell->GetFormEditorID(),
+                cell->GetFormID());
+  }
+  return RE::BSEventNotifyControl::kContinue;
+}
 
 // called when Player moves to a new WorldSpace, including on game load/reload
 void LocationTracker::RecordMarkedPlaces() {
@@ -517,7 +562,7 @@ LocationTracker::ParentWorld(const RE::TESObjectCELL *cell) {
 }
 
 // refresh state based on player's current position
-bool LocationTracker::Refresh() {
+bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
 #ifdef _PROFILING
   WindowsUtils::ScopedTimer elapsed("Location Data Refresh");
 #endif
@@ -544,7 +589,7 @@ bool LocationTracker::Refresh() {
   const RE::BGSLocation *originalLocation(m_playerLocation);
 
   const RE::TESObjectCELL *playerCell(
-      RE::PlayerCharacter::GetSingleton()->parentCell);
+      cell ? cell : RE::PlayerCharacter::GetSingleton()->parentCell);
   RE::FormID playerCellID(playerCell ? playerCell->GetFormID() : InvalidForm);
   bool indoorsNow(playerCell ? playerCell->IsInteriorCell() : false);
   if (playerCellID != originalCellID) {
@@ -883,9 +928,8 @@ const RE::TESForm *LocationTracker::CurrentPlayerPlaceCached() const {
 }
 
 const RE::TESForm *LocationTracker::CurrentPlayerPlace() {
-  // Ensure current info is accurate and return the cached value
+  // return the cached value
   RecursiveLockGuard guard(m_locationLock);
-  Refresh();
   return CurrentPlayerPlaceCached();
 }
 

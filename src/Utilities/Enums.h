@@ -679,6 +679,24 @@ SerializationRecordName(const SerializationRecordType recordType) {
 enum class ScanStatus : unsigned int { GoodToGo, MCMOpen, GamePaused };
 extern const char *ScanStatusNames[];
 
+enum class TaskType { Glow, Loot, Steal, CarryWeight, ExcessInventory };
+inline std::string TaskTypeName(const TaskType taskType) {
+  switch (taskType) {
+  case TaskType::Glow:
+    return "Glow";
+  case TaskType::Loot:
+    return "Loot";
+  case TaskType::Steal:
+    return "Steal";
+  case TaskType::CarryWeight:
+    return "CarryWeight";
+  case TaskType::ExcessInventory:
+    return "ExcessInventory";
+  default:
+    return "????";
+  }
+}
+
 } // namespace shse
 
 template <>

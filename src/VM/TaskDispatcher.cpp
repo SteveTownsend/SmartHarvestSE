@@ -41,6 +41,19 @@ TaskDispatcher::TaskDispatcher()
   m_taskInterface = SKSE::GetTaskInterface();
 }
 
+void TaskDispatcher::EnqueueTask(const TaskType task_type,
+                                 SKSE::TaskInterface::TaskFn a_task) {
+  int context(LocationTracker::Instance().GetCellSequence());
+  // wrap the task with a check on context before progressing
+  m_taskInterface->AddTask([=](void) {
+    if (context != LocationTracker::Instance().GetCellSequence()) {
+      REL_WARNING("CELL changed, skip queued {} task", TaskTypeName(task_type));
+      return;
+    }
+    a_task();
+  });
+}
+
 void TaskDispatcher::EnqueueObjectGlow(RE::TESObjectREFR *refr,
                                        const int duration,
                                        const GlowReason glowReason) {
@@ -69,7 +82,7 @@ void TaskDispatcher::GlowObjects() {
     }
   }
   // Pass in current queued requests by value, as this executes asynchronously
-  m_taskInterface->AddTask([=](void) {
+  EnqueueTask(TaskType::Glow, [=](void) {
     RE::TESObjectREFR *refr;
     int duration;
     GlowReason glowReason;
@@ -138,7 +151,7 @@ void TaskDispatcher::LootNPCs() {
   }
   DBG_VMESSAGE("Dispatch {} queued Loot NPC requests", queued.size());
   // Pass in current queued requests by value, as this executes asynchronously
-  m_taskInterface->AddTask([=](void) {
+  EnqueueTask(TaskType::Loot, [=](void) {
     RE::TESObjectREFR *npc;
     RE::TESBoundObject *item;
     int count;
@@ -159,7 +172,7 @@ void TaskDispatcher::LootNPCs() {
 
 void TaskDispatcher::EnqueueStealIfUndetected(RE::Actor *actor,
                                               const bool dryRun) {
-  m_taskInterface->AddTask([=](void) {
+  EnqueueTask(TaskType::Steal, [=](void) {
     // Logic from po3 Papyrus Extender
     // https://github.com/powerof3/PapyrusExtenderSSE/blob/master/include/Papyrus/Functions/Detection.h
     std::string message;
@@ -221,7 +234,7 @@ void TaskDispatcher::EnqueueCarryWeightStateChange(bool doReload,
   if (doReload) {
     m_legacyCarryWeightChecked = false;
   }
-  m_taskInterface->AddTask([=](void) {
+  EnqueueTask(TaskType::CarryWeight, [=](void) {
     // Reset from legacy management scheme if appropriate
     bool isBeefedUp(m_player->GetMagicTarget()->HasMagicEffect(
         PlayerState::Instance().CarryWeightEffect()));
@@ -275,7 +288,7 @@ void TaskDispatcher::EnqueueCarryWeightStateChange(bool doReload,
 }
 
 void TaskDispatcher::EnqueueReviewExcessInventory(bool force) {
-  m_taskInterface->AddTask([=](void) {
+  EnqueueTask(TaskType::ExcessInventory, [=](void) {
     // Check excess inventory - always check known item updates, full review
     // periodically and on possible state changes Do not process excess
     // inventory if scanning is not allowed for any reason Player may be trying

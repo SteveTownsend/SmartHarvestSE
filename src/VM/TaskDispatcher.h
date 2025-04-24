@@ -41,6 +41,8 @@ public:
   void EnqueueReviewExcessInventory(bool force);
 
 private:
+  void EnqueueTask(const TaskType task_type,
+                   SKSE::TaskInterface::TaskFn a_task);
   typedef std::tuple<RE::TESObjectREFR *, const int, const GlowReason>
       GlowRequest;
   typedef std::tuple<RE::TESObjectREFR *, RE::TESBoundObject *, const int,

@@ -22,10 +22,11 @@ http://www.fsf.org/licensing/licenses
 #include "alglib/alglibmisc.h"
 #include "Utilities/utils.h"
 #include "WorldState/PositionData.h"
+#include <atomic>
 
 namespace shse {
 
-class LocationTracker {
+class LocationTracker : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 private:
   void RecordAdjacentCells(const RE::TESObjectCELL *current);
   void RecordMarkedPlaces();
@@ -80,6 +81,7 @@ private:
   mutable alglib::kdtree m_markers;
   mutable RecursiveLock m_locationLock;
   mutable std::atomic<bool> m_aiRunning;
+  std::atomic<int> m_cellSequence;
 
   static constexpr double OnlyYards = 0.1;
   static constexpr double LittleWay = 0.3;
@@ -91,9 +93,14 @@ private:
 public:
   static LocationTracker &Instance();
   LocationTracker();
+  void Init();
+
+  virtual RE::BSEventNotifyControl
+  ProcessEvent(const RE::BGSActorCellEvent *a_event,
+               RE::BSTEventSource<RE::BGSActorCellEvent> *a_eventSource);
 
   void Reset();
-  bool Refresh();
+  bool Refresh(const RE::TESObjectCELL *cell = nullptr);
   bool IsPlayerAtHome() const;
   void RecordCurrentPlace(const float gameTime);
   bool IsPlayerInLootablePlace(const bool lootableIfRestricted,
@@ -125,6 +132,8 @@ public:
   std::string PlayerExactLocation() const;
 
   RE::TESObjectCELL *PlayerCell() const;
+  int GetCellSequence() const { return m_cellSequence.load(); }
+  void IncrementCellSequence() { ++m_cellSequence; }
 };
 
 } // namespace shse
