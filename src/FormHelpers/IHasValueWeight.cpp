@@ -45,11 +45,10 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const {
     return false;
 
   double weight = GetWeight();
-  if (weight == 0.0) {
-    bool result(SettingsCache::Instance().CheckWeightlessValue() &&
-                worth <
-                    static_cast<uint32_t>(
-                        SettingsCache::Instance().WeightlessMinimumValue()));
+  if (SettingsCache::Instance().CheckWeightlessValue() && weight == 0.0) {
+    bool result(worth <
+                static_cast<uint32_t>(
+                    SettingsCache::Instance().WeightlessMinimumValue()));
     DBG_VMESSAGE("Weightless item value too low to loot? {}", worth, result);
     return result;
   }
@@ -63,7 +62,7 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const {
   if (valueWeight > 0.) {
     if (m_objectType == ObjectType::ammo) {
       // arrows use the value as an absolute threshold - in this case value
-      // represents damage done allow small tolerance for floating point
+      // represents damage done. Allow small tolerance for floating point
       // uncertainty
       DBG_VMESSAGE("{}/0x{:08x} ammo damage {} vs threshold {:0.2f}", GetName(),
                    GetFormID(), worth, valueWeight);
