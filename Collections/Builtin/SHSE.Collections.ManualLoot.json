@@ -17,7 +17,9 @@
           "forms": [
             {
               "plugin": "Skyrim.esm",
-              "form": [ "0007F8E1" ]
+              "form": [
+                "0007F8E1"
+              ]
             }
           ]
         }
@@ -32,7 +34,10 @@
           "forms": [
             {
               "plugin": "Skyrim.esm",
-              "form": [ "000B626C", "000956B5" ]
+              "form": [
+                "000B626C",
+                "000956B5"
+              ]
             }
           ]
         }
@@ -47,7 +52,10 @@
           "forms": [
             {
               "plugin": "Dawnguard.esm",
-              "form": [ "00019328", "00002842" ]
+              "form": [
+                "00019328",
+                "00002842"
+              ]
             }
           ]
         }
@@ -55,22 +63,51 @@
     },
     {
       "name": "LoTD Excavation Sites and Icy Shards",
-      "description": "LoTD Excavation Sites, Crystalline Repository and Icy Shards",
+      "description": "LoTD Excavation Sites, Crystalline Repository and Icy Shards - v5 and v6",
       "rootFilter": {
         "operator": "AND",
         "condition": {
           "forms": [
             {
               "plugin": "LegacyoftheDragonborn.esm",
-              "form": [ "00284A06", "0051FCCB", "0051FCD1", "0051FCD2" ]
+              "form": [
+                "00284A06",
+                "0051FCCB",
+                "0051FCD1",
+                "0051FCD2"
+              ]
             },
             {
               "plugin": "LegacyoftheDragonborn.esm",
-              "form": [ "004f05e5" ]
+              "form": [
+                "004f05e5"
+              ]
             },
             {
               "plugin": "LegacyoftheDragonborn.esm",
-              "form": [ "0050f44e" ]
+              "form": [
+                "0050f44e"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "LoTD Forgotten Caches",
+      "description": "LoTD Forgotten Caches: Dwarven, Falmer, Fossil, Nordic - v6 only",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "LegacyoftheDragonborn.esm",
+              "form": [
+                "0029BDEB",
+                "0029BDEC",
+                "0029BDED",
+                "0029BDEE"
+              ]
             }
           ]
         }
@@ -85,7 +122,9 @@
           "forms": [
             {
               "plugin": "treasure_hunt.esl",
-              "form": [ "00008802" ]
+              "form": [
+                "00008802"
+              ]
             }
           ]
         }
@@ -100,7 +139,10 @@
           "forms": [
             {
               "plugin": "Midwood Isle.esp",
-              "form": [ "0010447B", "0010447C" ]
+              "form": [
+                "0010447B",
+                "0010447C"
+              ]
             }
           ]
         }
@@ -115,7 +157,9 @@
           "forms": [
             {
               "plugin": "SkyrimsUniqueTreasures.esp",
-              "form": [ "0000F700" ]
+              "form": [
+                "0000F700"
+              ]
             }
           ]
         }
@@ -130,7 +174,9 @@
           "forms": [
             {
               "plugin": "quest_seaofghosts.esp",
-              "form": [ "00045d6c" ]
+              "form": [
+                "00045d6c"
+              ]
             }
           ]
         }
