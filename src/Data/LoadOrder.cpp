@@ -76,6 +76,18 @@ bool LoadOrder::Analyze(void) {
                 formIDMask, priority);
     ++priority;
   }
+  // Legacy of the Dragonborn versioning
+  if (IncludesMod("LegacyoftheDragonborn.esm")) {
+    if (IncludesMod("LegacyoftheDragonborn0.esp")) {
+      m_lotdState = LotDState::V6;
+    } else {
+      m_lotdState = LotDState::V5;
+    }
+  } else {
+    m_lotdState = LotDState::Absent;
+  }
+  REL_MESSAGE("Legacy of the Dragonborn in Load Order? {}",
+              LotDStateName(m_lotdState));
   return true;
 }
 

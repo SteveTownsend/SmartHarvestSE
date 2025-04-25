@@ -697,6 +697,20 @@ inline std::string TaskTypeName(const TaskType taskType) {
   }
 }
 
+enum class LotDState { Absent, V5, V6 };
+inline std::string LotDStateName(const LotDState lotDState) {
+  switch (lotDState) {
+  case LotDState::Absent:
+    return "Absent";
+  case LotDState::V5:
+    return "V5";
+  case LotDState::V6:
+    return "V6";
+  default:
+    return "????";
+  }
+}
+
 } // namespace shse
 
 template <>

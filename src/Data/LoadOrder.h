@@ -85,6 +85,8 @@ public:
     int m_priority;
   };
 
+  inline LotDState GetLotDState() const { return m_lotdState; }
+
 private:
   static constexpr RE::FormID LightFormIDSentinel = 0xfe000000;
   static constexpr RE::FormID LightFormIDMask = 0xfefff000;
@@ -99,6 +101,7 @@ private:
   int m_shsePriority;
   int m_cosaveShsePriority;
   bool m_coSaveLoadOrderDiffers;
+  LotDState m_lotdState;
 };
 
 inline bool operator<(const LoadOrder::LoadInfo &lhs,
