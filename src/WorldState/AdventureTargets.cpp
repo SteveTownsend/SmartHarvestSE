@@ -450,14 +450,16 @@ void AdventureTargets::Categorize() {
       for (const auto &refr : location->overrideData->addedData) {
         RE::FormID parentID(refr.parentSpaceID);
         RE::TESForm *parentSpace(RE::TESForm::LookupByID(parentID));
-        worldSpace = parentSpace->As<RE::TESWorldSpace>();
-        if (worldSpace) {
-          DBG_MESSAGE("LCPR 0x{:08x} implies worldspace {}/0x{:08x} for "
-                      "location {}/0x{:08x}",
-                      refr.refID, worldSpace->GetName(),
-                      worldSpace->GetFormID(), location->GetName(),
-                      location->GetFormID());
-          LinkLocationToWorld(location, worldSpace);
+        if (parentSpace) {
+          worldSpace = parentSpace->As<RE::TESWorldSpace>();
+          if (worldSpace) {
+            DBG_MESSAGE("LCPR 0x{:08x} implies worldspace {}/0x{:08x} for "
+                        "location {}/0x{:08x}",
+                        refr.refID, worldSpace->GetName(),
+                        worldSpace->GetFormID(), location->GetName(),
+                        location->GetFormID());
+            LinkLocationToWorld(location, worldSpace);
+          }
         }
       }
     } else {
