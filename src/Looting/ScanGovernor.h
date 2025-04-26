@@ -93,6 +93,7 @@ public:
   void ResetLootedDynamicREFRs();
   void ResetLootedContainers();
   void ForgetLockedContainers();
+  void ForgetPeriodicMessages();
   void ClearPendingHarvestInfo(const bool gameReload);
   void GlowObject(RE::TESObjectREFR *refr, const int duration,
                   const ObjectType objectType, const GlowReason glowReason);
@@ -102,7 +103,7 @@ public:
   void SPERGMiningStart(void);
   void SPERGMiningEnd(void);
   void ReconcileSPERGMined(void);
-  void PeriodicReminder(const std::string &msg);
+  void PeriodicReminder(RE::TESForm *context, const std::string &msg);
 
 private:
   void ProgressGlowDemo();

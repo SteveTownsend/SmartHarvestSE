@@ -126,7 +126,8 @@ void EventPublisher::TriggerMining(RE::TESObjectREFR *refr,
                                    const bool manualLootNotify,
                                    const bool isFirehose) {
   // We always block the REFR before firing this
-  m_onMining.SendEvent(refr, static_cast<int>(resourceType), manualLootNotify,
+  m_onMining.SendEvent(refr, LocationTracker::Instance().GetCellSequence(),
+                       static_cast<int>(resourceType), manualLootNotify,
                        isFirehose);
 }
 
@@ -137,7 +138,8 @@ void EventPublisher::TriggerHarvest(RE::TESObjectREFR *refr,
                                     const float ingredientCount,
                                     const bool isWhitelisted) {
   // We always lock the REFR from more harvesting before firing this
-  m_onHarvest.SendEvent(refr, const_cast<RE::TESBoundObject *>(lootable),
+  m_onHarvest.SendEvent(refr, LocationTracker::Instance().GetCellSequence(),
+                        const_cast<RE::TESBoundObject *>(lootable),
                         lootable->GetName(), static_cast<int>(objType),
                         itemCount, isSilent, collectible, ingredientCount,
                         isWhitelisted);
@@ -149,7 +151,8 @@ void EventPublisher::TriggerHarvestSyntheticFlora(
     const bool collectible, const bool isWhitelisted) {
   // We always lock the REFR from more harvesting before firing this
   m_onHarvestSyntheticFlora.SendEvent(
-      refr, const_cast<RE::TESBoundObject *>(lootable), lootable->GetName(),
+      refr, LocationTracker::Instance().GetCellSequence(),
+      const_cast<RE::TESBoundObject *>(lootable), lootable->GetName(),
       static_cast<int>(objType), itemCount, isSilent, collectible,
       isWhitelisted);
 }
@@ -161,7 +164,9 @@ void EventPublisher::TriggerHarvestCritter(RE::TESObjectREFR *refr,
                                            const bool collectible,
                                            const bool isWhitelisted) {
   // We always lock the REFR from more harvesting before firing this
-  m_onHarvestCritter.SendEvent(refr, const_cast<RE::TESBoundObject *>(lootable),
+  m_onHarvestCritter.SendEvent(refr,
+                               LocationTracker::Instance().GetCellSequence(),
+                               const_cast<RE::TESBoundObject *>(lootable),
                                lootable->GetName(), static_cast<int>(objType),
                                itemCount, isSilent, collectible, isWhitelisted);
 }
@@ -169,7 +174,8 @@ void EventPublisher::TriggerHarvestCritter(RE::TESObjectREFR *refr,
 void EventPublisher::TriggerObjectGlow(RE::TESObjectREFR *refr,
                                        const int duration,
                                        const GlowReason glowReason) {
-  m_onObjectGlow.SendEvent(refr, duration, static_cast<int>(glowReason));
+  m_onObjectGlow.SendEvent(refr, LocationTracker::Instance().GetCellSequence(),
+                           duration, static_cast<int>(glowReason));
 }
 
 void EventPublisher::TriggerCheckOKToScan(const int nonce) {

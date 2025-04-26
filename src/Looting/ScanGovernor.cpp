@@ -227,6 +227,12 @@ void ScanGovernor::ForgetLockedContainers() {
   m_lockedContainers.clear();
 }
 
+void ScanGovernor::ForgetPeriodicMessages() {
+  DBG_MESSAGE("Clear locked containers blacklist");
+  RecursiveLockGuard guard(m_stateLock);
+  m_regulatedMessages.clear();
+}
+
 void ScanGovernor::RegisterActorTimeOfDeath(RE::TESObjectREFR *refr) {
   shse::ActorTracker::Instance().RecordTimeOfDeath(refr);
   // block REFR so we don't include in future scans
@@ -900,6 +906,7 @@ void ScanGovernor::Clear(const bool gameReload) {
   // clear lists of looted and locked containers
   ResetLootedContainers();
   ForgetLockedContainers();
+  ForgetPeriodicMessages();
 }
 
 bool ScanGovernor::IsLockedForHarvest(const RE::TESObjectREFR *refr) const {
@@ -1078,12 +1085,14 @@ void ScanGovernor::ReconcileSPERGMined(void) {
   m_spergInventory.reset();
 }
 
-// avoid spam for Message display that is now automated
-void ScanGovernor::PeriodicReminder(const std::string &msg) {
+// avoid spam for per-context Message display that is now automated
+void ScanGovernor::PeriodicReminder(RE::TESForm *context,
+                                    const std::string &msg) {
   const std::chrono::high_resolution_clock::time_point currentTime(
       std::chrono::high_resolution_clock::now());
-  // Retrieve last display time if present, and compare to currrent
-  auto lastDisplayed(m_regulatedMessages.insert({msg, currentTime}));
+  // Retrieve last display time if present, and compare to current
+  std::string full_context(std::to_string(context->GetFormID()) + msg);
+  auto lastDisplayed(m_regulatedMessages.insert({full_context, currentTime}));
   bool doDisplay(false);
   if (lastDisplayed.second) {
     // first time

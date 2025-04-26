@@ -716,8 +716,15 @@ void DataCase::ExcludeBuildYourNobleHouseIncomeChest() {
 }
 
 void DataCase::IncludeFossilMiningExcavation() {
-  static std::string espName("Fossilsyum.esp");
-  static RE::FormID excavationSiteFormID(0x3f41b);
+  std::string espName;
+  RE::FormID excavationSiteFormID;
+  if (LoadOrder::Instance().GetLotDState() != LotDState::V6) {
+    espName = "Fossilsyum.esp";
+    excavationSiteFormID = 0x3f41b;
+  } else {
+    espName = "LegacyoftheDragonborn.esm";
+    excavationSiteFormID = 0xefb73;
+  }
   RE::TESForm *excavationSiteForm(
       LoadOrder::Instance().LookupForm(excavationSiteFormID, espName));
   if (excavationSiteForm) {
@@ -1349,8 +1356,10 @@ void DataCase::ListsClear(const bool gameReload) {
   DBG_MESSAGE("Clear arrow history");
   m_arrowCheck.clear();
 
-  // only clear blacklist on game reload
   if (gameReload) {
+    DBG_MESSAGE("Clear digsite history");
+    m_digSiteRefresh.clear();
+    // only clear blacklist on game reload
     ClearReferenceBlacklist();
     RefreshKnownIngredients();
   }
@@ -1743,6 +1752,48 @@ float DataCase::PerkIngredientMultiplier(const RE::Actor *actor) const {
         }
       });
   return result;
+}
+
+bool DataCase::CheckIfArcheologyLeveledUp(const int skillValue) const {
+  // hard code MESG strings here
+  // [12] LegacyoftheDragonborn.esm (7F85A309) \ Message \ 12079D48
+  // <DBM_ArcheologySkillup>
+  std::string skillUp("Your archeology skill has increased to ");
+  skillUp += std::to_string(skillValue);
+  RE::DebugNotification(skillUp.c_str());
+  if ((skillValue % 5) == 0 && skillValue <= 100) {
+    // [12] LegacyoftheDragonborn.esm (7F85A309) \ Message \ 12079D49
+    // <DBM_ArcheologySkillupPerk>
+    RE::DebugNotification("You have gained an Archeology Perk Point!");
+    return true;
+  }
+  return false;
+}
+
+int DataCase::GetNextDig(RE::TESForm *digSite) const {
+  if (!digSite) {
+    REL_ERROR("GetNextDig requires Form");
+    return 0;
+  }
+  RecursiveLockGuard guard(m_blockListLock);
+  auto found(m_digSiteRefresh.find(digSite->GetFormID()));
+  if (found != m_digSiteRefresh.cend()) {
+    REL_MESSAGE("GetNextDig got refresh {} for Form 0x{:08x}", found->second,
+                digSite->GetFormID());
+    return found->second;
+  }
+  REL_WARNING("GetNextDig could not find Form 0x{:08x}", digSite->GetFormID());
+  return 0;
+}
+void DataCase::SetNextDig(RE::TESForm *digSite, const int refreshTime) {
+  if (!digSite) {
+    REL_ERROR("SetNextDig requires Form");
+    return;
+  }
+  REL_MESSAGE("SetNextDig refresh {} for Form 0x{:08x}", refreshTime,
+              digSite->GetFormID());
+  RecursiveLockGuard guard(m_blockListLock);
+  m_digSiteRefresh[digSite->GetFormID()] = refreshTime;
 }
 
 bool DataCase::IsSlowTimeEffectActive() const {

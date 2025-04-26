@@ -24,6 +24,7 @@ http://www.fsf.org/licensing/licenses
 
 #include "PluginFacade.h"
 #include "Data/dataCase.h"
+#include "Data/LoadOrder.h"
 #include "FormHelpers/IHasValueWeight.h"
 #include "Looting/ScanGovernor.h"
 #include "Looting/ManagedLists.h"
@@ -77,6 +78,10 @@ bool LoggingEnabled(RE::StaticFunctionTag *) {
   REL_MESSAGE("Script logging inactive");
   return false;
 #endif
+}
+
+bool ContextValid(RE::StaticFunctionTag *, const int context) {
+  return context == shse::LocationTracker::Instance().GetCellSequence();
 }
 
 RE::BSFixedString GetPluginName(RE::StaticFunctionTag *,
@@ -342,21 +347,41 @@ void PostprocessSPERGMining(RE::StaticFunctionTag *) {
   shse::ScanGovernor::Instance().SPERGMiningEnd();
 }
 
-void PeriodicReminder(RE::StaticFunctionTag *, RE::BGSMessage *mesg) {
+void PeriodicReminder(RE::StaticFunctionTag *, RE::TESForm *context,
+                      RE::BGSMessage *mesg) {
   // bail if MESG missing or requires MessageBox
   if (!mesg || (mesg->flags & RE::BGSMessage::MessageFlag::kMessageBox))
     return;
   RE::BSString description;
   mesg->GetDescription(description, nullptr);
-  shse::ScanGovernor::Instance().PeriodicReminder(description.c_str());
+  shse::ScanGovernor::Instance().PeriodicReminder(context, description.c_str());
 }
 
-void PeriodicReminderString(RE::StaticFunctionTag *, RE::BSFixedString msg) {
-  shse::ScanGovernor::Instance().PeriodicReminder(msg.c_str());
+void PeriodicReminderString(RE::StaticFunctionTag *, RE::TESForm *context,
+                            RE::BSFixedString msg) {
+  shse::ScanGovernor::Instance().PeriodicReminder(context, msg.c_str());
 }
 
 void UnblockMineable(RE::StaticFunctionTag *, RE::TESObjectREFR *mineable) {
   shse::DataCase::GetInstance()->ForgetFirehoseSource(mineable);
+}
+
+bool IsLotDv6(RE::StaticFunctionTag *) {
+  return shse::LoadOrder::Instance().GetLotDState() == shse::LotDState::V6;
+}
+
+bool IsArcheologyLeveledUp(RE::StaticFunctionTag *, const int skillValue) {
+  return shse::DataCase::GetInstance()->CheckIfArcheologyLeveledUp(skillValue);
+}
+
+// required because Mining script is on player, but we have multiple dig-site
+// states to remember
+int GetNextDig(RE::StaticFunctionTag *, RE::TESForm *digSite) {
+  return shse::DataCase::GetInstance()->GetNextDig(digSite);
+}
+void SetNextDig(RE::StaticFunctionTag *, RE::TESForm *digSite,
+                const int refreshTime) {
+  shse::DataCase::GetInstance()->SetNextDig(digSite, refreshTime);
 }
 
 void AllowSearch(RE::StaticFunctionTag *) {
@@ -1062,6 +1087,11 @@ bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine *a_vm) {
                          papyrus::PeriodicReminderString);
   a_vm->RegisterFunction("UnblockMineable", SHSE_PROXY,
                          papyrus::UnblockMineable);
+  a_vm->RegisterFunction("IsLotDv6", SHSE_PROXY, papyrus::IsLotDv6);
+  a_vm->RegisterFunction("IsArcheologyLeveledUp", SHSE_PROXY,
+                         papyrus::IsArcheologyLeveledUp);
+  a_vm->RegisterFunction("GetNextDig", SHSE_PROXY, papyrus::GetNextDig);
+  a_vm->RegisterFunction("SetNextDig", SHSE_PROXY, papyrus::SetNextDig);
 
   a_vm->RegisterFunction("ResetList", SHSE_PROXY, papyrus::ResetList);
   a_vm->RegisterFunction("AddEntryToList", SHSE_PROXY, papyrus::AddEntryToList);

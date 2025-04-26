@@ -66,17 +66,17 @@ private:
   RE::BGSRefAlias *m_eventTarget;
 
   SKSE::RegistrationSet<RE::TESObjectREFR *> m_onGetProducerLootable;
-  SKSE::RegistrationSet<RE::TESObjectREFR *, RE::TESForm *, std::string, int,
-                        int, bool, bool, float, bool>
+  SKSE::RegistrationSet<RE::TESObjectREFR *, int, RE::TESForm *, std::string,
+                        int, int, bool, bool, float, bool>
       m_onHarvest;
-  SKSE::RegistrationSet<RE::TESObjectREFR *, RE::TESForm *, std::string, int,
-                        int, bool, bool, bool>
+  SKSE::RegistrationSet<RE::TESObjectREFR *, int, RE::TESForm *, std::string,
+                        int, int, bool, bool, bool>
       m_onHarvestSyntheticFlora;
-  SKSE::RegistrationSet<RE::TESObjectREFR *, RE::TESForm *, std::string, int,
-                        int, bool, bool, bool>
+  SKSE::RegistrationSet<RE::TESObjectREFR *, int, RE::TESForm *, std::string,
+                        int, int, bool, bool, bool>
       m_onHarvestCritter;
-  SKSE::RegistrationSet<RE::TESObjectREFR *, int, bool, bool> m_onMining;
-  SKSE::RegistrationSet<RE::TESObjectREFR *, int, int> m_onObjectGlow;
+  SKSE::RegistrationSet<RE::TESObjectREFR *, int, int, bool, bool> m_onMining;
+  SKSE::RegistrationSet<RE::TESObjectREFR *, int, int, int> m_onObjectGlow;
   SKSE::RegistrationSet<int> m_onCheckOKToScan;
   SKSE::RegistrationSet<> m_onGameReady;
 };

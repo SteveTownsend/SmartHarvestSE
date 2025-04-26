@@ -101,6 +101,9 @@ public:
 
   bool PerksAddLeveledItemsOnDeath(const RE::Actor *actor) const;
   float PerkIngredientMultiplier(const RE::Actor *actor) const;
+  bool CheckIfArcheologyLeveledUp(const int skillValue) const;
+  int GetNextDig(RE::TESForm *digSite) const;
+  void SetNextDig(RE::TESForm *digSite, const int refreshTime);
 
   inline const std::unordered_map<RE::FormID, std::string> &
   OffLimitsLocations() {
@@ -185,6 +188,7 @@ private:
       m_modifyHarvestedPerkMultipliers;
   RE::BGSKeyword *m_spellTomeKeyword;
   bool m_miningDisabled;
+  std::unordered_map<RE::FormID, int> m_digSiteRefresh;
 
   mutable RecursiveLock m_blockListLock;
 

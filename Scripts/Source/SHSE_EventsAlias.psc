@@ -60,12 +60,23 @@ int resource_Volcanic
 int resource_VolcanicDigSite
 
 bool hasFossilMining = False
+; thread-safe singleton, multiplex all dig-sites over this
 int NextDig
 LeveledItem FOS_LItemFossilTierOneGeode
 LeveledItem FOS_LItemFossilTierOneVolcanic
 LeveledItem FOS_LItemFossilTierOneyum
+; incorrect, obsolete - leave to avoid script errors
 LeveledItem FOS_LItemFossilTierOneVolcanicDigSite
 LeveledItem FOS_LItemFossilTierTwoVolcanic
+; LotD v6 only
+LeveledItem DBM_FossilFragmentDrop90
+GlobalVariable FOS_NDrop
+GlobalVariable FOS_CDrop
+GlobalVariable FOS_VDrop
+GlobalVariable DBM_ArcCap
+GlobalVariable DBM_ArcPerkToSpend
+GlobalVariable DBM_ArcSkill
+Sound UILevelUp ;  00057B45
 
 bool hasExtendedCutSaintsAndSeducers = False
 bool hasCCSaintsAndSeducers = False
@@ -1019,7 +1030,7 @@ bool Function CanMine(MineOreScript handler, int available)
     ; in ResourceCount and the remaining amount in ResourceCountCurrent 
     ;DebugTrace("Available ore: " + available)
     if available == 0
-        PeriodicReminder(handler.DepletedMessage)
+        PeriodicReminder(handler as Form, handler.DepletedMessage)
         return False
     endif
     ; Cidhna Mine special case
@@ -1041,7 +1052,7 @@ bool Function LacksRequiredTools(MineOreScript handler)
     ; Nor do we check that a correct item is being used, as in Advanced Mining: only check player has tool in inventory
     ;DebugTrace("Tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
     if miningToolsRequired && !handler.playerHasTools()
-        PeriodicReminder(handler.FailureMessage)
+        PeriodicReminder(handler as Form, handler.FailureMessage)
         return True
     endif
     return False
@@ -1051,7 +1062,7 @@ bool Function CanMineCACO(CACO_MineOreScript handler, int available)
     ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
     ; in ResourceCount and the remaining amount in ResourceCountCurrent 
     if available == 0
-        PeriodicReminder(handler.DepletedMessage)
+        PeriodicReminder(handler as Form, handler.DepletedMessage)
         return False
     endif
     ; duplicate vanilla Cidhna Mine processing
@@ -1073,7 +1084,7 @@ bool Function LacksRequiredToolsCACO(CACO_MineOreScript handler)
     ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
     ;DebugTrace("CACO tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
     if miningToolsRequired && !handler.playerHasTools()
-        PeriodicReminder(handler.FailureMessage)
+        PeriodicReminder(handler as Form, handler.FailureMessage)
         return True
     endif
     return False
@@ -1085,18 +1096,24 @@ bool Function LacksRequiredToolsFossils(FOS_DigsiteScript handler)
     ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
     ;DebugTrace("Fossil tools required: " + miningToolsRequired + ", PlayerHasTools:" + thisPlayer.GetItemCount(handler.mineOreToolsList))
     if miningToolsRequired && !thisPlayer.GetItemCount(handler.mineOreToolsList)
-        PeriodicReminderString("You lack a pick")
+        PeriodicReminderString(handler as Form, "You lack a pick")
         return True
     endif
     return False
 endFunction
 
 ; brute force mineable resource gathering to bypass immersive but slow MineOreScript/Furniture handshaking and animations
-Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify, bool isFirehose)
+Event OnMining(ObjectReference akMineable, int context, int resourceType, bool manualLootNotify, bool isFirehose)
     if logEvent
         DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
         DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
     endIf
+    if !ContextValid(context)
+        AlwaysTrace("OnMining: aborting after CELL changed for" + akMineable)
+        UnblockMineable(akMineable)
+        return
+    endif
+
     int miningStrikes = 0
     int targetResourceTotal = 0
     int strikesToCollect = 0
@@ -1252,6 +1269,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             endIf            
             ; housekeeping
             float now = Utility.GetCurrentGameTime()
+            NextDig = GetNextDig(akMineable)
             if FOSMinable.GetLinkedRef().IsDisabled() && now >= NextDig
                 FOSMinable.GetLinkedRef().Enable()
             endif
@@ -1264,13 +1282,28 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 ; allow retry, player might acquire tools in the interim
                 UnblockMineable(akMineable)
             elseif now >= NextDig
-                NextDig = (now + 30) as Int
-                thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanicDigSite, 1)
+                SetNextDig(akMineable, (now + FOSMinable.FOS_ResetTime.GetValue()) as Int)
+                int fos_index = FOS_VDrop.GetValue() as int
+                fos_index += 1
+                While fos_index
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
+                    fos_index -= 1
+                EndWhile
                 thisPlayer.AddItem(FOS_LItemFossilTierTwoVolcanic, 1)
-                PeriodicReminderString("Dig site is exhausted")
+                if IsLotDv6()
+                    If DBM_ArcSkill.GetValue() < DBM_ArcCap.GetValue()	
+                        DBM_ArcSkill.SetValue(DBM_ArcSkill.GetValue() + 1)
+                        ; extra logic if this triggers a level-up
+                        if IsArcheologyLeveledUp(DBM_ArcSkill.Value as int)
+                            DBM_ArcPerkToSpend.SetValue(DBM_ArcPerkToSpend.GetValue() + 1)
+                            UILevelUp.Play(thisPlayer)
+                        endif
+                    endif
+                endif
+                PeriodicReminderString(FOSMinable as Form, "Dig site is exhausted")
                 FOSMinable.GetLinkedRef().Disable() 
             else
-                PeriodicReminderString("Dig site is exhausted, check back at a later time.")    
+                PeriodicReminderString(FOSMinable as Form, "Dig site is exhausted, check back at a later time.")    
             endif
             handled = true
         endif
@@ -1292,14 +1325,29 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         if (dropFactor <= miningStrikes)
             if logEvent
                 DebugTrace("Fossil Mining: provide loot!")
-            endIf            
+            endIf
+            int fos_index
             if (resourceType == resource_Geode)
-                thisPlayer.AddItem(FOS_LItemFossilTierOneGeode, 1)
-            Elseif (resourceType == resource_Volcanic)
-                thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
-            Elseif (resourceType == resource_Ore)
-                thisPlayer.AddItem(FOS_LItemFossilTierOneyum, 1)
-            Endif
+                fos_index = FOS_CDrop.GetValue() as int
+            elseif (resourceType == resource_Volcanic)
+                fos_index = FOS_VDrop.GetValue() as int
+            elseif (resourceType == resource_Ore)
+                    fos_index = FOS_NDrop.GetValue() as int
+            endif
+            fos_index += 1
+            While fos_index
+                if (resourceType == resource_Geode)
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneGeode, 1)
+                Elseif (resourceType == resource_Volcanic)
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
+                Elseif (resourceType == resource_Ore)
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneyum, 1)
+                Endif
+                if IsLotDv6()
+                    thisPlayer.AddItem(DBM_FossilFragmentDrop90, 1)
+                endif
+                fos_index -= 1
+            EndWhile
         Endif
     Endif
 
@@ -1317,13 +1365,18 @@ int Function SyntheticFloraActivateCount(ObjectReference target)
 EndFunction
 
 ; don't worry about interrupting Fishing, the minigame won't yield this type of object
-Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
+Event OnHarvestSyntheticFlora(ObjectReference akTarget, int context, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
     Form baseForm = akTarget.GetBaseObject()
     int baseID = baseForm.GetFormID()
     bool activated = False
+    if !ContextValid(context)
+        AlwaysTrace("OnHarvestSyntheticFlora: aborting after CELL changed for" + akTarget)
+        NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+        return
+    endif
 
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if !akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget)
@@ -1375,7 +1428,7 @@ bool Function CanHarvest(int objectType)
     return True
 endFunction
 
-Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
+Event OnHarvestCritter(ObjectReference akTarget, int context, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
@@ -1383,24 +1436,33 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
     int baseID = baseForm.GetFormID()
     bool activated = False
 
-    ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
-        activated = ActivateItem2(akTarget, thisPlayer, silent, 1)
-        if !activated
-            AlwaysTrace("OnHarvestCritter: Activate failed for " + akTarget)
-        endIf
-        ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
+    if ContextValid(context)
+        ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
+        if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
+            activated = ActivateItem2(akTarget, thisPlayer, silent, 1)
+            if !activated
+                AlwaysTrace("OnHarvestCritter: Activate failed for " + akTarget)
+            endIf
+            ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
+        endif
+    else
+        AlwaysTrace("OnHarvestCritter: aborting after CELL changed for" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
 
-Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
+Event OnHarvest(ObjectReference akTarget, int context, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
     Form baseForm = akTarget.GetBaseObject()
     int baseID = baseForm.GetFormID()
     bool activated = False
+    if !ContextValid(context)
+        AlwaysTrace("OnHarvest: aborting after CELL changed for" + akTarget)
+        NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+        return
+    endif
 
     ;DebugTrace("OnHarvest: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if (IsBookObject(itemType))
@@ -1656,7 +1718,11 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
 endFunction
 
 ; This only handles ore-veins
-Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
+Event OnObjectGlow(ObjectReference akTargetRef, int context, int duration, int reason)
+    if !ContextValid(context)
+        AlwaysTrace("OnObjectGlow: aborting after CELL changed for" + akTargetRef)
+        return
+    endif
     ; do not glow ore-vein if it's depleted. Various checks.
     MineOreScript mineable = akTargetRef as MineOreScript
     bool oreHandled = False
@@ -1775,15 +1841,33 @@ Event OnGameReady()
         endif
     endif
 
-    ;look for Fossil Mining form IDs, to handle fossil handout after mining
-    FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
-    if FOS_LItemFossilTierOneGeode
-        AlwaysTrace("Fossil Mining found in Load Order")
+    ;check for LotD v6, which includes Fossil Mining
+    if IsLotDv6()
+        AlwaysTrace("Fossil Mining via LotD v6")
         hasFossilMining = True
-        FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
+        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0xf0b39, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0xf0b36, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0xf0b2f, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0xf0b37, "LegacyoftheDragonborn.esm") as LeveledItem
+        DBM_FossilFragmentDrop90 = Game.GetFormFromFile(0x21647, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_NDrop = Game.GetFormFromFile(0xf0ae3, "LegacyoftheDragonborn.esm") as GlobalVariable
+        FOS_CDrop = Game.GetFormFromFile(0xf0ae4, "LegacyoftheDragonborn.esm") as GlobalVariable
+        FOS_VDrop = Game.GetFormFromFile(0xf0ae5, "LegacyoftheDragonborn.esm") as GlobalVariable
+        DBM_ArcCap = Game.GetFormFromFile(0x84157, "LegacyoftheDragonborn.esm") as GlobalVariable
+        DBM_ArcPerkToSpend = Game.GetFormFromFile(0x1c6624, "LegacyoftheDragonborn.esm") as GlobalVariable
+        DBM_ArcSkill = Game.GetFormFromFile(0x39fce0, "LegacyoftheDragonborn.esm") as GlobalVariable
+        UILevelUp = Game.GetFormFromFile(0x57b45, "Skyrim.esm") as Sound
+
+    else
+        ;look for Fossil Mining form IDs, to handle fossil handout after mining
+        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
+        if FOS_LItemFossilTierOneGeode
+            AlwaysTrace("Fossil Mining found in Load Order")
+            hasFossilMining = True
+            FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
+            FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
+            FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
+        endif
     endif
 
     ; Check for CC Saints and Seducers
