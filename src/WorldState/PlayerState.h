@@ -54,6 +54,7 @@ public:
     return m_carryWeightEffect;
   }
   void ReviewExcessInventory(bool force);
+  void TrySendSLotDSupplies();
 
 private:
   void CheckPerks(const bool force);
@@ -84,6 +85,8 @@ private:
   OwnershipRule m_ownershipRule;
   SpecialObjectHandling m_belongingsCheck;
   bool m_disableWhileMounted;
+  RE::TESObjectREFR *m_supplies_refr = nullptr;
+  RE::TESGlobal *m_lotd_safehouse_state = nullptr;
 
   float m_gameTime;
 

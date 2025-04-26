@@ -915,9 +915,13 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     HandleCrosshairPauseHotKey(targetedRefr)
                     keyHandlingActive = false
                     return
+                elseif holdTime < 5.0
+                    ; try LotD supply shipment
+                    TryShipLotDSupplies()
+                    return
                 endIf
                 ; trigger shader test on really long press
-                ToggleCalibration(holdTime > 5.0)
+                ToggleCalibration(holdTime > 10.0)
             else
                 Pause()
             endif

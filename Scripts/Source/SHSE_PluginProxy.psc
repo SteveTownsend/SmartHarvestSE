@@ -40,6 +40,7 @@ Function SetLootableForProducer(Form producer, Form lootable) global native
 Function ClearLootableForProducer(Form producer) global native
 Function SetHarvested(ObjectReference refr) global native
 bool Function ContextValid(int context) global native
+Function TryShipLotDSupplies() global native
 
 Function PrepareSPERGMining() global native
 Function PostprocessSPERGMining() global native

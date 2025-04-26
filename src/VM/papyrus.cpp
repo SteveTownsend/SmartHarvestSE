@@ -84,6 +84,10 @@ bool ContextValid(RE::StaticFunctionTag *, const int context) {
   return context == shse::LocationTracker::Instance().GetCellSequence();
 }
 
+void TryShipLotDSupplies(RE::StaticFunctionTag *) {
+  shse::PlayerState::Instance().TrySendSLotDSupplies();
+}
+
 RE::BSFixedString GetPluginName(RE::StaticFunctionTag *,
                                 RE::TESForm *thisForm) {
   if (!thisForm)
@@ -1015,6 +1019,9 @@ bool RegisterFuncs(RE::BSScript::Internal::VirtualMachine *a_vm) {
   a_vm->RegisterFunction("DebugTrace", SHSE_PROXY, papyrus::DebugTrace);
   a_vm->RegisterFunction("AlwaysTrace", SHSE_PROXY, papyrus::AlwaysTrace);
   a_vm->RegisterFunction("LoggingEnabled", SHSE_PROXY, papyrus::LoggingEnabled);
+  a_vm->RegisterFunction("ContextValid", SHSE_PROXY, papyrus::ContextValid);
+  a_vm->RegisterFunction("TryShipLotDSupplies", SHSE_PROXY,
+                         papyrus::TryShipLotDSupplies);
   a_vm->RegisterFunction("GetPluginName", SHSE_PROXY, papyrus::GetPluginName);
   a_vm->RegisterFunction("GetPluginVersion", SHSE_PROXY,
                          papyrus::GetPluginVersion);

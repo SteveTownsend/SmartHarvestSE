@@ -26,6 +26,7 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "FormHelpers/FormHelper.h"
 #include "WorldState/LocationTracker.h"
+#include "VM/papyrus.h"
 #include "VM/TaskDispatcher.h"
 #include "Looting/ScanGovernor.h"
 #include "Utilities/utils.h"
@@ -143,6 +144,42 @@ void PlayerState::ReviewExcessInventory(bool force) {
   if (m_lastExcessCheck <= cutoffPoint) {
     force = true;
   }
+  // Check LotD supply push
+  static bool checkedShipSupplies = false;
+  if (!checkedShipSupplies) {
+    if (LoadOrder::Instance().GetLotDState() != LotDState::Absent) {
+      // prepare the ACTI target colocated with SmartHarvestSE dummy CONT
+      auto my_barrel_refr(
+          DataCase::GetInstance()->FindExactMatch<RE::TESObjectREFR>(
+              "SmartHarvestSE.esp", 0x808));
+      auto lotd_supplies(
+          DataCase::GetInstance()->FindExactMatch<RE::TESObjectACTI>(
+              "LegacyoftheDragonborn.esm", 0x121517));
+      m_lotd_safehouse_state =
+          DataCase::GetInstance()->FindExactMatch<RE::TESGlobal>(
+              "LegacyoftheDragonborn.esm", 0x5a947e);
+      if (my_barrel_refr && lotd_supplies && m_lotd_safehouse_state) {
+        REL_MESSAGE("Smart Harvest hidden REFR 0x{:08x}",
+                    my_barrel_refr->GetFormID());
+        REL_MESSAGE("LotD Supplies ACTI 0x{:08x}", lotd_supplies->GetFormID());
+        REL_MESSAGE("LotD Safehouse State GLOB 0x{:08x}",
+                    m_lotd_safehouse_state->GetFormID());
+
+        m_supplies_refr =
+            my_barrel_refr->PlaceObjectAtMe(lotd_supplies, true).get();
+        if (m_supplies_refr) {
+          REL_MESSAGE("LotD Supplies Persistent REFR 0x{:08x}",
+                      m_supplies_refr->GetFormID());
+        } else {
+          REL_WARNING("LotD Supplies Persistent REFR not resolved");
+        }
+      } else {
+        REL_WARNING(
+            "Smart Harvest CONT REFR or LotD Supplies ACTI not resolved");
+      }
+    }
+    checkedShipSupplies = true;
+  }
   // prepare delta updates for processing on this pass - local copy is ignored
   // on full review (force = true)
   InventoryUpdates updates;
@@ -186,9 +223,36 @@ void PlayerState::ReviewExcessInventory(bool force) {
   }
 }
 
+void PlayerState::TrySendSLotDSupplies() {
+  if (!m_supplies_refr) {
+    static RE::BSFixedString error(papyrus::GetTranslation(
+        nullptr, RE::BSFixedString("$SHSE_LOTD_SUPPLIES_NOT_FOUND")));
+    if (!error.empty()) {
+      RE::DebugNotification(error.c_str());
+    }
+    REL_WARNING("Shipping supplies not possible, Legacy of the Dragonborn "
+                "Safehouse not detected");
+    return;
+  }
+  if (m_lotd_safehouse_state->value == 0.0) {
+    static RE::BSFixedString error(papyrus::GetTranslation(
+        nullptr, RE::BSFixedString("$SHSE_LOTD_NO_SAFEHOUSE_ACCESS")));
+    if (!error.empty()) {
+      RE::DebugNotification(error.c_str());
+    }
+    REL_WARNING("Shipping supplies requires access to Legacy of the Dragonborn "
+                "Safehouse");
+    return;
+  }
+  if (!m_supplies_refr->ActivateRef(RE::PlayerCharacter::GetSingleton(), 0,
+                                    nullptr, 1, false)) {
+    REL_WARNING("Error shipping supplies to LotD Safehouse");
+  }
+}
+
 // The shift to SPEL use to adjust carry weight under Github issue #480 means
-// it's a simple toggle on/off However, we must check there is no residual delta
-// from the old manual Actor-Value adjustment
+// it's a simple toggle on/off However, we must check there is no residual
+// delta from the old manual Actor-Value adjustment
 void PlayerState::ReconcileCarryWeight(const bool doReload) {
   bool managePlayerHome(SettingsCache::Instance().UnencumberedInPlayerHome());
   bool manageIfWeaponDrawn(
@@ -395,8 +459,8 @@ void PlayerState::UpdateGameTime() {
 
 double PlayerState::ArrowMovingThreshold() const {
   // Moving arrows must be skipped if they are in flight. Bobbing on water or
-  // rolling around does not count. Assume in-flight movement rate at least N=5
-  // feet per second, scaled to in-game distance units and for loot scan
+  // rolling around does not count. Assume in-flight movement rate at least
+  // N=5 feet per second, scaled to in-game distance units and for loot scan
   // interval. https://github.com/SteveTownsend/SmartHarvestSE/issues/333
   // reduced this by a factor of 5 when time is slowed
   const double footUnitsPerDelay =
@@ -417,13 +481,13 @@ int PlayerState::ItemHeadroom(RE::TESBoundObject *form, const int delta) const {
   auto cached(m_currentItems.find(form));
   if (cached == m_currentItems.end()) {
     itemEntry.Populate();
-    // add to cache if limited and not found, to keep cache accurate until next
-    // full review
+    // add to cache if limited and not found, to keep cache accurate until
+    // next full review
     cached = m_currentItems.insert({form, itemEntry}).first;
   }
 
-  // Trigger delta reconciliation before next loot scan whenever we loot an item
-  // with inventory limits
+  // Trigger delta reconciliation before next loot scan whenever we loot an
+  // item with inventory limits
   m_updates.insert(form);
   return cached->second.Headroom(delta);
 }
