@@ -25,3 +25,5 @@ skyrimse.ppj
 debug-msvc
 logging-msvc
 release-msvc
+Scripts/Source/fos_digsitescript.psc
+Scripts/fos_digsitescript.pex

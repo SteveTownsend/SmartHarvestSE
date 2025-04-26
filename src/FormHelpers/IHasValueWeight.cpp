@@ -44,6 +44,23 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const {
   if (IsValuable())
     return false;
 
+  // A specified default for value-weight supersedes a missing type-specific
+  // value-weight
+  double valueWeight(SettingsCache::Instance().ValueWeight(m_objectType));
+  if (valueWeight <= 0.) {
+    valueWeight = SettingsCache::Instance().ValueWeightDefault();
+  }
+  // Ammo is a special case. Can be weightless, but we want to use absolute
+  // check on damage if V/W is configured.
+  if (m_objectType == ObjectType::ammo && valueWeight > 0.) {
+    // arrows use the value as an absolute threshold - in this case value
+    // represents damage done. Allow small tolerance for floating point
+    // uncertainty
+    DBG_VMESSAGE("{}/0x{:08x} ammo damage {} vs threshold {:0.2f}", GetName(),
+                 GetFormID(), worth, valueWeight);
+    return worth < valueWeight - 0.01;
+  }
+
   double weight = GetWeight();
   if (SettingsCache::Instance().CheckWeightlessValue() && weight == 0.0) {
     bool result(worth <
@@ -52,22 +69,9 @@ bool IHasValueWeight::ValueWeightTooLowToLoot() const {
     DBG_VMESSAGE("Weightless item value too low to loot? {}", worth, result);
     return result;
   }
-  // A specified default for value-weight supersedes a missing type-specific
-  // value-weight
-  double valueWeight(SettingsCache::Instance().ValueWeight(m_objectType));
-  if (valueWeight <= 0.) {
-    valueWeight = SettingsCache::Instance().ValueWeightDefault();
-  }
 
-  if (valueWeight > 0.) {
-    if (m_objectType == ObjectType::ammo) {
-      // arrows use the value as an absolute threshold - in this case value
-      // represents damage done. Allow small tolerance for floating point
-      // uncertainty
-      DBG_VMESSAGE("{}/0x{:08x} ammo damage {} vs threshold {:0.2f}", GetName(),
-                   GetFormID(), worth, valueWeight);
-      return worth < valueWeight - 0.01;
-    }
+  // Ammo Damage was checked above if V/W is configured
+  if (valueWeight > 0. && m_objectType != ObjectType::ammo) {
     if (worth > 0. && weight <= 0.) {
       DBG_VMESSAGE("{}/0x{:08x} has value {}, weightless", GetName(),
                    GetFormID(), worth);
