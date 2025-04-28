@@ -447,6 +447,26 @@
           ]
         }
       }
+    },
+    {
+      "name": "Cheesemod for everyone",
+      "description": "Collects all cheese from the Prince of Madness",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "yumcheese.esp",
+              "formID": "3100A4AE"
+            }
+          ]
+        }
+      }
     }
   ]
 }

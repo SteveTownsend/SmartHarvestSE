@@ -638,8 +638,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
   if (m_playerCellID == InvalidForm)
     return false;
 
-  const RE::BGSLocation *playerLocation(
-      player->GetPlayerRuntimeData().currentLocation);
+  const RE::BGSLocation *playerLocation(cell->GetLocation());
   if (m_playerCellID != originalCellID || playerLocation != originalLocation ||
       m_tellPlayerIfCanLootAfterLoad) {
     // record all Location changes - Location may be blank now but we want to
