@@ -7,13 +7,14 @@
     Release="false" 
     Final="false">
     <Imports>
+        <Import>J:\OmegaLoTD\Tools\overwrite\Source\Scripts</Import>
+        <Import>J:\OmegaLoTD\Tools\mods\Legacy of the Dragonborn v6\scripts\source</Import>
         <Import>.\Scripts\Source</Import>
         <Import>i:\GitHub\source\scripts</Import>
         <Import>j:\OmegaLOTD\Tools\mods\SKSE Scripts\Scripts\Source</Import>
         <Import>J:\SteamLibrary\steamapps\common\Skyrim Special Edition\Data\Source\Scripts</Import>
         <Import>J:\SkyUI_5.1_SDK\Scripts\Source</Import>
         <Import>J:\OmegaLoTD\Tools\mods\SkyUI - Resort\scripts\source</Import>
-        <Import>J:\OmegaLoTD\Tools\overwrite\Source\Scripts</Import>
     </Imports>
     <Scripts>
         <Script>SHSE_EventsAlias</Script>

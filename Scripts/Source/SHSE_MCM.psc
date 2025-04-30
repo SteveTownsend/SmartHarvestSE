@@ -301,10 +301,10 @@ float[] function GetSettingToExcessHandlingArray(int section1, int section2)
         if SupportsExcessHandling(objType)
             float setting = GetSettingObjectArrayEntry(section1, section2, objType)
             ; 64 containers, plus leave/sell/no-limit - 0 based
-            if setting > (2 + 64) as float
+            if setting > (2 + eventScript.LootTargetMax) as float
                 AlwaysTrace("Out of range excess handling " + setting + " for objType" + objType)
                 ; references unknown transfer target - pick highest valid value
-                setting = (2 + 64) as float
+                setting = (2 + eventScript.LootTargetMax) as float
             endif
             result[index] = setting
         else
@@ -560,8 +560,8 @@ Function SetOreVeinChoices()
 EndFunction
 
 Function DefaultExcessDisposalChoices()
-    ; No Action/Leave/Sell/Container Max (64)
-    s_excessDisposalArray = New String[67]
+    ; No Action/Leave/Sell/Container Max
+    s_excessDisposalArray = Utility.CreateStringArray(3 + eventScript.LootTargetMax)
     s_excessDisposalArray[0] = "$SHSE_NO_LIMITS"
     s_excessDisposalArray[1] = "$SHSE_LEAVE_BEHIND"
     s_excessDisposalArray[2] = "$SHSE_AUTO_SELL"
@@ -570,12 +570,12 @@ Function DefaultExcessDisposalChoices()
 EndFunction
 
 Function AugmentExcessDisposalChoices()
-    ; Leave/Sell/Container - max length 3 + 64
+    ; Leave/Sell/Container - max length 3 + eventScript.LootTargetMax
     int index = 0
     int choice = 3
     
     ; mappings of fixed entries, augmented by sparse array xref
-    s_excessDisposalEnumToChoice = Utility.CreateIntArray(3 + 64, -1)
+    s_excessDisposalEnumToChoice = Utility.CreateIntArray(3 + eventScript.LootTargetMax, -1)
     s_excessDisposalEnumToChoice[0] = 0
     s_excessDisposalEnumToChoice[1] = 1
     s_excessDisposalEnumToChoice[2] = 2
@@ -918,7 +918,7 @@ Function InitExcessInventoryHandling()
 EndFunction
 
 Function ExpandExcessInventoryTargets()
-    eventScript.MigrateTransferListArrays(16, 64)
+    eventScript.MigrateTransferListArrays(16, eventScript.LootTargetMax)
 EndFunction
 
 Function ResetExcessInventoryTargets()
@@ -1119,7 +1119,7 @@ Event OnConfigInit()
 endEvent
 
 int function GetVersion()
-    return 55
+    return 56
 endFunction
 
 ; called when mod is _upgraded_ mid-playthrough
@@ -1258,7 +1258,7 @@ Event OnVersionUpdate(int a_version)
         InstallLockedContainerOptions()
     endIf
     if a_version >= 52 && CurrentVersion < 52
-	ResetExcessInventoryTargets()
+	    ResetExcessInventoryTargets()
         AddConsumableObjectTypes()
     endIf
     if a_version >= 53 && CurrentVersion < 53
@@ -1272,6 +1272,12 @@ Event OnVersionUpdate(int a_version)
         ; this got a new option
         SetDeadBodyChoices()
         SetCheckWeightless()
+    endif
+    if a_version >= 56 && CurrentVersion < 56
+        eventScript.ConvertExcessInventoryTargetsToRefAlias(64, eventScript.LootTargetMax)
+    endif
+    if a_version != CurrentVersion
+        AlwaysTrace("Upgrade SHSE_MCM from v" + a_version " to v" + CurrentVersion)
     endif
 endEvent
 
@@ -1300,11 +1306,11 @@ Function PopulateLists()
     string name
     int entry = 0
     if max_size > 0
-        Form[] currentList = eventScript.GetWhiteList()
+        Form[] currentWhiteList = eventScript.GetWhiteList()
         ; assume max size initially, resize if bad entries are found
         while index > 0
             index -= 1
-            Form nextEntry = currentList[index]
+            Form nextEntry = currentWhiteList[index]
             name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
@@ -1322,13 +1328,14 @@ Function PopulateLists()
             ; iterate forwards, to preserve order
             index = 0
             while index < max_size
-                Form nextEntry = currentList[index]
+                Form nextEntry = currentWhiteList[index]
                 name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     whiteList_form_array[entry] = nextEntry
                     whiteList_name_array[entry] = name
                     whiteList_flag_array[entry] = true
                     entry += 1
+                    AlwaysTrace("WhiteList entry #" + entry + " name " + name + " form " + nextEntry)
                 endIf
                 index += 1
             endWhile
@@ -1345,10 +1352,10 @@ Function PopulateLists()
     index = max_size
     if max_size > 0
         ; assume max size initially, resize if bad entries are found
-        Form[] currentList = eventScript.GetBlackList()
+        Form[] currentBlackList = eventScript.GetBlackList()
         while index > 0
             index -= 1
-            Form nextEntry = currentList[index]
+            Form nextEntry = currentBlackList[index]
             name = GetNameForListForm(nextEntry)
             if nextEntry && StringUtil.GetLength(name) > 0
                 validSize += 1
@@ -1367,13 +1374,14 @@ Function PopulateLists()
             index = 0
             entry = 0
             while index < max_size
-                Form nextEntry = currentList[index]
+                Form nextEntry = currentBlackList[index]
                 name = GetNameForListForm(nextEntry)
                 if nextEntry && StringUtil.GetLength(name) > 0
                     blackList_form_array[entry] = nextEntry
                     blackList_name_array[entry] = name
                     blackList_flag_array[entry] = true
                     entry += 1
+                    AlwaysTrace("BlackList entry #" + entry + " name " + name + " form " + nextEntry)
                 endIf
                 index += 1
             endWhile
@@ -1386,18 +1394,18 @@ Function PopulateLists()
     endif
 
     ; Transfer List can be sparse
-    Form[] currentList = eventScript.GetTransferList()
+    ReferenceAlias[] currentTargets = eventScript.GetLootTargets()
     string[] currentNames = eventScript.GetTransferNames()
     validSize = 0
     index = 0
-    max_size = 64
+    max_size = eventScript.LootTargetMax
     while index < max_size
-        Form nextEntry = currentList[index]
-        if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
-            ;DebugTrace("TransferList Form index " + index + " for " + currentNames[index])
+        ReferenceAlias nextEntry = currentTargets[index]
+        if nextEntry && nextEntry.GetReference() && StringUtil.GetLength(currentNames[index]) > 0
+            AlwaysTrace("TransferList Form " + nextEntry + " at index " + index + " for " + currentNames[index])
             validSize += 1
         else
-            ;DebugTrace("Skip empty TransferList Form index " + index)
+            AlwaysTrace("Skip empty TransferList Form " + nextEntry + " at index " + index)
         endIf
         index += 1
     endWhile
@@ -1412,17 +1420,19 @@ Function PopulateLists()
         index = 0
         entry = 0
         while index < max_size
-            Form nextEntry = currentList[index]
-            if nextEntry && StringUtil.GetLength(currentNames[index]) > 0
-                transferList_form_array[entry] = nextEntry
+            ReferenceAlias nextEntry = currentTargets[index]
+            if nextEntry && nextEntry.GetReference() && StringUtil.GetLength(currentNames[index]) > 0
+                transferList_form_array[entry] = nextEntry.GetReference()
                 transferList_name_array[entry] = currentNames[index]
                 transferList_index_array[entry] = index
                 transferList_flag_array[entry] = True
-                ;DebugTrace("TransferList entry #" + entry + " name " + currentNames[index] + " xrefindex " + index)
+                AlwaysTrace("TransferList entry #" + entry + " name " + currentNames[index] + " xrefindex " + index + " form " + nextEntry)
                 entry += 1
             endIf
             index += 1
         endWhile
+    else
+        AlwaysTrace("TransferList is empty")
     endIf
     AlwaysTrace("TransferList has " + validSize + " valid entries, " + max_size + " in Form[]")
     transferListEntries = validSize

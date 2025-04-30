@@ -86,6 +86,7 @@ public:
   };
 
   inline LotDState GetLotDState() const { return m_lotdState; }
+  bool CellPersistenceReliable(RE::TESObjectCELL *cell) const;
 
 private:
   static constexpr RE::FormID LightFormIDSentinel = 0xfe000000;
@@ -98,6 +99,7 @@ private:
   std::unordered_map<std::string, LoadInfo> m_loadInfoByName;
   std::unordered_map<std::string, LoadInfo> m_cosaveLoadInfoByName;
   std::unordered_map<RE::FormID, std::string> m_cosaveModNameByMask;
+  std::vector<std::string> m_eslMasters;
   int m_shsePriority;
   int m_cosaveShsePriority;
   bool m_coSaveLoadOrderDiffers;

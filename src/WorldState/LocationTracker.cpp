@@ -516,7 +516,7 @@ LocationTracker::GetCellOwner(const RE::TESObjectCELL *cell) const {
 }
 
 void LocationTracker::Reset() {
-  DBG_MESSAGE("Reset Location Tracking after reload");
+  DBG_MESSAGE("Reset Location Tracking for new/load game");
   RecursiveLockGuard guard(m_locationLock);
   m_tellPlayerIfCanLootAfterLoad = true;
   m_playerCellID = InvalidForm;
@@ -601,7 +601,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
     m_playerIndoors = indoorsNow;
     if (playerCell) {
       if (m_playerIndoors) {
-        DBG_MESSAGE("Player cell updated to 0x{:08x} indoors", m_playerCellID);
+        REL_MESSAGE("Player cell updated to 0x{:08x} indoors", m_playerCellID);
         m_playerCellX = 0;
         m_playerCellY = 0;
       } else {

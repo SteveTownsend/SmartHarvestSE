@@ -228,6 +228,21 @@ void PluginFacade::PrepareForReloadOrNewGame() {
   RecursiveLockGuard guard(m_pluginLock);
   m_pluginSynced = false;
   m_loadedSettings = false; // this comes from MCM script via OnGameReady
+
+  // reset location history - also forces proper recalculation of carry-weight
+  // per refreshed PlayerState.
+  // This must be done here as CELL Enter event happens immediately
+  /*
+      15:57:42.021 77136 I BGSActorCellEvent Sink registered
+      15:57:50.407 39080 I Game load starting
+      15:57:50.407 39080 I Reset Collections
+      15:57:50.407 39080 I Reset Collections
+      15:57:50.407 39080 I Plugin sync required
+      15:57:50.890 39080 I Entered CELL Whiterun/0x00009655
+      15:57:50.890 39080 I Player cell updated to 0x00009655 outdoors at (8,-5)
+  */
+  LocationTracker::Instance().Reset();
+
   REL_MESSAGE("Plugin sync required");
 }
 
@@ -259,9 +274,6 @@ void PluginFacade::OnVMSync() {
   static const bool onMCMPush(false);
   static const bool onGameReload(true);
   PlayerState::Instance().Refresh(onMCMPush, onGameReload);
-  // reset location history - also forces proper recalculation of carry-weight
-  // per refreshed PayerState
-  LocationTracker::Instance().Reset();
   // unblock possible player house checks after game reload
   PlayerHouses::Instance().Clear();
   // reset Actor data

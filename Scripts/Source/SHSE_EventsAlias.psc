@@ -32,6 +32,10 @@ AchievementsScript property AchievementsQuest auto
 Message property DisposeMsg auto
 Container Property NameToDisplay auto
 
+; Excess Inventory loot targets
+ReferenceAlias[] Property lootTargets Auto
+Int Property LootTargetMax Auto  
+
 ; INIFile::PrimaryType
 int type_Common = 1
 int type_Harvest = 2
@@ -185,10 +189,53 @@ Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
 EndFunction
 
 Function CreateTransferListArrays()
-    transferList = Utility.CreateFormArray(64, None)
-    transferListInUse = Utility.CreateBoolArray(64, false)
-    transferNames = Utility.CreateStringArray(64, "")
+    transferList = Utility.CreateFormArray(LootTargetMax, None)
+    transferListInUse = Utility.CreateBoolArray(LootTargetMax, false)
+    transferNames = Utility.CreateStringArray(LootTargetMax, "")
     transferListSize = 0
+EndFunction
+
+; truncates, discarding overflow
+Function ConvertExcessInventoryTargetsToRefAlias(int oldLimit, int newLimit)
+    AlwaysTrace("Converting Transfer List REFRs to RefAlias, limit " + oldLimit + " to new limit " + newLimit)
+    if !transferList || transferList.Length != oldLimit
+        return
+    endIf
+    ; in-place Utility.ResizexxxArray does not work
+    bool[] newListInUse = Utility.CreateBoolArray(newLimit)
+    string[] newNames = Utility.CreateStringArray(newLimit)
+    int index = 0
+    int aliasIndex = 0
+    ; compacts the old list
+    while index < oldLimit
+        if transferList[index]
+            if aliasIndex < oldLimit
+                lootTargets[aliasIndex].ForceRefTo(transferList[index] as ObjectReference)
+                newListInUse[aliasIndex] = transferListInUse[index]
+                newNames[aliasIndex] = transferNames[index]
+                AlwaysTrace("Migrated old target " + transferList[index] + " as alias " + lootTargets[aliasIndex])
+                aliasIndex = aliasIndex + 1
+            else
+                AlwaysTrace("Discarding old target " + transferList[index] + " - alias list is full")
+            endif
+        endif
+        index += 1
+    endWhile
+    while aliasIndex < newLimit
+        lootTargets[aliasIndex].TryToClear()
+        newListInUse[aliasIndex] = False
+        newNames[aliasIndex] = ""
+        aliasIndex += 1
+    endWhile
+    transferListInUse = Utility.CreateBoolArray(newLimit)
+    transferNames = Utility.CreateStringArray(newLimit)
+    aliasIndex = 0
+    while aliasIndex < newLimit
+        transferListInUse[aliasIndex] = False
+        transferNames[aliasIndex] = newNames[aliasIndex]
+        aliasIndex += 1
+    endWhile
+    AlwaysTrace("Converted " + transferListSize + " Transfer List REFRs to RefAlias, limit " + oldLimit + " to new limit " + newLimit)
 EndFunction
 
 Function MigrateTransferListArrays(int oldLimit, int newLimit)
@@ -233,7 +280,7 @@ EndFunction
 
 Function ResetExcessInventoryTargets(bool updated)
     int index = 0
-    while index < 64
+    while index < LootTargetMax
         ; reset transfer target - the old setting could be corrupt
         transferListInUse[index] = False
         index += 1
@@ -267,6 +314,23 @@ Form[] Function GetTransferList()
     return transferList
 EndFunction
 
+Function ValidateLootTargets()
+    int index = 0
+    while index < LootTargetMax
+        if lootTargets[index]
+            AlwaysTrace("MCM: Loot Transfer Alias[" + index + "] " + lootTargets[index] + " referencing " + lootTargets[index].GetReference())
+        else
+            AlwaysTrace("MCM: Loot Transfer Alias[" + index + "] empty")
+        endif
+        index = index + 1
+    endwhile
+endFunction
+
+ReferenceAlias[] Function GetLootTargets()
+    ValidateLootTargets()
+    return lootTargets
+EndFunction
+
 string[] Function GetTransferNames()
     return transferNames
 EndFunction
@@ -290,14 +354,14 @@ Function SyncList(int listNum, Form[] forms, int formCount)
 endFunction
 
 ; merge FormList with plugin data
-Function SyncTransferList(Form[] forms, string[] names, int formCount)
+Function SyncTransferList(ReferenceAlias[] aliases, string[] names, int formCount)
     ; plugin resets to empty baseline
     ResetList(list_type_transfer)
     ; ensure BlackList/WhiteList members are present in the plugin's list
     int index = 0
     while index < formCount
         ; Transfer List is sparse. Include empty entries to keep plugin in sync.
-        AddEntryToTransferList(forms[index], names[index])
+        AddEntryToTransferList(aliases[index].GetReference(), names[index])
         index += 1
     endwhile
 endFunction
@@ -341,23 +405,23 @@ Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[] up
         ; iterate blank entries
         while xrefIndex < indices[index]
             transferListInUse[xrefIndex] = False
-            transferList[xrefIndex] = None
+            lootTargets[xrefIndex].TryToClear()
             transferNames[xrefIndex] = ""
-            ;DebugTrace("Skip blank transfer list xref-index " + xrefIndex + " index " + index)
+            AlwaysTrace("Skip blank transfer list xref-index " + xrefIndex + " index " + index)
             xrefIndex += 1
         endWhile
 
         if flags[index]
             transferListInUse[xRefIndex] = updateInUse[index]
-            transferList[xRefIndex] = updateList[index]
+            lootTargets[xRefIndex].ForceRefTo(updateList[index] as ObjectReference)
             transferNames[xRefIndex] = updateNames[index]
-            ;DebugTrace("In-use transfer list xref-index " + xrefIndex + " index " + index + " " + transferNames[xRefIndex])
+            AlwaysTrace("In-use transfer list xref-index " + xrefIndex + " index " + index + " " + transferNames[xRefIndex])
         else
             transferListInUse[xrefIndex] = False
-            transferList[xrefIndex] = None
+            lootTargets[xrefIndex].TryToClear()
             transferNames[xrefIndex] = ""
             transferListSize -= 1
-            ;DebugTrace("Unused transfer list xref-index " + xrefIndex + " index " + index)
+            AlwaysTrace("Unused transfer list xref-index " + xrefIndex + " index " + index)
         
             string translation = GetTranslation(trans)
             if (translation)
@@ -382,7 +446,7 @@ EndFunction
 
 Function UpdateTransferList(int activeEntries, bool[] updateInUse, Form[] updateList, int[] indices, string[] names, bool[] flags, string trans)
     UpdateTransferListForms(activeEntries, updateList, updateInUse, indices, names, flags, trans)
-    SyncTransferList(transferList, transferNames, 64)
+    SyncTransferList(lootTargets, transferNames, LootTargetMax)
 EndFunction
 
 ;push updated lists to plugin
@@ -390,7 +454,7 @@ Function SyncLists(bool reload, bool updateLists)
     if updateLists
         ; force plugin refresh of player's current worn and equipped items
         ResetList(list_type_in_use_items)
-        SyncTransferList(transferList, transferNames, 64)
+        SyncTransferList(lootTargets, transferNames, LootTargetMax)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
@@ -421,8 +485,8 @@ endFunction
 
 int Function ClearTransferListEntry(int listMax, int index)
     if index < listMax
-        AlwaysTrace("Removing " + transferList[index] + ", entry " + index + " of " + listMax)
-        transferList[index] = None
+        AlwaysTrace("Removing " + lootTargets[index] + ", entry " + index + " of " + listMax)
+        lootTargets[index].TryToClear()
         transferNames[index] = ""
         transferListInUse[index] = False
         transferListSize -= 1
@@ -605,7 +669,15 @@ function AddToBlackList(Form target)
 endFunction
 
 int function RemoveFromTransferList(string locationName, Form target)
-    int match = transferList.find(target)
+    int match = -1
+    int index = 0
+    while match == -1 && index < LootTargetMax
+        if target == lootTargets[index].GetReference()
+            match = index
+        else
+            index = index + 1
+        endif
+    endwhile
     if match != -1
         if transferListInUse[match]
             string translation = GetTranslation("$SHSE_TRANSFERLIST_CANNOT_REMOVE_IN_USE")
@@ -624,7 +696,7 @@ int function RemoveFromTransferList(string locationName, Form target)
                 Debug.Notification(msg)
             endif
         endif
-        ClearTransferListEntry(64, match)
+        ClearTransferListEntry(LootTargetMax, match)
         AlwaysTrace(transferListSize + " entries on TransferList")
         return 1
     endIf
@@ -640,7 +712,7 @@ function AddToTransferList(string locationName, Form target)
         return
     endIf
     string name = locationName + "/" + containerName
-    if transferListSize == 64
+    if transferListSize == LootTargetMax
         string translation = GetTranslation("$SHSE_TRANSFERLIST_FULL")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", name)
@@ -650,7 +722,20 @@ function AddToTransferList(string locationName, Form target)
         endif
         return
     endIf
-    if transferList.find(target) == -1
+    int match = -1
+    int empty = -1
+    int index = 0
+    while match == -1 && index < LootTargetMax
+        if target == lootTargets[index].GetReference()
+            match = index
+        else
+            if empty == -1 && !lootTargets[index].GetReference()
+                empty = index
+            endif
+            index = index + 1
+        endif
+    endwhile
+    if match == -1
         string translation = GetTranslation("$SHSE_TRANSFERLIST_ADDED")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", name)
@@ -659,18 +744,22 @@ function AddToTransferList(string locationName, Form target)
             endif
         endif
         ; find a free entry
-        int index = 0
-        while index < 64
-            if transferList[index] == None
-                transferList[index] = target
-                transferListInUse[index] = False
-                transferNames[index] = name
-                transferListSize += 1
-                AlwaysTrace(target + " added to TransferList at index " + index + ", size now " + transferListSize)
-                return
+        if empty != -1
+            lootTargets[empty].ForceRefTo(target as ObjectReference)
+            transferListInUse[empty] = False
+            transferNames[empty] = name
+            transferListSize += 1
+            AlwaysTrace(target + " added to TransferList at index " + empty + ", size now " + transferListSize)
+            return
+        endif
+        ; full, apparently - unexpected
+        translation = GetTranslation("$SHSE_TRANSFERLIST_FULL")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", name)
+            if (msg)
+                Debug.Notification(msg)
             endif
-            index += 1
-        endWhile
+        endif
     else
         AlwaysTrace(target + " already on TransferList")
     endif
@@ -890,11 +979,21 @@ Function HandleCrosshairPauseHotKey(ObjectReference targetedRefr)
     if locationName != ""
         ; add or remove the REFR, not the Base, to avoid blocking other REFRs with same Base
         ToggleStatusInTransferList(locationName, refrToStore)
-        SyncTransferList(transferList, transferNames, 64)
+        SyncTransferList(lootTargets, transferNames, LootTargetMax)
     else
         Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_TRANSFERLIST")
     endIf
 EndFunction
+
+Event OnInit()
+    AlwaysTrace("SHSE_EventsAlias:OnInit")
+    ValidateLootTargets()
+EndEvent
+
+Event OnPlayerLoadGame()
+    AlwaysTrace("SHSE_EventsAlias:OnPlayerLoadGame")
+    ValidateLootTargets()
+EndEvent
 
 Event OnKeyUp(Int keyCode, Float holdTime)
     if (UI.IsTextInputEnabled())

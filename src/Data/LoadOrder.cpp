@@ -66,6 +66,17 @@ bool LoadOrder::Analyze(void) {
       REL_MESSAGE("{} skipped, has load index 0xFF", modFile->fileName);
       continue;
     }
+    std::string modName(modFile->fileName);
+    StringUtils::ToLower(modName);
+    if (modFile->IsLight() &&
+        modFile->recordFlags.all(RE::TESFile::RecordFlag::kMaster) &&
+        modName.ends_with(".esl")) {
+      // ESL+ESM cause problems if they create CELLs, firewall against this
+      // https://github.com/SteveTownsend/SmartHarvestSE/issues/564
+      REL_MESSAGE("{} has ESL & ESM flags: handle its CELLs carefully",
+                  modFile->fileName);
+      m_eslMasters.push_back(modFile->fileName);
+    }
 
     RE::FormID formIDMask(modFile->compileIndex << (3 * 8));
     formIDMask += modFile->smallFileCompileIndex << ((1 * 8) + 4);
@@ -89,6 +100,20 @@ bool LoadOrder::Analyze(void) {
   REL_MESSAGE("Legacy of the Dragonborn in Load Order? {}",
               LotDStateName(m_lotdState));
   return true;
+}
+
+bool LoadOrder::CellPersistenceReliable(RE::TESObjectCELL *cell) const {
+  if (!cell)
+    return false;
+  return std::find_if(m_eslMasters.cbegin(), m_eslMasters.cend(),
+                      [=](std::string const &modName) -> bool {
+                        if (ModOwnsForm(modName, cell->GetFormID())) {
+                          REL_MESSAGE("ESM+ESL mod {} contains CELL 0x{:08x}",
+                                      modName, cell->GetFormID());
+                          return true;
+                        };
+                        return false;
+                      }) == m_eslMasters.cend();
 }
 
 // Proxy for CommonLibSSE-NG to handle merged plugins using MergeMapper

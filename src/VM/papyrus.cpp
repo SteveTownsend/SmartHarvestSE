@@ -637,6 +637,15 @@ std::string ValidTransferTargetLocation(RE::StaticFunctionTag *,
     REL_ERROR("Dynamic REFR for ValidTransferTargetLocation");
     return "";
   }
+  // REFRs in CELLs owned by a plugin that is ESM and ESL flagged do not persist
+  // reliably https://github.com/SteveTownsend/SmartHarvestSE/issues/564
+  auto cell(shse::LocationTracker::Instance().PlayerCell());
+  if (!shse::LoadOrder::Instance().CellPersistenceReliable(cell)) {
+    REL_ERROR("REFR 0x{:08x} is in CELL 0x{:08x}, which does not persist to "
+              "ReferenceAlias reliably",
+              refr->GetFormID(), (cell ? cell->GetFormID() : 0x0));
+    return "";
+  }
   const RE::TESObjectCONT *container(nullptr);
   DBG_VMESSAGE("Check REFR 0x{:08x} for container", refr->GetFormID());
   if (linksChest) {
