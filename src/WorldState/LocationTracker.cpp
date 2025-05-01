@@ -749,7 +749,7 @@ bool LocationTracker::IsPlayerAtHome() const {
 
 bool LocationTracker::IsPlacePlayerHome(const RE::FormID cellID,
                                         const RE::BGSLocation *location) const {
-  return PlayerHouses::Instance().Contains(location) ||
+  return PlayerHouses::Instance().IsValidHouseLocation(location) ||
          PlayerHouses::Instance().ContainsCell(cellID);
 }
 

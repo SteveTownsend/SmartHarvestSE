@@ -19,6 +19,7 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "WorldState/PlayerHouses.h"
+#include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
 
 namespace shse {
@@ -32,7 +33,17 @@ PlayerHouses &PlayerHouses::Instance() {
   return *m_instance;
 }
 
-PlayerHouses::PlayerHouses() {}
+PlayerHouses::PlayerHouses() {
+  auto whiterunCity = DataCase::GetInstance()->FindExactMatch<RE::BGSLocation>(
+      "skyrim.esm", 0x18a56);
+  if (!whiterunCity) {
+    m_whiterunCity = InvalidForm;
+    REL_ERROR("Could not resolve Whiterun LCTN");
+  } else {
+    m_whiterunCity = whiterunCity->GetFormID();
+    DBG_MESSAGE("Resolved Whiterun LCTN as 0x{:08x}", m_whiterunCity);
+  }
+}
 
 void PlayerHouses::AddLocationKeyword(RE::BGSKeyword *keyword) {
   m_locationKeywords.insert(keyword);
@@ -64,27 +75,34 @@ bool PlayerHouses::AddCell(const RE::FormID cellID) {
 
 // Check indeterminate status of the location, because a requested UI check is
 // pending
-bool PlayerHouses::Contains(const RE::BGSLocation *location) const {
-  RecursiveLockGuard guard(m_housesLock);
-  return location && m_houses.contains(location->GetFormID());
-}
-
-// Check indeterminate status of the location, because a requested UI check is
-// pending
 bool PlayerHouses::ContainsCell(const RE::FormID cellID) const {
   RecursiveLockGuard guard(m_housesLock);
   return m_houseCells.contains(cellID);
 }
 
 bool PlayerHouses::IsValidHouseLocation(const RE::BGSLocation *location) const {
-  if (!location)
+  // Elianora Breezehome Overhaul makes the entire City a BYOH Player House
+  // https://github.com/SteveTownsend/SmartHarvestSE/issues/515
+  if (!location) {
+    DBG_VMESSAGE("Location not set")
     return false;
+  }
   RecursiveLockGuard guard(m_housesLock);
-  if (m_validHouseLocations.contains(location->GetFormID()))
+  if (location->GetFormID() == m_whiterunCity) {
+    DBG_VMESSAGE("Location is Whiterun City")
+    return false;
+  }
+  if (m_validHouseLocations.contains(location->GetFormID())) {
+    DBG_VMESSAGE("Location {}/0x{:08x} is marked Player House",
+                 location->GetName(), location->GetFormID());
     return true;
+  }
   for (auto keyword : m_locationKeywords) {
-    if (location->HasKeyword(keyword))
+    if (location->HasKeyword(keyword)) {
+      DBG_VMESSAGE("Location {}/0x{:08x} has Player House KYWD",
+                   location->GetName(), location->GetFormID());
       return true;
+    }
   }
   return false;
 }

@@ -29,7 +29,6 @@ public:
   void Clear();
   bool Add(const RE::BGSLocation *location);
   bool AddCell(const RE::FormID cellID);
-  bool Contains(const RE::BGSLocation *location) const;
   bool ContainsCell(const RE::FormID cellID) const;
 
   void AddLocationKeyword(RE::BGSKeyword *keyword);
@@ -51,6 +50,7 @@ private:
   // LCTNs that are effectively player house but not properly-tagged
   std::unordered_set<RE::FormID> m_validHouseLocations;
   mutable RecursiveLock m_housesLock;
+  RE::FormID m_whiterunCity;
 };
 
 } // namespace shse
