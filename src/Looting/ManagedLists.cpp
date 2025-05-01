@@ -161,8 +161,8 @@ void ManagedList::Reset() {
     uint32_t currentSlot(0x1);
 
     // do not iterate beyond last valid slot
-    while (currentSlot <=
-           static_cast<uint32_t>(RE::BIPED_MODEL::BipedObjectSlot::kEars)) {
+    while (currentSlot <
+           static_cast<uint32_t>(RE::BIPED_MODEL::BipedObjectSlot::kFX01)) {
       auto *armor(GetWornForm<RE::TESObjectARMO>(
           RE::PlayerCharacter::GetSingleton(), currentSlot));
       if (armor) {
