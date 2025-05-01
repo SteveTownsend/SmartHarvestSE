@@ -343,15 +343,20 @@ void DataCase::AnalyzePerks(void) {
       }
     }
   }
-  // List MGEF with Slow Time archetype, save the ones with Value Modifier on
-  // Bow Speed Bonus
+  // Save MGEF with Slow Time archetype and with Value Modifier on Bow Speed
+  // Bonus. Constant Effects skipped to avoid inoperable state.
   for (RE::EffectSetting *effect : dhnd->GetFormArray<RE::EffectSetting>()) {
-    if (effect->HasArchetype(RE::EffectSetting::Archetype::kSlowTime)) {
+    if (effect->HasArchetype(RE::EffectSetting::Archetype::kSlowTime) &&
+        effect->data.castingType !=
+            RE::MagicSystem::CastingType::kConstantEffect) {
       REL_VMESSAGE("SlowTime Magic Effect : {}({:08x})", effect->GetName(),
                    effect->GetFormID());
+      m_slowTimeEffects.insert(effect);
     } else if (effect->HasArchetype(
                    RE::EffectSetting::Archetype::kValueModifier) &&
-               effect->data.primaryAV == RE::ActorValue::kBowSpeedBonus) {
+               effect->data.primaryAV == RE::ActorValue::kBowSpeedBonus &&
+               effect->data.castingType !=
+                   RE::MagicSystem::CastingType::kConstantEffect) {
       REL_VMESSAGE("ValueModifier-BowSpeedBonus Magic Effect : {}({:08x})",
                    effect->GetName(), effect->GetFormID());
       m_slowTimeEffects.insert(effect);
@@ -1797,10 +1802,30 @@ void DataCase::SetNextDig(RE::TESForm *digSite, const int refreshTime) {
 }
 
 bool DataCase::IsSlowTimeEffectActive() const {
-  for (const auto effect : m_slowTimeEffects) {
-    auto target = RE::PlayerCharacter::GetSingleton()->AsMagicTarget();
-    if (target && target->HasMagicEffect(effect))
+  auto target = RE::PlayerCharacter::GetSingleton()->AsMagicTarget();
+  auto effects = target ? target->GetActiveEffectList() : nullptr;
+  if (!effects) {
+    return false;
+  }
+
+  RE::EffectSetting *setting = nullptr;
+  for (auto &effect : *effects) {
+    setting = effect ? effect->GetBaseObject() : nullptr;
+    if (!setting)
+      continue;
+    if (m_slowTimeEffects.contains(setting)) {
+      // Inactive effects skipped
+      if (effect->flags.any(RE::ActiveEffect::Flag::kInactive)) {
+        REL_DMESSAGE("Skip Inactive SlowTime or ValueModifier-BowSpeedBonus "
+                     "archetype effect : {}({:08x})",
+                     setting->GetName(), setting->GetFormID());
+        continue;
+      }
+      REL_WARNING("Player subject to Active non-constant-cast SlowTime or "
+                  "ValueModifier-BowSpeedBonus archetype effect : {}({:08x})",
+                  setting->GetName(), setting->GetFormID());
       return true;
+    }
   }
   return false;
 }

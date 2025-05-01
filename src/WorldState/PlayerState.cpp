@@ -115,17 +115,8 @@ void PlayerState::Refresh(const bool onMCMPush, const bool onGameReload) {
           Lootability::CannotMineIfSneaking);
     }
   }
-  auto target(RE::PlayerCharacter::GetSingleton()->As<RE::MagicTarget>());
-  m_slowedTime = target && target->HasEffectWithArchetype(
-                               RE::EffectSetting::Archetype::kSlowTime);
-  if (m_slowedTime) {
-    DBG_DMESSAGE("Player subject to SlowTime archetype effect");
-  }
-  // Check for any other SlowTime lookalikes
-  else if (DataCase::GetInstance()->IsSlowTimeEffectActive()) {
-    DBG_DMESSAGE("Player subject to indirect SlowTime effect");
-    m_slowedTime = true;
-  }
+  m_slowedTime = DataCase::GetInstance()->IsSlowTimeEffectActive();
+  DBG_DMESSAGE("Player subject to SlowTime effect? {}", m_slowedTime);
 }
 
 void PlayerState::ReviewExcessInventory(bool force) {
