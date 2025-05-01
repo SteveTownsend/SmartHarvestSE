@@ -162,6 +162,7 @@ private:
 
   const Collection *m_underwear;
   Collection *m_missivesBoards;
+  Collection *m_noticeBoardMessages;
   std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
   std::unordered_set<RE::FormID> m_offLimitsContainers;
   std::unordered_set<RE::EffectSetting *> m_slowTimeEffects;
@@ -448,8 +449,10 @@ private:
   void ExcludeImmersiveArmorsGodChest();
   void ExcludeGrayCowlStonesChest();
   void ExcludeMissivesBoards();
+  void ExcludeNoticeBoardMessages();
   void CheckAutoMiningOK();
   void ExcludeBuildYourNobleHouseIncomeChest();
+  void ExcludeTheNoticeBoard();
 
   void IncludeSeptimSpecialCases();
   void IncludeCoinReplacerRedux();

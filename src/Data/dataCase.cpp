@@ -36,8 +36,9 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "Looting/NPCFilter.h"
 
-const std::string MissivesGroup("BlackList");
+const std::string BlacklistGroup("BlackList");
 const std::string MissivesCollection("SHSE-Missives");
+const std::string NoticeBoardCollection("SHSE-NoticeBoard");
 
 namespace {
 std::vector<std::string> Split(const std::string &str, char sep) {
@@ -63,7 +64,7 @@ DataCase *DataCase::s_pInstance = nullptr;
 
 DataCase::DataCase()
     : m_spellTomeKeyword(nullptr), m_underwear(nullptr),
-      m_missivesBoards(nullptr) {}
+      m_missivesBoards(nullptr), m_noticeBoardMessages(nullptr) {}
 
 void DataCase::GetTranslationData() {
   RE::Setting *setting = RE::GetINISetting("sLanguage:General");
@@ -405,15 +406,24 @@ bool DataCase::ReferencesBlacklistedContainer(
   }
   const RE::TESObjectCONT *container(
       refr->GetBaseObject()->As<RE::TESObjectCONT>());
-  if (container && m_missivesBoards) {
+  if (!container) {
+    REL_WARNING("Base Object for {:08x} is not TESObjectCONT",
+                refr->GetFormID());
+    return false;
+  }
+  if (m_missivesBoards) {
     DBG_VMESSAGE("Is Container {}/{:08x} member of Missive Boards? {}",
                  container->GetName(), container->GetFormID(),
                  m_missivesBoards->IsMemberOf(container));
     return m_missivesBoards->IsEnabled() &&
            m_missivesBoards->IsMemberOf(container);
-  } else if (!container) {
-    REL_WARNING("Base Object for {:08x} is not TESObjectCONT",
-                refr->GetFormID());
+  }
+  if (m_noticeBoardMessages) {
+    DBG_VMESSAGE("Is Container {}/{:08x} member of The Notice Board? {}",
+                 container->GetName(), container->GetFormID(),
+                 m_noticeBoardMessages->IsMemberOf(container));
+    return m_noticeBoardMessages->IsEnabled() &&
+           m_noticeBoardMessages->IsMemberOf(container);
   }
   return false;
 }
@@ -689,13 +699,30 @@ void DataCase::ExcludeMissivesBoards() {
   // the Noticeboards to avoid auto-looting of non-quest Missives
   static constexpr const char *modName = "Missives.esp";
   m_missivesBoards = CollectionManager::Collectibles().MutableCollectionByLabel(
-      MissivesGroup, MissivesCollection);
+      BlacklistGroup, MissivesCollection);
   if (m_missivesBoards && (!LoadOrder::Instance().IncludesMod(modName) ||
                            LoadOrder::Instance().ModPrecedesSHSE(modName))) {
     REL_MESSAGE("Missives absent or loads before SHSE: disable Missive Board "
                 "blacklist");
     // must disable the related Blacklist Collection
     m_missivesBoards->Disable();
+  }
+}
+
+void DataCase::ExcludeNoticeBoardMessages() {
+  // if Missives is installed and loads later than SHSE, conditionally blacklist
+  // the Noticeboards to avoid auto-looting of non-quest Missives
+  static constexpr const char *modName = "notice board.esp";
+  m_noticeBoardMessages =
+      CollectionManager::Collectibles().MutableCollectionByLabel(
+          BlacklistGroup, NoticeBoardCollection);
+  if (m_noticeBoardMessages &&
+      (!LoadOrder::Instance().IncludesMod(modName) ||
+       LoadOrder::Instance().ModPrecedesSHSE(modName))) {
+    REL_MESSAGE("The Notice Board absent or loads before SHSE: disable The "
+                "Notice Board blacklist");
+    // must disable the related Blacklist Collection
+    m_noticeBoardMessages->Disable();
   }
 }
 
@@ -717,6 +744,17 @@ void DataCase::ExcludeBuildYourNobleHouseIncomeChest() {
     REL_MESSAGE("Block 'Build Your Noble House' Income Chest {}/0x{:08x}",
                 incomeChestForm->GetName(), incomeChestForm->GetFormID());
     m_containerBlackList.insert(incomeChestForm);
+  }
+}
+
+void DataCase::ExcludeTheNoticeBoard() {
+  // check for matching form in Load Order
+  RE::TESObjectCONT *noticeBoard(
+      FindExactMatch<RE::TESObjectCONT>("notice board.esp", 0x9fa4));
+  if (noticeBoard) {
+    REL_MESSAGE("Block 'The Notice Board' instances {}/0x{:08x}",
+                noticeBoard->GetName(), noticeBoard->GetFormID());
+    m_containerBlackList.insert(noticeBoard);
   }
 }
 
@@ -1500,8 +1538,10 @@ void DataCase::RefreshBuiltinSpecialCases() {
   // blacklist underwear in case user has "don't show me their junk" setting
   // turned on
   RecordUnderwear();
-  // Blacklist Missives Boards, if present and so ordered
+  // Blacklist Missives Boards and Notice Board Messages, if present and so
+  // ordered
   ExcludeMissivesBoards();
+  ExcludeNoticeBoardMessages();
 }
 
 bool DataCase::UseUnderwear() const {
@@ -1520,6 +1560,7 @@ void DataCase::HandleExceptions() {
   ExcludeImmersiveArmorsGodChest();
   ExcludeGrayCowlStonesChest();
   ExcludeBuildYourNobleHouseIncomeChest();
+  ExcludeTheNoticeBoard();
 
   ExcludeFactionContainers();
   ExcludeVendorContainers();
