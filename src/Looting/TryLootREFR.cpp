@@ -266,8 +266,8 @@ Lootability TryLootREFR::Process(const bool dryRun) {
 
     if (objType == ObjectType::ammo) {
       if (data->SkipAmmoLooting(m_candidate)) {
-        skipLooting = true;
-        result = Lootability::CannotLootAmmo;
+        // this result is dispositive - we never loot in-flight items
+        return Lootability::CannotLootAmmo;
       }
     }
 
