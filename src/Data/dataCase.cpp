@@ -876,6 +876,49 @@ void DataCase::HandleHearthfireExtendedApiary() {
   }
 }
 
+void DataCase::RecordMerRaces() {
+  std::string espName("Skyrim.esm");
+  static std::vector<RE::FormID> merRaces({0x131f4, 0x13742, 0x13743, 0x13747,
+                                           0x13749, 0x8883d, 0x88840, 0x88884,
+                                           0xa82b9});
+  for (const auto raceFormID : merRaces) {
+    const RE::TESForm *raceForm(
+        LoadOrder::Instance().LookupForm(raceFormID, espName));
+    if (raceForm && raceForm->Is(RE::FormType::Race)) {
+      REL_MESSAGE("Mer RACE {}/0x{:08x}", raceForm->GetName(),
+                  raceForm->GetFormID());
+      m_merRaces.insert(raceForm->GetFormID());
+    } else {
+      REL_WARNING("Mer RACE {}/0x{:08x} not resolved correctly", espName,
+                  raceFormID);
+    }
+  }
+  RE::FormID bloodHarvest = 0x79af5;
+  auto perk(LoadOrder::Instance().LookupForm(bloodHarvest, espName));
+  if (perk) {
+    m_bloodHarvestPerk = perk->As<RE::BGSPerk>();
+    if (m_bloodHarvestPerk) {
+      REL_MESSAGE("Blood Harvest PERK {}/0x{:08x}", perk->GetName(),
+                  perk->GetFormID());
+    } else {
+      REL_WARNING("Blood Harvest PERK {}/0x{:08x} not resolved correctly",
+                  espName, bloodHarvest);
+    }
+  }
+}
+
+bool DataCase::IsMerRace(RE::TESNPC *npc) const {
+  if (!npc)
+    return false;
+  RE::TESRace *race(npc->GetRace());
+  if (race && m_merRaces.contains(race->GetFormID())) {
+    DBG_VMESSAGE("Mer RACE {}/0x{:08x} for NPC {}/0x{:08x}", race->GetName(),
+                 race->GetFormID(), npc->GetName(), npc->GetFormID());
+    return true;
+  }
+  return false;
+}
+
 void DataCase::RecordUnderwear() {
   const std::string GroupName("SpecialCases");
   const std::string CollectionName("SHSE-Underwear");
@@ -1577,6 +1620,9 @@ void DataCase::HandleExceptions() {
 
   // exclude auto-mining if incompatible mods loaded
   CheckAutoMiningOK();
+
+  // Handle Mer Races during Discerning the Transmundane
+  RecordMerRaces();
 }
 
 ObjectType DataCase::DecorateIfEnchanted(const RE::TESForm *form,

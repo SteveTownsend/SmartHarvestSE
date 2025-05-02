@@ -621,6 +621,7 @@ enum class Lootability {
   PlayerHouseRestrictsLooting,
   ReferenceActivationBlocked,
   NPCIsDisintegrating,
+  NPCIsDisallowed,
   MAX
 };
 

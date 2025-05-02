@@ -46,6 +46,8 @@ public:
   void ForgetFirehoseSources();
   bool IsFirehose(const RE::TESForm *form) const;
   void AddFirehose(const RE::TESForm *form);
+  bool IsMerRace(RE::TESNPC *npc) const;
+  RE::BGSPerk *BloodHarvestPerk() const { return m_bloodHarvestPerk; }
 
   void BlockReference(const RE::TESObjectREFR *refr, const Lootability reason);
   void BlockReferenceByID(const RE::FormID refrID, const Lootability reason);
@@ -171,6 +173,8 @@ private:
   std::unordered_map<const RE::TESForm *, Lootability> m_permanentBlockedForms;
   std::unordered_map<const RE::TESForm *, Lootability> m_blockForm;
   std::unordered_set<const RE::TESForm *> m_firehoseForms;
+  std::unordered_set<RE::FormID> m_merRaces;
+  RE::BGSPerk *m_bloodHarvestPerk = nullptr;
   std::unordered_set<RE::FormID> m_firehoseSources;
   std::unordered_map<RE::FormID, Lootability> m_blockRefr;
   std::unordered_set<RE::FormID> m_blacklistRefr;
@@ -463,6 +467,7 @@ private:
 
   void IncludeFossilMiningExcavation();
   void HandleHearthfireExtendedApiary();
+  void RecordMerRaces();
   void RecordUnderwear();
 
   DataCase(void);

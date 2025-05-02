@@ -385,6 +385,7 @@ void QuestTargets::BlacklistOutliers() {
                  barredNPC);
     m_questTargetItems.insert(barredNPC);
   }
+  // Briarheart Necropsy, do not loot item if Perk is present
   const RE::IngredientItem *ingredient(
       RE::TESDataHandler::GetSingleton()->LookupForm<RE::IngredientItem>(
           0x3ad61, "Skyrim.esm"));

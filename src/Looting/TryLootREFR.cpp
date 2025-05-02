@@ -588,6 +588,10 @@ Lootability TryLootREFR::Process(const bool dryRun) {
                   m_candidate->GetName(), m_candidate->formID);
       return Lootability::ReferencesBlacklistedContainer;
     }
+    // Check for NPC conditional blacklisting
+    if (m_targetType == INIFile::SecondaryType::deadbodies && !CanLootNPC()) {
+      return Lootability::NPCIsDisallowed;
+    }
     DBG_MESSAGE("scanning container/body {}/0x{:08x}", m_candidate->GetName(),
                 m_candidate->formID);
     bool skipLooting(false);
@@ -1069,6 +1073,19 @@ void TryLootREFR::GetLootFromContainer(
       }
     }
   }
+}
+
+bool TryLootREFR::CanLootNPC() const {
+  RE::Actor *actor(m_candidate->As<RE::Actor>());
+  if (actor && DataCase::GetInstance()->IsMerRace(actor->GetActorBase()) &&
+      RE::PlayerCharacter::GetSingleton()->HasPerk(
+          DataCase::GetInstance()->BloodHarvestPerk())) {
+    DBG_VMESSAGE(
+        "NPC {}/0x{:08x} is Mer, skip during Blood Harvest quest phase",
+        actor->GetName(), actor->GetFormID());
+    return false;
+  }
+  return true;
 }
 
 void TryLootREFR::CopyLootFromContainer(

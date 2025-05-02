@@ -49,6 +49,7 @@ private:
   void CopyLootFromContainer(
       std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>
           &targets);
+  bool CanLootNPC() const;
 
   // special object glow - not too long, in case we loot or move away. Used for
   // Loot Sense too.

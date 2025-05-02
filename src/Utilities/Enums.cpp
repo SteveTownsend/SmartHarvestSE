@@ -198,6 +198,8 @@ std::string LootabilityName(const Lootability lootability) {
     return "ReferenceActivationBlocked";
   case Lootability::NPCIsDisintegrating:
     return "NPCIsDisintegrating";
+  case Lootability::NPCIsDisallowed:
+    return "NPCIsDisallowed";
   default:
     return "";
   }
