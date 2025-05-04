@@ -82,6 +82,8 @@ private:
   mutable RecursiveLock m_locationLock;
   mutable std::atomic<bool> m_aiRunning;
   std::atomic<int> m_cellSequence;
+  bool m_poll_location = false;
+  bool m_initialized = false;
 
   static constexpr double OnlyYards = 0.1;
   static constexpr double LittleWay = 0.3;

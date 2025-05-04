@@ -54,16 +54,27 @@ LocationTracker::LocationTracker()
       m_aiRunning(false), m_cellSequence(0) {}
 
 void LocationTracker::Init() {
-  // wire up CELL change tracking
-  auto player = RE::PlayerCharacter::GetSingleton();
+  if (!m_initialized) {
+    // wire up CELL change tracking
+    auto player = RE::PlayerCharacter::GetSingleton();
 
-  if (!player) {
-    REL_ERROR(
-        "Player Character not found, cannot listen for BGSActorCellEvent");
-    return;
+    if (!player) {
+      REL_ERROR(
+          "Player Character not found, cannot listen for BGSActorCellEvent");
+      return;
+    }
+    // This Event does not seem to work in VR when set up after kDataLoaded
+    auto event_source(player->AsBGSActorCellEventSource());
+    if (event_source) {
+      event_source->AddEventSink(this);
+      REL_MESSAGE("BGSActorCellEvent Sink registered");
+    } else {
+      // TODO VR-specific logic TBS if needed
+      m_poll_location = true;
+      REL_WARNING("BGSActorCellEvent Sink absent, poll for location");
+    }
+    m_initialized = true;
   }
-  player->AsBGSActorCellEventSource()->AddEventSink(this);
-  REL_MESSAGE("BGSActorCellEvent Sink registered");
 }
 
 RE::BSEventNotifyControl LocationTracker::ProcessEvent(

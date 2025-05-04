@@ -229,6 +229,9 @@ void PluginFacade::PrepareForReloadOrNewGame() {
   m_pluginSynced = false;
   m_loadedSettings = false; // this comes from MCM script via OnGameReady
 
+  // wire up event handlers - later than kDataLoaded to see if this fixes VR
+  LocationTracker::Instance().Init();
+
   // reset location history - also forces proper recalculation of carry-weight
   // per refreshed PlayerState.
   // This must be done here as CELL Enter event happens immediately

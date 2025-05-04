@@ -69,9 +69,6 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
     DBG_MESSAGE("Loading Papyrus");
     SKSE::GetPapyrusInterface()->Register(papyrus::RegisterFuncs);
     REL_MESSAGE("Registered Papyrus functions!");
-
-    // wire up event handlers
-    shse::LocationTracker::Instance().Init();
     break;
 
   case SKSE::MessagingInterface::kPreLoadGame:
