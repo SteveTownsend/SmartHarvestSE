@@ -149,8 +149,9 @@ void InitializeDiagnostics() {
 #endif
 #endif
   // Get Process and DLL version
-  REL_MESSAGE("{} v{}-{} in executable {}", Version::PROJECT, Version::NAME,
-              Version::BUILDTYPE, Version::GetExeVersionString());
+  REL_MESSAGE("{} v{}-{} in executable {} VR? {}", Version::PROJECT,
+              Version::NAME, Version::BUILDTYPE, Version::GetExeVersionString(),
+              Version::IsVR());
 }
 
 EXTERN_C __declspec(dllexport) bool SKSEAPI

@@ -102,7 +102,8 @@
 			"future": "cpp",
 			"typeindex": "cpp",
 			"coroutine": "cpp",
-			"resumable": "cpp"
+			"resumable": "cpp",
+			"*.in": "cpp"
 		},
 		"C_Cpp.clang_format_sortIncludes": false,
 		"C_Cpp.codeAnalysis.clangTidy.fallbackConfig": "",

@@ -305,7 +305,14 @@ void PluginFacade::OnSettingsPushed() {
   // refresh player state that could be affected
   static const bool onMCMPush(true);
   static const bool onGameReload(false);
-  PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+  // in VR this can get called after Papyrus registration but before SKSE
+  // messages that trigger data load, so check Plugin is ready
+  // https://github.com/SteveTownsend/SmartHarvestSE/issues/568#issuecomment-2849328480
+  if (PluginFacade::Loaded()) {
+    PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+  } else {
+    REL_WARNING("Skip PlayerState::Refresh until plugin is ready")
+  }
 
   // Base Object Forms and REFRs handled for the case where we are not reloading
   // game
