@@ -329,7 +329,8 @@ bool PlayerState::CanLoot() const {
   }
 
   if (SettingsCache::Instance().DisableWhileWeaponIsDrawn()) {
-    auto actorState(RE::PlayerCharacter::GetSingleton()->As<RE::ActorState>());
+    auto player(RE::PlayerCharacter::GetSingleton());
+    auto actorState(player ? player->AsActorState() : nullptr);
     if (actorState && actorState->IsWeaponDrawn()) {
       DBG_VMESSAGE("Player weapon is drawn, skip");
       return false;
