@@ -35,6 +35,7 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PopulationCenters.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
+#include "Ver.h"
 
 namespace shse {
 
@@ -195,6 +196,10 @@ void PluginFacade::ScanThread() {
     if (!RE::PlayerCharacter::GetSingleton()->parentCell) {
       REL_VMESSAGE("Location or cell not stable yet");
       continue;
+    }
+    if (LocationTracker::Instance().UseLocationPolling()) {
+      LocationTracker::Instance().Refresh(
+          RE::PlayerCharacter::GetSingleton()->parentCell);
     }
 
     static const bool onMCMPush(false);

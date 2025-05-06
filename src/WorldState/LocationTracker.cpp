@@ -35,6 +35,7 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/ScanGovernor.h"
 #include "VM/papyrus.h"
 #include "Utilities/utils.h"
+#include "Ver.h"
 
 namespace shse {
 
@@ -55,23 +56,30 @@ LocationTracker::LocationTracker()
 
 void LocationTracker::Init() {
   if (!m_initialized) {
-    // wire up CELL change tracking
-    auto player = RE::PlayerCharacter::GetSingleton();
-
-    if (!player) {
-      REL_ERROR(
-          "Player Character not found, cannot listen for BGSActorCellEvent");
-      return;
-    }
-    // This Event does not seem to work in VR when set up after kDataLoaded
-    auto event_source(player->AsBGSActorCellEventSource());
-    if (event_source) {
-      event_source->AddEventSink(this);
-      REL_MESSAGE("BGSActorCellEvent Sink registered");
-    } else {
+    if (Version::IsVR()) {
       // TODO VR-specific logic TBS if needed
       m_poll_location = true;
-      REL_WARNING("BGSActorCellEvent Sink absent, poll for location");
+      REL_WARNING(
+          "BGSActorCellEvent Sink not available in VR, poll for location");
+    } else {
+      // wire up CELL change tracking
+      // This Event does not seem to work in VR, wiring it up crashes
+      auto player = RE::PlayerCharacter::GetSingleton();
+
+      if (!player) {
+        REL_ERROR(
+            "Player Character not found, cannot listen for BGSActorCellEvent");
+        return;
+      }
+
+      auto event_source(player->AsBGSActorCellEventSource());
+      if (event_source) {
+        event_source->AddEventSink(this);
+        REL_MESSAGE("BGSActorCellEvent Sink registered");
+      } else {
+        m_poll_location = true;
+        REL_WARNING("BGSActorCellEvent Sink absent, poll for location");
+      }
     }
     m_initialized = true;
   }
@@ -168,10 +176,10 @@ CompassDirection LocationTracker::DirectionToDestinationFromStart(
   CompassDirection result(direction == directions.cend()
                               ? CompassDirection::North
                               : direction->second);
-  DBG_MESSAGE(
-      "Head {} at {:0.2f} degrees from ({:0.2f},{:0.2f}) to ({:0.2f},{:0.2f})",
-      CompassDirectionName(result).c_str(), degrees, start[0], start[1],
-      destination[0], destination[1]);
+  DBG_MESSAGE("Head {} at {:0.2f} degrees from ({:0.2f},{:0.2f}) to "
+              "({:0.2f},{:0.2f})",
+              CompassDirectionName(result).c_str(), degrees, start[0], start[1],
+              destination[0], destination[1]);
   return result;
 }
 
@@ -190,7 +198,8 @@ std::string LocationTracker::Proximity(const double milesAway,
     // player is physically at the place
     return "at";
   } else {
-    // conversational description of player's position in relation to the place
+    // conversational description of player's position in relation to the
+    // place
     std::ostringstream proximity;
     proximity << ConversationalDistance(milesAway) << ' '
               << CompassDirectionName(heading) << " of";
@@ -268,8 +277,8 @@ void LocationTracker::PrintAdventureTargetInfo(const RE::BGSLocation *location,
     std::string locationMessage(locationText);
     StringUtils::Replace(locationMessage, "{PROXIMITY}",
                          Proximity(milesAway, heading));
-    // stop obfuscating the destination once player gets close - map marker may
-    // be for a parent, not exactly colocated with target
+    // stop obfuscating the destination once player gets close - map marker
+    // may be for a parent, not exactly colocated with target
     if (milesAway < OnlyYards) {
       StringUtils::Replace(locationMessage, "{TARGET}", location->GetName());
     } else {
@@ -325,9 +334,9 @@ std::string LocationTracker::LocationRelativeToNearestMapMarker(
   std::string locationStr;
   RelativeLocationDescriptor nearestMarker(NearestMapMarker(position));
   if (nearestMarker.equals(RelativeLocationDescriptor::Invalid())) {
-    REL_WARNING(
-        "Could not determine nearest map marker to position ({:0.2f}, {:0.2f})",
-        position[0], position[1]);
+    REL_WARNING("Could not determine nearest map marker to position "
+                "({:0.2f}, {:0.2f})",
+                position[0], position[1]);
     return locationStr;
   }
   CompassDirection heading(DirectionToDestinationFromStart(
@@ -530,7 +539,7 @@ void LocationTracker::Reset() {
   DBG_MESSAGE("Reset Location Tracking for new/load game");
   RecursiveLockGuard guard(m_locationLock);
   m_tellPlayerIfCanLootAfterLoad = true;
-  m_playerCellID = InvalidForm;
+  UpdatePlayerCellID(InvalidForm);
   m_playerIndoors = false;
   m_playerPlaceName.clear();
   m_playerCellX = 0;
@@ -555,9 +564,9 @@ LocationTracker::ParentWorld(const RE::TESObjectCELL *cell) {
       candidate = world;
     }
     if (!world->parentWorld) {
-      DBG_MESSAGE(
-          "Reached root of worldspace hierarchy {}/0x{:08x} for cell 0x{:08x}",
-          world->GetName(), world->GetFormID(), cell->GetFormID());
+      DBG_MESSAGE("Reached root of worldspace hierarchy {}/0x{:08x} for cell "
+                  "0x{:08x}",
+                  world->GetName(), world->GetFormID(), cell->GetFormID());
       break;
     }
     world = world->parentWorld;
@@ -584,8 +593,8 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
   }
   // handle player death. Obviously we are not looting on their behalf until a
   // game reload or other resurrection event. Assumes player non-essential: if
-  // player is in God mode a little extra carry weight or post-death looting is
-  // not breaking immersion.
+  // player is in God mode a little extra carry weight or post-death looting
+  // is not breaking immersion.
   if (player->IsDead(true)) {
     return false;
   }
@@ -608,7 +617,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
     // to indoors or vice versa
     playerMoved = originalCellID == InvalidForm ||
                   playerCellID == InvalidForm || m_playerIndoors != indoorsNow;
-    m_playerCellID = playerCellID;
+    UpdatePlayerCellID(playerCellID);
     m_playerIndoors = indoorsNow;
     if (playerCell) {
       if (m_playerIndoors) {
@@ -644,8 +653,8 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
     PluginFacade::Instance().ResetTransientState(gameReload);
   }
 
-  // Scan and Location tracking should not run if Player cell is not yet filled
-  // in
+  // Scan and Location tracking should not run if Player cell is not yet
+  // filled in
   if (m_playerCellID == InvalidForm)
     return false;
 
@@ -672,8 +681,8 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
     AdventureTargets::Instance().CheckReachedCurrentDestination(
         m_playerLocation);
 
-    // Player changed location - may be a standalone Cell with m_playerLocation
-    // nullptr e.g. 000HatredWell
+    // Player changed location - may be a standalone Cell with
+    // m_playerLocation nullptr e.g. 000HatredWell
     bool tellPlayer(SettingsCache::Instance().NotifyLocationChange());
 
     // check if new location/cell is a newly-visited player house
@@ -694,10 +703,11 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
         PlayerHouses::Instance().AddCell(m_playerCellID);
       }
     }
-    // Display messages about location auto-loot restrictions, if set in config
+    // Display messages about location auto-loot restrictions, if set in
+    // config
     if (tellPlayer) {
-      // notify entry to player home unless this was a menu reset, regardless of
-      // whether it's new to us
+      // notify entry to player home unless this was a menu reset, regardless
+      // of whether it's new to us
       if (IsPlayerAtHome()) {
         static RE::BSFixedString playerHouseMsg(papyrus::GetTranslation(
             nullptr, RE::BSFixedString("$SHSE_HOUSE_CHECK")));
@@ -708,8 +718,8 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
           RE::DebugNotification(notificationText.c_str());
         }
       }
-      // Check if location is excluded from looting and if so, notify we entered
-      // it
+      // Check if location is excluded from looting and if so, notify we
+      // entered it
       if ((couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) &&
           !LocationTracker::Instance().IsPlayerInLootablePlace(
               allowIfRestricted, allowIfRestricted)) {
@@ -725,7 +735,8 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
       }
     }
 
-    // Display messages about location auto-loot restrictions, if set in config
+    // Display messages about location auto-loot restrictions, if set in
+    // config
     if (tellPlayer) {
       // check if we moved from a non-lootable place to a lootable place
       if ((!couldLootInPrior || m_tellPlayerIfCanLootAfterLoad) &&
@@ -832,7 +843,8 @@ void LocationTracker::RecordAdjacentCells(const RE::TESObjectCELL *current) {
   m_adjacentCells.fill(nullptr);
 
   // For exterior cells, also check directly adjacent cells for lootable
-  // goodies. Restrict to cells in the same worldspace, without walking parents.
+  // goodies. Restrict to cells in the same worldspace, without walking
+  // parents.
   if (!m_playerIndoors) {
     DBG_VMESSAGE("Check for adjacent cells to 0x{:08x}", m_playerCellID);
     if (current->GetRuntimeData().worldSpace) {

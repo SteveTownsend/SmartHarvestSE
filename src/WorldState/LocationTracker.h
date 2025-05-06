@@ -63,6 +63,14 @@ private:
   bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID,
                                        const RE::BGSLocation *location) const;
   const RE::TESForm *CurrentPlayerPlaceCached() const;
+  inline void UpdatePlayerCellID(const RE::FormID cellID) {
+    if (m_poll_location) {
+      // No event triggers CELL sentinel update on reset, increment when
+      // detected
+      IncrementCellSequence();
+    }
+    m_playerCellID = cellID;
+  }
 
   static std::unique_ptr<LocationTracker> m_instance;
   // 3x3 CELL adjacency check - 8 nearest CELLs are treated as adjacent to
@@ -103,6 +111,7 @@ public:
 
   void Reset();
   bool Refresh(const RE::TESObjectCELL *cell = nullptr);
+  inline bool UseLocationPolling() const { return m_poll_location; }
   bool IsPlayerAtHome() const;
   void RecordCurrentPlace(const float gameTime);
   bool IsPlayerInLootablePlace(const bool lootableIfRestricted,
