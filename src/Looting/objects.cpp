@@ -104,6 +104,9 @@ bool IsQuestItem(const RE::TESObjectREFR *refr) {
   if (QuestTargets::Instance().ReferencedQuestTargetLootability(refr) ==
       Lootability::CannotLootQuestTarget)
     return true;
+  // Is this REFR the target for a Favor Quest?
+  if (QuestTargets::Instance().IsFavourQuestTarget(refr))
+    return true;
 
   RE::RefHandle handle;
   RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR *>(refr));

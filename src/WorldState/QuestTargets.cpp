@@ -130,7 +130,7 @@ void QuestTargets::Analyze() {
           uint16_t createdIn(refAlias->fillData.created.alias.alias);
           const RE::TESBoundObject *targetItem(
               refAlias->fillData.created.object);
-          m_questTargetAllItems.insert(targetItem->GetFormID());
+          m_questTargetStickyInInventory.insert(targetItem->GetFormID());
           if (refAlias->fillData.created.alias.create ==
               RE::BGSRefAlias::CreatedFillData::Alias::Create::kIn) {
             const auto target(aliasByID.find(createdIn));
@@ -220,7 +220,8 @@ void QuestTargets::Analyze() {
             RE::TESObjectREFR *refr(
                 refAlias->fillData.forced.forcedRef.get().get());
             if (refr && refr->GetBaseObject()) {
-              m_questTargetAllItems.insert(refr->GetBaseObject()->GetFormID());
+              m_questTargetStickyInInventory.insert(
+                  refr->GetBaseObject()->GetFormID());
               size_t itemCount(PlacedObjects::Instance().NumberOfInstances(
                   refr->GetBaseObject()));
               // record this specific REFR as the QUST target
@@ -317,15 +318,30 @@ void QuestTargets::BlacklistFavorItems() {
     if (targetItem) {
       RE::TESBoundObject *boundObject(targetItem->As<RE::TESBoundObject>());
       if (boundObject) {
-        REL_VMESSAGE("Blacklist Favor Quest Target {}/0x{:08x}",
+        REL_VMESSAGE("Make Favor Quest Target sticky in inventory {}/0x{:08x}",
                      boundObject->GetName(), boundObject->GetFormID());
-        BlacklistQuestTargetItem(boundObject);
+        // make these sticky in inventory, while avoiding universal glow
+        m_questTargetStickyInInventory.insert(boundObject->GetFormID());
         continue;
       }
     }
     REL_VMESSAGE(
         "FormID {}/0x{:06x} for Favor Quest does not identify Bound Object",
         espName, formID);
+  }
+  // Detect the actual REFR for the quest using Location Reference Type
+  RE::TESForm *lcrt_form(
+      LoadOrder::Instance().LookupForm(0x3f491, "Skyrim.esm"));
+  if (!lcrt_form) {
+    REL_WARNING("Favor Quest Item LCRT not found")
+    return;
+  }
+  auto favour_lcrt(lcrt_form->As<RE::BGSLocationRefType>());
+  if (!favour_lcrt) {
+    REL_WARNING("Favor Quest Item LCRT not found")
+  } else {
+    REL_MESSAGE("Favor Quest Item LCRT resolved")
+    m_favour_lcrt_id = favour_lcrt->GetFormID();
   }
 }
 
@@ -411,7 +427,7 @@ bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject *item) {
   if (!FormUtils::IsConcrete(item))
     return false;
   // record in omnibus list for Excess Inventory, dup calls are OK
-  m_questTargetAllItems.insert(item->GetFormID());
+  m_questTargetStickyInInventory.insert(item->GetFormID());
   if (m_questTargetItems.insert(item->GetFormID()).second) {
     m_userCannotPermission.insert(item->GetFormID());
     return true;
@@ -435,7 +451,7 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(
   if (!FormUtils::IsConcrete(item))
     return false;
   // record in omnibus list for Excess Inventory, dup calls are OK
-  m_questTargetAllItems.insert(item->GetFormID());
+  m_questTargetStickyInInventory.insert(item->GetFormID());
   return BlacklistQuestTargetReferencedItemByID(item->GetFormID(),
                                                 refr->GetFormID());
 }
@@ -446,7 +462,7 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(
 bool QuestTargets::BlacklistQuestTargetReferencedItemByID(
     const RE::FormID itemID, const RE::FormID refrID) {
   // record in omnibus list for Excess Inventory, dup calls are OK
-  m_questTargetAllItems.insert(itemID);
+  m_questTargetStickyInInventory.insert(itemID);
   return m_questTargetReferenced[itemID].insert(refrID).second;
 }
 
@@ -458,7 +474,7 @@ bool QuestTargets::BlacklistQuestTargetREFR(const RE::TESObjectREFR *refr) {
   // record the base object
   if (m_questTargetREFRs.insert(refr->GetFormID()).second) {
     // record in omnibus list for Excess Inventory, dup calls are OK
-    m_questTargetAllItems.insert(refr->GetBaseObject()->GetFormID());
+    m_questTargetStickyInInventory.insert(refr->GetBaseObject()->GetFormID());
     m_userCannotPermission.insert(refr->GetBaseObject()->GetFormID());
     return true;
   }
@@ -535,13 +551,28 @@ bool QuestTargets::AllowsExcessHandling(const RE::TESForm *form) const {
     return true;
   RecursiveLockGuard guard(m_questLock);
   // check universal item list unmatched and no active conditional handling
-  return !m_questTargetAllItems.contains(form->GetFormID()) &&
+  return !m_questTargetStickyInInventory.contains(form->GetFormID()) &&
          (ConditionalQuestItemLootability(form) == Lootability::Lootable);
 }
 
 bool QuestTargets::UserCannotPermission(const RE::TESForm *form) const {
   RecursiveLockGuard guard(m_questLock);
   return m_userCannotPermission.contains(form->GetFormID());
+}
+
+bool QuestTargets::IsFavourQuestTarget(const RE::TESObjectREFR *refr) const {
+  RecursiveLockGuard guard(m_questLock);
+  if (!refr)
+    return false;
+  auto xlrt = refr->extraList.GetByType<RE::ExtraLocationRefType>();
+  if (xlrt && xlrt->locRefType &&
+      xlrt->locRefType->GetFormID() == m_favour_lcrt_id) {
+    DBG_MESSAGE("REFR 0x{:08x} for {}/0x{:08x} is Favor QUST Item",
+                refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                refr->GetBaseObject()->GetFormID());
+    return true;
+  }
+  return false;
 }
 
 } // namespace shse

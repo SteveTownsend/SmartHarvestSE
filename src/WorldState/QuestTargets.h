@@ -52,6 +52,7 @@ public:
                                      const RE::TESObjectREFR *refr) const;
   bool AllowsExcessHandling(const RE::TESForm *form) const;
   bool UserCannotPermission(const RE::TESForm *form) const;
+  bool IsFavourQuestTarget(const RE::TESObjectREFR *refr) const;
 
 private:
   // don't make item a Quest Target if instances are scattered all over the
@@ -82,12 +83,13 @@ private:
 
   std::unordered_set<RE::FormID> m_userCannotPermission;
   std::unordered_set<RE::FormID> m_questTargetItems;
-  std::unordered_set<RE::FormID> m_questTargetAllItems;
+  std::unordered_set<RE::FormID> m_questTargetStickyInInventory;
   std::unordered_map<RE::FormID, QuestTargetPredicate>
       m_conditionalQuestTargetItems;
   std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>>
       m_questTargetReferenced;
   std::unordered_set<RE::FormID> m_questTargetREFRs;
+  RE::FormID m_favour_lcrt_id = InvalidForm;
 };
 
 } // namespace shse
