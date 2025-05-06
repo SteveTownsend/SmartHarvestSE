@@ -62,8 +62,36 @@ void LoadCallback(SKSE::SerializationInterface *a_intfc) {
   }
 }
 
+std::string MessageTypeName(const uint32_t message_type) {
+  switch (message_type) {
+  case SKSE::MessagingInterface::kPostLoad:
+    return "kPostLoad";
+  case SKSE::MessagingInterface::kPostPostLoad:
+    return "kPostPostLoad";
+  case SKSE::MessagingInterface::kPreLoadGame:
+    return "kPreLoadGame";
+  case SKSE::MessagingInterface::kPostLoadGame:
+    return "kPostLoadGame";
+  case SKSE::MessagingInterface::kSaveGame:
+    return "kSaveGame";
+  case SKSE::MessagingInterface::kDeleteGame:
+    return "kDeleteGame";
+  case SKSE::MessagingInterface::kInputLoaded:
+    return "kInputLoaded";
+  case SKSE::MessagingInterface::kNewGame:
+    return "kNewGame";
+  case SKSE::MessagingInterface::kDataLoaded:
+    return "kDataLoaded";
+  default:
+    return "unknown";
+  }
+}
+
 void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
   static bool scanOK(true);
+  REL_MESSAGE("SKSEMessageHandler:{}/{}", msg->type,
+              MessageTypeName(msg->type));
+
   switch (msg->type) {
   case SKSE::MessagingInterface::kDataLoaded:
     DBG_MESSAGE("Loading Papyrus");
