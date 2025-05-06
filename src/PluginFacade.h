@@ -27,7 +27,7 @@ public:
   PluginFacade();
 
   bool Init();
-  void PrepareForReloadOrNewGame();
+  void PrepareToPlay();
   void ResetTransientState(const bool gameReload);
   void OnVMSync();
   void OnGameLoaded();

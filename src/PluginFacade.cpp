@@ -219,7 +219,7 @@ void PluginFacade::ScanThread() {
   }
 }
 
-void PluginFacade::PrepareForReloadOrNewGame() {
+void PluginFacade::PrepareToPlay() {
   UIState::Instance().Reset();
   CosaveData::Instance().Clear();
   Saga::Instance().Reset();

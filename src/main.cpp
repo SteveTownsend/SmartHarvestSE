@@ -99,11 +99,6 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
     REL_MESSAGE("Registered Papyrus functions!");
     break;
 
-  case SKSE::MessagingInterface::kPreLoadGame:
-    REL_MESSAGE("Game load starting");
-    shse::PluginFacade::Instance().PrepareForReloadOrNewGame();
-    break;
-
   case SKSE::MessagingInterface::kPostPostLoad:
     MergeMapperPluginAPI::GetMergeMapperInterface001(); // Request interface
     if (g_mergeMapperInterface) {                       // Use Interface
@@ -115,13 +110,10 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
     break;
 
   case SKSE::MessagingInterface::kNewGame:
-    REL_MESSAGE("New game starting");
-    shse::PluginFacade::Instance().PrepareForReloadOrNewGame();
-    // fall through to rest of required logic
-
   case SKSE::MessagingInterface::kPostLoadGame:
     // at this point CosaveData contains any saved data, if this was a
     // saved-game load
+    shse::PluginFacade::Instance().PrepareToPlay();
     const bool onGameReload(msg->type ==
                             SKSE::MessagingInterface::kPostLoadGame);
     REL_MESSAGE("Game ready: new game = {}", onGameReload ? "false" : "true");
