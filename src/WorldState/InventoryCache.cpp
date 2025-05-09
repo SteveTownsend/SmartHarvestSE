@@ -77,9 +77,11 @@ void InventoryEntry::Populate() {
   }
   if (weight > 0.0 && maxWeight > 0.0) {
     // if weight configured, convert to # of items and round down by casting,
-    // after incrementing with weight epsilon
+    // after incrementing with weight epsilon.
+    // If max items is zero, ignore it and just check count by weight.
     m_maxItemsByWeight = static_cast<int>((maxWeight / weight) + 0.001);
-    m_maxCount = std::min(m_maxItems, m_maxItemsByWeight);
+    m_maxCount = m_maxItems > 0 ? std::min(m_maxItems, m_maxItemsByWeight)
+                                : m_maxItemsByWeight;
   } else {
     m_maxCount = m_maxItems;
   }
