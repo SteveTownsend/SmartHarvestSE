@@ -204,6 +204,8 @@ std::string LootabilityName(const Lootability lootability) {
     return "CannotLootQuestNPC";
   case Lootability::CannotLootQuestREFR:
     return "CannotLootQuestREFR";
+  case Lootability::CannotLootFavorQuestTarget:
+    return "CannotLootFavorQuestTarget";
   default:
     return "";
   }

@@ -97,16 +97,17 @@ bool IsPlayerOwned(const RE::TESObjectREFR *refr) {
   return false;
 }
 
-bool IsQuestItem(const RE::TESObjectREFR *refr) {
+Lootability QuestLootabilityStatus(const RE::TESObjectREFR *refr) {
   if (!refr)
-    return false;
+    return Lootability::NullReference;
   // check REFR vs pre-populated Quest Targets
-  if (QuestTargets::Instance().ReferencedQuestTargetLootability(refr) !=
-      Lootability::Lootable)
-    return true;
+  Lootability result =
+      QuestTargets::Instance().ReferencedQuestTargetLootability(refr);
+  if (result != Lootability::Lootable)
+    return result;
   // Is this REFR the target for a Favor Quest?
   if (QuestTargets::Instance().IsFavourQuestTarget(refr))
-    return true;
+    return Lootability::CannotLootFavorQuestTarget;
 
   RE::RefHandle handle;
   RE::CreateRefHandle(handle, const_cast<RE::TESObjectREFR *>(refr));
@@ -117,8 +118,11 @@ bool IsQuestItem(const RE::TESObjectREFR *refr) {
   if (!targetRef)
     targetRef.reset(const_cast<RE::TESObjectREFR *>(refr));
 
-  return ExtraDataList::IsREFRQuestObject(targetRef.get(),
-                                          &targetRef->extraList);
+  if (ExtraDataList::IsREFRQuestObject(targetRef.get(),
+                                       &targetRef->extraList)) {
+    return Lootability::CannotLootQuestREFR;
+  }
+  return Lootability::Lootable;
 }
 
 void PrintManualLootMessage(const std::string &name) {

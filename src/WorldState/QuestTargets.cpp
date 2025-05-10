@@ -561,16 +561,15 @@ QuestTargets::QuestTargetLootability(const RE::TESForm *form,
                                      const RE::TESObjectREFR *refr) const {
   if (!form)
     return Lootability::NoBaseObject;
-  // Dynamic base forms must never be recorded as their FormID may be reused -
-  // this may never fire, since list was built in startup logic.
-  // User-created ALCH may trigger this though.
+  // Dynamic base forms must never be recorded as their FormID may be reused.
+  // User-created ALCH are an example of persistent Form IDs starting with 0xFF.
   if (form->IsDynamicForm())
     return Lootability::Lootable;
   RecursiveLockGuard guard(m_questLock);
-  // check for ALCO item match with no stored explicit REFR. Form is dynamic.
+  // check for kAt ALCO item with no stored explicit REFR -> REFR is dynamic.
   if (refr && refr->IsDynamicForm() &&
       m_dynamicQuestTargets.contains(form->GetFormID())) {
-    return Lootability::CannotLootQuestBaseObject;
+    return Lootability::CannotLootQuestREFR;
   }
   if (m_questTargetNPCs.contains(form->GetFormID())) {
     return Lootability::CannotLootQuestNPC;

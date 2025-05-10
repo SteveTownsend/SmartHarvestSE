@@ -36,7 +36,7 @@ bool IsQuestTargetNPC(const RE::Actor *actor);
 bool HasAshPile(const RE::TESObjectREFR *refr);
 RE::TESObjectREFR *GetAshPile(const RE::TESObjectREFR *refr);
 bool IsPlayerOwned(const RE::TESObjectREFR *refr);
-bool IsQuestItem(const RE::TESObjectREFR *refr);
+Lootability QuestLootabilityStatus(const RE::TESObjectREFR *refr);
 void PrintManualLootMessage(const std::string &name);
 void ProcessManualLootREFR(const RE::TESObjectREFR *refr);
 void ProcessManualLootItem(const RE::TESBoundObject *item);

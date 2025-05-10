@@ -177,7 +177,8 @@ Lootability TryLootREFR::Process(const bool dryRun) {
       return Lootability::BaseObjectOnBlacklist;
     }
 
-    if (IsQuestItem(m_candidate)) {
+    result = QuestLootabilityStatus(m_candidate);
+    if (result != Lootability::Lootable) {
       QuestObjectHandling questObjectLoot =
           SettingsCache::Instance().QuestObjectLoot();
       DBG_VMESSAGE("Quest Item 0x{:08x}", m_candidate->GetBaseObject()->formID);
@@ -190,13 +191,10 @@ Lootability TryLootREFR::Process(const bool dryRun) {
                      m_candidate->GetBaseObject()->formID);
         UpdateGlowReason(GlowReason::QuestObject);
       }
-
       skipLooting = true;
-
       // ignore collectibility from here on, since we've determined it is
       // unlootable as a Quest Target
       collectible.first = false;
-      result = Lootability::CannotLootQuestBaseObject;
     }
     // glow unread notes as they are often quest-related
     else if (objType == ObjectType::book) {
@@ -670,7 +668,8 @@ Lootability TryLootREFR::Process(const bool dryRun) {
 
     // Container or NPC may itself be a Quest target - if so the entire thing is
     // blocked from autoloot
-    if (IsQuestItem(m_candidate)) {
+    result = QuestLootabilityStatus(m_candidate);
+    if (result != Lootability::Lootable) {
       QuestObjectHandling questObjectLoot =
           SettingsCache::Instance().QuestObjectLoot();
       DBG_VMESSAGE(
@@ -682,9 +681,7 @@ Lootability TryLootREFR::Process(const bool dryRun) {
       if (questObjectLoot == QuestObjectHandling::GlowTarget) {
         UpdateGlowReason(GlowReason::QuestObject);
       }
-
       skipLooting = true;
-      result = Lootability::CannotLootQuestBaseObject;
     } else {
       if (lister.HasQuestItem()) {
         QuestObjectHandling questObjectLoot =

@@ -624,6 +624,7 @@ enum class Lootability {
   NPCIsDisallowed,
   CannotLootQuestNPC,
   CannotLootQuestREFR,
+  CannotLootFavorQuestTarget,
   MAX
 };
 
