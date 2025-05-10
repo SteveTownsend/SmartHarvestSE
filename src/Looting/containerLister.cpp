@@ -95,11 +95,12 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled(
   auto inv = const_cast<RE::TESObjectREFR *>(m_refr)->GetInventory();
   for (auto &item : inv) {
     auto &[count, entry] = item.second;
+    RE::TESBoundObject *itemObject = entry->GetObject();
     if (entry->IsQuestObject()) {
-      DBG_VMESSAGE("Quest-item {}/0x{:08x} in inventory skipped");
+      DBG_VMESSAGE("Quest-item {}/0x{:08x} in inventory skipped",
+                   itemObject->GetName(), itemObject->GetFormID());
       continue;
     }
-    RE::TESBoundObject *itemObject = entry->GetObject();
 
     // very quick no-brainer tests first
     if (count <= 0)
