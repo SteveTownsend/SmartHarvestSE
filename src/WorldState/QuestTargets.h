@@ -67,7 +67,8 @@ private:
 
   Lootability ConditionalQuestItemLootability(const RE::TESForm *form) const;
   bool IsLootableInanimateReference(const RE::TESObjectREFR *refr) const;
-  void ProtectQuestItems(RE::TESQuest *quest);
+  void ProtectQuestItems(RE::TESQuest *quest,
+                         std::unordered_set<RE::FormID> &lvliMembers);
   bool BlacklistDynamicQuestTarget(const RE::TESBoundObject *item);
   bool BlacklistConditionalQuestTargetItem(const RE::TESBoundObject *item,
                                            QuestTargetPredicate predicate);
@@ -94,7 +95,6 @@ private:
   std::unordered_map<std::pair<RE::TESQuest *, uint32_t>,
                      const RE::BGSBaseAlias *, utils::pair_hash>
       m_aliasByID;
-  std::unordered_set<RE::FormID> m_lvliMembers;
 
   std::unordered_set<RE::FormID> m_questTargetREFRs;
   RE::FormID m_favour_lcrt_id = InvalidForm;

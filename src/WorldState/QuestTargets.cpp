@@ -105,19 +105,21 @@ bool QuestTargets::IsLootableInanimateReference(
 
 void QuestTargets::Analyze() {
   // any items that is in a Leveled List is not blacklisted as a Quest Target
+  std::unordered_set<RE::FormID> lvliMembers;
   for (const auto leveledItem :
        RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESLevItem>()) {
-    LeveledListMembers(leveledItem, m_lvliMembers).CategorizeContents();
+    LeveledListMembers(leveledItem, lvliMembers).CategorizeContents();
   }
   for (const auto quest :
        RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>()) {
-    ProtectQuestItems(quest);
+    ProtectQuestItems(quest, lvliMembers);
   }
   BlacklistFavorItems();
   BlacklistOutliers();
 }
 
-void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
+void QuestTargets::ProtectQuestItems(
+    RE::TESQuest *quest, std::unordered_set<RE::FormID> &lvliMembers) {
   if (!quest)
     return;
   for (const auto alias : quest->aliases) {
@@ -133,10 +135,8 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
     // Blacklist item if it is a quest ref-alias object
     if (alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID) {
       bool isQuest(alias->IsQuestObject());
-      if (isQuest) {
-        REL_VMESSAGE("'Quest Item' Alias: {}/{}", alias->aliasID,
-                     alias->aliasName.c_str());
-      }
+      REL_VMESSAGE("'Quest Item' {} for Alias: {}/{}", isQuest, alias->aliasID,
+                   alias->aliasName.c_str());
       RE::BGSRefAlias *refAlias(static_cast<RE::BGSRefAlias *>(alias));
       switch (refAlias->fillType.get()) {
       case RE::BGSBaseAlias::FILL_TYPE::kConditions: {
@@ -218,10 +218,7 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
                         targetItem->GetName(), targetItem->GetFormID());
                   }
                 } else {
-                  DBG_VMESSAGE("Failed to resolve REFR {}/0x{:08x} to "
-                               "kIn ALCO as Quest Target Item {}/0x{:08x}",
-                               refr->GetName(), refr->GetFormID(),
-                               targetItem->GetName(), targetItem->GetFormID());
+                  DBG_VMESSAGE("Failed to resolve REFR to kIn ALCO");
                 }
               } else if (targetAlias->fillType ==
                          RE::BGSBaseAlias::FILL_TYPE::kUniqueActor) {
@@ -237,8 +234,8 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
                                  targetItem->GetName(),
                                  targetItem->GetFormID());
                   } else {
-                    DBG_VMESSAGE("Using created-in ALUA {}/0x{:08x} to "
-                                 "blacklist RefAlias kIn ALCO {}/0x{:08x}",
+                    DBG_VMESSAGE("Created-in ALUA {}/0x{:08x} implicitly "
+                                 "blacklists RefAlias kIn ALCO {}/0x{:08x}",
                                  npc->GetName(), npc->GetFormID(),
                                  targetItem->GetName(),
                                  targetItem->GetFormID());
@@ -254,8 +251,8 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
             // proscribed from auto-looting.
             //
             // if item is a member of non-excluded LVLIs, do not blacklist it
-            if (m_lvliMembers.contains(targetItem->GetFormID())) {
-              DBG_VMESSAGE("RefAlias kAt ALCO excluded as Quest Target Item "
+            if (!isQuest && lvliMembers.contains(targetItem->GetFormID())) {
+              DBG_VMESSAGE("RefAlias kAt ALCO not treated as Quest Target Item "
                            "{}/0x{:08x}, member of LVLI",
                            targetItem->GetName(), targetItem->GetFormID());
             }
