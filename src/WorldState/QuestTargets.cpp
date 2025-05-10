@@ -105,36 +105,95 @@ bool QuestTargets::IsLootableInanimateReference(
 
 void QuestTargets::Analyze() {
   // any items that is in a Leveled List is not blacklisted as a Quest Target
-  std::unordered_set<RE::FormID> lvliMembers;
   for (const auto leveledItem :
        RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESLevItem>()) {
-    LeveledListMembers(leveledItem, lvliMembers).CategorizeContents();
+    LeveledListMembers(leveledItem, m_lvliMembers).CategorizeContents();
   }
-
   for (const auto quest :
        RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESQuest>()) {
-    REL_VMESSAGE("Quest Targets for {}/0x{:08x}", quest->GetName(),
-                 quest->GetFormID());
-    std::unordered_map<uint32_t, const RE::BGSBaseAlias *> aliasByID;
-    for (const auto alias : quest->aliases) {
-      aliasByID.insert({alias->aliasID, alias});
-    }
-    for (const auto alias : quest->aliases) {
-      // Blacklist item if it is a quest ref-alias object
-      if (alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID) {
-        bool isQuest(alias->IsQuestObject());
-        RE::BGSRefAlias *refAlias(static_cast<RE::BGSRefAlias *>(alias));
-        if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kCreated &&
-            refAlias->fillData.created.object) {
+    ProtectQuestItems(quest);
+  }
+  BlacklistFavorItems();
+  BlacklistOutliers();
+}
+
+void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
+  if (!quest)
+    return;
+  for (const auto alias : quest->aliases) {
+    if (!m_aliasByID.insert({{quest, alias->aliasID}, alias}).second) {
+      REL_VMESSAGE("Quest Target Aliases already handled for {}/0x{:08x}",
+                   quest->GetName(), quest->GetFormID());
+      return;
+    };
+  }
+  REL_VMESSAGE("Quest Targets for {}/0x{:08x}", quest->GetName(),
+               quest->GetFormID());
+  for (const auto alias : quest->aliases) {
+    // Blacklist item if it is a quest ref-alias object
+    if (alias->GetVMTypeID() == RE::BGSRefAlias::VMTYPEID) {
+      bool isQuest(alias->IsQuestObject());
+      if (isQuest) {
+        REL_VMESSAGE("'Quest Item' Alias: {}/{}", alias->aliasID,
+                     alias->aliasName.c_str());
+      }
+      RE::BGSRefAlias *refAlias(static_cast<RE::BGSRefAlias *>(alias));
+      switch (refAlias->fillType.get()) {
+      case RE::BGSBaseAlias::FILL_TYPE::kConditions: {
+        REL_VMESSAGE("Skip kConditions Alias {}/{}", alias->aliasID,
+                     alias->aliasName.c_str());
+        break;
+      }
+
+      case RE::BGSBaseAlias::FILL_TYPE::kForced: {
+        if (refAlias->fillData.forced.forcedRef) {
+          RE::TESObjectREFR *refr(
+              refAlias->fillData.forced.forcedRef.get().get());
+          if (refr && refr->GetBaseObject()) {
+            m_questTargetStickyInInventory.insert(
+                refr->GetBaseObject()->GetFormID());
+            // record this specific REFR as the QUST target
+            if ((isQuest || IsLootableInanimateReference(refr)) &&
+                BlacklistQuestTargetREFR(refr)) {
+              REL_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target "
+                           "Item 0x{:08x} to Base {}/0x{:08x}",
+                           refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                           refr->GetBaseObject()->GetFormID());
+            } else {
+              DBG_VMESSAGE(
+                  "Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
+                  refr->GetFormID(), refr->GetBaseObject()->GetName(),
+                  refr->GetBaseObject()->GetFormID());
+            }
+          } else {
+            REL_WARNING("Blank Forced RefAlias: {}/{}", alias->aliasID,
+                        alias->aliasName.c_str());
+          }
+        }
+        break;
+      }
+      // this points to a LCRT record
+      case RE::BGSBaseAlias::FILL_TYPE::kFromAlias: {
+        REL_VMESSAGE("Skip kFromAlias Alias {}/{}", alias->aliasID,
+                     alias->aliasName.c_str());
+        break;
+      }
+      // script event
+      case RE::BGSBaseAlias::FILL_TYPE::kFromEvent: {
+        REL_VMESSAGE("Skip kFromEvent Alias {}/{}", alias->aliasID,
+                     alias->aliasName.c_str());
+        break;
+      }
+      case RE::BGSBaseAlias::FILL_TYPE::kCreated: {
+        const RE::TESBoundObject *targetItem(refAlias->fillData.created.object);
+        if (targetItem) {
           // Check for specific instance of item created-in another alias
           uint16_t createdIn(refAlias->fillData.created.alias.alias);
-          const RE::TESBoundObject *targetItem(
-              refAlias->fillData.created.object);
           m_questTargetStickyInInventory.insert(targetItem->GetFormID());
           if (refAlias->fillData.created.alias.create ==
               RE::BGSRefAlias::CreatedFillData::Alias::Create::kIn) {
-            const auto target(aliasByID.find(createdIn));
-            if (target != aliasByID.cend()) {
+            const auto target(m_aliasByID.find({quest, createdIn}));
+            if (target != m_aliasByID.cend()) {
               const RE::BGSRefAlias *targetAlias(
                   static_cast<const RE::BGSRefAlias *>(target->second));
               if (targetAlias->fillType ==
@@ -181,102 +240,89 @@ void QuestTargets::Analyze() {
                                  targetItem->GetName(),
                                  targetItem->GetFormID());
                   }
-                  continue;
+                  return;
                 }
               }
             }
-          }
-          DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item {}/0x{:08x} "
-                       "has type kAt",
-                       targetItem->GetName(), targetItem->GetFormID());
-          size_t itemCount(
-              PlacedObjects::Instance().NumberOfInstances(targetItem));
-          if (itemCount >= BoringQuestTargetThreshold) {
-            DBG_VMESSAGE("RefAlias ALCO as Quest Target Item {}/0x{:08x} "
-                         "ignored, too many ({} placed vs threshold {})",
-                         targetItem->GetName(), targetItem->GetFormID(),
-                         itemCount, BoringQuestTargetThreshold);
-          }
-          // if item is in permitted LVLI, do not blacklist it
-          else if (lvliMembers.contains(targetItem->GetFormID())) {
-            DBG_VMESSAGE("RefAlias ALCO excluded as Quest Target Item "
-                         "{}/0x{:08x}, member of LVLI",
-                         targetItem->GetName(), targetItem->GetFormID());
-          }
-          // record if unique or Quest Object flag set
-          else if ((isQuest || (!targetItem->As<RE::TESNPC>() &&
-                                itemCount <= RareQuestTargetThreshold)) &&
-                   BlacklistQuestTargetItem(targetItem)) {
-            REL_VMESSAGE("Blacklist Created RefAlias ALCO as Quest Target Item "
-                         "{}/0x{:08x} ({} placed)",
-                         targetItem->GetName(), targetItem->GetFormID(),
-                         itemCount);
           } else {
-            DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
+            // ALCO REFRs created using kAt in an alias will have a form-id
+            // starting with 0xFF. This can be used to handle them more
+            // deterministically: only a Base object in a dynamic REFR need be
+            // proscribed from auto-looting.
+            DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item "
+                         "{}/0x{:08x} has type kAt",
                          targetItem->GetName(), targetItem->GetFormID());
-          }
-        } else if (refAlias->fillType == RE::BGSBaseAlias::FILL_TYPE::kForced) {
-          if (refAlias->fillData.forced.forcedRef) {
-            RE::TESObjectREFR *refr(
-                refAlias->fillData.forced.forcedRef.get().get());
-            if (refr && refr->GetBaseObject()) {
-              m_questTargetStickyInInventory.insert(
-                  refr->GetBaseObject()->GetFormID());
-              size_t itemCount(PlacedObjects::Instance().NumberOfInstances(
-                  refr->GetBaseObject()));
-              // record this specific REFR as the QUST target
-              if ((isQuest || (IsLootableInanimateReference(refr) &&
-                               itemCount <= RareQuestTargetThreshold)) &&
-                  BlacklistQuestTargetREFR(refr)) {
-                REL_VMESSAGE("Blacklist Forced RefAlias ALFR as Quest Target "
-                             "Item 0x{:08x} to Base {}/0x{:08x} ({} placed)",
-                             refr->GetFormID(),
-                             refr->GetBaseObject()->GetName(),
-                             refr->GetBaseObject()->GetFormID(), itemCount);
-              } else {
-                DBG_VMESSAGE(
-                    "Skip Forced RefAlias ALFR 0x{:08x} to Base {}/0x{:08x}",
-                    refr->GetFormID(), refr->GetBaseObject()->GetName(),
-                    refr->GetBaseObject()->GetFormID());
-              }
-            }
-          }
-        } else if (isQuest && refAlias->fillType ==
-                                  RE::BGSBaseAlias::FILL_TYPE::kUniqueActor) {
-          // Quest NPC should not be looted
-          if (refAlias->fillData.uniqueActor.uniqueActor) {
-            if (BlacklistQuestTargetNPC(
-                    refAlias->fillData.uniqueActor.uniqueActor)) {
+            // record if lootable or Quest Object flag set
+            if ((isQuest ||
+                 FormTypeIsLootableObject(targetItem->GetFormType())) &&
+                BlacklistDynamicQuestTarget(targetItem)) {
               REL_VMESSAGE(
-                  "Blacklist UniqueActor RefAlias ALUA as Quest Target NPC "
+                  "Blacklist Created RefAlias ALCO as Quest Target Item "
                   "{}/0x{:08x}",
-                  refAlias->fillData.uniqueActor.uniqueActor->GetName(),
-                  refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
+                  targetItem->GetName(), targetItem->GetFormID());
             } else {
-              DBG_VMESSAGE(
-                  "Skip UniqueActor RefAlias ALUA {}/0x{:08x}",
-                  refAlias->fillData.uniqueActor.uniqueActor->GetName(),
-                  refAlias->fillData.uniqueActor.uniqueActor->GetFormID());
+              DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
+                           targetItem->GetName(), targetItem->GetFormID());
             }
           }
-        } else {
-          DBG_VMESSAGE("RefAlias skipped for Quest: {}/0x{:08x} - unsupported "
-                       "RefAlias fill-type {}",
-                       quest->GetName(), quest->GetFormID(),
-                       refAlias->fillType.underlying());
+          break;
         }
       }
+      case RE::BGSBaseAlias::FILL_TYPE::kFromExternal: {
+        if (auto external_quest =
+                refAlias->fillData.fromExternal.externalQuest) {
+          // This will be handled internal to the hosting QUST
+          REL_VMESSAGE("Skip kFromExternal Alias {}/{}, home quest {}/0x{:08x}",
+                       alias->aliasID, alias->aliasName.c_str(),
+                       external_quest->GetFullName(),
+                       external_quest->GetFormID());
+        }
+        break;
+      }
+      case RE::BGSBaseAlias::FILL_TYPE::kUniqueActor: {
+        if (auto alias_npc = refAlias->fillData.uniqueActor.uniqueActor) {
+          if (isQuest) {
+            // Quest NPC should not be looted
+            if (BlacklistQuestTargetNPC(alias_npc)) {
+              REL_VMESSAGE(
+                  "Blacklisted UniqueActor RefAlias ALUA as Quest Target NPC "
+                  "{}/0x{:08x}",
+                  alias_npc->GetName(), alias_npc->GetFormID());
+            } else {
+              DBG_VMESSAGE(
+                  "Failed to Blacklist UniqueActor RefAlias ALUA {}/0x{:08x}",
+                  alias_npc->GetName(), alias_npc->GetFormID());
+            }
+          } else {
+            DBG_VMESSAGE("Skip non-quest UniqueActor RefAlias ALUA {}/0x{:08x}",
+                         alias_npc->GetName(), alias_npc->GetFormID());
+          }
+        }
+        break;
+      }
+      case RE::BGSBaseAlias::FILL_TYPE::kNearAlias: {
+        REL_VMESSAGE("Skip kNearAlias Alias {}/{}", alias->aliasID,
+                     alias->aliasName.c_str());
+        break;
+      }
+      default: {
+        REL_WARNING("Unknown RefAlias Filltype {}",
+                    refAlias->fillType.underlying());
+        break;
+      }
+      }
+    } else {
+      REL_WARNING("Skipping non-RefAlias {}/{}", alias->aliasID,
+                  alias->aliasName.c_str());
     }
   }
-  BlacklistFavorItems();
-  BlacklistOutliers();
 }
 
 void QuestTargets::BlacklistFavorItems() {
   // https://github.com/SteveTownsend/SmartHarvestSE/issues/387
-  // anything required to satisfy a Favor quest must be handled as a Quest Item
-  // irrespective of QUST state. Otherwise, excess inventory handling may flush
-  // them unexpectedly, breaking the QUST.
+  // anything required to satisfy a Favor quest must be handled as a Quest
+  // Item irrespective of QUST state. Otherwise, excess inventory handling
+  // may flush them unexpectedly, breaking the QUST.
   std::vector<std::tuple<std::string, RE::FormID>> favorTargets = {
       {"Skyrim.esm", 0x3f4bd},     // Double-Distilled Skooma
       {"Skyrim.esm", 0x403a9},     // Viola's Gold Ring
@@ -358,10 +404,10 @@ void QuestTargets::BlacklistOutliers() {
   }
   {
     // https://github.com/SteveTownsend/SmartHarvestSE/issues/322
-    // MQ106DragonMapRef [REFR:000FF228] (places MQ106DragonParchment "Map of
-    // Dragon Burials" [MISC:000BBCD5]
-    //   in GRUP Cell Persistent Children of RiverwoodSleepingGiantInn "Sleeping
-    //   Giant Inn" [CELL:000133C6])
+    // MQ106DragonMapRef [REFR:000FF228] (places MQ106DragonParchment "Map
+    // of Dragon Burials" [MISC:000BBCD5]
+    //   in GRUP Cell Persistent Children of RiverwoodSleepingGiantInn
+    //   "Sleeping Giant Inn" [CELL:000133C6])
     const RE::TESObjectREFR *refr(
         RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectREFR>(
             0xff228, "Skyrim.esm"));
@@ -369,10 +415,10 @@ void QuestTargets::BlacklistOutliers() {
         RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectMISC>(
             0xbbcd5, "Skyrim.esm"));
     if (item && refr) {
-      REL_VMESSAGE(
-          "Blacklist REFR {}/0x{:08x} to outlier Quest Target Item {}/0x{:08x}",
-          refr->GetName(), refr->GetFormID(), item->GetName(),
-          item->GetFormID());
+      REL_VMESSAGE("Blacklist REFR {}/0x{:08x} to outlier Quest Target Item "
+                   "{}/0x{:08x}",
+                   refr->GetName(), refr->GetFormID(), item->GetName(),
+                   item->GetFormID());
       BlacklistQuestTargetReferencedItem(item, refr);
     }
   }
@@ -399,7 +445,7 @@ void QuestTargets::BlacklistOutliers() {
   for (const auto barredNPC : offLimitsNPCs) {
     REL_VMESSAGE("Blacklist persistent outlier Quest Target NPC 0x{:08x}",
                  barredNPC);
-    m_questTargetItems.insert(barredNPC);
+    m_questTargetNPCs.insert(barredNPC);
   }
   // Briarheart Necropsy, do not loot item if Perk is present
   const RE::IngredientItem *ingredient(
@@ -413,22 +459,22 @@ void QuestTargets::BlacklistOutliers() {
   // Conditionally blacklisted items
   if (ingredient && perk && player) {
     if (BlacklistConditionalQuestTargetItem(ingredient, predicate)) {
-      REL_VMESSAGE(
-          "Blacklist Quest Target {}/0x{:08x} conditional on Perk {}/0x{:08x}",
-          ingredient->GetName(), ingredient->GetFormID(), perk->GetName(),
-          perk->GetFormID());
+      REL_VMESSAGE("Blacklist Quest Target {}/0x{:08x} conditional on Perk "
+                   "{}/0x{:08x}",
+                   ingredient->GetName(), ingredient->GetFormID(),
+                   perk->GetName(), perk->GetFormID());
     }
   }
 }
 
-// used for Quest Target Items with no specific REFR. Blocks autoloot of the
-// item everywhere, to preserve immersion and avoid breaking Quests.
-bool QuestTargets::BlacklistQuestTargetItem(const RE::TESBoundObject *item) {
+// used for Quest Target Items with no specific REFR. These are from ALCO, so
+// lootable unless their REFR is dynamic (formid 0xFF......).
+bool QuestTargets::BlacklistDynamicQuestTarget(const RE::TESBoundObject *item) {
   if (!FormUtils::IsConcrete(item))
     return false;
   // record in omnibus list for Excess Inventory, dup calls are OK
   m_questTargetStickyInInventory.insert(item->GetFormID());
-  if (m_questTargetItems.insert(item->GetFormID()).second) {
+  if (m_dynamicQuestTargets.insert(item->GetFormID()).second) {
     m_userCannotPermission.insert(item->GetFormID());
     return true;
   }
@@ -443,9 +489,9 @@ bool QuestTargets::BlacklistConditionalQuestTargetItem(
       .second;
 }
 
-// used for Quest Target Items with specific REFR. Blocks autoloot of the item
-// for this REFR (or any if REFR blank), to preserve immersion and avoid
-// breaking Quests.
+// used for Quest Target Items with specific REFR. Blocks autoloot of the
+// item for this REFR (or any if REFR blank), to preserve immersion and
+// avoid breaking Quests.
 bool QuestTargets::BlacklistQuestTargetReferencedItem(
     const RE::TESBoundObject *item, const RE::TESObjectREFR *refr) {
   if (!FormUtils::IsConcrete(item))
@@ -456,9 +502,9 @@ bool QuestTargets::BlacklistQuestTargetReferencedItem(
                                                 refr->GetFormID());
 }
 
-// used for Quest Target Items with specific REFR. Blocks autoloot of the item
-// for this REFR (or any if REFR blank), to preserve immersion and avoid
-// breaking Quests.
+// used for Quest Target Items with specific REFR. Blocks autoloot of the
+// item for this REFR (or any if REFR blank), to preserve immersion and
+// avoid breaking Quests.
 bool QuestTargets::BlacklistQuestTargetReferencedItemByID(
     const RE::FormID itemID, const RE::FormID refrID) {
   // record in omnibus list for Excess Inventory, dup calls are OK
@@ -481,8 +527,8 @@ bool QuestTargets::BlacklistQuestTargetREFR(const RE::TESObjectREFR *refr) {
   return false;
 }
 
-// used for Quest Target NPCs. Blocks autoloot of the NPC, to preserve immersion
-// and avoid breaking Quests.
+// used for Quest Target NPCs. Blocks autoloot of the NPC, to preserve
+// immersion and avoid breaking Quests.
 bool QuestTargets::BlacklistQuestTargetNPC(const RE::TESNPC *npc) {
   if (!npc)
     return false;
@@ -490,7 +536,7 @@ bool QuestTargets::BlacklistQuestTargetNPC(const RE::TESNPC *npc) {
   if (name.empty())
     return false;
   RecursiveLockGuard guard(m_questLock);
-  return m_questTargetItems.insert(npc->GetFormID()).second;
+  return m_questTargetNPCs.insert(npc->GetFormID()).second;
 }
 
 Lootability QuestTargets::ReferencedQuestTargetLootability(
@@ -498,7 +544,7 @@ Lootability QuestTargets::ReferencedQuestTargetLootability(
   if (!refr)
     return Lootability::NullReference;
   if (m_questTargetREFRs.contains(refr->GetFormID())) {
-    return Lootability::CannotLootQuestTarget;
+    return Lootability::CannotLootQuestREFR;
   }
   return QuestTargetLootability(refr->GetBaseObject(), refr);
 }
@@ -508,21 +554,25 @@ QuestTargets::QuestTargetLootability(const RE::TESForm *form,
                                      const RE::TESObjectREFR *refr) const {
   if (!form)
     return Lootability::NoBaseObject;
-  // Dynamic forms must never be recorded as their FormID may be reused - this
-  // may never fire, since list was built in startup logic. User-created ALCH
-  // may trigger this though.
+  // Dynamic base forms must never be recorded as their FormID may be reused -
+  // this may never fire, since list was built in startup logic.
+  // User-created ALCH may trigger this though.
   if (form->IsDynamicForm())
     return Lootability::Lootable;
   RecursiveLockGuard guard(m_questLock);
-  // check for universal item match with no stored explicit  REFR
-  if (m_questTargetItems.contains(form->GetFormID())) {
-    return Lootability::CannotLootQuestTarget;
+  // check for ALCO item match with no stored explicit REFR. Form is dynamic.
+  if (refr && refr->IsDynamicForm() &&
+      m_dynamicQuestTargets.contains(form->GetFormID())) {
+    return Lootability::CannotLootQuestBaseObject;
+  }
+  if (m_questTargetNPCs.contains(form->GetFormID())) {
+    return Lootability::CannotLootQuestNPC;
   }
   // check for specific reference to base
   const auto referenced(m_questTargetReferenced.find(form->GetFormID()));
   if (referenced != m_questTargetReferenced.cend() &&
       referenced->second.find(refr->GetFormID()) != referenced->second.cend()) {
-    return Lootability::CannotLootQuestTarget;
+    return Lootability::CannotLootQuestREFR;
   }
   // check for items that can be conditionally excluded
   return ConditionalQuestItemLootability(form);
@@ -534,19 +584,19 @@ QuestTargets::ConditionalQuestItemLootability(const RE::TESForm *form) const {
   const auto condition(m_conditionalQuestTargetItems.find(form->GetFormID()));
   if (condition != m_conditionalQuestTargetItems.cend() &&
       (condition->second)()) {
-    return Lootability::CannotLootQuestTarget;
+    return Lootability::CannotLootQuestBaseObject;
   }
   return Lootability::Lootable;
 }
 
-// we need to be extremely conservative in excluding possible Quest Targets from
-// excess inventory handling
+// we need to be extremely conservative in excluding possible Quest Targets
+// from excess inventory handling
 bool QuestTargets::AllowsExcessHandling(const RE::TESForm *form) const {
   if (!form)
     return false;
-  // Dynamic forms must never be recorded as their FormID may be reused - this
-  // may never fire, since list was built in startup logic. User-created ALCH
-  // may trigger this though.
+  // Dynamic forms must never be recorded as their FormID may be reused -
+  // this may never fire, since list was built in startup logic.
+  // User-created ALCH may trigger this though.
   if (form->IsDynamicForm())
     return true;
   RecursiveLockGuard guard(m_questLock);

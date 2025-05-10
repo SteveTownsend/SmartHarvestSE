@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "Data/dataCase.h"
+#include "Utilities/utils.h"
 #include <functional>
 
 namespace shse {
@@ -66,7 +67,8 @@ private:
 
   Lootability ConditionalQuestItemLootability(const RE::TESForm *form) const;
   bool IsLootableInanimateReference(const RE::TESObjectREFR *refr) const;
-  bool BlacklistQuestTargetItem(const RE::TESBoundObject *item);
+  void ProtectQuestItems(RE::TESQuest *quest);
+  bool BlacklistDynamicQuestTarget(const RE::TESBoundObject *item);
   bool BlacklistConditionalQuestTargetItem(const RE::TESBoundObject *item,
                                            QuestTargetPredicate predicate);
   bool BlacklistQuestTargetReferencedItem(const RE::TESBoundObject *item,
@@ -82,12 +84,18 @@ private:
   mutable RecursiveLock m_questLock;
 
   std::unordered_set<RE::FormID> m_userCannotPermission;
-  std::unordered_set<RE::FormID> m_questTargetItems;
+  std::unordered_set<RE::FormID> m_dynamicQuestTargets;
+  std::unordered_set<RE::FormID> m_questTargetNPCs;
   std::unordered_set<RE::FormID> m_questTargetStickyInInventory;
   std::unordered_map<RE::FormID, QuestTargetPredicate>
       m_conditionalQuestTargetItems;
   std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>>
       m_questTargetReferenced;
+  std::unordered_map<std::pair<RE::TESQuest *, uint32_t>,
+                     const RE::BGSBaseAlias *, utils::pair_hash>
+      m_aliasByID;
+  std::unordered_set<RE::FormID> m_lvliMembers;
+
   std::unordered_set<RE::FormID> m_questTargetREFRs;
   RE::FormID m_favour_lcrt_id = InvalidForm;
 };

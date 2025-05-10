@@ -109,11 +109,24 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
     }
     break;
 
+  case SKSE::MessagingInterface::kPreLoadGame:
+    if (!Version::IsVR()) {
+      shse::PluginFacade::Instance().PrepareToPlay();
+    }
+    break;
+
   case SKSE::MessagingInterface::kNewGame:
+    if (!Version::IsVR()) {
+      shse::PluginFacade::Instance().PrepareToPlay();
+    }
+    // fall through to rest of required logic
+
   case SKSE::MessagingInterface::kPostLoadGame:
     // at this point CosaveData contains any saved data, if this was a
     // saved-game load
-    shse::PluginFacade::Instance().PrepareToPlay();
+    if (Version::IsVR()) {
+      shse::PluginFacade::Instance().PrepareToPlay();
+    }
     const bool onGameReload(msg->type ==
                             SKSE::MessagingInterface::kPostLoadGame);
     REL_MESSAGE("Game ready: new game = {}", onGameReload ? "false" : "true");

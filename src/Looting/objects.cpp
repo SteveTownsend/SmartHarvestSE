@@ -101,8 +101,8 @@ bool IsQuestItem(const RE::TESObjectREFR *refr) {
   if (!refr)
     return false;
   // check REFR vs pre-populated Quest Targets
-  if (QuestTargets::Instance().ReferencedQuestTargetLootability(refr) ==
-      Lootability::CannotLootQuestTarget)
+  if (QuestTargets::Instance().ReferencedQuestTargetLootability(refr) !=
+      Lootability::Lootable)
     return true;
   // Is this REFR the target for a Favor Quest?
   if (QuestTargets::Instance().IsFavourQuestTarget(refr))
@@ -206,7 +206,7 @@ bool IsDisintegrating(const RE::Actor *actor) {
 bool IsQuestTargetNPC(const RE::Actor *actor) {
   const RE::TESNPC *npc(actor->GetActorBase());
   bool result(npc && QuestTargets::Instance().QuestTargetLootability(
-                         npc, nullptr) == Lootability::CannotLootQuestTarget);
+                         npc, nullptr) != Lootability::Lootable);
   DBG_DMESSAGE("Actor is Quest Target NPC = {}", result ? "true" : "false");
   return result;
 }

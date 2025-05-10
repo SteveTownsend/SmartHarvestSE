@@ -196,7 +196,7 @@ Lootability TryLootREFR::Process(const bool dryRun) {
       // ignore collectibility from here on, since we've determined it is
       // unlootable as a Quest Target
       collectible.first = false;
-      result = Lootability::CannotLootQuestTarget;
+      result = Lootability::CannotLootQuestBaseObject;
     }
     // glow unread notes as they are often quest-related
     else if (objType == ObjectType::book) {
@@ -684,7 +684,7 @@ Lootability TryLootREFR::Process(const bool dryRun) {
       }
 
       skipLooting = true;
-      result = Lootability::CannotLootQuestTarget;
+      result = Lootability::CannotLootQuestBaseObject;
     } else {
       if (lister.HasQuestItem()) {
         QuestObjectHandling questObjectLoot =

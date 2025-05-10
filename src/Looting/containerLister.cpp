@@ -95,6 +95,10 @@ InventoryCache ContainerLister::CacheIfExcessHandlingEnabled(
   auto inv = const_cast<RE::TESObjectREFR *>(m_refr)->GetInventory();
   for (auto &item : inv) {
     auto &[count, entry] = item.second;
+    if (entry->IsQuestObject()) {
+      DBG_VMESSAGE("Quest-item {}/0x{:08x} in inventory skipped");
+      continue;
+    }
     RE::TESBoundObject *itemObject = entry->GetObject();
 
     // very quick no-brainer tests first
@@ -350,8 +354,8 @@ size_t ContainerLister::AnalyzeLootableItems(
         continue;
 
       // Check for enchantment or quest target
-      if (QuestTargets::Instance().QuestTargetLootability(item, m_refr) ==
-          Lootability::CannotLootQuestTarget) {
+      if (QuestTargets::Instance().QuestTargetLootability(item, m_refr) !=
+          Lootability::Lootable) {
         DBG_DMESSAGE("Quest Item={}/0x{:08x}", item->GetName(),
                      item->GetFormID());
         m_questItems.insert(item);

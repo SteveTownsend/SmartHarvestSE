@@ -23,19 +23,13 @@ http://www.fsf.org/licensing/licenses
 
 #include "Looting/containerLister.h"
 #include "Looting/IRangeChecker.h"
+#include "Utilities/utils.h"
 #include "VM/EventPublisher.h"
 #include "VM/UIState.h"
 
 #include <mutex>
 
 namespace shse {
-struct pair_hash {
-  template <class T1, class T2>
-  std::size_t operator()(const std::pair<T1, T2> &pair) const {
-    return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
-  }
-};
-
 class ScanGovernor {
 public:
   static ScanGovernor &Instance();
@@ -127,7 +121,7 @@ private:
       std::pair<RE::FormID, RE::FormID>,
       std::pair<std::chrono::time_point<std::chrono::high_resolution_clock>,
                 bool>,
-      pair_hash>
+      utils::pair_hash>
       m_harvestRequested;
   mutable size_t m_pendingNotifies;
   mutable size_t m_pendingHarvests;
@@ -150,7 +144,8 @@ private:
   // Record looted REFRs to avoid re-scan of empty or looted chest and dead
   // body. Dynamic REFRs - reset on cell change - includes REFR and BaseObject
   // FormIDs to make this less likely to silently malfunction
-  mutable std::unordered_set<std::pair<RE::FormID, RE::FormID>, pair_hash>
+  mutable std::unordered_set<std::pair<RE::FormID, RE::FormID>,
+                             utils::pair_hash>
       m_lootedDynamicREFRs;
   // Non-dynamic - reset on game reload or MCM settings update. Handle reglow of
   // partially-looted containers

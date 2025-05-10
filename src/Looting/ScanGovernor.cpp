@@ -314,7 +314,7 @@ Lootability ScanGovernor::CanLootActor(const RE::TESObjectREFR *refr,
   else if (IsSummoned(actor) && !HasAshPile(actor) && !StartsDead(refr)) {
     exclusionType = Lootability::DeadBodyIsSummoned;
   } else if (IsQuestTargetNPC(actor)) {
-    exclusionType = Lootability::CannotLootQuestTarget;
+    exclusionType = Lootability::CannotLootQuestNPC;
   } else if (!NPCFilter::Instance().IsLootable(actor->GetActorBase())) {
     exclusionType = Lootability::NPCExcludedByDeadBodyFilter;
   } else {

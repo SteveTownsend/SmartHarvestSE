@@ -40,7 +40,15 @@ inline bool CanOpenFile(const char *fileName) {
 
 namespace utils {
 double GetGameSettingFloat(const RE::BSFixedString &name);
-}
+
+struct pair_hash {
+  template <class T1, class T2>
+  std::size_t operator()(const std::pair<T1, T2> &pair) const {
+    return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+  }
+};
+
+} // namespace utils
 
 namespace WindowsUtils {
 unsigned long long microsecondsNow();

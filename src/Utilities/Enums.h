@@ -583,7 +583,7 @@ enum class Lootability {
   ObjectTypeUnknown,
   ManualLootTarget,
   BaseObjectOnBlacklist,
-  CannotLootQuestTarget,
+  CannotLootQuestBaseObject,
   ObjectIsInBlacklistCollection,
   CannotLootValuableObject,
   CannotLootEnchantedObject,
@@ -622,6 +622,8 @@ enum class Lootability {
   ReferenceActivationBlocked,
   NPCIsDisintegrating,
   NPCIsDisallowed,
+  CannotLootQuestNPC,
+  CannotLootQuestREFR,
   MAX
 };
 

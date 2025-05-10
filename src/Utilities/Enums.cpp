@@ -122,8 +122,8 @@ std::string LootabilityName(const Lootability lootability) {
     return "ManualLootTarget";
   case Lootability::BaseObjectOnBlacklist:
     return "BaseObjectOnBlacklist";
-  case Lootability::CannotLootQuestTarget:
-    return "CannotLootQuestTarget";
+  case Lootability::CannotLootQuestBaseObject:
+    return "CannotLootQuestBaseObject";
   case Lootability::ObjectIsInBlacklistCollection:
     return "ObjectIsInBlacklistCollection";
   case Lootability::CannotLootValuableObject:
@@ -200,6 +200,10 @@ std::string LootabilityName(const Lootability lootability) {
     return "NPCIsDisintegrating";
   case Lootability::NPCIsDisallowed:
     return "NPCIsDisallowed";
+  case Lootability::CannotLootQuestNPC:
+    return "CannotLootQuestNPC";
+  case Lootability::CannotLootQuestREFR:
+    return "CannotLootQuestREFR";
   default:
     return "";
   }
