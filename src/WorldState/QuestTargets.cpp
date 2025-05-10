@@ -199,26 +199,29 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
               if (targetAlias->fillType ==
                   RE::BGSBaseAlias::FILL_TYPE::kForced) {
                 // created in ALFR
-                if (targetAlias->fillData.forced.forcedRef) {
-                  RE::TESObjectREFR *refr(
-                      targetAlias->fillData.forced.forcedRef.get().get());
-                  if (refr) {
-                    // this object in this specific REFR is a Quest Target
-                    if (BlacklistQuestTargetReferencedItem(targetItem, refr)) {
-                      REL_VMESSAGE("Blacklist Specific REFR {}/0x{:08x} to "
-                                   "ALCO as Quest Target Item {}/0x{:08x}",
-                                   refr->GetName(), refr->GetFormID(),
-                                   targetItem->GetName(),
-                                   targetItem->GetFormID());
-                      continue;
-                    } else {
-                      DBG_VMESSAGE(
-                          "Failed to Blacklist Specific REFR {}/0x{:08x} to "
-                          "ALCO as Quest Target Item {}/0x{:08x}",
-                          refr->GetName(), refr->GetFormID(),
-                          targetItem->GetName(), targetItem->GetFormID());
-                    }
+                RE::TESObjectREFR *refr(
+                    targetAlias->fillData.forced.forcedRef.get().get());
+                if (refr) {
+                  // this object in this specific REFR is a Quest Target
+                  if (BlacklistQuestTargetReferencedItem(targetItem, refr)) {
+                    REL_VMESSAGE("Blacklist Specific REFR {}/0x{:08x} to "
+                                 "kIn ALCO as Quest Target Item {}/0x{:08x}",
+                                 refr->GetName(), refr->GetFormID(),
+                                 targetItem->GetName(),
+                                 targetItem->GetFormID());
+                    continue;
+                  } else {
+                    DBG_VMESSAGE(
+                        "Failed to Blacklist Specific REFR {}/0x{:08x} to "
+                        "kIn ALCO as Quest Target Item {}/0x{:08x}",
+                        refr->GetName(), refr->GetFormID(),
+                        targetItem->GetName(), targetItem->GetFormID());
                   }
+                } else {
+                  DBG_VMESSAGE("Failed to resolve REFR {}/0x{:08x} to "
+                               "kIn ALCO as Quest Target Item {}/0x{:08x}",
+                               refr->GetName(), refr->GetFormID(),
+                               targetItem->GetName(), targetItem->GetFormID());
                 }
               } else if (targetAlias->fillType ==
                          RE::BGSBaseAlias::FILL_TYPE::kUniqueActor) {
@@ -229,13 +232,13 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
                   // blacklist the hosting NPC
                   if (BlacklistQuestTargetNPC(npc)) {
                     REL_VMESSAGE("Blacklist created-in ALUA {}/0x{:08x} for "
-                                 "RefAlias ALCO {}/0x{:08x}",
+                                 "RefAlias kIn ALCO {}/0x{:08x}",
                                  npc->GetName(), npc->GetFormID(),
                                  targetItem->GetName(),
                                  targetItem->GetFormID());
                   } else {
                     DBG_VMESSAGE("Using created-in ALUA {}/0x{:08x} to "
-                                 "blacklist RefAlias ALCO {}/0x{:08x}",
+                                 "blacklist RefAlias kIn ALCO {}/0x{:08x}",
                                  npc->GetName(), npc->GetFormID(),
                                  targetItem->GetName(),
                                  targetItem->GetFormID());
@@ -249,19 +252,23 @@ void QuestTargets::ProtectQuestItems(RE::TESQuest *quest) {
             // starting with 0xFF. This can be used to handle them more
             // deterministically: only a Base object in a dynamic REFR need be
             // proscribed from auto-looting.
-            DBG_VMESSAGE("Created RefAlias ALCO as Quest Target Item "
-                         "{}/0x{:08x} has type kAt",
-                         targetItem->GetName(), targetItem->GetFormID());
+            //
+            // if item is a member of non-excluded LVLIs, do not blacklist it
+            if (m_lvliMembers.contains(targetItem->GetFormID())) {
+              DBG_VMESSAGE("RefAlias kAt ALCO excluded as Quest Target Item "
+                           "{}/0x{:08x}, member of LVLI",
+                           targetItem->GetName(), targetItem->GetFormID());
+            }
             // record if lootable or Quest Object flag set
-            if ((isQuest ||
-                 FormTypeIsLootableObject(targetItem->GetFormType())) &&
-                BlacklistDynamicQuestTarget(targetItem)) {
+            else if ((isQuest ||
+                      FormTypeIsLootableObject(targetItem->GetFormType())) &&
+                     BlacklistDynamicQuestTarget(targetItem)) {
               REL_VMESSAGE(
-                  "Blacklist Created RefAlias ALCO as Quest Target Item "
+                  "Blacklist Created kAt RefAlias ALCO as Quest Target Item "
                   "{}/0x{:08x}",
                   targetItem->GetName(), targetItem->GetFormID());
             } else {
-              DBG_VMESSAGE("Skip Created RefAlias ALCO {}/0x{:08x}",
+              DBG_VMESSAGE("Skip Created kAt RefAlias ALCO {}/0x{:08x}",
                            targetItem->GetName(), targetItem->GetFormID());
             }
           }
