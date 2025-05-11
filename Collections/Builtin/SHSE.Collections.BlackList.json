@@ -66,6 +66,24 @@
         },
         "operator": "AND"
       }
+    },
+    {
+      "description": "Prevent SHSE from Looting Explosive Barrels",
+      "name": "SHSE-ExplosiveBarrel",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "$comment": "Explosive Barrel MISC used to replace CONT in REFRs",
+              "plugin": "Explosive Barrel.esp",
+              "form": [
+                "00000804"
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }
