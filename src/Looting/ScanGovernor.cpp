@@ -228,7 +228,7 @@ void ScanGovernor::ForgetLockedContainers() {
 }
 
 void ScanGovernor::ForgetPeriodicMessages() {
-  DBG_MESSAGE("Clear locked containers blacklist");
+  DBG_MESSAGE("Clear periodic messages");
   RecursiveLockGuard guard(m_stateLock);
   m_regulatedMessages.clear();
 }
