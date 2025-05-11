@@ -109,6 +109,9 @@ RE::BSEventNotifyControl LocationTracker::ProcessEvent(
     DBG_MESSAGE("Entered CELL {}/0x{:08x}", cell->GetFormEditorID(),
                 cell->GetFormID());
     RecursiveLockGuard guard(m_locationLock);
+    // Reset flags related to game-load
+    m_pending_cell_entry = false;
+    m_poll_location = false;
     Refresh(cell);
   } else if (a_event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
     DBG_MESSAGE("Exited CELL {}/0x{:08x}", cell->GetFormEditorID(),
@@ -610,6 +613,12 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
 
   const RE::TESObjectCELL *playerCell(
       cell ? cell : RE::PlayerCharacter::GetSingleton()->parentCell);
+  // If we now knowPlayer location after non-VR load into same CELL, reset
+  // polling flags and start using events
+  if (m_pending_cell_entry && playerCell && !Version::IsVR()) {
+    m_pending_cell_entry = false;
+    m_poll_location = false;
+  }
   RE::FormID playerCellID(playerCell ? playerCell->GetFormID() : InvalidForm);
   bool indoorsNow(playerCell ? playerCell->IsInteriorCell() : false);
   if (playerCellID != originalCellID) {
@@ -762,6 +771,13 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
     RecordCurrentPlace(PlayerState::Instance().CurrentGameTime());
   }
   return true;
+}
+
+void LocationTracker::MarkAwaitingCellEntryEvent() {
+  RecursiveLockGuard guard(m_locationLock);
+  m_pending_cell_entry = true;
+  // Fall back to polling until we determine location after reload
+  m_poll_location = true;
 }
 
 bool LocationTracker::IsPlayerAtHome() const {

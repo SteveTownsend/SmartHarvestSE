@@ -112,6 +112,7 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
   case SKSE::MessagingInterface::kPreLoadGame:
     if (!Version::IsVR()) {
       shse::PluginFacade::Instance().PrepareToPlay();
+      shse::LocationTracker::Instance().MarkAwaitingCellEntryEvent();
     }
     break;
 

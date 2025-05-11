@@ -90,6 +90,7 @@ private:
   mutable RecursiveLock m_locationLock;
   mutable std::atomic<bool> m_aiRunning;
   std::atomic<int> m_cellSequence;
+  bool m_pending_cell_entry = false;
   bool m_poll_location = false;
   bool m_initialized = false;
 
@@ -111,6 +112,8 @@ public:
 
   void Reset();
   bool Refresh(const RE::TESObjectCELL *cell = nullptr);
+  void MarkAwaitingCellEntryEvent();
+  inline bool AwaitingCellEntryEvent() const { return m_pending_cell_entry; }
   inline bool UseLocationPolling() const { return m_poll_location; }
   bool IsPlayerAtHome() const;
   void RecordCurrentPlace(const float gameTime);
