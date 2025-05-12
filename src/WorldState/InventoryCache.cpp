@@ -61,8 +61,9 @@ ExcessInventoryHandling InventoryEntry::HandlingType() const {
 }
 
 void InventoryEntry::Populate() {
+  constexpr bool use_value_for_ammo = true;
   TESFormHelper helper(m_item, m_excessType,
-                       INIFile::SecondaryType::itemObjects);
+                       INIFile::SecondaryType::itemObjects, use_value_for_ammo);
   m_value = helper.GetWorth();
   double weight(helper.GetWeight());
   double maxWeight(0.0);

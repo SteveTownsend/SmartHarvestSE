@@ -38,8 +38,10 @@ TESFormHelper::TESFormHelper(const RE::TESBoundObject *form,
 
 TESFormHelper::TESFormHelper(const RE::TESBoundObject *form,
                              ObjectType effectiveType,
-                             const INIFile::SecondaryType scope)
-    : m_form(form), m_matcher(form, scope, effectiveType) {
+                             const INIFile::SecondaryType scope,
+                             const bool use_value_for_ammo)
+    : m_form(form), m_matcher(form, scope, effectiveType),
+      m_use_value_for_ammo(use_value_for_ammo) {
   init();
 }
 
@@ -217,9 +219,18 @@ uint32_t TESFormHelper::CalculateWorth(void) const {
   if (m_form->formType == RE::FormType::Ammo) {
     const RE::TESAmmo *ammo(m_form->As<RE::TESAmmo>());
     if (ammo) {
-      DBG_VMESSAGE("Ammo {}({:08x}) damage = {:0.2f}", GetName(), GetFormID(),
-                   ammo->GetRuntimeData().data.damage);
-      return static_cast<uint32_t>(ammo->GetRuntimeData().data.damage);
+      if (m_use_value_for_ammo) {
+        // For Excess Inventory auto-sell
+        DBG_VMESSAGE("Ammo {}({:08x}) value = {}", GetName(), GetFormID(),
+                     GetGoldValue());
+        return GetGoldValue();
+
+      } else {
+        // For Value/Weight checking
+        DBG_VMESSAGE("Ammo {}({:08x}) damage = {:0.2f}", GetName(), GetFormID(),
+                     ammo->GetRuntimeData().data.damage);
+        return static_cast<uint32_t>(ammo->GetRuntimeData().data.damage);
+      }
     }
     return 0;
   } else {

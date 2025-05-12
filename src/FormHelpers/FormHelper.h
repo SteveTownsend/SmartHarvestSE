@@ -30,7 +30,8 @@ public:
   TESFormHelper(const RE::TESBoundObject *form,
                 const INIFile::SecondaryType scope);
   TESFormHelper(const RE::TESBoundObject *form, ObjectType effectiveType,
-                const INIFile::SecondaryType scope);
+                const INIFile::SecondaryType scope,
+                const bool use_value_for_ammo = false);
 
   RE::BGSKeywordForm *GetKeywordForm(void) const;
   RE::EnchantmentItem *GetEnchantment(void);
@@ -56,6 +57,7 @@ protected:
 
   const RE::TESBoundObject *m_form;
   const shse::ConditionMatcher m_matcher;
+  const bool m_use_value_for_ammo = false;
 
   virtual const char *GetName() const override;
   virtual uint32_t GetFormID() const override;
