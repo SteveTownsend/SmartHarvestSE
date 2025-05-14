@@ -1034,39 +1034,31 @@ void TryLootREFR::GetLootFromContainer(
     // save count in case we have to copy these after failure to transfer (e.g.
     // MrB's Lootable Things)
     std::get<4>(target) = count;
-    std::string notificationText;
+    std::string activateMsg;
     if (notify) {
       if (count > 1) {
-        static RE::BSFixedString multiActivate(
-            DataCase::GetInstance()->GetTranslation(
-                "$SHSE_ACTIVATE(COUNT)_MSG"));
-        if (!multiActivate.empty()) {
-          notificationText = multiActivate;
-          StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
+        activateMsg = DataCase::GetInstance()->GetTranslation(
+            "$SHSE_ACTIVATE(COUNT)_MSG");
+        if (!activateMsg.empty()) {
           std::ostringstream intStr;
           intStr << count;
-          StringUtils::Replace(notificationText, "{COUNT}", intStr.str());
+          StringUtils::Replace(activateMsg, "{COUNT}", intStr.str());
         }
       } else {
-        static RE::BSFixedString singleActivate(
-            DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE_MSG"));
-        if (!singleActivate.empty()) {
-          notificationText = singleActivate;
-          StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
-        }
+        activateMsg =
+            DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE_MSG");
       }
-      if (!notificationText.empty()) {
-        RE::DebugNotification(notificationText.c_str());
+      if (!activateMsg.empty()) {
+        StringUtils::Replace(activateMsg, "{ITEMNAME}", name.c_str());
+        RE::DebugNotification(activateMsg.c_str());
       }
     }
     if (whiteListNotify) {
-      static RE::BSFixedString whiteListMsg(
-          DataCase::GetInstance()->GetTranslation(
-              "$SHSE_WHITELIST_ITEM_LOOTED"));
-      if (!whiteListMsg.empty()) {
-        notificationText = whiteListMsg;
-        StringUtils::Replace(notificationText, "{ITEMNAME}", name.c_str());
-        RE::DebugNotification(notificationText.c_str());
+      activateMsg = DataCase::GetInstance()->GetTranslation(
+          "$SHSE_WHITELIST_ITEM_LOOTED");
+      if (!activateMsg.empty()) {
+        StringUtils::Replace(activateMsg, "{ITEMNAME}", name.c_str());
+        RE::DebugNotification(activateMsg.c_str());
       }
     }
   }

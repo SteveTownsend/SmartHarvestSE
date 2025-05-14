@@ -480,20 +480,19 @@ void NotifyActivated(RE::StaticFunctionTag *, RE::TESForm *itemForm,
       if (count >= 2) {
         activateMsg = shse::DataCase::GetInstance()->GetTranslation(
             "$SHSE_ACTIVATE(COUNT)_MSG");
-        StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
         StringUtils::Replace(activateMsg, "{COUNT}", std::to_string(count));
       } else {
         activateMsg =
             shse::DataCase::GetInstance()->GetTranslation("$SHSE_ACTIVATE_MSG");
-        StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
       }
       if (!activateMsg.empty()) {
+        StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
         RE::DebugNotification(activateMsg.c_str());
       }
     }
     if (isWhitelisted) {
       std::string whitelistMsg = shse::DataCase::GetInstance()->GetTranslation(
-          "$SHSE_ACTIVATE(COUNT)_MSG");
+          "SHSE_WHITELIST_ITEM_LOOTED");
       StringUtils::Replace(whitelistMsg, "{ITEMNAME}", baseName.c_str());
       if (!whitelistMsg.empty()) {
         RE::DebugNotification(whitelistMsg.c_str());
