@@ -1277,7 +1277,7 @@ Event OnVersionUpdate(int a_version)
         eventScript.ConvertExcessInventoryTargetsToRefAlias(64, eventScript.LootTargetMax)
     endif
     if a_version != CurrentVersion
-        AlwaysTrace("Upgrade SHSE_MCM from v" + a_version " to v" + CurrentVersion)
+        AlwaysTrace("Upgrade SHSE_MCM from v" + a_version + " to v" + CurrentVersion)
     endif
 endEvent
 
