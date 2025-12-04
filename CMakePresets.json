@@ -10,7 +10,7 @@
             "name": "common",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "/DAE_CPU=AE_INTEL /arch:AVX2 $env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
+                "CMAKE_CXX_FLAGS": "/DAE_CPU=AE_INTEL /DAE_NO_FMA /DAE_NO_AVX2 $env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
             },
             "errors": {
                 "deprecated": false
