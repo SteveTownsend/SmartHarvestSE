@@ -257,7 +257,8 @@ void TaskDispatcher::EnqueueCarryWeightStateChange(bool doReload,
           }
 
           if (weightDelta != 0) {
-            actorValueOwner->ModActorValue(RE::ActorValue::kCarryWeight,
+            actorValueOwner->ModActorValue(RE::ACTOR_VALUE_MODIFIER::kPermanent,
+                                           RE::ActorValue::kCarryWeight,
                                            static_cast<float>(weightDelta));
             REL_WARNING("Removing legacy Player.CarryWeight delta={} from {}",
                         weightDelta, carryWeight);

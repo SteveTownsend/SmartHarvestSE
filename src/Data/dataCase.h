@@ -119,6 +119,7 @@ public:
     return m_offLimitsContainers.contains(containerRef->GetFormID());
   }
   bool IsSlowTimeEffectActive() const;
+  bool IsPlayerMagicallyConcealed() const;
   bool AutoMiningDisabled() const;
 
   template <typename T>
@@ -168,6 +169,7 @@ private:
   std::unordered_map<RE::FormID, std::string> m_offLimitsLocations;
   std::unordered_set<RE::FormID> m_offLimitsContainers;
   std::unordered_set<RE::EffectSetting *> m_slowTimeEffects;
+  std::unordered_set<RE::EffectSetting *> m_concealmentEffects;
   std::unordered_set<RE::TESContainer *> m_containerBlackList;
   std::unordered_set<RE::FormID> m_containerWhiteList;
   std::unordered_map<const RE::TESForm *, Lootability> m_permanentBlockedForms;
@@ -439,6 +441,7 @@ private:
   void CategorizeByActivationVerb(void);
   void FindCraftingItems(void);
   void AnalyzePerks(void);
+  void AnalyzeMagicEffects(void);
 
   std::string GetModelPath(const RE::TESForm *thisForm) const;
   bool CheckObjectModelPath(const RE::TESForm *thisForm, const char *arg) const;

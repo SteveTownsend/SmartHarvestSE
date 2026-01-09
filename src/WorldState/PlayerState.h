@@ -54,13 +54,13 @@ public:
     return m_carryWeightEffect;
   }
   void ReviewExcessInventory(bool force);
-  void TrySendSLotDSupplies();
+  void TrySendLotDSupplies();
 
 private:
   void CheckPerks(const bool force);
   void ReconcileCarryWeight(const bool doReload);
-  bool IsMagicallyConcealed(RE::MagicTarget *target) const;
   bool FortuneHuntOnly() const;
+  void CheckCanSendLotDSupplies();
 
   static std::unique_ptr<PlayerState> m_instance;
 

@@ -85,7 +85,7 @@ bool ContextValid(RE::StaticFunctionTag *, const int context) {
 }
 
 void TryShipLotDSupplies(RE::StaticFunctionTag *) {
-  shse::PlayerState::Instance().TrySendSLotDSupplies();
+  shse::PlayerState::Instance().TrySendLotDSupplies();
 }
 
 RE::BSFixedString GetPluginName(RE::StaticFunctionTag *,

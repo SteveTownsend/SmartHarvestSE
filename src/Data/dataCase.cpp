@@ -345,6 +345,12 @@ void DataCase::AnalyzePerks(void) {
       }
     }
   }
+}
+
+void DataCase::AnalyzeMagicEffects(void) {
+  RE::TESDataHandler *dhnd = RE::TESDataHandler::GetSingleton();
+  if (!dhnd)
+    return;
   // Save MGEF with Slow Time archetype and with Value Modifier on Bow Speed
   // Bonus. Constant Effects skipped to avoid inoperable state.
   for (RE::EffectSetting *effect : dhnd->GetFormArray<RE::EffectSetting>()) {
@@ -360,17 +366,43 @@ void DataCase::AnalyzePerks(void) {
       }
 
     } else if (effect->HasArchetype(
-                   RE::EffectSetting::Archetype::kValueModifier) &&
-               effect->data.primaryAV == RE::ActorValue::kBowSpeedBonus) {
+                   RE::EffectSetting::Archetype::kInvisibility) ||
+               effect->HasArchetype(
+                   RE::EffectSetting::Archetype::kEtherealize)) {
       if (effect->data.castingType !=
           RE::MagicSystem::CastingType::kConstantEffect) {
-        REL_VMESSAGE("ValueModifier-BowSpeedBonus Magic Effect : {}({:08x})",
-                     effect->GetName(), effect->GetFormID());
-        m_slowTimeEffects.insert(effect);
+        REL_VMESSAGE("Concealment Magic Effect : {}({:08x})", effect->GetName(),
+                     effect->GetFormID());
+        m_concealmentEffects.insert(effect);
       } else {
-        REL_VMESSAGE("Constant ValueModifier-BowSpeedBonus Magic Effect "
-                     "skipped : {}({:08x})",
+        REL_VMESSAGE("Constant Concealment Magic Effect skipped : {}({:08x})",
                      effect->GetName(), effect->GetFormID());
+      }
+
+    } else if (effect->HasArchetype(
+                   RE::EffectSetting::Archetype::kValueModifier)) {
+      if (effect->data.primaryAV == RE::ActorValue::kBowSpeedBonus) {
+        if (effect->data.castingType !=
+            RE::MagicSystem::CastingType::kConstantEffect) {
+          REL_VMESSAGE("ValueModifier-BowSpeedBonus Magic Effect : {}({:08x})",
+                       effect->GetName(), effect->GetFormID());
+          m_slowTimeEffects.insert(effect);
+        } else {
+          REL_VMESSAGE("Constant ValueModifier-BowSpeedBonus Magic Effect "
+                       "skipped : {}({:08x})",
+                       effect->GetName(), effect->GetFormID());
+        }
+      } else if (effect->data.primaryAV == RE::ActorValue::kInvisibility) {
+        if (effect->data.castingType !=
+            RE::MagicSystem::CastingType::kConstantEffect) {
+          REL_VMESSAGE("ValueModifier-Invisibility Magic Effect : {}({:08x})",
+                       effect->GetName(), effect->GetFormID());
+          m_concealmentEffects.insert(effect);
+        } else {
+          REL_VMESSAGE("Constant ValueModifier-Invisibility Magic Effect "
+                       "skipped : {}({:08x})",
+                       effect->GetName(), effect->GetFormID());
+        }
       }
     }
   }
@@ -1572,9 +1604,11 @@ void DataCase::CategorizeLootables() {
   REL_MESSAGE("*** LOAD *** Get Crafting Items");
   FindCraftingItems();
 
-  // Analyze perks that affect looting
+  // Analyze perks and effects that affect looting
   DBG_MESSAGE("*** LOAD *** Analyze Perks");
   AnalyzePerks();
+  DBG_MESSAGE("*** LOAD *** Analyze Magic Effects");
+  AnalyzeMagicEffects();
 
   // Analyze NPC Race and Keywords for dead body filtering
   DBG_MESSAGE("*** LOAD *** Analyze NPC Race and Keywords");
@@ -1940,7 +1974,6 @@ bool DataCase::IsSlowTimeEffectActive() const {
     for (auto &effect : *effects) {
       setting = effect ? effect->GetBaseObject() : nullptr;
       if (setting && m_slowTimeEffects.contains(setting)) {
-        // Inactive effects skipped
         // Inactive/dispelled effects skipped
         if (effect->flags.none(RE::ActiveEffect::Flag::kInactive) &&
             effect->flags.none(RE::ActiveEffect::Flag::kDispelled)) {
@@ -1952,6 +1985,61 @@ bool DataCase::IsSlowTimeEffectActive() const {
         }
         REL_DMESSAGE("Skip Inactive SlowTime or ValueModifier-BowSpeedBonus "
                      "archetype effect : {}({:08x})",
+                     setting->GetName(), setting->GetFormID());
+      }
+    }
+    return false;
+  }
+}
+
+bool DataCase::IsPlayerMagicallyConcealed() const {
+  auto target = RE::PlayerCharacter::GetSingleton()->AsMagicTarget();
+  if (!target) {
+    return false;
+  }
+  // Use Active Effects Visitor to avoid problems in VR
+  // https://github.com/powerof3/PapyrusExtenderSSE/blob/9b14951520c9f57d29fc6ff578f5496dd668188a/include/Papyrus/Functions/Actor.h#L208
+  if (Version::IsVR()) {
+    bool result(false);
+    target->VisitActiveEffects([&](RE::ActiveEffect *effect) {
+      RE::EffectSetting *magic_effect =
+          effect ? effect->GetBaseObject() : nullptr;
+      if (magic_effect && m_concealmentEffects.contains(magic_effect)) {
+        // Inactive/dispelled effects skipped
+        if (effect->flags.none(RE::ActiveEffect::Flag::kInactive) &&
+            effect->flags.none(RE::ActiveEffect::Flag::kDispelled)) {
+          REL_WARNING(
+              "Player subject to Concealment archetype effect {}({:08x})",
+              magic_effect->GetName(), magic_effect->GetFormID());
+          result = true;
+          return RE::BSContainer::ForEachResult::kStop;
+        }
+        DBG_DMESSAGE(
+            "Skip Inactive/Dispelled Concealment archetype effect : {}({:08x})",
+            magic_effect->GetName(), magic_effect->GetFormID());
+      }
+      return RE::BSContainer::ForEachResult::kContinue;
+    });
+    return result;
+
+  } else {
+    auto effects = target ? target->GetActiveEffectList() : nullptr;
+    if (!effects) {
+      return false;
+    }
+    RE::EffectSetting *setting = nullptr;
+    for (auto &effect : *effects) {
+      setting = effect ? effect->GetBaseObject() : nullptr;
+      if (setting && m_concealmentEffects.contains(setting)) {
+        // Inactive/dispelled effects skipped
+        if (effect->flags.none(RE::ActiveEffect::Flag::kInactive) &&
+            effect->flags.none(RE::ActiveEffect::Flag::kDispelled)) {
+          REL_WARNING("Player subject to Active non-constant-cast Concealment "
+                      "archetype effect : {}({:08x})",
+                      setting->GetName(), setting->GetFormID());
+          return true;
+        }
+        REL_DMESSAGE("Skip Inactive Concealment archetype effect : {}({:08x})",
                      setting->GetName(), setting->GetFormID());
       }
     }
