@@ -406,7 +406,9 @@ ScanGovernor::ValidateTarget(RE::TESObjectREFR *&refr,
       // seen alive in this cell visit. The long-dead are fair game. If we are
       // in glow-only mode it is safe to skip this.
       if (!glowOnly && shse::ActorTracker::Instance().SeenAlive(refr) &&
-          !HandleAsDynamicData(refr) &&
+          // https://github.com/SteveTownsend/SmartHarvestSE/issues/588
+          // Summons have to be delayed, or we may exploit our own SPEL to farm e.g Atronach Salts
+          (IsSummoned(actor) || !HandleAsDynamicData(refr)) &&
           DataCase::GetInstance()->IsReferenceBlocked(refr) ==
               Lootability::Lootable) {
         if (!dryRun) {
