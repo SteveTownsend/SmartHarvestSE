@@ -967,6 +967,7 @@ void ScanGovernor::ClearPendingHarvestInfo(const bool gameReload) {
         next = m_harvestRequested.erase(next);
         if (!isSilent)
           --m_pendingNotifies;
+        --m_pendingHarvests;
         ++discarded;
       } else {
         ++next;
