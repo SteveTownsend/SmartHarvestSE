@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
   brotli
   GIT_REPOSITORY https://github.com/google/brotli
-  GIT_TAG        v1.1.0
+  GIT_TAG        v1.2.0
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(brotli)
@@ -11,7 +11,7 @@ FetchContent_MakeAvailable(brotli)
 FetchContent_Declare(
   nlohmann_json_schema_validator
   GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
-  GIT_TAG        2.3.0
+  GIT_TAG        2.4.0
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(nlohmann_json_schema_validator)
@@ -19,7 +19,7 @@ FetchContent_MakeAvailable(nlohmann_json_schema_validator)
 FetchContent_Declare(
  spdlog
  GIT_REPOSITORY https://github.com/gabime/spdlog
- GIT_TAG        v1.15.2
+ GIT_TAG        v1.17.0
  OVERRIDE_FIND_PACKAGE
 )
 FetchContent_GetProperties(spdlog)
@@ -32,7 +32,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.8.1
+  GIT_TAG        v3.12.0
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(Catch2)
@@ -40,7 +40,7 @@ FetchContent_MakeAvailable(Catch2)
 FetchContent_Declare(
   rapidcsv
   GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG        v8.85
+  GIT_TAG        v8.90
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(rapidcsv)
@@ -52,8 +52,8 @@ set(BUILD_TESTS OFF)
 FetchContent_Declare(
   CommonLibSSE
   GIT_REPOSITORY https://github.com/alandtse/CommonLibVR
-  # May 27 2024 -> Apr 12 2025
-  GIT_TAG        539d4ce50969e8d23f4d507a7bc3dd955a4de93f
+  # Apr 12 2025 -> Dec 12 2025
+  GIT_TAG        e0e0c867b1b06b755755c0e0e64f9b7e00dc009e
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(CommonLibSSE)
