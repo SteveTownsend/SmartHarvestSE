@@ -1086,13 +1086,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             if keyCode == pauseKeyCode
                 HandlePauseKeyPress(itemForm)
             else
-                if IsQuestTarget(itemForm)
+                ; https://github.com/SteveTownsend/SmartHarvestSE/issues/584
+                ; Blacklisting Quest Item is OK, just disallow Whitelist
+                if keyCode == whiteListKeyCode && IsQuestTarget(itemForm)
                     string msg
-                    if keyCode == whiteListKeyCode
-                        msg = "$SHSE_WHITELIST_QUEST_TARGET"
-                    else
-                        msg = "$SHSE_BLACKLIST_QUEST_TARGET"
-                    endIf
+                    msg = "$SHSE_WHITELIST_QUEST_TARGET"
                     Debug.Notification(msg)
                     keyHandlingActive = false
                     return
