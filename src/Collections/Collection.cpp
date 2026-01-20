@@ -128,7 +128,7 @@ bool Collection::RecordItem(const RE::TESForm *form, const float gameTime,
           StringUtils::Replace(notificationText, "{ITEMNAME}", form->GetName());
           StringUtils::Replace(notificationText, "{COLLECTION}", m_name);
           if (!notificationText.empty()) {
-            RE::DebugNotification(notificationText.c_str());
+            RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
           }
         }
       }

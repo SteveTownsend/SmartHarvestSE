@@ -310,8 +310,7 @@ void DataCase::AnalyzePerks(void) {
       if (entryPoint->entryData.entryPoint ==
               RE::BGSEntryPoint::ENTRY_POINT::kAddLeveledListOnDeath &&
           entryPoint->entryData.function ==
-              RE::BGSEntryPointPerkEntry::EntryData::Function::
-                  kAddLeveledList) {
+              RE::BGSEntryPointPerkEntry::Function::kAddLeveledList) {
         REL_MESSAGE("Leveled items added on death by perk {}/0x{:08x}",
                     perk->GetName(), perk->GetFormID());
         m_leveledItemOnDeathPerks.insert(perk);
@@ -319,7 +318,7 @@ void DataCase::AnalyzePerks(void) {
       if (entryPoint->entryData.entryPoint ==
           RE::BGSEntryPoint::ENTRY_POINT::kModIngredientsHarvested) {
         if (entryPoint->entryData.function ==
-                RE::BGSEntryPointPerkEntry::EntryData::Function::kSetValue &&
+                RE::BGSEntryPointPerkEntry::Function::kSetValue &&
             entryPoint->functionData &&
             entryPoint->functionData->GetType() ==
                 RE::BGSEntryPointFunctionData::ENTRY_POINT_FUNCTION_DATA::
@@ -1897,11 +1896,11 @@ bool DataCase::CheckIfArcheologyLeveledUp(const int skillValue) const {
   // <DBM_ArcheologySkillup>
   std::string skillUp("Your archeology skill has increased to ");
   skillUp += std::to_string(skillValue);
-  RE::DebugNotification(skillUp.c_str());
+  RE::SendHUDMessage::ShowHUDMessage(skillUp.c_str());
   if ((skillValue % 5) == 0 && skillValue <= 100) {
     // [12] LegacyoftheDragonborn.esm (7F85A309) \ Message \ 12079D49
     // <DBM_ArcheologySkillupPerk>
-    RE::DebugNotification("You have gained an Archeology Perk Point!");
+    RE::SendHUDMessage::ShowHUDMessage("You have gained an Archeology Perk Point!");
     return true;
   }
   return false;

@@ -1050,7 +1050,7 @@ void TryLootREFR::GetLootFromContainer(
       }
       if (!activateMsg.empty()) {
         StringUtils::Replace(activateMsg, "{ITEMNAME}", name.c_str());
-        RE::DebugNotification(activateMsg.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(activateMsg.c_str());
       }
     }
     if (whiteListNotify) {
@@ -1058,7 +1058,7 @@ void TryLootREFR::GetLootFromContainer(
           "$SHSE_WHITELIST_ITEM_LOOTED");
       if (!activateMsg.empty()) {
         StringUtils::Replace(activateMsg, "{ITEMNAME}", name.c_str());
-        RE::DebugNotification(activateMsg.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(activateMsg.c_str());
       }
     }
   }

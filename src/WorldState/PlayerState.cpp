@@ -220,7 +220,7 @@ void PlayerState::TrySendLotDSupplies() {
     static RE::BSFixedString error(papyrus::GetTranslation(
         nullptr, RE::BSFixedString("$SHSE_LOTD_SUPPLIES_NOT_FOUND")));
     if (!error.empty()) {
-      RE::DebugNotification(error.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(error.c_str());
     }
     REL_WARNING("Shipping supplies not possible, Legacy of the Dragonborn "
                 "Safehouse not detected");
@@ -230,7 +230,7 @@ void PlayerState::TrySendLotDSupplies() {
     static RE::BSFixedString error(papyrus::GetTranslation(
         nullptr, RE::BSFixedString("$SHSE_LOTD_NO_SAFEHOUSE_ACCESS")));
     if (!error.empty()) {
-      RE::DebugNotification(error.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(error.c_str());
     }
     REL_WARNING("Shipping supplies requires access to Legacy of the Dragonborn "
                 "Safehouse");

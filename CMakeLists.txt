@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.28.1)
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
 set(PRETTY_NAME "Smart Harvest SE")
-set(VERSION 6.3.2)
+set(VERSION 6.3.3)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 

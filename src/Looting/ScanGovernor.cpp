@@ -247,7 +247,7 @@ void ScanGovernor::ProgressGlowDemo() {
     std::ostringstream glowText;
     glowText << "Glow demo: " << GlowName(m_nextGlow)
              << ", hold Pause key for 5.0 seconds to terminate";
-    RE::DebugNotification(glowText.str().c_str());
+    RE::SendHUDMessage::ShowHUDMessage(glowText.str().c_str());
   } else {
     static RE::BSFixedString rangeText(
         papyrus::GetTranslation(nullptr, RE::BSFixedString("$SHSE_DISTANCE")));
@@ -258,7 +258,7 @@ void ScanGovernor::ProgressGlowDemo() {
                            std::to_string(m_calibrateRadius));
       notificationText.append(", hold Pause key for 5.0 seconds to terminate");
       if (!notificationText.empty()) {
-        RE::DebugNotification(notificationText.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
       }
     }
   }
@@ -823,14 +823,14 @@ void ScanGovernor::DisplayLootability(RE::TESObjectREFR *refr) {
     resultStr << " type=" << typeName;
   }
   std::string message(resultStr.str());
-  RE::DebugNotification(message.c_str());
+  RE::SendHUDMessage::ShowHUDMessage(message.c_str());
   REL_MESSAGE("Lootability checked for {}", message.c_str());
   resultStr.str("");
 
   resultStr << LootabilityName(result)
             << LocationTracker::Instance().PlayerExactLocation();
   message = resultStr.str();
-  RE::DebugNotification(message.c_str());
+  RE::SendHUDMessage::ShowHUDMessage(message.c_str());
   REL_MESSAGE("Lootability result: {}", message.c_str());
 }
 
@@ -1118,7 +1118,7 @@ void ScanGovernor::PeriodicReminder(RE::TESForm *context,
     }
   }
   if (doDisplay) {
-    RE::DebugNotification(msg.c_str());
+    RE::SendHUDMessage::ShowHUDMessage(msg.c_str());
     lastDisplayed.first->second = currentTime;
   }
 }
@@ -1138,10 +1138,10 @@ void ScanGovernor::ToggleCalibration(const bool glowDemo) {
   } else {
     if (m_glowDemo) {
       std::string glowText("Glow demo stopped");
-      RE::DebugNotification(glowText.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(glowText.c_str());
     } else {
       std::string rangeText("Range Calibration stopped");
-      RE::DebugNotification(rangeText.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(rangeText.c_str());
     }
     m_glowDemo = false;
   }

@@ -123,7 +123,7 @@ void CollectionManager::CollectFromContainer(const RE::TESObjectREFR *refr) {
       nullptr, RE::BSFixedString("$SHSE_HOTKEY_ADD_CONTENTS_TO_COLLECTIONS")));
   if (!extraItemsText.empty()) {
     std::string notificationText(extraItemsText);
-    RE::DebugNotification(notificationText.c_str());
+    RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
   }
 }
 
@@ -188,7 +188,7 @@ void CollectionManager::ProcessAddedItems() {
       StringUtils::Replace(notificationText, "{COUNT}",
                            std::to_string(extraItems));
       if (!notificationText.empty()) {
-        RE::DebugNotification(notificationText.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
       }
     }
   }

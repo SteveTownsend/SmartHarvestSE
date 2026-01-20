@@ -132,7 +132,7 @@ void PrintManualLootMessage(const std::string &name) {
     std::string notificationText(manualLootText);
     StringUtils::Replace(notificationText, "{ITEMNAME}", name);
     if (!notificationText.empty()) {
-      RE::DebugNotification(notificationText.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
     }
   }
 }

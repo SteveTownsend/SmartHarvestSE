@@ -749,7 +749,7 @@ void AdventureTargets::CheckReachedCurrentDestination(
         std::string notificationText(arrivalMsg);
         StringUtils::Replace(notificationText, "{TARGET}",
                              m_targetLocation->GetName());
-        RE::DebugNotification(notificationText.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
       }
       m_targetLocation = nullptr;
       m_targetWorld = nullptr;

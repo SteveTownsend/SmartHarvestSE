@@ -250,7 +250,7 @@ void LocationTracker::PrintPlayerLocation(
   std::string locationStr(
       NearbyLocationAsString(location, 0., CompassDirection::MAX, historic));
   if (!locationStr.empty()) {
-    RE::DebugNotification(locationStr.c_str());
+    RE::SendHUDMessage::ShowHUDMessage(locationStr.c_str());
   }
 }
 
@@ -289,7 +289,7 @@ void LocationTracker::PrintAdventureTargetInfo(const RE::BGSLocation *location,
                            "the place my Adventurer's Instinct seeks");
     }
     if (!locationMessage.empty()) {
-      RE::DebugNotification(locationMessage.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(locationMessage.c_str());
     }
   }
 }
@@ -303,7 +303,7 @@ void LocationTracker::PrintDifferentWorld(
     locationMessage = locationText;
     StringUtils::Replace(locationMessage, "{WORLD}", world->GetName());
     if (!locationMessage.empty()) {
-      RE::DebugNotification(locationMessage.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(locationMessage.c_str());
     }
   }
 }
@@ -383,7 +383,7 @@ void LocationTracker::PlayerLocationRelativeToNearestMapMarker(
     std::string locationStr(
         LocationRelativeToNearestMapMarker(playerPos, historic));
     if (!locationStr.empty()) {
-      RE::DebugNotification(locationStr.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(locationStr.c_str());
     }
   }
 }
@@ -469,7 +469,7 @@ LocationTracker::PlayerLocationRelativeToAdventureTarget() const {
     if (!locationText.empty()) {
       std::string locationMessage(locationText);
       if (!locationMessage.empty()) {
-        RE::DebugNotification(locationMessage.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(locationMessage.c_str());
       }
     }
     return location;
@@ -724,7 +724,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
           std::string notificationText(playerHouseMsg);
           StringUtils::Replace(notificationText, "{HOUSENAME}",
                                m_playerPlaceName);
-          RE::DebugNotification(notificationText.c_str());
+          RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
         }
       }
       // Check if location is excluded from looting and if so, notify we
@@ -739,7 +739,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
           std::string notificationText(restrictedPlaceMsg);
           StringUtils::Replace(notificationText, "{LOCATIONNAME}",
                                m_playerPlaceName);
-          RE::DebugNotification(notificationText.c_str());
+          RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
         }
       }
     }
@@ -758,7 +758,7 @@ bool LocationTracker::Refresh(const RE::TESObjectCELL *cell) {
           std::string notificationText(unrestrictedPlaceMsg);
           StringUtils::Replace(notificationText, "{LOCATIONNAME}",
                                originalPlaceName);
-          RE::DebugNotification(notificationText.c_str());
+          RE::SendHUDMessage::ShowHUDMessage(notificationText.c_str());
         }
       }
     }

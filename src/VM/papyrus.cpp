@@ -487,7 +487,7 @@ void NotifyActivated(RE::StaticFunctionTag *, RE::TESForm *itemForm,
       }
       if (!activateMsg.empty()) {
         StringUtils::Replace(activateMsg, "{ITEMNAME}", baseName.c_str());
-        RE::DebugNotification(activateMsg.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(activateMsg.c_str());
       }
     }
     if (isWhitelisted) {
@@ -495,7 +495,7 @@ void NotifyActivated(RE::StaticFunctionTag *, RE::TESForm *itemForm,
           "SHSE_WHITELIST_ITEM_LOOTED");
       StringUtils::Replace(whitelistMsg, "{ITEMNAME}", baseName.c_str());
       if (!whitelistMsg.empty()) {
-        RE::DebugNotification(whitelistMsg.c_str());
+        RE::SendHUDMessage::ShowHUDMessage(whitelistMsg.c_str());
       }
     }
     if (collectible) {

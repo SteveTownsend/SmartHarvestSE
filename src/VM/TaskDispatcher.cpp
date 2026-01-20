@@ -212,7 +212,7 @@ void TaskDispatcher::EnqueueStealIfUndetected(RE::Actor *actor,
     }
 
     if (dryRun) {
-      RE::DebugNotification(message.c_str());
+      RE::SendHUDMessage::ShowHUDMessage(message.c_str());
     } else {
       TheftCoordinator::Instance().StealOrForgetItems(detected);
     }
