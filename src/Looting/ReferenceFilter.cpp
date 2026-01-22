@@ -146,7 +146,8 @@ Lootability ReferenceFilter::AnalyzeREFR(const RE::TESObjectREFR *refr,
         DBG_VMESSAGE("skip living Actor/NPC {}/0x{:08x}",
                      refr->GetBaseObject()->GetName(),
                      refr->GetBaseObject()->formID);
-        shse::ActorTracker::Instance().RecordLiveSighting(refr);
+        shse::ActorTracker::Instance().RecordLiveSighting(
+            refr->As<RE::Actor>());
       }
       return Lootability::ReferenceIsLiveActor;
     }

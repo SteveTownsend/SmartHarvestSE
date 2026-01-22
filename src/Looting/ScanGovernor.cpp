@@ -405,10 +405,14 @@ ScanGovernor::ValidateTarget(RE::TESObjectREFR *&refr,
       // since death has expired. Only delay if the REFR represents an entity
       // seen alive in this cell visit. The long-dead are fair game. If we are
       // in glow-only mode it is safe to skip this.
-      if (!glowOnly && shse::ActorTracker::Instance().SeenAlive(refr) &&
+      if (!glowOnly && shse::ActorTracker::Instance().SeenAlive(actor) &&
+          // Dynamic REFRs need to be delayed.
+          // Self-summons are blacklisted explicitly as such. For history see
           // https://github.com/SteveTownsend/SmartHarvestSE/issues/588
-          // Summons have to be delayed, or we may exploit our own SPEL to farm e.g Atronach Salts
-          (IsSummoned(actor) || !HandleAsDynamicData(refr)) &&
+          // https://github.com/SteveTownsend/SmartHarvestSE/issues/592
+          // Summons have to be delayed, or we may exploit our own SPEL to farm
+          // e.g Atronach Salts
+          !HandleAsDynamicData(refr) &&
           DataCase::GetInstance()->IsReferenceBlocked(refr) ==
               Lootability::Lootable) {
         if (!dryRun) {

@@ -50,8 +50,8 @@ public:
   void UpdateFrom(const nlohmann::json &j);
 
   void Reset();
-  void RecordLiveSighting(const RE::TESObjectREFR *actorRef);
-  bool SeenAlive(const RE::TESObjectREFR *actorRef) const;
+  void RecordLiveSighting(const RE::Actor *actor);
+  bool SeenAlive(const RE::Actor *actor) const;
 
   void RecordTimeOfDeath(RE::TESObjectREFR *actorRef);
   void RecordIfKilledByParty(const RE::Actor *actor);

@@ -19,6 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 #include "WorldState/ActorTracker.h"
+#include "Data/dataCase.h"
+#include "Looting/objects.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/Saga.h"
 
@@ -64,14 +66,29 @@ void ActorTracker::Reset() {
   m_checkedBodies.clear();
 }
 
-void ActorTracker::RecordLiveSighting(const RE::TESObjectREFR *actorRef) {
+void ActorTracker::RecordLiveSighting(const RE::Actor *actor) {
+  if (!actor) {
+    return;
+  }
   RecursiveLockGuard guard(m_actorLock);
-  m_seenAlive.insert(actorRef);
+  auto insertion(m_seenAlive.insert(actor));
+  if (insertion.second) {
+    // Blacklist REFR if it is a player or ally summon
+    // Logic from
+    // https://github.com/powerof3/SimpleOffenceSuppression/blob/7cd21408bddb809e6801b3e9bc7cc877d4ff051d/src/Hooks.cpp#L10
+    if (IsSummoned(actor) && !const_cast<RE::Actor *>(actor)->IsHostileToActor(
+                                 RE::PlayerCharacter::GetSingleton())) {
+      DBG_DMESSAGE("Actor {}/0x{:08x} is summoned teammate", actor->GetName(),
+                   actor->GetFormID());
+      DataCase::GetInstance()->BlockReference(actor,
+                                              Lootability::DeadBodyIsSummoned);
+    }
+  }
 }
 
-bool ActorTracker::SeenAlive(const RE::TESObjectREFR *actorRef) const {
+bool ActorTracker::SeenAlive(const RE::Actor *actor) const {
   RecursiveLockGuard guard(m_actorLock);
-  return m_seenAlive.contains(actorRef);
+  return m_seenAlive.contains(actor);
 }
 
 // looting during combat is unstable, so if that option is enabled, we store the
