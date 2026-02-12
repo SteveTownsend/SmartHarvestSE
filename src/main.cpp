@@ -142,8 +142,18 @@ void SKSEMessageHandler(SKSE::MessagingInterface::Message *msg) {
 }
 
 void InitializeDiagnostics() {
-  // default log level is TRACE
-  spdlog::level::level_enum logLevel(spdlog::level::trace);
+#if _DEBUG
+	// default Debug log level is TRACE
+	spdlog::level::level_enum logLevel(spdlog::level::trace);
+#else
+#ifdef _FULL_LOGGING
+	// default Full Logging log level is TRACE
+	spdlog::level::level_enum logLevel(spdlog::level::trace);
+#else
+	// default Release log level is ERROR
+	spdlog::level::level_enum logLevel(spdlog::level::err);
+#endif
+#endif
   char *levelValue;
   size_t requiredSize;
   if (getenv_s(&requiredSize, NULL, 0, LogLevelVariable.c_str()) == 0 &&
