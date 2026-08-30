@@ -23,54 +23,52 @@ http://www.fsf.org/licensing/licenses
 #define INI_FILE_DEFAULTS "SmartHarvestSE.Defaults.ini"
 #include "SimpleIni.h"
 
-class INIFile : public SimpleIni
-{
+class INIFile : public SimpleIni {
 public:
-	enum class PrimaryType
-	{
-		NONE = 0,
-		common,
-		harvest,
-		LAST
-	};
+  enum class PrimaryType { NONE = 0, common, harvest, LAST };
 
-	enum class SecondaryType
-	{
-		NONE2 = 0,
-		config,
-		itemObjects,
-		containers,
-		deadbodies,
-		valueWeight,
-		glow,
-		excessHandling,
-		maxItems,
-		maxWeight,
-		LAST2
-	};
+  enum class SecondaryType {
+    NONE2 = 0,
+    config,
+    itemObjects,
+    containers,
+    deadbodies,
+    valueWeight,
+    glow,
+    excessHandling,
+    maxItems,
+    maxWeight,
+    LAST2
+  };
 
-	inline bool IsType(PrimaryType type) { return (type > PrimaryType::NONE && type < PrimaryType::LAST); }
-	inline bool IsType(SecondaryType type) { return (type > SecondaryType::NONE2 && type < SecondaryType::LAST2); }
-	static std::string PrimaryTypeString(PrimaryType type);
-	static std::string SecondaryTypeString(SecondaryType type);
+  inline bool IsType(PrimaryType type) {
+    return (type > PrimaryType::NONE && type < PrimaryType::LAST);
+  }
+  inline bool IsType(SecondaryType type) {
+    return (type > SecondaryType::NONE2 && type < SecondaryType::LAST2);
+  }
+  static std::string PrimaryTypeString(PrimaryType type);
+  static std::string SecondaryTypeString(SecondaryType type);
 
-	static INIFile* GetInstance(void)
-	{
-		if (s_instance == nullptr)
-		{
-			s_instance = new INIFile();
-		}
-		return s_instance;
-	}
+  static INIFile *GetInstance(void) {
+    if (s_instance == nullptr) {
+      s_instance = new INIFile();
+    }
+    return s_instance;
+  }
 
-	double GetSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key);
-	void PutSetting(PrimaryType m_section_first, SecondaryType m_section_second, std::string m_key, double m_value);
-	void SaveFile(void);
-	bool LoadFile(const bool useDefaults);
+  double GetSetting(PrimaryType m_section_first, SecondaryType m_section_second,
+                    std::string m_key);
+  void PutSetting(PrimaryType m_section_first, SecondaryType m_section_second,
+                  std::string m_key, double m_value);
+  void SaveFile(void);
+  bool LoadFile(const bool useDefaults);
 
 private:
-	bool CreateSectionString(PrimaryType m_section_first, SecondaryType m_section_second, std::string& m_result);
-	static INIFile* s_instance;
-	const std::string GetFileName(const bool useDefaults);
-	INIFile(void);
+  bool CreateSectionString(PrimaryType m_section_first,
+                           SecondaryType m_section_second,
+                           std::string &m_result);
+  static INIFile *s_instance;
+  const std::string GetFileName(const bool useDefaults);
+  INIFile(void);
 };

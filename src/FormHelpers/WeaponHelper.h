@@ -19,17 +19,16 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
-	
-class TESObjectWEAPHelper
-{
+namespace shse {
+
+class TESObjectWEAPHelper {
 public:
-	TESObjectWEAPHelper(const RE::TESObjectWEAP* weapon) : m_weapon(weapon) {}
-	int16_t GetMaxCharge(void) const;
-	uint32_t GetGoldValue(void) const;
+  TESObjectWEAPHelper(const RE::TESObjectWEAP *weapon) : m_weapon(weapon) {}
+  int16_t GetMaxCharge(void) const;
+  uint32_t GetGoldValue(void) const;
+
 private:
-	const RE::TESObjectWEAP* m_weapon;
+  const RE::TESObjectWEAP *m_weapon;
 };
 
-}
+} // namespace shse

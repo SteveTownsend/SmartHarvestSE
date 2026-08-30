@@ -22,43 +22,42 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/IHasValueWeight.h"
 #include "Data/iniSettings.h"
 
-namespace shse
-{
+namespace shse {
 
-class LootableREFR : public IHasValueWeight
-{
+class LootableREFR : public IHasValueWeight {
 public:
-	explicit LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope);
+  explicit LootableREFR(const RE::TESObjectREFR *ref,
+                        const INIFile::SecondaryType scope);
 
-	int16_t GetItemCount() const;
-	std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
-	bool IsValuable(void) const;
-	bool IsItemLootableInPopulationCenter(ObjectType objectType) const;
-	bool IsItemLootableInPlayerHouse(ObjectType objectType) const;
-	void SetEffectiveObjectType(const ObjectType effectiveType);
-	bool HasIngredient() const;
-	bool IsHarvestable() const;
-	bool IsCritter() const;
-	bool IsFlora() const;
-	bool HarvestForbiddenForForm() const;
+  int16_t GetItemCount() const;
+  std::pair<bool, CollectibleHandling> TreatAsCollectible(void) const;
+  bool IsValuable(void) const;
+  bool IsItemLootableInPopulationCenter(ObjectType objectType) const;
+  bool IsItemLootableInPlayerHouse(ObjectType objectType) const;
+  void SetEffectiveObjectType(const ObjectType effectiveType);
+  bool HasIngredient() const;
+  bool IsHarvestable() const;
+  bool IsCritter() const;
+  bool IsFlora() const;
+  bool HarvestForbiddenForForm() const;
 
-	const RE::TESBoundObject* GetLootable() const;
-	const RE::TESBoundObject* GetTarget() const;
-	void SetLootable(const RE::TESBoundObject* lootable);
-	virtual double GetWeight(void) const override;
-	inline const RE::TESObjectREFR* GetReference() const { return m_ref; }
-	inline INIFile::SecondaryType Scope() const { return m_scope; }
+  const RE::TESBoundObject *GetLootable() const;
+  const RE::TESBoundObject *GetTarget() const;
+  void SetLootable(const RE::TESBoundObject *lootable);
+  virtual double GetWeight(void) const override;
+  inline const RE::TESObjectREFR *GetReference() const { return m_ref; }
+  inline INIFile::SecondaryType Scope() const { return m_scope; }
 
 protected:
-	virtual const char* GetName() const override;
-	virtual uint32_t GetFormID() const override;
-	virtual uint32_t CalculateWorth(void) const override;
+  virtual const char *GetName() const override;
+  virtual uint32_t GetFormID() const override;
+  virtual uint32_t CalculateWorth(void) const override;
 
-	const RE::TESObjectREFR* m_ref;
-	const INIFile::SecondaryType m_scope;
-	const RE::TESBoundObject* m_lootable;
-	bool m_critter;
-	bool m_flora;
+  const RE::TESObjectREFR *m_ref;
+  const INIFile::SecondaryType m_scope;
+  const RE::TESBoundObject *m_lootable;
+  bool m_critter;
+  bool m_flora;
 };
 
-}
+} // namespace shse

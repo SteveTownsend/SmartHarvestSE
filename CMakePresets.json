@@ -10,7 +10,7 @@
             "name": "common",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
+                "CMAKE_CXX_FLAGS": "/DAE_CPU=AE_INTEL /DAE_NO_FMA /DAE_NO_AVX2 $env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
             },
             "errors": {
                 "deprecated": false
@@ -21,7 +21,7 @@
             },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "intelliSenseMode": "$env{PROJECT_PLATFORM}-$env{PROJECT_COMPILER}-$env{PROJECT_ARCHITECTURE}",
+                    "intelliSenseMode": "windows-msvc-x64",
                     "enableMicrosoftCodeAnalysis": true,
                     "enableClangTidyCodeAnalysis": true
                 }
@@ -134,12 +134,12 @@
                 "buildtype-debug",
                 "architecture-x64",
                 "platform-win32-unicode",
-                "generator-visualstudio",
+                "generator-ninja",
                 "compiler-msvc",
                 "common"
             ],
             "description": "Debug build for testing.",
-            "binaryDir": "${sourceDir}/build/debug-msvc"
+            "binaryDir": "${sourceDir}/debug-msvc"
         },
         {
             "name": "Release-MSVC",
@@ -147,12 +147,12 @@
                 "buildtype-release",
                 "architecture-x64",
                 "platform-win32-unicode",
-                "generator-visualstudio",
+                "generator-ninja",
                 "compiler-msvc",
                 "common"
             ],
             "description": "Optimized release build.",
-            "binaryDir": "${sourceDir}/build/release-msvc"
+            "binaryDir": "${sourceDir}/release-msvc"
         },
         {
             "name": "Logging-MSVC",
@@ -160,12 +160,12 @@
                 "buildtype-relwithdebinfo",
                 "architecture-x64",
                 "platform-win32-unicode",
-                "generator-visualstudio",
+                "generator-ninja",
                 "compiler-msvc",
                 "common"
             ],
             "description": "Optimized release build with logging.",
-            "binaryDir": "${sourceDir}/build/logging-msvc"
+            "binaryDir": "${sourceDir}/logging-msvc"
         },
         {
             "name": "Debug-Clang",

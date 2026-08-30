@@ -24,79 +24,76 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/ActorTracker.h"
 #include "Utilities/utils.h"
 
-namespace shse
-{
+namespace shse {
 
 std::unique_ptr<TheftCoordinator> TheftCoordinator::m_instance;
 
-TheftCoordinator& TheftCoordinator::Instance()
-{
-	if (!m_instance)
-	{
-		m_instance = std::make_unique<TheftCoordinator>();
-	}
-	return *m_instance;
+TheftCoordinator &TheftCoordinator::Instance() {
+  if (!m_instance) {
+    m_instance = std::make_unique<TheftCoordinator>();
+  }
+  return *m_instance;
 }
 
-void TheftCoordinator::DelayStealableItem(RE::TESObjectREFR* target, INIFile::SecondaryType targetType)
-{
-	RecursiveLockGuard guard(m_theftLock);
-	// speculative until we make the check for already-in-progress
-	m_refrsToSteal.push_back({ target, targetType });
+void TheftCoordinator::DelayStealableItem(RE::TESObjectREFR *target,
+                                          INIFile::SecondaryType targetType) {
+  RecursiveLockGuard guard(m_theftLock);
+  // speculative until we make the check for already-in-progress
+  m_refrsToSteal.push_back({target, targetType});
 }
 
 // called at end of periodic scan
-void TheftCoordinator::StealIfUndetected(void)
-{
-	RecursiveLockGuard guard(m_theftLock);
-	// if we are still waiting for last batch to process, do not trigger
-	if (!m_refrsToSteal.empty() && !m_stealInProgress)
-	{
-		m_refrsStealInProgress.swap(m_refrsToSteal);
-		m_stealInProgress = true;
-		DBG_VMESSAGE("Steal {} items/containers", m_refrsStealInProgress.size());
-		// start timer before issuing event in case result comes back really quickly (however unlikely)
-		m_stealTimer = WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
-		static const bool dryRun(false);
-		TaskDispatcher::Instance().EnqueueStealIfUndetected(RE::PlayerCharacter::GetSingleton(), dryRun);
-	}
-	else
-	{
-		// clear the REFR list - no steal triggered this time. Actor list left in place for possible REFR dry run.
-		m_refrsToSteal.clear();
-	}
+void TheftCoordinator::StealIfUndetected(void) {
+  RecursiveLockGuard guard(m_theftLock);
+  // if we are still waiting for last batch to process, do not trigger
+  if (!m_refrsToSteal.empty() && !m_stealInProgress) {
+    m_refrsStealInProgress.swap(m_refrsToSteal);
+    m_stealInProgress = true;
+    DBG_VMESSAGE("Steal {} items/containers", m_refrsStealInProgress.size());
+    // start timer before issuing event in case result comes back really quickly
+    // (however unlikely)
+    m_stealTimer =
+        WindowsUtils::ScopedTimerFactory::Instance().StartTimer("Steal async");
+    static const bool dryRun(false);
+    TaskDispatcher::Instance().EnqueueStealIfUndetected(
+        RE::PlayerCharacter::GetSingleton(), dryRun);
+  } else {
+    // clear the REFR list - no steal triggered this time. Actor list left in
+    // place for possible REFR dry run.
+    m_refrsToSteal.clear();
+  }
 }
 
-// after checking Player detection state with respect to eligible Actors, Task will report status via this API
-void TheftCoordinator::StealOrForgetItems(const bool detected)
-{
-	decltype(m_refrsStealInProgress) items;
-	{
-		//hold lock only while using shared state. Item stealing should be thread-safe
-		RecursiveLockGuard guard(m_theftLock);
-		WindowsUtils::ScopedTimerFactory::Instance().StopTimer(m_stealTimer);
-		m_stealTimer = -1;
-		items.swap(m_refrsStealInProgress);
-		m_stealInProgress = false;
-	}
-	DBG_VMESSAGE("Detected = {} for stealing of {} items/containers", detected ? "true" : "false", items.size());
-	if (!detected)
-	{
-		static const bool stolen(true);
-		static const bool dryRun(false);
-		static const bool glowOnly(false);
-		static const bool forceHarvest(false);
-		for (const auto& item : items)
-		{
-			TryLootREFR(item.first, item.second, stolen, glowOnly, forceHarvest).Process(dryRun);
-		}
-	}
+// after checking Player detection state with respect to eligible Actors, Task
+// will report status via this API
+void TheftCoordinator::StealOrForgetItems(const bool detected) {
+  decltype(m_refrsStealInProgress) items;
+  {
+    // hold lock only while using shared state. Item stealing should be
+    // thread-safe
+    RecursiveLockGuard guard(m_theftLock);
+    WindowsUtils::ScopedTimerFactory::Instance().StopTimer(m_stealTimer);
+    m_stealTimer = -1;
+    items.swap(m_refrsStealInProgress);
+    m_stealInProgress = false;
+  }
+  DBG_VMESSAGE("Detected = {} for stealing of {} items/containers",
+               detected ? "true" : "false", items.size());
+  if (!detected) {
+    static const bool stolen(true);
+    static const bool dryRun(false);
+    static const bool glowOnly(false);
+    static const bool forceHarvest(false);
+    for (const auto &item : items) {
+      TryLootREFR(item.first, item.second, stolen, glowOnly, forceHarvest)
+          .Process(dryRun);
+    }
+  }
 }
 
-bool TheftCoordinator::StealingItems() const
-{
-	RecursiveLockGuard guard(m_theftLock);
-	return m_stealInProgress;
+bool TheftCoordinator::StealingItems() const {
+  RecursiveLockGuard guard(m_theftLock);
+  return m_stealInProgress;
 }
 
-}
+} // namespace shse

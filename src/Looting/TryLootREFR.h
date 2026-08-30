@@ -21,43 +21,48 @@ http://www.fsf.org/licensing/licenses
 #include "Data/iniSettings.h"
 #include "Looting/InventoryItem.h"
 
-namespace shse
-{
+namespace shse {
 
-class TryLootREFR
-{
+class TryLootREFR {
 public:
-	TryLootREFR(RE::TESObjectREFR* target, INIFile::SecondaryType targetType, const bool stolen, const bool glowOnly, const bool forceHarvest);
-	static void TryForceHarvest(RE::TESObjectREFR* refr);
-	Lootability Process(const bool dryRun);
-	inline std::string ObjectTypeName() const { return m_typeName; }
+  TryLootREFR(RE::TESObjectREFR *target, INIFile::SecondaryType targetType,
+              const bool stolen, const bool glowOnly, const bool forceHarvest);
+  static void TryForceHarvest(RE::TESObjectREFR *refr);
+  Lootability Process(const bool dryRun);
+  inline std::string ObjectTypeName() const { return m_typeName; }
 
 private:
-	bool m_stolen;
-	bool m_glowOnly;
-	bool m_forceHarvest;
-	RE::TESObjectREFR* m_candidate;
-	INIFile::SecondaryType m_targetType;
-	std::string m_typeName;
+  bool m_stolen;
+  bool m_glowOnly;
+  bool m_forceHarvest;
+  RE::TESObjectREFR *m_candidate;
+  INIFile::SecondaryType m_targetType;
+  std::string m_typeName;
 
-	Lootability ItemLootingLegality(const bool isCollectible, INIFile::SecondaryType targetType);
-	Lootability LootingLegality(const INIFile::SecondaryType targetType);
-	void GetLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets,
-		const ContainerAnimationHandling animationType, const bool directTransfer);
-	void CopyLootFromContainer(std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>& targets);
+  Lootability ItemLootingLegality(const bool isCollectible,
+                                  INIFile::SecondaryType targetType);
+  Lootability LootingLegality(const INIFile::SecondaryType targetType);
+  void GetLootFromContainer(
+      std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>> &targets,
+      const ContainerAnimationHandling animationType,
+      const bool directTransfer);
+  void CopyLootFromContainer(
+      std::vector<std::tuple<InventoryItem, bool, bool, bool, size_t>>
+          &targets);
+  bool CanLootNPC() const;
 
-	// special object glow - not too long, in case we loot or move away. Used for Loot Sense too.
-	static constexpr int ObjectGlowDurationSpecialSeconds = 10;
-	// brief glow for looted objects and other purposes
-	static constexpr int ObjectGlowDurationLootedSeconds = 2;
+  // special object glow - not too long, in case we loot or move away. Used for
+  // Loot Sense too.
+  static constexpr int ObjectGlowDurationSpecialSeconds = 10;
+  // brief glow for looted objects and other purposes
+  static constexpr int ObjectGlowDurationLootedSeconds = 2;
 
-	GlowReason m_glowReason;
-	inline void UpdateGlowReason(const GlowReason glowReason)
-	{
-		if (glowReason < m_glowReason)
-			m_glowReason = glowReason;
-	}
-	bool IsBookGlowable() const;
+  GlowReason m_glowReason;
+  inline void UpdateGlowReason(const GlowReason glowReason) {
+    if (glowReason < m_glowReason)
+      m_glowReason = glowReason;
+  }
+  bool IsBookGlowable() const;
 };
 
-}
+} // namespace shse

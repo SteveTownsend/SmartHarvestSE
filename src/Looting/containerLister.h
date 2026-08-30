@@ -23,48 +23,56 @@ http://www.fsf.org/licensing/licenses
 #include "Data/SettingsCache.h"
 #include "WorldState/InventoryCache.h"
 
-namespace shse
-{
+namespace shse {
 
 typedef std::vector<InventoryItem> LootableItems;
 
-struct ContainerLister
-{
+struct ContainerLister {
 public:
-	ContainerLister(const INIFile::SecondaryType targetType, const RE::TESObjectREFR* refr);
-	size_t AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling);
-	void FilterLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
-	size_t CountLootableItems(std::function<bool(RE::TESBoundObject*)> predicate);
-	inline bool HasQuestItem() const { return !m_questItems.empty(); }
-	inline bool HasEnchantedItem() const { return !m_enchantedItems.empty(); }
-	inline bool HasValuableItem() const { return !m_valuableItems.empty(); }
-	inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
-	inline CollectibleHandling CollectibleAction() const { return m_collectibleAction; }
-	inline const LootableItems& GetLootableItems() const { return m_lootableItems; }
-	InventoryCache CacheIfExcessHandlingEnabled(const bool force, const InventoryUpdates& updates) const;
-	std::string SellItem(RE::TESBoundObject* target, const bool excessOnly);
-	std::string TransferItem(RE::TESBoundObject* target, const bool excessOnly);
-	std::string DeleteItem(RE::TESBoundObject* target, const bool excessOnly);
-	std::string CheckItemAsExcess(RE::TESBoundObject* target);
-	void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
-	void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
-	void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }
-	void ExcludeCollectibleItems() { RemoveUnlootable(m_collectibleItems); }
+  ContainerLister(const INIFile::SecondaryType targetType,
+                  const RE::TESObjectREFR *refr);
+  size_t
+  AnalyzeLootableItems(const EnchantedObjectHandling enchantedObjectHandling);
+  void FilterLootableItems(std::function<bool(RE::TESBoundObject *)> predicate);
+  size_t
+  CountLootableItems(std::function<bool(RE::TESBoundObject *)> predicate);
+  inline bool HasQuestItem() const { return !m_questItems.empty(); }
+  inline bool HasEnchantedItem() const { return !m_enchantedItems.empty(); }
+  inline bool HasValuableItem() const { return !m_valuableItems.empty(); }
+  inline bool HasCollectibleItem() const { return !m_collectibleItems.empty(); }
+  inline CollectibleHandling CollectibleAction() const {
+    return m_collectibleAction;
+  }
+  inline const LootableItems &GetLootableItems() const {
+    return m_lootableItems;
+  }
+  InventoryCache
+  CacheIfExcessHandlingEnabled(const bool force,
+                               const InventoryUpdates &updates) const;
+  std::string SellItem(RE::TESBoundObject *target, const bool excessOnly);
+  std::string TransferItem(RE::TESBoundObject *target, const bool excessOnly);
+  std::string DeleteItem(RE::TESBoundObject *target, const bool excessOnly);
+  std::string CheckItemAsExcess(RE::TESBoundObject *target);
+  void ExcludeQuestItems() { RemoveUnlootable(m_questItems); }
+  void ExcludeEnchantedItems() { RemoveUnlootable(m_enchantedItems); }
+  void ExcludeValuableItems() { RemoveUnlootable(m_valuableItems); }
+  void ExcludeCollectibleItems() { RemoveUnlootable(m_collectibleItems); }
 
 private:
-	void RemoveUnlootable(const std::unordered_set<RE::TESBoundObject*>& filter);
-	InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject* target) const;
-	InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject* target, const bool isDestructive) const;
+  void RemoveUnlootable(const std::unordered_set<RE::TESBoundObject *> &filter);
+  InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject *target) const;
+  InventoryEntry GetSingleInventoryEntry(RE::TESBoundObject *target,
+                                         const bool isDestructive) const;
 
-	const RE::TESObjectREFR* m_refr;
-	INIFile::SecondaryType m_targetType;
-	EnchantedObjectHandling m_enchantedLoot;
-	std::unordered_set<RE::TESBoundObject*> m_questItems;
-	std::unordered_set<RE::TESBoundObject*> m_enchantedItems;
-	std::unordered_set<RE::TESBoundObject*> m_valuableItems;
-	std::unordered_set<RE::TESBoundObject*> m_collectibleItems;
-	LootableItems m_lootableItems;
-	CollectibleHandling m_collectibleAction;
+  const RE::TESObjectREFR *m_refr;
+  INIFile::SecondaryType m_targetType;
+  EnchantedObjectHandling m_enchantedLoot;
+  std::unordered_set<RE::TESBoundObject *> m_questItems;
+  std::unordered_set<RE::TESBoundObject *> m_enchantedItems;
+  std::unordered_set<RE::TESBoundObject *> m_valuableItems;
+  std::unordered_set<RE::TESBoundObject *> m_collectibleItems;
+  LootableItems m_lootableItems;
+  CollectibleHandling m_collectibleAction;
 };
 
-}
+} // namespace shse

@@ -19,40 +19,38 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
-class PlayerHouses
-{
+class PlayerHouses {
 public:
-	static PlayerHouses& Instance();
-	PlayerHouses();
+  static PlayerHouses &Instance();
+  PlayerHouses();
 
-	void Clear();
-	bool Add(const RE::BGSLocation* location);
-	bool AddCell(const RE::FormID cellID);
-	bool Contains(const RE::BGSLocation* location) const;
-	bool ContainsCell(const RE::FormID cellID) const;
+  void Clear();
+  bool Add(const RE::BGSLocation *location);
+  bool AddCell(const RE::FormID cellID);
+  bool ContainsCell(const RE::FormID cellID) const;
 
-	void AddLocationKeyword(RE::BGSKeyword* keyword);
-	void AddCell(const RE::TESObjectCELL* houseCell);
-	void AddLocation(const RE::BGSLocation* houseLocation);
-	bool IsValidHouseLocation(const RE::BGSLocation* location) const;
-	bool IsValidHouseCell(const RE::TESObjectCELL* cell) const;
+  void AddLocationKeyword(RE::BGSKeyword *keyword);
+  void AddCell(const RE::TESObjectCELL *houseCell);
+  void AddLocation(const RE::BGSLocation *houseLocation);
+  bool IsValidHouseLocation(const RE::BGSLocation *location) const;
+  bool IsValidHouseCell(const RE::TESObjectCELL *cell) const;
 
 private:
-	static std::unique_ptr<PlayerHouses> m_instance;
-	std::unordered_set<RE::BGSKeyword*> m_locationKeywords;
+  static std::unique_ptr<PlayerHouses> m_instance;
+  std::unordered_set<RE::BGSKeyword *> m_locationKeywords;
 
-	// LCTN forms
-	std::unordered_set<RE::FormID> m_houses;
-	// CELL forms
-	std::unordered_set<RE::FormID> m_houseCells;
-	// CELLs that are effectively player house but not in a properly-tagged LCTN
-	std::unordered_set<RE::FormID> m_validHouseCells;
-	// LCTNs that are effectively player house but not properly-tagged
-	std::unordered_set<RE::FormID> m_validHouseLocations;
-	mutable RecursiveLock m_housesLock;
+  // LCTN forms
+  std::unordered_set<RE::FormID> m_houses;
+  // CELL forms
+  std::unordered_set<RE::FormID> m_houseCells;
+  // CELLs that are effectively player house but not in a properly-tagged LCTN
+  std::unordered_set<RE::FormID> m_validHouseCells;
+  // LCTNs that are effectively player house but not properly-tagged
+  std::unordered_set<RE::FormID> m_validHouseLocations;
+  mutable RecursiveLock m_housesLock;
+  RE::FormID m_whiterunCity;
 };
 
-}
+} // namespace shse

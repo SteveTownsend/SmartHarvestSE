@@ -20,66 +20,84 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "Data/dataCase.h"
+#include "Utilities/utils.h"
 #include <functional>
 
-namespace shse
-{
+namespace shse {
 
-class LeveledListMembers : public LeveledItemCategorizer
-{
+class LeveledListMembers : public LeveledItemCategorizer {
 public:
-	LeveledListMembers(const RE::TESLevItem* rootItem, std::unordered_set<RE::FormID>& members);
-	static void SetupExclusions();
+  LeveledListMembers(const RE::TESLevItem *rootItem,
+                     std::unordered_set<RE::FormID> &members);
+  static void SetupExclusions();
 
 protected:
-	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType) override;
+  virtual void ProcessContentLeaf(RE::TESBoundObject *itemForm,
+                                  ObjectType) override;
 
 private:
-	std::unordered_set<RE::FormID>& m_members;
-	static std::unordered_set<RE::FormID> m_exclusions;
+  std::unordered_set<RE::FormID> &m_members;
+  static std::unordered_set<RE::FormID> m_exclusions;
 };
 
-class QuestTargets
-{
+class QuestTargets {
 public:
-	static QuestTargets& Instance();
-	QuestTargets();
+  static QuestTargets &Instance();
+  QuestTargets();
 
-	void Analyze();
+  void Analyze();
 
-	Lootability ReferencedQuestTargetLootability(const RE::TESObjectREFR* refr) const;
-	Lootability QuestTargetLootability(const RE::TESForm* form, const RE::TESObjectREFR* refr) const;
-	bool AllowsExcessHandling(const RE::TESForm* form) const;
-	bool UserCannotPermission(const RE::TESForm* form) const;
+  Lootability
+  ReferencedQuestTargetLootability(const RE::TESObjectREFR *refr) const;
+  Lootability QuestTargetLootability(const RE::TESForm *form,
+                                     const RE::TESObjectREFR *refr) const;
+  bool AllowsExcessHandling(const RE::TESForm *form) const;
+  bool UserCannotPermission(const RE::TESForm *form) const;
+  bool IsFavourQuestTarget(const RE::TESObjectREFR *refr) const;
 
 private:
-	// don't make item a Quest Target if instances are scattered all over the place
-	static constexpr size_t BoringQuestTargetThreshold = 10;
-	// treat as Quest Target even if flag not set, if there are very few instances (one for QUST, one for display maybe)
-	static constexpr size_t RareQuestTargetThreshold = 2;
+  // don't make item a Quest Target if instances are scattered all over the
+  // place
+  static constexpr size_t BoringQuestTargetThreshold = 10;
+  // treat as Quest Target even if flag not set, if there are very few instances
+  // (one for QUST, one for display maybe)
+  static constexpr size_t RareQuestTargetThreshold = 2;
 
-	typedef std::function<bool()> QuestTargetPredicate;
+  typedef std::function<bool()> QuestTargetPredicate;
 
-	Lootability ConditionalQuestItemLootability(const RE::TESForm* form) const;
-	bool IsLootableInanimateReference(const RE::TESObjectREFR* refr) const;
-	bool BlacklistQuestTargetItem(const RE::TESBoundObject* item);
-	bool BlacklistConditionalQuestTargetItem(const RE::TESBoundObject* item, QuestTargetPredicate predicate);
-	bool BlacklistQuestTargetReferencedItem(const RE::TESBoundObject* item, const RE::TESObjectREFR* refr);
-	bool BlacklistQuestTargetReferencedItemByID(const RE::FormID itemID, const RE::FormID refrID);
-	bool BlacklistQuestTargetREFR(const RE::TESObjectREFR* refr);
-	bool BlacklistQuestTargetNPC(const RE::TESNPC* npc);
-	void BlacklistFavorItems();
-	void BlacklistOutliers();
+  Lootability ConditionalQuestItemLootability(const RE::TESForm *form) const;
+  bool IsLootableInanimateReference(const RE::TESObjectREFR *refr) const;
+  void ProtectQuestItems(RE::TESQuest *quest,
+                         std::unordered_set<RE::FormID> &lvliMembers);
+  bool BlacklistDynamicQuestTarget(const RE::TESBoundObject *item);
+  bool BlacklistConditionalQuestTargetItem(const RE::TESBoundObject *item,
+                                           QuestTargetPredicate predicate);
+  bool BlacklistQuestTargetReferencedItem(const RE::TESBoundObject *item,
+                                          const RE::TESObjectREFR *refr);
+  bool BlacklistQuestTargetReferencedItemByID(const RE::FormID itemID,
+                                              const RE::FormID refrID);
+  bool BlacklistQuestTargetREFR(const RE::TESObjectREFR *refr);
+  bool BlacklistQuestTargetNPC(const RE::TESNPC *npc);
+  void BlacklistFavorItems();
+  void BlacklistOutliers();
 
-	static std::unique_ptr<QuestTargets> m_instance;
-	mutable RecursiveLock m_questLock;
+  static std::unique_ptr<QuestTargets> m_instance;
+  mutable RecursiveLock m_questLock;
 
-	std::unordered_set<RE::FormID> m_userCannotPermission;
-	std::unordered_set<RE::FormID> m_questTargetItems;
-	std::unordered_set<RE::FormID> m_questTargetAllItems;
-	std::unordered_map<RE::FormID, QuestTargetPredicate> m_conditionalQuestTargetItems;
-	std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>> m_questTargetReferenced;
-	std::unordered_set<RE::FormID> m_questTargetREFRs;
+  std::unordered_set<RE::FormID> m_userCannotPermission;
+  std::unordered_set<RE::FormID> m_dynamicQuestTargets;
+  std::unordered_set<RE::FormID> m_questTargetNPCs;
+  std::unordered_set<RE::FormID> m_questTargetStickyInInventory;
+  std::unordered_map<RE::FormID, QuestTargetPredicate>
+      m_conditionalQuestTargetItems;
+  std::unordered_map<RE::FormID, std::unordered_set<RE::FormID>>
+      m_questTargetReferenced;
+  std::unordered_map<std::pair<RE::TESQuest *, uint32_t>,
+                     const RE::BGSBaseAlias *, utils::pair_hash>
+      m_aliasByID;
+
+  std::unordered_set<RE::FormID> m_questTargetREFRs;
+  RE::FormID m_favour_lcrt_id = InvalidForm;
 };
 
-}
+} // namespace shse

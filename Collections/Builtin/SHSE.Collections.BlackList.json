@@ -18,7 +18,12 @@
             {
               "$comment": "'Do Not Delete' playables",
               "plugin": "Skyrim.esm",
-              "form": [ "000C7316", "000EA5C5", "00103370", "0010C762" ]
+              "form": [
+                "000C7316",
+                "000EA5C5",
+                "00103370",
+                "0010C762"
+              ]
             }
           ]
         }
@@ -32,11 +37,52 @@
           "nameMatch": {
             "isNPC": false,
             "matchIf": "equals",
-            "names": [ "Missive Board" ]
+            "names": [
+              "Missive Board"
+            ]
           },
-          "scope": [ "container" ]
+          "scope": [
+            "container"
+          ]
         },
         "operator": "AND"
+      }
+    },
+    {
+      "description": "Prevent SHSE from Looting The Notice Board's Messages, depending on Load Order",
+      "name": "SHSE-NoticeBoard",
+      "rootFilter": {
+        "condition": {
+          "nameMatch": {
+            "isNPC": false,
+            "matchIf": "equals",
+            "names": [
+              "Messages"
+            ]
+          },
+          "scope": [
+            "container"
+          ]
+        },
+        "operator": "AND"
+      }
+    },
+    {
+      "description": "Prevent SHSE from Looting Explosive Barrels",
+      "name": "SHSE-ExplosiveBarrel",
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "$comment": "Explosive Barrel MISC used to replace CONT in REFRs",
+              "plugin": "Explosive Barrel.esp",
+              "form": [
+                "00000804"
+              ]
+            }
+          ]
+        }
       }
     }
   ]

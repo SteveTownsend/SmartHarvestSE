@@ -20,32 +20,43 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 
 #include "Collections/Collection.h"
-namespace shse
-{
+namespace shse {
 class CollectionManager;
 
 class CollectionFactory {
 public:
-	static CollectionFactory& Instance();
+  static CollectionFactory &Instance();
 
-	std::shared_ptr<Collection> ParseCollection(
-		const CollectionGroup* owningGroup, const nlohmann::json& collection, const CollectionPolicy& defaultPolicy) const;
-	std::shared_ptr<CollectionGroup> ParseGroup(
-		CollectionManager& manager, const nlohmann::json& group, const std::string& groupName) const;
-	CollectionPolicy ParsePolicy(const nlohmann::json& policy) const;
+  std::shared_ptr<Collection>
+  ParseCollection(const CollectionGroup *owningGroup,
+                  const nlohmann::json &collection,
+                  const CollectionPolicy &defaultPolicy) const;
+  std::shared_ptr<CollectionGroup>
+  ParseGroup(CollectionManager &manager, const nlohmann::json &group,
+             const std::string &groupName) const;
+  CollectionPolicy ParsePolicy(const nlohmann::json &policy) const;
 
 private:
-	std::unique_ptr<PluginCondition> ParsePlugin(const nlohmann::json& pluginRule) const;
-	std::unique_ptr<FormListCondition> ParseFormList(const nlohmann::json& formListRule) const;
-	std::unique_ptr<FormsCondition> ParseForms(const nlohmann::json& formsRule) const;
-	std::unique_ptr<KeywordCondition> ParseKeyword(const nlohmann::json& keywordRule) const;
-	std::unique_ptr<SignatureCondition> ParseSignature(const nlohmann::json& signatureRule) const;
-	std::unique_ptr<ScopeCondition> ParseScope(const nlohmann::json& scopeRule) const;
-	std::unique_ptr<NameMatchCondition> ParseNameMatch(const nlohmann::json& nameMatchRule) const;
-	std::unique_ptr<FilterTree> ParseFilter(const nlohmann::json& tree, const unsigned int depth) const;
-	std::unique_ptr<CategoryRule> ParseCategory(const nlohmann::json& categoryRule) const;
+  std::unique_ptr<PluginCondition>
+  ParsePlugin(const nlohmann::json &pluginRule) const;
+  std::unique_ptr<FormListCondition>
+  ParseFormList(const nlohmann::json &formListRule) const;
+  std::unique_ptr<FormsCondition>
+  ParseForms(const nlohmann::json &formsRule) const;
+  std::unique_ptr<KeywordCondition>
+  ParseKeyword(const nlohmann::json &keywordRule) const;
+  std::unique_ptr<SignatureCondition>
+  ParseSignature(const nlohmann::json &signatureRule) const;
+  std::unique_ptr<ScopeCondition>
+  ParseScope(const nlohmann::json &scopeRule) const;
+  std::unique_ptr<NameMatchCondition>
+  ParseNameMatch(const nlohmann::json &nameMatchRule) const;
+  std::unique_ptr<FilterTree> ParseFilter(const nlohmann::json &tree,
+                                          const unsigned int depth) const;
+  std::unique_ptr<CategoryRule>
+  ParseCategory(const nlohmann::json &categoryRule) const;
 
-	std::unique_ptr<CollectionFactory> m_factory;
+  std::unique_ptr<CollectionFactory> m_factory;
 };
 
-}
+} // namespace shse

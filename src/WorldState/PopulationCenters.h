@@ -18,53 +18,53 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #pragma once
-namespace shse
-{
+namespace shse {
 
 // Population Center Looting Size, overloaded to check Looting Permissions
 enum class PopulationCenterSize {
-	None = 0,
-	Settlements,
-	Towns,		// implies Settlements
-	Cities,		// implies Towns and Settlements
-	MAX
+  None = 0,
+  Settlements,
+  Towns,  // implies Settlements
+  Cities, // implies Towns and Settlements
+  MAX
 };
 
-inline std::string PopulationCenterSizeName(const PopulationCenterSize centerSize)
-{
-	switch (centerSize) {
-	case PopulationCenterSize::None:
-		return "None";
-	case PopulationCenterSize::Settlements:
-		return "Settlement";
-	case PopulationCenterSize::Towns:
-		return "Town";
-	case PopulationCenterSize::Cities:
-		return "Cities";
-	default:
-		return "Unknown";
-	}
+inline std::string
+PopulationCenterSizeName(const PopulationCenterSize centerSize) {
+  switch (centerSize) {
+  case PopulationCenterSize::None:
+    return "None";
+  case PopulationCenterSize::Settlements:
+    return "Settlement";
+  case PopulationCenterSize::Towns:
+    return "Town";
+  case PopulationCenterSize::Cities:
+    return "Cities";
+  default:
+    return "Unknown";
+  }
 }
 
-PopulationCenterSize PopulationCenterSizeFromIniSetting(const double iniSetting);
+PopulationCenterSize
+PopulationCenterSizeFromIniSetting(const double iniSetting);
 
-class PopulationCenters
-{
+class PopulationCenters {
 public:
-	static PopulationCenters& Instance();
-	PopulationCenters() {}
+  static PopulationCenters &Instance();
+  PopulationCenters() {}
 
-	void Categorize(void);
-	bool CannotLoot(const RE::FormID cellID, const RE::BGSLocation* location) const;
+  void Categorize(void);
+  bool CannotLoot(const RE::FormID cellID,
+                  const RE::BGSLocation *location) const;
 
 private:
-	void AddOtherPlaces(void);
+  void AddOtherPlaces(void);
 
-	static std::unique_ptr<PopulationCenters> m_instance;
+  static std::unique_ptr<PopulationCenters> m_instance;
 
-	std::unordered_map<const RE::BGSLocation*, PopulationCenterSize> m_centers;
-	std::unordered_map<RE::FormID, PopulationCenterSize> m_cells;
-	mutable RecursiveLock m_centersLock;
+  std::unordered_map<const RE::BGSLocation *, PopulationCenterSize> m_centers;
+  std::unordered_map<RE::FormID, PopulationCenterSize> m_cells;
+  mutable RecursiveLock m_centersLock;
 };
 
-}
+} // namespace shse

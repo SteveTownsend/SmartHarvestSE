@@ -26,203 +26,181 @@ http://www.fsf.org/licensing/licenses
 #include "Looting/objects.h"
 #include "WorldState/QuestTargets.h"
 
-namespace shse
-{
-       
-LootableREFR::LootableREFR(const RE::TESObjectREFR* ref, const INIFile::SecondaryType scope) :
-m_ref(ref), m_scope(scope), m_lootable(nullptr)
-{
-	// Projectile REFRs need to be mapped to lootable Ammo
-	const RE::Projectile* projectile(ref->As<RE::Projectile>());
-	bool hasIngredient(false);
-	if (projectile && projectile->GetProjectileRuntimeData().ammoSource)
-	{
-		m_lootable = projectile->GetProjectileRuntimeData().ammoSource;
-		m_objectType = ObjectType::ammo;
-		DBG_MESSAGE("Projectile REFR 0x{:08x} with Base {}/0x{:08x} mapped to Ammo {}/0x{:08x}",
-			m_ref->GetFormID(), m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID(),
-			m_lootable->GetName(), m_lootable->GetFormID());
-	}
-	else if (scope == INIFile::SecondaryType::itemObjects)
-	{
-		DataCase* data = DataCase::GetInstance();
-		// check for ingredient handling before resolving possible LVLI
-		hasIngredient = HasIngredient();
-		m_lootable = data->ConvertIfLeveledItem(m_ref->GetBaseObject());
-		if (m_ref->formType == RE::FormType::ActorCharacter)
-		{
-			// derived from REFR directly
-			m_objectType = ObjectType::actor;
-		}
-		else if (m_lootable->formType == RE::FormType::Activator && HasAshPile(m_ref))
-		{
-			m_objectType = ObjectType::unknown;
-		}
-		else
-		{
-			m_objectType = GetBaseObjectType(m_lootable);
-		}
-		DBG_MESSAGE("REFR 0x{:08x} Base {}/0x{:08x} Object Type {}",
-			m_ref->GetFormID(), m_lootable->GetName(), m_lootable->GetFormID(), GetObjectTypeName(m_objectType));
-	}
-	m_typeName = GetObjectTypeName(m_objectType);
-	m_critter = m_objectType == ObjectType::critter;
-	m_flora = !m_critter && (hasIngredient || HasIngredient());
+namespace shse {
+
+LootableREFR::LootableREFR(const RE::TESObjectREFR *ref,
+                           const INIFile::SecondaryType scope)
+    : m_ref(ref), m_scope(scope), m_lootable(nullptr) {
+  // Projectile REFRs need to be mapped to lootable Ammo
+  const RE::Projectile *projectile(ref->As<RE::Projectile>());
+  bool hasIngredient(false);
+  if (projectile && projectile->GetProjectileRuntimeData().ammoSource) {
+    m_lootable = projectile->GetProjectileRuntimeData().ammoSource;
+    m_objectType = ObjectType::ammo;
+    DBG_MESSAGE("Projectile REFR 0x{:08x} with Base {}/0x{:08x} mapped to Ammo "
+                "{}/0x{:08x}",
+                m_ref->GetFormID(), m_ref->GetBaseObject()->GetName(),
+                m_ref->GetBaseObject()->GetFormID(), m_lootable->GetName(),
+                m_lootable->GetFormID());
+  } else if (scope == INIFile::SecondaryType::itemObjects) {
+    DataCase *data = DataCase::GetInstance();
+    // check for ingredient handling before resolving possible LVLI
+    hasIngredient = HasIngredient();
+    m_lootable = data->ConvertIfLeveledItem(m_ref->GetBaseObject());
+    if (m_ref->formType == RE::FormType::ActorCharacter) {
+      // derived from REFR directly
+      m_objectType = ObjectType::actor;
+    } else if (m_lootable->formType == RE::FormType::Activator &&
+               HasAshPile(m_ref)) {
+      m_objectType = ObjectType::unknown;
+    } else {
+      m_objectType = GetBaseObjectType(m_lootable);
+    }
+    DBG_MESSAGE("REFR 0x{:08x} Base {}/0x{:08x} Object Type {}",
+                m_ref->GetFormID(), m_lootable->GetName(),
+                m_lootable->GetFormID(), GetObjectTypeName(m_objectType));
+  }
+  m_typeName = GetObjectTypeName(m_objectType);
+  m_critter = m_objectType == ObjectType::critter;
+  m_flora = !m_critter && (hasIngredient || HasIngredient());
 }
 
-std::pair<bool, CollectibleHandling> LootableREFR::TreatAsCollectible(void) const
-{
-	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
-	static const bool recordDups(true);		// final decision to loot the item happens here
-	return itemEx.TreatAsCollectible(recordDups);
+std::pair<bool, CollectibleHandling>
+LootableREFR::TreatAsCollectible(void) const {
+  TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
+  static const bool recordDups(
+      true); // final decision to loot the item happens here
+  return itemEx.TreatAsCollectible(recordDups);
 }
 
-bool LootableREFR::IsValuable() const
-{
-	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
-	return itemEx.IsValuable();
+bool LootableREFR::IsValuable() const {
+  TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
+  return itemEx.IsValuable();
 }
 
-bool LootableREFR::IsHarvestable() const
-{
-	bool canHarvest(m_critter || m_flora);
+bool LootableREFR::IsHarvestable() const {
+  bool canHarvest(m_critter || m_flora);
 #if _DEBUG
-	auto target(GetTarget());
-	DBG_VMESSAGE("check bound object {}/0x{:08x} with type {} harvestable={}",
-		target->GetName(), target->GetFormID(), target->GetFormType(), canHarvest);
+  auto target(GetTarget());
+  DBG_VMESSAGE("check bound object {}/0x{:08x} with type {} harvestable={}",
+               target->GetName(), target->GetFormID(), target->GetFormType(),
+               canHarvest);
 #endif
-	return canHarvest;
+  return canHarvest;
 }
 
-bool LootableREFR::IsCritter() const
-{
-	return m_critter;
+bool LootableREFR::IsCritter() const { return m_critter; }
+
+bool LootableREFR::IsFlora() const { return m_flora; }
+
+bool LootableREFR::HasIngredient() const {
+  // flora, but not those that produce cash money
+  auto target(GetTarget());
+  bool hasIngredient(false);
+  if (m_objectType != ObjectType::septims &&
+      (target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>() ||
+       DataCase::GetInstance()->IsSyntheticFlora(target))) {
+    hasIngredient = true;
+  }
+  DBG_VMESSAGE("{} object {}/0x{:08x} has-ingredient={}", m_typeName,
+               target->GetName(), target->GetFormID(), hasIngredient);
+  return hasIngredient;
 }
 
-bool LootableREFR::IsFlora() const
-{
-	return m_flora;
+bool LootableREFR::HarvestForbiddenForForm() const {
+  // flora, but not those that produce cash money
+  if (m_objectType != ObjectType::septims && m_flora) {
+    return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) ==
+           LootingType::LeaveBehind;
+  } else if (m_critter) {
+    return SettingsCache::Instance().ObjectLootingType(ObjectType::critter) ==
+           LootingType::LeaveBehind;
+  }
+  return false;
 }
 
-bool LootableREFR::HasIngredient() const
-{
-	// flora, but not those that produce cash money
-	auto target(GetTarget());
-	bool hasIngredient(false);
-	if (m_objectType != ObjectType::septims &&
-		(target->As<RE::TESObjectTREE>() || target->As<RE::TESFlora>() || DataCase::GetInstance()->IsSyntheticFlora(target)))
-	{
-		hasIngredient = true;
-	}
-	DBG_VMESSAGE("{} object {}/0x{:08x} has-ingredient={}", m_typeName, target->GetName(), target->GetFormID(), hasIngredient);
-	return hasIngredient;
+bool LootableREFR::IsItemLootableInPopulationCenter(
+    ObjectType objectType) const {
+  // Config setting overrides
+  if (!SettingsCache::Instance().LootAllowedItemsInSettlement())
+    return false;
+  // Allow auto-mining in settlements, which Mines mostly are. No picks for you!
+  // Harvestables are fine too. We mostly don't want to clear the shelves of
+  // every building we walk into here.
+  return IsValueWeightExempt(objectType) || IsHarvestable();
 }
 
-bool LootableREFR::HarvestForbiddenForForm() const
-{
-	// flora, but not those that produce cash money
-	if (m_objectType != ObjectType::septims && m_flora)
-	{
-		return SettingsCache::Instance().ObjectLootingType(ObjectType::flora) == LootingType::LeaveBehind;
-	}
-	else if (m_critter)
-	{
-		return SettingsCache::Instance().ObjectLootingType(ObjectType::critter) == LootingType::LeaveBehind;
-	}
-	return false;
+bool LootableREFR::IsItemLootableInPlayerHouse(ObjectType objectType) const {
+  // Config setting overrides
+  if (!SettingsCache::Instance().LootAllowedItemsInPlayerHouse())
+    return false;
+  // Allow auto-mining in player houses, ignoring item ownership.
+  // Harvestables are fine too. We mostly don't want to clear the shelves of
+  // every building we walk into here.
+  return IsValueWeightExempt(objectType) || IsHarvestable();
 }
 
-bool LootableREFR::IsItemLootableInPopulationCenter(ObjectType objectType) const
-{
-	// Config setting overrides
-	if (!SettingsCache::Instance().LootAllowedItemsInSettlement())
-		return false;
-	// Allow auto-mining in settlements, which Mines mostly are. No picks for you!
-	// Harvestables are fine too. We mostly don't want to clear the shelves of every building we walk into here.
-	return IsValueWeightExempt(objectType) || IsHarvestable();
+void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType) {
+  DBG_VMESSAGE("Update 0x{:08x} from {} to {}", GetTarget()->GetFormID(),
+               GetObjectTypeName(m_objectType),
+               GetObjectTypeName(effectiveType));
+  m_objectType = effectiveType;
+  m_typeName = GetObjectTypeName(m_objectType);
 }
 
-bool LootableREFR::IsItemLootableInPlayerHouse(ObjectType objectType) const
-{
-	// Config setting overrides
-	if (!SettingsCache::Instance().LootAllowedItemsInPlayerHouse())
-		return false;
-	// Allow auto-mining in player houses, ignoring item ownership.
-	// Harvestables are fine too. We mostly don't want to clear the shelves of every building we walk into here.
-	return IsValueWeightExempt(objectType) || IsHarvestable();
+const RE::TESBoundObject *LootableREFR::GetLootable() const {
+  return m_lootable;
 }
 
-void LootableREFR::SetEffectiveObjectType(const ObjectType effectiveType)
-{
-	DBG_VMESSAGE("Update 0x{:08x} from {} to {}", GetTarget()->GetFormID(),
-		GetObjectTypeName(m_objectType), GetObjectTypeName(effectiveType));
-	m_objectType = effectiveType;
-	m_typeName = GetObjectTypeName(m_objectType);
+const RE::TESBoundObject *LootableREFR::GetTarget() const {
+  return m_lootable ? m_lootable : m_ref->GetBaseObject();
 }
 
-const RE::TESBoundObject* LootableREFR::GetLootable() const
-{
-	return m_lootable;
+void LootableREFR::SetLootable(const RE::TESBoundObject *lootable) {
+  m_lootable = lootable;
+  m_objectType = GetBaseObjectType(m_lootable);
+  m_typeName = GetObjectTypeName(m_objectType);
+  DBG_MESSAGE("Producer REFR 0x{:08x} Base {}/0x{:08x} yields Object Type {}",
+              m_ref->GetFormID(), m_lootable->GetName(),
+              m_lootable->GetFormID(), m_typeName);
 }
 
-const RE::TESBoundObject* LootableREFR::GetTarget() const
-{
-	return m_lootable ? m_lootable : m_ref->GetBaseObject();
+uint32_t LootableREFR::CalculateWorth(void) const {
+  TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
+  return itemEx.GetWorth();
 }
 
-void LootableREFR::SetLootable(const RE::TESBoundObject* lootable)
-{
-	m_lootable = lootable;
-	m_objectType = GetBaseObjectType(m_lootable);
-	m_typeName = GetObjectTypeName(m_objectType);
-	DBG_MESSAGE("Producer REFR 0x{:08x} Base {}/0x{:08x} yields Object Type {}",
-		m_ref->GetFormID(), m_lootable->GetName(), m_lootable->GetFormID(), m_typeName);
+double LootableREFR::GetWeight(void) const {
+  TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
+  return itemEx.GetWeight();
 }
 
-uint32_t LootableREFR::CalculateWorth(void) const
-{
-	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
-	return itemEx.GetWorth();
+const char *LootableREFR::GetName() const { return m_ref->GetName(); }
+
+uint32_t LootableREFR::GetFormID() const {
+  return m_ref->GetBaseObject()->formID;
 }
 
-double LootableREFR::GetWeight(void) const
-{
-	TESFormHelper itemEx(GetTarget(), m_objectType, m_scope);
-	return itemEx.GetWeight();
+int16_t LootableREFR::GetItemCount() const {
+  if (!m_ref)
+    return 1;
+  if (!m_ref->GetBaseObject())
+    return 1;
+
+  const RE::ExtraCount *exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
+  if (exCount) {
+    DBG_VMESSAGE("Pick up {} instances of {}/0x{:08x}", exCount->count,
+                 m_ref->GetBaseObject()->GetName(),
+                 m_ref->GetBaseObject()->GetFormID());
+    return exCount->count;
+  }
+  if (m_lootable)
+    return 1;
+  if (m_objectType == ObjectType::oreVein) {
+    // limit ore harvesting to constrain Player Home mining
+    return SettingsCache::Instance().MaxMiningItems();
+  }
+  return 1;
 }
 
-const char* LootableREFR::GetName() const
-{
-	return m_ref->GetName();
-}
-
-uint32_t LootableREFR::GetFormID() const
-{
-	return m_ref->GetBaseObject()->formID;
-}
-
-int16_t LootableREFR::GetItemCount() const
-{
-	if (!m_ref)
-		return 1;
-	if (!m_ref->GetBaseObject())
-		return 1;
-
-	const RE::ExtraCount* exCount(m_ref->extraList.GetByType<RE::ExtraCount>());
-	if (exCount)
-	{
-		DBG_VMESSAGE("Pick up {} instances of {}/0x{:08x}", exCount->count,
-			m_ref->GetBaseObject()->GetName(), m_ref->GetBaseObject()->GetFormID());
-		return exCount->count;
-	}
-	if (m_lootable)
-		return 1;
-	if (m_objectType == ObjectType::oreVein)
-	{
-		// limit ore harvesting to constrain Player Home mining
-		return SettingsCache::Instance().MaxMiningItems();
-	}
-	return 1;
-}
-
-}
+} // namespace shse

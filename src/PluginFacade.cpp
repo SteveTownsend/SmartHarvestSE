@@ -35,307 +35,302 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PopulationCenters.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
+#include "Ver.h"
 
-namespace shse
-{
+namespace shse {
 
 std::unique_ptr<PluginFacade> PluginFacade::m_instance;
 
-PluginFacade& PluginFacade::Instance()
-{
-	if (!m_instance)
-	{
-		m_instance = std::make_unique<PluginFacade>();
-	}
-	return *m_instance;
+PluginFacade &PluginFacade::Instance() {
+  if (!m_instance) {
+    m_instance = std::make_unique<PluginFacade>();
+  }
+  return *m_instance;
 }
 
-PluginFacade::PluginFacade() : m_loadProgress(LoadProgress::NotStarted),
-	m_threadStarted(false), m_pluginSynced(false), m_loadedSettings(false), m_ready(false)
-{
+PluginFacade::PluginFacade()
+    : m_loadProgress(LoadProgress::NotStarted), m_threadStarted(false),
+      m_pluginSynced(false), m_loadedSettings(false), m_ready(false) {}
+
+bool PluginFacade::OneTimeLoad(void) {
+  // Use structured exception handling during game data load
+  REL_MESSAGE("Plugin not initialized - Game Data load executing");
+  WindowsUtils::LogProcessWorkingSet();
+  if (!Load())
+    return false;
+  m_loadProgress = LoadProgress::Complete;
+  WindowsUtils::LogProcessWorkingSet();
+  return true;
 }
 
-bool PluginFacade::OneTimeLoad(void)
-{
-	// Use structured exception handling during game data load
-	REL_MESSAGE("Plugin not initialized - Game Data load executing");
-	WindowsUtils::LogProcessWorkingSet();
-	if (!Load())
-		return false;
-	m_loadProgress = LoadProgress::Complete;
-	WindowsUtils::LogProcessWorkingSet();
-	return true;
+bool PluginFacade::Init() {
+  // Thread safety is vital to ensure Load() only fires once.
+  // cf. https://github.com/SteveTownsend/SmartHarvestSE/issues/230
+  // SKSE::MessagingInterface::kPostLoadGame fired twice
+  bool loadRequired(false);
+  {
+    RecursiveLockGuard guard(m_pluginLock);
+    if (m_loadProgress == LoadProgress::NotStarted) {
+      m_loadProgress = LoadProgress::Started;
+      loadRequired = true;
+    } else if (m_loadProgress == LoadProgress::Started) {
+      return false;
+    }
+    // LoadProgress::LoadComplete
+  }
+  if (loadRequired) {
+    if (!OneTimeLoad() || !PlayerState::Instance().IsValid())
+      return false;
+  }
+
+  while (!EventPublisher::Instance().GoodToGo()) {
+    REL_MESSAGE("Event publisher not ready yet");
+    WindowsUtils::TakeNap(0.1);
+  }
+
+  if (!m_threadStarted) {
+    // Start the thread once data is loaded
+    m_threadStarted = true;
+    Start();
+  }
+  // here we go
+  EventPublisher::Instance().TriggerGameReady();
+  PlayerState::Instance().UpdateGameTime();
+  // we are now ready for interaction with the Papyrus VM
+  m_ready = true;
+  return true;
 }
 
-bool PluginFacade::Init()
-{
-	// Thread safety is vital to ensure Load() only fires once.
-	// cf. https://github.com/SteveTownsend/SmartHarvestSE/issues/230
-	// SKSE::MessagingInterface::kPostLoadGame fired twice
-	bool loadRequired(false);
-	{
-		RecursiveLockGuard guard(m_pluginLock);
-		if (m_loadProgress == LoadProgress::NotStarted)
-		{
-			m_loadProgress = LoadProgress::Started;
-			loadRequired = true;
-		}
-		else if (m_loadProgress == LoadProgress::Started)
-		{
-			return false;
-		}
-		// LoadProgress::LoadComplete
-	}
-	if (loadRequired)
-	{
-		if (!OneTimeLoad() || !PlayerState::Instance().IsValid())
-			return false;
-	}
-
-	while (!EventPublisher::Instance().GoodToGo())
-	{
-		REL_MESSAGE("Event publisher not ready yet");
-		WindowsUtils::TakeNap(0.1);
-	}
-
-	if (!m_threadStarted)
-	{
-		// Start the thread once data is loaded
-		m_threadStarted = true;
-		Start();
-	}
-	// here we go
-	EventPublisher::Instance().TriggerGameReady();
-	PlayerState::Instance().UpdateGameTime();
-	// we are now ready for interaction with the Papyrus VM
-	m_ready = true;
-	return true;
+void PluginFacade::Start() {
+  // do not start the thread if we failed to initialize
+  if (!Loaded()) {
+    REL_FATALERROR("SmartHarvest startup failed, cannot start scan thread");
+    return;
+  }
+  std::thread([]() { ScanThread(); }).detach();
 }
 
-
-void PluginFacade::Start()
-{
-	// do not start the thread if we failed to initialize
-	if (!Loaded())
-	{
-		REL_FATALERROR("SmartHarvest startup failed, cannot start scan thread");
-		return;
-	}
-	std::thread([]()
-	{
-		ScanThread();
-	}).detach();
-}
-
-bool PluginFacade::Load()
-{
+bool PluginFacade::Load() {
 #ifdef _PROFILING
-	WindowsUtils::ScopedTimer elapsed("Startup: Load Game Data");
+  WindowsUtils::ScopedTimer elapsed("Startup: Load Game Data");
 #endif
-	if (!LoadOrder::Instance().Analyze())
-	{
-		REL_FATALERROR("Load Order unsupportable");
-		return false;
-	}
-	DataCase::GetInstance()->CategorizeLootables();
-	PopulationCenters::Instance().Categorize();
-	AdventureTargets::Instance().Categorize();
+  if (!LoadOrder::Instance().Analyze()) {
+    REL_FATALERROR("Load Order unsupportable");
+    return false;
+  }
+  DataCase::GetInstance()->CategorizeLootables();
+  PopulationCenters::Instance().Categorize();
+  AdventureTargets::Instance().Categorize();
 
-	REL_MESSAGE("*** LOAD *** Record Placed Objects");
-	PlacedObjects::Instance().RecordPlacedObjects();
+  REL_MESSAGE("*** LOAD *** Record Placed Objects");
+  PlacedObjects::Instance().RecordPlacedObjects();
 
-	// Quest Target identification relies on Placed Objects analysis
-	REL_MESSAGE("*** LOAD *** Analyze Quest Targets");
-	QuestTargets::Instance().Analyze();
+  // Quest Target identification relies on Placed Objects analysis
+  REL_MESSAGE("*** LOAD *** Analyze Quest Targets");
+  QuestTargets::Instance().Analyze();
 
-	// Collections are layered on top of categorized and placed objects
-	// Excess Inventory and Collectibles processing share a JSON schema
-	REL_MESSAGE("*** LOAD *** Build Collections");
-	if (CollectionManager::LoadSchema())
-	{
-		CollectionManager::Collectibles().ProcessDefinitions();
-		CollectionManager::ExcessInventory().ProcessDefinitions();
-		CollectionManager::SpecialCases().ProcessDefinitions();
-	}
+  // Collections are layered on top of categorized and placed objects
+  // Excess Inventory and Collectibles processing share a JSON schema
+  REL_MESSAGE("*** LOAD *** Build Collections");
+  if (CollectionManager::LoadSchema()) {
+    CollectionManager::Collectibles().ProcessDefinitions();
+    CollectionManager::ExcessInventory().ProcessDefinitions();
+    CollectionManager::SpecialCases().ProcessDefinitions();
+  }
 
-	REL_MESSAGE("Plugin Data load complete!");
-	return true;
+  REL_MESSAGE("Plugin Data load complete!");
+  return true;
 }
 
 bool PluginFacade::IsSynced() const {
-	RecursiveLockGuard guard(m_pluginLock);
-	return m_pluginSynced && m_loadedSettings;
+  RecursiveLockGuard guard(m_pluginLock);
+  return m_pluginSynced && m_loadedSettings;
 }
 
 bool PluginFacade::ScanAllowed() const {
-	RecursiveLockGuard guard(m_pluginLock);
-	// Limited looting is possible on a per-item basis, so proceed with scan if this is the only reason to skip
-	static const bool allowIfRestricted(true);
-	const bool allowIfRestrictedHome(SettingsCache::Instance().LootAllowedItemsInPlayerHouse());
-	if (!LocationTracker::Instance().IsPlayerInLootablePlace(allowIfRestricted, allowIfRestrictedHome))
-	{
-		DBG_MESSAGE("Location cannot be looted");
-		return false;
-	}
-	else if (!PlayerState::Instance().CanLoot())
-	{
-		DBG_MESSAGE("Player State prevents looting");
-		return false;
-	}
-	else if (!ScanGovernor::Instance().CanSearch())
-	{
-		DBG_MESSAGE("search disallowed or paused");
-		return false;
-	}
-	return true;
+  RecursiveLockGuard guard(m_pluginLock);
+  // Limited looting is possible on a per-item basis, so proceed with scan if
+  // this is the only reason to skip
+  static const bool allowIfRestricted(true);
+  const bool allowIfRestrictedHome(
+      SettingsCache::Instance().LootAllowedItemsInPlayerHouse());
+  if (!LocationTracker::Instance().IsPlayerInLootablePlace(
+          allowIfRestricted, allowIfRestrictedHome)) {
+    DBG_MESSAGE("Location cannot be looted");
+    return false;
+  } else if (!PlayerState::Instance().CanLoot()) {
+    DBG_MESSAGE("Player State prevents looting");
+    return false;
+  } else if (!ScanGovernor::Instance().CanSearch()) {
+    DBG_MESSAGE("search disallowed or paused");
+    return false;
+  }
+  return true;
 }
 
-bool PluginFacade::Loaded() const
-{
-	return m_loadProgress == LoadProgress::Complete && PlayerState::Instance().IsValid();
+bool PluginFacade::Loaded() const {
+  return m_loadProgress == LoadProgress::Complete &&
+         PlayerState::Instance().IsValid();
 }
 
-void PluginFacade::ScanThread()
-{
-	REL_MESSAGE("Starting SHSE Worker Thread");
-	while (true)
-	{
-		// Delay the scan for each loop
-		double delaySeconds(SettingsCache::Instance().DelaySeconds());
-		if (ScanGovernor::Instance().Calibrating())
-		{
-			// use hard-coded delay to make UX comprehensible
-			delaySeconds = CalibrationThreadDelaySeconds;
-		}
-		WindowsUtils::TakeNap(delaySeconds);
+void PluginFacade::ScanThread() {
+  REL_MESSAGE("Starting SHSE Worker Thread");
+  while (true) {
+    // Delay the scan for each loop
+    double delaySeconds(SettingsCache::Instance().DelaySeconds());
+    if (ScanGovernor::Instance().Calibrating()) {
+      // use hard-coded delay to make UX comprehensible
+      delaySeconds = CalibrationThreadDelaySeconds;
+    }
+    WindowsUtils::TakeNap(delaySeconds);
 
-		// Go no further if game load is in progress.
-		if (!Instance().IsSynced())
-		{
-			continue;
-		}
+    // Go no further if game load is in progress.
+    if (!Instance().IsSynced()) {
+      continue;
+    }
 
-		// block until UI is good to go
-		UIState::Instance().WaitUntilVMGoodToGo();
+    // block until UI is good to go
+    UIState::Instance().WaitUntilVMGoodToGo();
 
-		// Player location checked for Cell/Location change on every loop, provided UI ready for status updates
-		if (!LocationTracker::Instance().Refresh())
-		{
-			REL_VMESSAGE("Location or cell not stable yet");
-			continue;
-		}
+    // Do not progress if Player Cell is invalid
+    if (!RE::PlayerCharacter::GetSingleton()->parentCell) {
+      REL_VMESSAGE("Location or cell not stable yet");
+      continue;
+    }
+    if (LocationTracker::Instance().UseLocationPolling()) {
+      LocationTracker::Instance().Refresh(
+          RE::PlayerCharacter::GetSingleton()->parentCell);
+    }
 
-		static const bool onMCMPush(false);
-		static const bool onGameReload(false);
-		PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+    static const bool onMCMPush(false);
+    static const bool onGameReload(false);
+    PlayerState::Instance().Refresh(onMCMPush, onGameReload);
 
-		// process any queued added items since last time
-		CollectionManager::Collectibles().ProcessAddedItems();
+    // process any queued added items since last time
+    CollectionManager::Collectibles().ProcessAddedItems();
 
-		// reconcile SPERG mined items
-		ScanGovernor::Instance().ReconcileSPERGMined();
+    // reconcile SPERG mined items
+    ScanGovernor::Instance().ReconcileSPERGMined();
 
-		// Skip loot-OK checks if calibrating
-		ReferenceScanType scanType(ReferenceScanType::NoLoot);
-		if (ScanGovernor::Instance().Calibrating())
-		{
-			scanType = ReferenceScanType::Calibration;
-		}
-		else if (Instance().ScanAllowed())
-		{
-			scanType = ReferenceScanType::Loot;
-		}
+    // Skip loot-OK checks if calibrating
+    ReferenceScanType scanType(ReferenceScanType::NoLoot);
+    if (ScanGovernor::Instance().Calibrating()) {
+      scanType = ReferenceScanType::Calibration;
+    } else if (Instance().ScanAllowed()) {
+      scanType = ReferenceScanType::Loot;
+    }
 
-		ScanGovernor::Instance().DoPeriodicSearch(scanType);
-	}
+    ScanGovernor::Instance().DoPeriodicSearch(scanType);
+  }
 }
 
-void PluginFacade::PrepareForReloadOrNewGame()
-{
-	UIState::Instance().Reset();
-	CosaveData::Instance().Clear();
-	Saga::Instance().Reset();
+void PluginFacade::PrepareToPlay() {
+  UIState::Instance().Reset();
+  CosaveData::Instance().Clear();
+  Saga::Instance().Reset();
 
-	// Do not scan again until we are in sync with the scripts
-	RecursiveLockGuard guard(m_pluginLock);
-	m_pluginSynced = false;
-	m_loadedSettings = false;	// this comes from MCM script via OnGameReady
-	REL_MESSAGE("Plugin sync required");
+  // Do not scan again until we are in sync with the scripts
+  RecursiveLockGuard guard(m_pluginLock);
+  m_pluginSynced = false;
+  m_loadedSettings = false; // this comes from MCM script via OnGameReady
+
+  // wire up event handlers - later than kDataLoaded to see if this fixes VR
+  LocationTracker::Instance().Init();
+
+  // reset location history - also forces proper recalculation of carry-weight
+  // per refreshed PlayerState.
+  // This must be done here as CELL Enter event happens immediately
+  /*
+      15:57:42.021 77136 I BGSActorCellEvent Sink registered
+      15:57:50.407 39080 I Game load starting
+      15:57:50.407 39080 I Reset Collections
+      15:57:50.407 39080 I Reset Collections
+      15:57:50.407 39080 I Plugin sync required
+      15:57:50.890 39080 I Entered CELL Whiterun/0x00009655
+      15:57:50.890 39080 I Player cell updated to 0x00009655 outdoors at (8,-5)
+  */
+  LocationTracker::Instance().Reset();
+
+  REL_MESSAGE("Plugin sync required");
 }
 
-void PluginFacade::ResetTransientState(const bool gameReload)
-{
-	DBG_MESSAGE("Transient in-game restrictions reset, reload={}", gameReload ? "true" : "false");
-	// This can be called while LocationTracker lock is held. No deadlock at present but care needed to ensure it remains so
-	RecursiveLockGuard guard(m_pluginLock);
-	DataCase::GetInstance()->ListsClear(gameReload);
-	ScanGovernor::Instance().Clear(gameReload);
+void PluginFacade::ResetTransientState(const bool gameReload) {
+  DBG_MESSAGE("Transient in-game restrictions reset, reload={}",
+              gameReload ? "true" : "false");
+  // This can be called while LocationTracker lock is held. No deadlock at
+  // present but care needed to ensure it remains so
+  RecursiveLockGuard guard(m_pluginLock);
+  DataCase::GetInstance()->ListsClear(gameReload);
+  ScanGovernor::Instance().Clear(gameReload);
 }
 
-void PluginFacade::OnVMSync()
-{
-	// This can get called via SHSE_MCM.OnGameReload if player consoles into the game using coc.
-	// In that case, the script state is consistent but the C++ code is unprepared, meaning undefined behaviour.
-	// Don't do this processing before the SKSE plugin has reached a stable state.
-	if (!m_ready)
-	{
-		REL_ERROR("Plugin sync from VM, skip until we are ready");
-		return;
-	}
-	else
-	{
-		REL_MESSAGE("Plugin sync, VM ready");
-	}
+void PluginFacade::OnVMSync() {
+  // This can get called via SHSE_MCM.OnGameReload if player consoles into the
+  // game using coc. In that case, the script state is consistent but the C++
+  // code is unprepared, meaning undefined behaviour. Don't do this processing
+  // before the SKSE plugin has reached a stable state.
+  if (!m_ready) {
+    REL_ERROR("Plugin sync from VM, skip until we are ready");
+    return;
+  } else {
+    REL_MESSAGE("Plugin sync, VM ready");
+  }
 
-	WindowsUtils::LogProcessWorkingSet();
-	ResetTransientState(true);
-	// reset player state
-	static const bool onMCMPush(false);
-	static const bool onGameReload(true);
-	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
-	// reset location history - also forces proper recalculation of carry-weight per refreshed PayerState
-	LocationTracker::Instance().Reset();
-	// unblock possible player house checks after game reload
-	PlayerHouses::Instance().Clear();
-	// reset Actor data
-	ActorTracker::Instance().Reset();
-	// seed state using cosave data
-	CosaveData::Instance().SeedState();
-	// Update Collections State, including saved-game data if present
-	CollectionManager::Collectibles().OnGameReload();
-	CollectionManager::ExcessInventory().OnGameReload();
-	DataCase::GetInstance()->RefreshBuiltinSpecialCases();
-	
-	// need to wait for the scripts to sync up before performing player house checks
-	m_pluginSynced = true;
-	REL_MESSAGE("Plugin sync completed");
-	WindowsUtils::LogProcessWorkingSet();
+  WindowsUtils::LogProcessWorkingSet();
+  ResetTransientState(true);
+  // reset player state
+  static const bool onMCMPush(false);
+  static const bool onGameReload(true);
+  PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+  // unblock possible player house checks after game reload
+  PlayerHouses::Instance().Clear();
+  // reset Actor data
+  ActorTracker::Instance().Reset();
+  // seed state using cosave data
+  CosaveData::Instance().SeedState();
+  // Update Collections State, including saved-game data if present
+  CollectionManager::Collectibles().OnGameReload();
+  CollectionManager::ExcessInventory().OnGameReload();
+  DataCase::GetInstance()->RefreshBuiltinSpecialCases();
+
+  // need to wait for the scripts to sync up before performing player house
+  // checks
+  m_pluginSynced = true;
+  REL_MESSAGE("Plugin sync completed");
+  WindowsUtils::LogProcessWorkingSet();
 }
 
-void PluginFacade::OnGameLoaded()
-{
-	REL_MESSAGE("MCM OnGameLoaded completed");
-	m_loadedSettings = true;
+void PluginFacade::OnGameLoaded() {
+  REL_MESSAGE("MCM OnGameLoaded completed");
+  m_loadedSettings = true;
 }
 
 // lock not required, by construction
-void PluginFacade::OnSettingsPushed()
-{
-	// refresh player state that could be affected
-	static const bool onMCMPush(true);
-	static const bool onGameReload(false);
-	PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+void PluginFacade::OnSettingsPushed() {
+  // refresh player state that could be affected
+  static const bool onMCMPush(true);
+  static const bool onGameReload(false);
+  // in VR this can get called after Papyrus registration but before SKSE
+  // messages that trigger data load, so check Plugin is ready
+  // https://github.com/SteveTownsend/SmartHarvestSE/issues/568#issuecomment-2849328480
+  if (PluginFacade::Loaded()) {
+    PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+  } else {
+    REL_WARNING("Skip PlayerState::Refresh until plugin is ready")
+  }
 
-	// Base Object Forms and REFRs handled for the case where we are not reloading game
-	DataCase::GetInstance()->ResetBlockedForms();
-	DataCase::GetInstance()->ResetBlockedReferences(onGameReload);
+  // Base Object Forms and REFRs handled for the case where we are not reloading
+  // game
+  DataCase::GetInstance()->ResetBlockedForms();
+  DataCase::GetInstance()->ResetBlockedReferences(onGameReload);
 
-	// clear list of dead bodies pending looting - blocked reference cleanup allows redo if still viable
-	ActorTracker::Instance().Reset();
+  // clear list of dead bodies pending looting - blocked reference cleanup
+  // allows redo if still viable
+  ActorTracker::Instance().Reset();
 
-	// clear lists of looted and locked containers
-	ScanGovernor::Instance().ResetLootedContainers();
-	ScanGovernor::Instance().ForgetLockedContainers();
+  // clear lists of looted and locked containers
+  ScanGovernor::Instance().ResetLootedContainers();
+  ScanGovernor::Instance().ForgetLockedContainers();
 }
 
-}
+} // namespace shse

@@ -21,47 +21,47 @@ http://www.fsf.org/licensing/licenses
 
 #include "Utilities/utils.h"
 
-namespace shse
-{
+namespace shse {
 class OrderedFilter {
 public:
-	OrderedFilter(const nlohmann::json& j);
-	bool DeterminesLootability(const RE::TESNPC* npc, bool& isLootable) const;
-	inline size_t Priority() const { return m_priority; }
+  OrderedFilter(const nlohmann::json &j);
+  bool DeterminesLootability(const RE::TESNPC *npc, bool &isLootable) const;
+  inline size_t Priority() const { return m_priority; }
+
 private:
-	std::unordered_set<const RE::BGSKeyword*> m_excludeKeywords;
-	std::unordered_set<const RE::TESRace*> m_excludeRaces;
-	std::unordered_set<const RE::TESFaction*> m_excludeFactions;
-	std::unordered_set<const RE::BGSKeyword*> m_includeKeywords;
-	std::unordered_set<const RE::TESRace*> m_includeRaces;
-	std::unordered_set<const RE::TESFaction*> m_includeFactions;
-	size_t m_priority;
+  std::unordered_set<const RE::BGSKeyword *> m_excludeKeywords;
+  std::unordered_set<const RE::TESRace *> m_excludeRaces;
+  std::unordered_set<const RE::TESFaction *> m_excludeFactions;
+  std::unordered_set<const RE::BGSKeyword *> m_includeKeywords;
+  std::unordered_set<const RE::TESRace *> m_includeRaces;
+  std::unordered_set<const RE::TESFaction *> m_includeFactions;
+  size_t m_priority;
 };
 
 struct OrderedFilterCompare {
-bool operator() (const OrderedFilter* lhs, const OrderedFilter* rhs) const {
-	return lhs->Priority() < rhs->Priority();
-}
+  bool operator()(const OrderedFilter *lhs, const OrderedFilter *rhs) const {
+    return lhs->Priority() < rhs->Priority();
+  }
 };
 
 class NPCFilter {
 public:
-	static NPCFilter& Instance();
-	NPCFilter();
-	void Load();
-	bool IsLootable(const RE::TESNPC* npc) const;
+  static NPCFilter &Instance();
+  NPCFilter();
+  void Load();
+  bool IsLootable(const RE::TESNPC *npc) const;
 
 private:
-	bool IsLeveled(const RE::TESNPC* npc) const;
+  bool IsLeveled(const RE::TESNPC *npc) const;
 
-	// no lock as all public functions are const once loaded
-	static std::unique_ptr<NPCFilter> m_instance;
+  // no lock as all public functions are const once loaded
+  static std::unique_ptr<NPCFilter> m_instance;
 
-	bool m_active;
-	bool m_logResults;
-	bool m_defaultLoot;
-	bool m_excludePlayerRace;
-	std::set<const OrderedFilter*, OrderedFilterCompare> m_orderedFilters;
+  bool m_active;
+  bool m_logResults;
+  bool m_defaultLoot;
+  bool m_excludePlayerRace;
+  std::set<const OrderedFilter *, OrderedFilterCompare> m_orderedFilters;
 };
 
-}
+} // namespace shse

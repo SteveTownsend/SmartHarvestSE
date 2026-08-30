@@ -23,73 +23,75 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/LocationTracker.h"
 #include "WorldState/InventoryCache.h"
 
-namespace shse
-{
+namespace shse {
 
-class PlayerState
-{
+class PlayerState {
 public:
+  static PlayerState &Instance();
+  PlayerState();
 
-	static PlayerState& Instance();
-	PlayerState();
+  inline bool IsValid() const { return m_valid; }
 
-	inline bool IsValid() const { return m_valid;}
-
-	void Refresh(const bool onMCMPush, const bool onGameReload);
-	bool PerksAddLeveledItemsOnDeath() const;
-	float PerkIngredientMultiplier() const;
-	bool CanLoot() const;
-	OwnershipRule EffectiveOwnershipRule() const { return m_ownershipRule; }
-	SpecialObjectHandling BelongingsCheck() const { return m_belongingsCheck; }
-	double SneakDistanceExterior() const;
-	double SneakDistanceInterior() const;
-	void ExcludeMountedIfForbidden(void);
-	Position GetPosition() const;
-	const RE::TESRace* GetRace() const;
-	AlglibPosition GetAlglibPosition() const;
-	void UpdateGameTime();
-	inline float CurrentGameTime() const { return m_gameTime; }
-	int ItemHeadroom(RE::TESBoundObject* form, const int delta) const;
-	bool IsTimeSlowed() const { return m_slowedTime; }
-	double ArrowMovingThreshold() const;
-	inline RE::SpellItem* CarryWeightSpell() const { return m_carryWeightSpell; }
-	inline RE::EffectSetting* CarryWeightEffect() const { return m_carryWeightEffect; }
-	void ReviewExcessInventory(bool force);
+  void Refresh(const bool onMCMPush, const bool onGameReload);
+  bool PerksAddLeveledItemsOnDeath() const;
+  float PerkIngredientMultiplier() const;
+  bool CanLoot() const;
+  OwnershipRule EffectiveOwnershipRule() const { return m_ownershipRule; }
+  SpecialObjectHandling BelongingsCheck() const { return m_belongingsCheck; }
+  double SneakDistanceExterior() const;
+  double SneakDistanceInterior() const;
+  void ExcludeMountedIfForbidden(void);
+  Position GetPosition() const;
+  const RE::TESRace *GetRace() const;
+  AlglibPosition GetAlglibPosition() const;
+  void UpdateGameTime();
+  inline float CurrentGameTime() const { return m_gameTime; }
+  int ItemHeadroom(RE::TESBoundObject *form, const int delta) const;
+  bool IsTimeSlowed() const { return m_slowedTime; }
+  double ArrowMovingThreshold() const;
+  inline RE::SpellItem *CarryWeightSpell() const { return m_carryWeightSpell; }
+  inline RE::EffectSetting *CarryWeightEffect() const {
+    return m_carryWeightEffect;
+  }
+  void ReviewExcessInventory(bool force);
+  void TrySendLotDSupplies();
 
 private:
-	void CheckPerks(const bool force);
-	void ReconcileCarryWeight(const bool doReload);
-	bool IsMagicallyConcealed(RE::MagicTarget* target) const;
-	bool FortuneHuntOnly() const;
+  void CheckPerks(const bool force);
+  void ReconcileCarryWeight(const bool doReload);
+  bool FortuneHuntOnly() const;
+  void CheckCanSendLotDSupplies();
 
-	static std::unique_ptr<PlayerState> m_instance;
+  static std::unique_ptr<PlayerState> m_instance;
 
-	static constexpr int InfiniteWeight = 100000;
-	static constexpr int PerkCheckIntervalSeconds = 15;
-	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
-	bool m_perksAddLeveledItemsOnDeath;
-	float m_harvestedIngredientMultiplier;
+  static constexpr int InfiniteWeight = 100000;
+  static constexpr int PerkCheckIntervalSeconds = 15;
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_lastPerkCheck;
+  bool m_perksAddLeveledItemsOnDeath;
+  float m_harvestedIngredientMultiplier;
 
-	// Excess inventory management
-	std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
-	// specialized cache of inventory items
-	mutable InventoryCache m_currentItems;
-	mutable InventoryUpdates m_updates;
+  // Excess inventory management
+  std::chrono::time_point<std::chrono::high_resolution_clock> m_lastExcessCheck;
+  // specialized cache of inventory items
+  mutable InventoryCache m_currentItems;
+  mutable InventoryUpdates m_updates;
 
-	bool m_currentlyBeefedUp;
-	RE::SpellItem* m_carryWeightSpell;
-	RE::EffectSetting* m_carryWeightEffect;
+  bool m_currentlyBeefedUp;
+  RE::SpellItem *m_carryWeightSpell;
+  RE::EffectSetting *m_carryWeightEffect;
 
-	bool m_sneaking;
-	bool m_slowedTime;
-	OwnershipRule m_ownershipRule;
-	SpecialObjectHandling m_belongingsCheck;
-	bool m_disableWhileMounted;
+  bool m_sneaking;
+  bool m_slowedTime;
+  OwnershipRule m_ownershipRule;
+  SpecialObjectHandling m_belongingsCheck;
+  bool m_disableWhileMounted;
+  RE::TESObjectREFR *m_supplies_refr = nullptr;
+  RE::TESGlobal *m_lotd_safehouse_state = nullptr;
 
-	float m_gameTime;
+  float m_gameTime;
 
-	bool m_valid;
-	mutable RecursiveLock m_playerLock;
+  bool m_valid;
+  mutable RecursiveLock m_playerLock;
 };
 
-}
+} // namespace shse

@@ -20,41 +20,40 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 #include <array>
 
-namespace shse
-{
+namespace shse {
 
 // x, y, z coordinates
 typedef std::array<float, 3> Position;
 typedef std::array<double, 3> AlglibPosition;
 
-constexpr Position InvalidPosition = { 0.0, 0.0, 0.0 };
+constexpr Position InvalidPosition = {0.0, 0.0, 0.0};
 
-class RelativeLocationDescriptor
-{
+class RelativeLocationDescriptor {
 public:
-	RelativeLocationDescriptor(const AlglibPosition startPoint, const AlglibPosition endPoint, const RE::FormID locationID, const double unitsAway) :
-		m_startPoint(startPoint), m_endPoint(endPoint), m_locationID(locationID), m_unitsAway(unitsAway)
-	{}
-	inline AlglibPosition StartPoint() const { return m_startPoint; }
-	inline AlglibPosition EndPoint() const { return m_endPoint; }
-	inline RE::FormID LocationID() const { return m_locationID; }
-	inline double UnitsAway() const { return m_unitsAway; }
-	static RelativeLocationDescriptor Invalid() { return RelativeLocationDescriptor({ 0.,0.,0. }, { 0.,0.,0. }, 0, 0.0); }
-	inline bool equals(const RelativeLocationDescriptor& rhs) {
-		return m_startPoint == rhs.m_startPoint && m_endPoint == rhs.m_endPoint;
-	}
+  RelativeLocationDescriptor(const AlglibPosition startPoint,
+                             const AlglibPosition endPoint,
+                             const RE::FormID locationID,
+                             const double unitsAway)
+      : m_startPoint(startPoint), m_endPoint(endPoint),
+        m_locationID(locationID), m_unitsAway(unitsAway) {}
+  inline AlglibPosition StartPoint() const { return m_startPoint; }
+  inline AlglibPosition EndPoint() const { return m_endPoint; }
+  inline RE::FormID LocationID() const { return m_locationID; }
+  inline double UnitsAway() const { return m_unitsAway; }
+  static RelativeLocationDescriptor Invalid() {
+    return RelativeLocationDescriptor({0., 0., 0.}, {0., 0., 0.}, 0, 0.0);
+  }
+  inline bool equals(const RelativeLocationDescriptor &rhs) {
+    return m_startPoint == rhs.m_startPoint && m_endPoint == rhs.m_endPoint;
+  }
 
 private:
-	const AlglibPosition m_startPoint;
-	const AlglibPosition m_endPoint;
-	const RE::FormID m_locationID;	// represents end point
-	const double m_unitsAway;
+  const AlglibPosition m_startPoint;
+  const AlglibPosition m_endPoint;
+  const RE::FormID m_locationID; // represents end point
+  const double m_unitsAway;
 };
 
-enum class MapMarkerType {
-	Nearest = 0,
-	AdventureTarget,
-	MAX
-};
+enum class MapMarkerType { Nearest = 0, AdventureTarget, MAX };
 
-}
+} // namespace shse

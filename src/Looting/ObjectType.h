@@ -19,105 +19,81 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace ObjTypeName
-{
-	constexpr const char* Critter = "critter";
-	constexpr const char* Flora = "flora";
-}
+namespace ObjTypeName {
+constexpr const char *Critter = "critter";
+constexpr const char *Flora = "flora";
+} // namespace ObjTypeName
 
-enum class ObjectType : uint8_t
-{
-	unknown = 0,
-	flora,
-	critter,
-	ingredient,
-	septims,
-	gem,
-	lockpick,
-	animalHide,
-	oreIngot,
-	soulgem,
-	key,
-	clutter,
-	// books - must be contiguous
-	book,
-	spellbook,
-	skillbook,
-	bookRead,
-	spellbookRead,
-	skillbookRead,
-	// end books
-	scroll,
-	ammo,
-	weapon,
-	enchantedWeapon,
-	armor,
-	enchantedArmor,
-	jewelry,
-	enchantedJewelry,
-	potion,
-	poison,
-	food,
-	drink,
-	oreVein,
-	container,
-	actor
+enum class ObjectType : uint8_t {
+  unknown = 0,
+  flora,
+  critter,
+  ingredient,
+  septims,
+  gem,
+  lockpick,
+  animalHide,
+  oreIngot,
+  soulgem,
+  key,
+  clutter,
+  // books - must be contiguous
+  book,
+  spellbook,
+  skillbook,
+  bookRead,
+  spellbookRead,
+  skillbookRead,
+  // end books
+  scroll,
+  ammo,
+  weapon,
+  enchantedWeapon,
+  armor,
+  enchantedArmor,
+  jewelry,
+  enchantedJewelry,
+  potion,
+  poison,
+  food,
+  drink,
+  oreVein,
+  container,
+  actor
 };
 
-enum class ResourceType : uint8_t
-{
-	ore = 0,
-	geode,
-	volcanic,
-	volcanicDigSite
-};
+enum class ResourceType : uint8_t { ore = 0, geode, volcanic, volcanicDigSite };
 
-inline const char* PrintResourceType(ResourceType resourceType)
-{
-	static std::vector<const char*> resourceTypeNames = { "Ore", "Geode", "Volcanic", "VolcanicDigSite" };
-	return resourceTypeNames.at(static_cast<size_t>(resourceType));
+inline const char *PrintResourceType(ResourceType resourceType) {
+  static std::vector<const char *> resourceTypeNames = {
+      "Ore", "Geode", "Volcanic", "VolcanicDigSite"};
+  return resourceTypeNames.at(static_cast<size_t>(resourceType));
 }
 
-inline bool TypeIsEnchanted(const ObjectType objType)
-{
-	return objType == ObjectType::enchantedArmor ||
-		objType == ObjectType::enchantedJewelry ||
-		objType == ObjectType::enchantedWeapon;
+inline bool TypeIsEnchanted(const ObjectType objType) {
+  return objType == ObjectType::enchantedArmor ||
+         objType == ObjectType::enchantedJewelry ||
+         objType == ObjectType::enchantedWeapon;
 }
 
-inline ObjectType ConvertToUnenchanted(const ObjectType objType)
-{
-	if (objType == ObjectType::enchantedArmor)
-		return ObjectType::armor;
-	if (objType == ObjectType::enchantedJewelry)
-		return ObjectType::jewelry;
-	if (objType == ObjectType::enchantedWeapon)
-		return ObjectType::weapon;
-	return objType;
+inline ObjectType ConvertToUnenchanted(const ObjectType objType) {
+  if (objType == ObjectType::enchantedArmor)
+    return ObjectType::armor;
+  if (objType == ObjectType::enchantedJewelry)
+    return ObjectType::jewelry;
+  if (objType == ObjectType::enchantedWeapon)
+    return ObjectType::weapon;
+  return objType;
 }
 
-inline bool TypeSupportsExcessHandling(const ObjectType objType)
-{
-	static const std::unordered_set<ObjectType> validTypes = {
-		ObjectType::ingredient,
-		ObjectType::septims,
-		ObjectType::gem,
-		ObjectType::lockpick,
-		ObjectType::animalHide,
-		ObjectType::oreIngot,
-		ObjectType::soulgem,
-		ObjectType::key,
-		ObjectType::clutter,
-		ObjectType::book,
-		ObjectType::scroll,
-		ObjectType::ammo,
-		ObjectType::weapon,
-		ObjectType::armor,
-		ObjectType::jewelry,
-		ObjectType::potion,
-		ObjectType::poison,
-		ObjectType::food,
-		ObjectType::drink
-	};
-	return validTypes.contains(objType);
+inline bool TypeSupportsExcessHandling(const ObjectType objType) {
+  static const std::unordered_set<ObjectType> validTypes = {
+      ObjectType::ingredient, ObjectType::septims,    ObjectType::gem,
+      ObjectType::lockpick,   ObjectType::animalHide, ObjectType::oreIngot,
+      ObjectType::soulgem,    ObjectType::key,        ObjectType::clutter,
+      ObjectType::book,       ObjectType::scroll,     ObjectType::ammo,
+      ObjectType::weapon,     ObjectType::armor,      ObjectType::jewelry,
+      ObjectType::potion,     ObjectType::poison,     ObjectType::food,
+      ObjectType::drink};
+  return validTypes.contains(objType);
 }

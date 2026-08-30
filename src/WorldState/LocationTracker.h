@@ -22,93 +22,132 @@ http://www.fsf.org/licensing/licenses
 #include "alglib/alglibmisc.h"
 #include "Utilities/utils.h"
 #include "WorldState/PositionData.h"
+#include <atomic>
 
-namespace shse
-{
+namespace shse {
 
-class LocationTracker
-{
+class LocationTracker : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 private:
-	void RecordAdjacentCells(const RE::TESObjectCELL* current);
-	void RecordMarkedPlaces();
+  void RecordAdjacentCells(const RE::TESObjectCELL *current);
+  void RecordMarkedPlaces();
 
-	bool IsAdjacent(RE::TESObjectCELL* cell) const;
-	bool IsPlaceBlacklisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
-	void PlayerLocationRelativeToNearestMapMarker(const RE::BGSLocation* locationDone) const;
-	const RE::BGSLocation* PlayerLocationRelativeToAdventureTarget(void) const;
-	CompassDirection DirectionToDestinationFromStart(const AlglibPosition& start, const AlglibPosition& destination) const;
-	const RE::TESWorldSpace* ParentWorld(const RE::TESObjectCELL* cell);
-	RelativeLocationDescriptor NearestMapMarker(const AlglibPosition& refPos) const;
-	RelativeLocationDescriptor MarkedLocationPosition(
-		const Position targetPosition, const RE::BGSLocation* location, const AlglibPosition& refPos) const;
-	inline double UnitsToMiles(const double units) const
-	{
-		return units * DistanceUnitInMiles;
-	}
-	CellOwnership GetCellOwnership(const RE::TESObjectCELL* cell) const;
-	RE::TESForm* GetCellOwner(const RE::TESObjectCELL* cell) const;
-	std::string PlaceName(const RE::TESForm*) const;
-	bool IsPlacePlayerHome(const RE::FormID cellID, const RE::BGSLocation* location) const;
-	bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation* location, const bool lootableIfRestricted, const bool allowIfRestrictedHome);
-	bool IsPlaceWhitelisted(const RE::FormID cellID, const RE::BGSLocation* location) const;
-	bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID, const RE::BGSLocation* location) const;
-	const RE::TESForm* CurrentPlayerPlaceCached() const;
+  bool IsAdjacent(RE::TESObjectCELL *cell) const;
+  bool IsPlaceBlacklisted(const RE::FormID cellID,
+                          const RE::BGSLocation *location) const;
+  void PlayerLocationRelativeToNearestMapMarker(
+      const RE::BGSLocation *locationDone) const;
+  const RE::BGSLocation *PlayerLocationRelativeToAdventureTarget(void) const;
+  CompassDirection
+  DirectionToDestinationFromStart(const AlglibPosition &start,
+                                  const AlglibPosition &destination) const;
+  const RE::TESWorldSpace *ParentWorld(const RE::TESObjectCELL *cell);
+  RelativeLocationDescriptor
+  NearestMapMarker(const AlglibPosition &refPos) const;
+  RelativeLocationDescriptor
+  MarkedLocationPosition(const Position targetPosition,
+                         const RE::BGSLocation *location,
+                         const AlglibPosition &refPos) const;
+  inline double UnitsToMiles(const double units) const {
+    return units * DistanceUnitInMiles;
+  }
+  CellOwnership GetCellOwnership(const RE::TESObjectCELL *cell) const;
+  RE::TESForm *GetCellOwner(const RE::TESObjectCELL *cell) const;
+  std::string PlaceName(const RE::TESForm *) const;
+  bool IsPlacePlayerHome(const RE::FormID cellID,
+                         const RE::BGSLocation *location) const;
+  bool IsPlaceLootable(const RE::FormID cellID, const RE::BGSLocation *location,
+                       const bool lootableIfRestricted,
+                       const bool allowIfRestrictedHome);
+  bool IsPlaceWhitelisted(const RE::FormID cellID,
+                          const RE::BGSLocation *location) const;
+  bool IsPlaceRestrictedLootSettlement(const RE::FormID cellID,
+                                       const RE::BGSLocation *location) const;
+  const RE::TESForm *CurrentPlayerPlaceCached() const;
+  inline void UpdatePlayerCellID(const RE::FormID cellID) {
+    if (m_poll_location) {
+      // No event triggers CELL sentinel update on reset, increment when
+      // detected
+      IncrementCellSequence();
+    }
+    m_playerCellID = cellID;
+  }
 
-	static std::unique_ptr<LocationTracker> m_instance;
-	// 3x3 CELL adjacency check - 8 nearest CELLs are treated as adjacent to player's CELL, if exterior
-	std::array<RE::TESObjectCELL*, 8> m_adjacentCells;
-	RE::FormID m_playerCellID;
-	std::int32_t m_playerCellX;
-	std::int32_t m_playerCellY;
-	bool m_playerIndoors;
-	std::string m_playerPlaceName;
-	bool m_tellPlayerIfCanLootAfterLoad;
-	const RE::BGSLocation* m_playerLocation;
-	const RE::TESWorldSpace* m_playerParentWorld;
+  static std::unique_ptr<LocationTracker> m_instance;
+  // 3x3 CELL adjacency check - 8 nearest CELLs are treated as adjacent to
+  // player's CELL, if exterior
+  std::array<RE::TESObjectCELL *, 8> m_adjacentCells;
+  RE::FormID m_playerCellID;
+  std::int32_t m_playerCellX;
+  std::int32_t m_playerCellY;
+  bool m_playerIndoors;
+  std::string m_playerPlaceName;
+  bool m_tellPlayerIfCanLootAfterLoad;
+  const RE::BGSLocation *m_playerLocation;
+  const RE::TESWorldSpace *m_playerParentWorld;
 
-	std::unordered_map<const RE::BGSLocation*, Position> m_markedPlaces;
-	alglib::kdtree m_markers;
-	mutable RecursiveLock m_locationLock;
-	mutable std::atomic<bool> m_aiRunning;
+  std::unordered_map<const RE::BGSLocation *, Position> m_markedPlaces;
+  mutable alglib::kdtree m_markers;
+  mutable RecursiveLock m_locationLock;
+  mutable std::atomic<bool> m_aiRunning;
+  std::atomic<int> m_cellSequence;
+  bool m_pending_cell_entry = false;
+  bool m_poll_location = false;
+  bool m_initialized = false;
 
-	static constexpr double OnlyYards = 0.1;
-	static constexpr double LittleWay = 0.3;
-	static constexpr double HalfMile = 0.75;
-	static constexpr double MileOrSo = 1.5;
-	static constexpr double CoupleOfMiles = 3.0;
-	static constexpr double SeveralMiles = 100.0;
+  static constexpr double OnlyYards = 0.1;
+  static constexpr double LittleWay = 0.3;
+  static constexpr double HalfMile = 0.75;
+  static constexpr double MileOrSo = 1.5;
+  static constexpr double CoupleOfMiles = 3.0;
+  static constexpr double SeveralMiles = 100.0;
 
 public:
-	static LocationTracker& Instance();
-	LocationTracker();
+  static LocationTracker &Instance();
+  LocationTracker();
+  void Init();
 
-	void Reset();
-	bool Refresh();
-	bool IsPlayerAtHome() const;
-	void RecordCurrentPlace(const float gameTime);
-	bool IsPlayerInLootablePlace(const bool lootableIfRestricted, const bool lootableIfRestrictedHome);
-	decltype(m_adjacentCells) AdjacentCells() const;
-	bool IsPlayerIndoors() const;
-	bool IsPlayerInRestrictedLootSettlement() const;
-	bool IsPlayerInFriendlyCell() const;
-	const RE::TESForm* CurrentPlayerPlace();
-	const RE::TESWorldSpace* CurrentPlayerWorld() const;
-	bool IsPlayerInWhitelistedPlace() const;
+  virtual RE::BSEventNotifyControl
+  ProcessEvent(const RE::BGSActorCellEvent *a_event,
+               RE::BSTEventSource<RE::BGSActorCellEvent> *a_eventSource);
 
-	void DisplayPlayerLocation(void) const;
-	void PrintPlayerLocation(const RE::BGSLocation* location) const;
-	std::string NearbyLocationAsString(
-		const RE::BGSLocation* location, const double milesAway, const CompassDirection heading, const bool historic) const;
-	std::string LocationRelativeToNearestMapMarker(const AlglibPosition& position, const bool historic) const;
-	void PrintAdventureTargetInfo(const RE::BGSLocation* location, const double milesAway, CompassDirection heading) const;
-	void PrintDifferentWorld(const RE::TESWorldSpace* world) const;
+  void Reset();
+  bool Refresh(const RE::TESObjectCELL *cell = nullptr);
+  void MarkAwaitingCellEntryEvent();
+  inline bool AwaitingCellEntryEvent() const { return m_pending_cell_entry; }
+  inline bool UseLocationPolling() const { return m_poll_location; }
+  bool IsPlayerAtHome() const;
+  void RecordCurrentPlace(const float gameTime);
+  bool IsPlayerInLootablePlace(const bool lootableIfRestricted,
+                               const bool lootableIfRestrictedHome);
+  decltype(m_adjacentCells) AdjacentCells() const;
+  bool IsPlayerIndoors() const;
+  bool IsPlayerInRestrictedLootSettlement() const;
+  bool IsPlayerInFriendlyCell() const;
+  const RE::TESForm *CurrentPlayerPlace();
+  const RE::TESWorldSpace *CurrentPlayerWorld() const;
+  bool IsPlayerInWhitelistedPlace() const;
 
-	std::string ParentLocationName(const RE::BGSLocation* location) const;
-	std::string Proximity(const double milesAway, CompassDirection heading) const;
-	std::string ConversationalDistance(const double milesAway) const;
-	std::string PlayerExactLocation() const;
+  void DisplayPlayerLocation(void) const;
+  void PrintPlayerLocation(const RE::BGSLocation *location) const;
+  std::string NearbyLocationAsString(const RE::BGSLocation *location,
+                                     const double milesAway,
+                                     const CompassDirection heading,
+                                     const bool historic) const;
+  std::string LocationRelativeToNearestMapMarker(const AlglibPosition &position,
+                                                 const bool historic) const;
+  void PrintAdventureTargetInfo(const RE::BGSLocation *location,
+                                const double milesAway,
+                                CompassDirection heading) const;
+  void PrintDifferentWorld(const RE::TESWorldSpace *world) const;
 
-	RE::TESObjectCELL* PlayerCell() const;
+  std::string ParentLocationName(const RE::BGSLocation *location) const;
+  std::string Proximity(const double milesAway, CompassDirection heading) const;
+  std::string ConversationalDistance(const double milesAway) const;
+  std::string PlayerExactLocation() const;
+
+  RE::TESObjectCELL *PlayerCell() const;
+  int GetCellSequence() const { return m_cellSequence.load(); }
+  void IncrementCellSequence() { ++m_cellSequence; }
 };
 
-}
+} // namespace shse

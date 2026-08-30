@@ -21,60 +21,65 @@ http://www.fsf.org/licensing/licenses
 
 #include "FormHelpers/ExtraDataListHelper.h"
 
-namespace shse
-{
-namespace ExtraDataList
-{
+namespace shse {
+namespace ExtraDataList {
 
-RE::EnchantmentItem* GetEnchantment(const RE::ExtraDataList* extraData)
-{
-	if (!extraData)
-		return nullptr;
+RE::EnchantmentItem *GetEnchantment(const RE::ExtraDataList *extraData) {
+  if (!extraData)
+    return nullptr;
 
-	auto exEnchant = extraData->GetByType<RE::ExtraEnchantment>();
-	return (exEnchant && exEnchant->enchantment) ? exEnchant->enchantment : nullptr;
+  auto exEnchant = extraData->GetByType<RE::ExtraEnchantment>();
+  return (exEnchant && exEnchant->enchantment) ? exEnchant->enchantment
+                                               : nullptr;
 }
 
-bool IsItemQuestObject(const RE::TESBoundObject* item, const RE::ExtraDataList* extraData)
-{
-	if (!extraData)
-		return false;
+bool IsItemQuestObject(const RE::TESBoundObject *item,
+                       const RE::ExtraDataList *extraData) {
+  if (!extraData)
+    return false;
 
-	auto exAliasArray = extraData->GetByType<RE::ExtraAliasInstanceArray>();
-	if (!exAliasArray)
-		return false;
+  auto exAliasArray = extraData->GetByType<RE::ExtraAliasInstanceArray>();
+  if (!exAliasArray)
+    return false;
 
-	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
-		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
-		if (alias->alias->IsQuestObject()) {
-			DBG_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", item->GetName(), item->GetFormID(),
-				alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
-			return true;
-		}
-		return false;
-	}) != exAliasArray->aliases.cend();
+  return std::find_if(
+             exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
+             [=](const RE::BGSRefAliasInstanceData *alias) -> bool {
+               if (alias->alias->IsQuestObject()) {
+                 DBG_VMESSAGE("Quest Target Item {}/0x{:08x} confirmed in "
+                              "alias for quest {}/0x{:08x}",
+                              item->GetName(), item->GetFormID(),
+                              alias->quest ? alias->quest->GetName() : "",
+                              alias->quest ? alias->quest->GetFormID() : 0);
+                 return true;
+               }
+               return false;
+             }) != exAliasArray->aliases.cend();
 }
 
-bool IsREFRQuestObject(const RE::TESObjectREFR* refr, const RE::ExtraDataList* extraData)
-{
-	if (!extraData)
-		return false;
+bool IsREFRQuestObject(const RE::TESObjectREFR *refr,
+                       const RE::ExtraDataList *extraData) {
+  if (!extraData)
+    return false;
 
-	auto exAliasArray = extraData->GetByType<RE::ExtraAliasInstanceArray>();
-	if (!exAliasArray)
-		return false;
+  auto exAliasArray = extraData->GetByType<RE::ExtraAliasInstanceArray>();
+  if (!exAliasArray)
+    return false;
 
-	return std::find_if(exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
-		[=](const RE::BGSRefAliasInstanceData* alias) -> bool {
-		if (alias->alias->IsQuestObject()) {
-			DBG_VMESSAGE("Quest Target REFR {}/0x{:08x} confirmed in alias for quest {}/0x{:08x}", refr->GetName(), refr->GetFormID(),
-				alias->quest ? alias->quest->GetName() : "", alias->quest ? alias->quest->GetFormID() : 0);
-			return true;
-		}
-		return false;
-	}) != exAliasArray->aliases.cend();
-
+  return std::find_if(
+             exAliasArray->aliases.cbegin(), exAliasArray->aliases.cend(),
+             [=](const RE::BGSRefAliasInstanceData *alias) -> bool {
+               if (alias->alias->IsQuestObject()) {
+                 DBG_VMESSAGE("Quest Target REFR {}/0x{:08x} confirmed in "
+                              "alias for quest {}/0x{:08x}",
+                              refr->GetName(), refr->GetFormID(),
+                              alias->quest ? alias->quest->GetName() : "",
+                              alias->quest ? alias->quest->GetFormID() : 0);
+                 return true;
+               }
+               return false;
+             }) != exAliasArray->aliases.cend();
 }
 
-}
-}
+} // namespace ExtraDataList
+} // namespace shse

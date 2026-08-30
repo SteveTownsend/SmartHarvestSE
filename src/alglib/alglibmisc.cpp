@@ -1,5 +1,6 @@
+// clang-format off
 /*************************************************************************
-ALGLIB 3.18.0 (source code generated 2021-10-25)
+ALGLIB 4.04.0 (source code generated 2024-12-21)
 Copyright (c) Sergey Bochkanov (ALGLIB project).
 
 >>> SOURCE LICENSE >>>
@@ -20,7 +21,6 @@ http://www.fsf.org/licensing/licenses
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-#include "alglib/ap.h"
 #include "alglibmisc.h"
 
 // disable some irrelevant warnings
@@ -40,544 +40,6 @@ http://www.fsf.org/licensing/licenses
 namespace alglib
 {
 
-#if defined(AE_COMPILE_HQRND) || !defined(AE_PARTIAL_BUILD)
-
-#endif
-
-#if defined(AE_COMPILE_XDEBUG) || !defined(AE_PARTIAL_BUILD)
-
-#endif
-
-#if defined(AE_COMPILE_NEARESTNEIGHBOR) || !defined(AE_PARTIAL_BUILD)
-
-#endif
-
-#if defined(AE_COMPILE_HQRND) || !defined(AE_PARTIAL_BUILD)
-/*************************************************************************
-Portable high quality random number generator state.
-Initialized with HQRNDRandomize() or HQRNDSeed().
-
-Fields:
-    S1, S2      -   seed values
-    V           -   precomputed value
-    MagicV      -   'magic' value used to determine whether State structure
-                    was correctly initialized.
-*************************************************************************/
-_hqrndstate_owner::_hqrndstate_owner()
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _state;
-    
-    alglib_impl::ae_state_init(&_state);
-    if( setjmp(_break_jump) )
-    {
-        if( p_struct!=NULL )
-        {
-            alglib_impl::_hqrndstate_destroy(p_struct);
-            alglib_impl::ae_free(p_struct);
-        }
-        p_struct = NULL;
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_state.error_msg);
-        return;
-#endif
-    }
-    alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
-    p_struct = NULL;
-    p_struct = (alglib_impl::hqrndstate*)alglib_impl::ae_malloc(sizeof(alglib_impl::hqrndstate), &_state);
-    memset(p_struct, 0, sizeof(alglib_impl::hqrndstate));
-    alglib_impl::_hqrndstate_init(p_struct, &_state, ae_false);
-    ae_state_clear(&_state);
-}
-
-_hqrndstate_owner::_hqrndstate_owner(const _hqrndstate_owner &rhs)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _state;
-    
-    alglib_impl::ae_state_init(&_state);
-    if( setjmp(_break_jump) )
-    {
-        if( p_struct!=NULL )
-        {
-            alglib_impl::_hqrndstate_destroy(p_struct);
-            alglib_impl::ae_free(p_struct);
-        }
-        p_struct = NULL;
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_state.error_msg);
-        return;
-#endif
-    }
-    alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
-    p_struct = NULL;
-    alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: hqrndstate copy constructor failure (source is not initialized)", &_state);
-    p_struct = (alglib_impl::hqrndstate*)alglib_impl::ae_malloc(sizeof(alglib_impl::hqrndstate), &_state);
-    memset(p_struct, 0, sizeof(alglib_impl::hqrndstate));
-    alglib_impl::_hqrndstate_init_copy(p_struct, const_cast<alglib_impl::hqrndstate*>(rhs.p_struct), &_state, ae_false);
-    ae_state_clear(&_state);
-}
-
-_hqrndstate_owner& _hqrndstate_owner::operator=(const _hqrndstate_owner &rhs)
-{
-    if( this==&rhs )
-        return *this;
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _state;
-    
-    alglib_impl::ae_state_init(&_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_state.error_msg);
-        return *this;
-#endif
-    }
-    alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
-    alglib_impl::ae_assert(p_struct!=NULL, "ALGLIB: hqrndstate assignment constructor failure (destination is not initialized)", &_state);
-    alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: hqrndstate assignment constructor failure (source is not initialized)", &_state);
-    alglib_impl::_hqrndstate_destroy(p_struct);
-    memset(p_struct, 0, sizeof(alglib_impl::hqrndstate));
-    alglib_impl::_hqrndstate_init_copy(p_struct, const_cast<alglib_impl::hqrndstate*>(rhs.p_struct), &_state, ae_false);
-    ae_state_clear(&_state);
-    return *this;
-}
-
-_hqrndstate_owner::~_hqrndstate_owner()
-{
-    if( p_struct!=NULL )
-    {
-        alglib_impl::_hqrndstate_destroy(p_struct);
-        ae_free(p_struct);
-    }
-}
-
-alglib_impl::hqrndstate* _hqrndstate_owner::c_ptr()
-{
-    return p_struct;
-}
-
-alglib_impl::hqrndstate* _hqrndstate_owner::c_ptr() const
-{
-    return const_cast<alglib_impl::hqrndstate*>(p_struct);
-}
-hqrndstate::hqrndstate() : _hqrndstate_owner() 
-{
-}
-
-hqrndstate::hqrndstate(const hqrndstate &rhs):_hqrndstate_owner(rhs) 
-{
-}
-
-hqrndstate& hqrndstate::operator=(const hqrndstate &rhs)
-{
-    if( this==&rhs )
-        return *this;
-    _hqrndstate_owner::operator=(rhs);
-    return *this;
-}
-
-hqrndstate::~hqrndstate()
-{
-}
-
-/*************************************************************************
-HQRNDState  initialization  with  random  values  which come from standard
-RNG.
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndrandomize(hqrndstate &state, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::hqrndrandomize(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return;
-}
-
-/*************************************************************************
-HQRNDState initialization with seed values
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndseed(const ae_int_t s1, const ae_int_t s2, hqrndstate &state, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::hqrndseed(s1, s2, const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return;
-}
-
-/*************************************************************************
-This function generates random real number in (0,1),
-not including interval boundaries
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-double hqrnduniformr(const hqrndstate &state, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return 0;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::hqrnduniformr(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
-}
-
-/*************************************************************************
-This function generates random integer number in [0, N)
-
-1. State structure must be initialized with HQRNDRandomize() or HQRNDSeed()
-2. N can be any positive number except for very large numbers:
-   * close to 2^31 on 32-bit systems
-   * close to 2^62 on 64-bit systems
-   An exception will be generated if N is too large.
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-ae_int_t hqrnduniformi(const hqrndstate &state, const ae_int_t n, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return 0;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::hqrnduniformi(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), n, &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
-}
-
-/*************************************************************************
-Random number generator: normal numbers
-
-This function generates one random number from normal distribution.
-Its performance is equal to that of HQRNDNormal2()
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-double hqrndnormal(const hqrndstate &state, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return 0;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::hqrndnormal(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
-}
-
-/*************************************************************************
-Random number generator: vector with random entries (normal distribution)
-
-This function generates N random numbers from normal distribution.
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndnormalv(const hqrndstate &state, const ae_int_t n, real_1d_array &x, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::hqrndnormalv(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), n, const_cast<alglib_impl::ae_vector*>(x.c_ptr()), &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return;
-}
-
-/*************************************************************************
-Random number generator: matrix with random entries (normal distribution)
-
-This function generates MxN random matrix.
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndnormalm(const hqrndstate &state, const ae_int_t m, const ae_int_t n, real_2d_array &x, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::hqrndnormalm(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), m, n, const_cast<alglib_impl::ae_matrix*>(x.c_ptr()), &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return;
-}
-
-/*************************************************************************
-Random number generator: random X and Y such that X^2+Y^2=1
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndunit2(const hqrndstate &state, double &x, double &y, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::hqrndunit2(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &x, &y, &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return;
-}
-
-/*************************************************************************
-Random number generator: normal numbers
-
-This function generates two independent random numbers from normal
-distribution. Its performance is equal to that of HQRNDNormal()
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndnormal2(const hqrndstate &state, double &x1, double &x2, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::hqrndnormal2(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), &x1, &x2, &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return;
-}
-
-/*************************************************************************
-Random number generator: exponential distribution
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 11.08.2007 by Bochkanov Sergey
-*************************************************************************/
-double hqrndexponential(const hqrndstate &state, const double lambdav, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return 0;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::hqrndexponential(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), lambdav, &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
-}
-
-/*************************************************************************
-This function generates  random number from discrete distribution given by
-finite sample X.
-
-INPUT PARAMETERS
-    State   -   high quality random number generator, must be
-                initialized with HQRNDRandomize() or HQRNDSeed().
-        X   -   finite sample
-        N   -   number of elements to use, N>=1
-
-RESULT
-    this function returns one of the X[i] for random i=0..N-1
-
-  -- ALGLIB --
-     Copyright 08.11.2011 by Bochkanov Sergey
-*************************************************************************/
-double hqrnddiscrete(const hqrndstate &state, const real_1d_array &x, const ae_int_t n, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return 0;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::hqrnddiscrete(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), n, &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
-}
-
-/*************************************************************************
-This function generates random number from continuous  distribution  given
-by finite sample X.
-
-INPUT PARAMETERS
-    State   -   high quality random number generator, must be
-                initialized with HQRNDRandomize() or HQRNDSeed().
-        X   -   finite sample, array[N] (can be larger, in this  case only
-                leading N elements are used). THIS ARRAY MUST BE SORTED BY
-                ASCENDING.
-        N   -   number of elements to use, N>=1
-
-RESULT
-    this function returns random number from continuous distribution which
-    tries to approximate X as mush as possible. min(X)<=Result<=max(X).
-
-  -- ALGLIB --
-     Copyright 08.11.2011 by Bochkanov Sergey
-*************************************************************************/
-double hqrndcontinuous(const hqrndstate &state, const real_1d_array &x, const ae_int_t n, const xparams _xparams)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state _alglib_env_state;
-    alglib_impl::ae_state_init(&_alglib_env_state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
-        return 0;
-#endif
-    }
-    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
-        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::hqrndcontinuous(const_cast<alglib_impl::hqrndstate*>(state.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), n, &_alglib_env_state);
-    alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
-}
-#endif
 
 #if defined(AE_COMPILE_XDEBUG) || !defined(AE_PARTIAL_BUILD)
 /*************************************************************************
@@ -614,6 +76,13 @@ _xdebugrecord1_owner::_xdebugrecord1_owner()
     memset(p_struct, 0, sizeof(alglib_impl::xdebugrecord1));
     alglib_impl::_xdebugrecord1_init(p_struct, &_state, ae_false);
     ae_state_clear(&_state);
+    is_attached = false;
+}
+
+_xdebugrecord1_owner::_xdebugrecord1_owner(alglib_impl::xdebugrecord1 *attach_to)
+{
+    p_struct = attach_to;
+    is_attached = true;
 }
 
 _xdebugrecord1_owner::_xdebugrecord1_owner(const _xdebugrecord1_owner &rhs)
@@ -644,6 +113,7 @@ _xdebugrecord1_owner::_xdebugrecord1_owner(const _xdebugrecord1_owner &rhs)
     memset(p_struct, 0, sizeof(alglib_impl::xdebugrecord1));
     alglib_impl::_xdebugrecord1_init_copy(p_struct, const_cast<alglib_impl::xdebugrecord1*>(rhs.p_struct), &_state, ae_false);
     ae_state_clear(&_state);
+    is_attached = false;
 }
 
 _xdebugrecord1_owner& _xdebugrecord1_owner::operator=(const _xdebugrecord1_owner &rhs)
@@ -666,6 +136,7 @@ _xdebugrecord1_owner& _xdebugrecord1_owner::operator=(const _xdebugrecord1_owner
     alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
     alglib_impl::ae_assert(p_struct!=NULL, "ALGLIB: xdebugrecord1 assignment constructor failure (destination is not initialized)", &_state);
     alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: xdebugrecord1 assignment constructor failure (source is not initialized)", &_state);
+    alglib_impl::ae_assert(!is_attached, "ALGLIB: xdebugrecord1 assignment constructor failure (can not assign to the structure which is attached to something else)", &_state);
     alglib_impl::_xdebugrecord1_destroy(p_struct);
     memset(p_struct, 0, sizeof(alglib_impl::xdebugrecord1));
     alglib_impl::_xdebugrecord1_init_copy(p_struct, const_cast<alglib_impl::xdebugrecord1*>(rhs.p_struct), &_state, ae_false);
@@ -675,7 +146,7 @@ _xdebugrecord1_owner& _xdebugrecord1_owner::operator=(const _xdebugrecord1_owner
 
 _xdebugrecord1_owner::~_xdebugrecord1_owner()
 {
-    if( p_struct!=NULL )
+    if( p_struct!=NULL && !is_attached )
     {
         alglib_impl::_xdebugrecord1_destroy(p_struct);
         ae_free(p_struct);
@@ -687,11 +158,15 @@ alglib_impl::xdebugrecord1* _xdebugrecord1_owner::c_ptr()
     return p_struct;
 }
 
-alglib_impl::xdebugrecord1* _xdebugrecord1_owner::c_ptr() const
+const alglib_impl::xdebugrecord1* _xdebugrecord1_owner::c_ptr() const
 {
-    return const_cast<alglib_impl::xdebugrecord1*>(p_struct);
+    return p_struct;
 }
 xdebugrecord1::xdebugrecord1() : _xdebugrecord1_owner() ,i(p_struct->i),c(*((alglib::complex*)(&p_struct->c))),a(&p_struct->a)
+{
+}
+
+xdebugrecord1::xdebugrecord1(alglib_impl::xdebugrecord1 *attach_to):_xdebugrecord1_owner(attach_to) ,i(p_struct->i),c(*((alglib::complex*)(&p_struct->c))),a(&p_struct->a)
 {
 }
 
@@ -737,9 +212,42 @@ void xdebuginitrecord1(xdebugrecord1 &rec1, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebuginitrecord1(const_cast<alglib_impl::xdebugrecord1*>(rec1.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebuginitrecord1(rec1.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+This is debug function intended for testing ALGLIB interface generator.
+Never use it in any real life project.
+
+Creates and returns XDebugRecord1 structure:
+* integer and complex fields of Rec1 are set to 1 and 1+i correspondingly
+* array field of Rec1 is set to [2,3]
+
+  -- ALGLIB --
+     Copyright 27.05.2014 by Bochkanov Sergey
+*************************************************************************/
+void xdebugupdaterecord1(xdebugrecord1 &rec1, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::xdebugupdaterecord1(rec1.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -768,11 +276,11 @@ ae_int_t xdebugb1count(const boolean_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::xdebugb1count(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::xdebugb1count(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -785,7 +293,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugb1not(const boolean_1d_array &a, const xparams _xparams)
+void xdebugb1not(boolean_1d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -800,9 +308,9 @@ void xdebugb1not(const boolean_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugb1not(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugb1not(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -832,9 +340,9 @@ void xdebugb1appendcopy(boolean_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugb1appendcopy(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugb1appendcopy(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -864,9 +372,9 @@ void xdebugb1outeven(const ae_int_t n, boolean_1d_array &a, const xparams _xpara
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugb1outeven(n, const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugb1outeven(n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -895,11 +403,11 @@ ae_int_t xdebugi1sum(const integer_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::xdebugi1sum(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::xdebugi1sum(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -912,7 +420,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugi1neg(const integer_1d_array &a, const xparams _xparams)
+void xdebugi1neg(integer_1d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -927,9 +435,9 @@ void xdebugi1neg(const integer_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugi1neg(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugi1neg(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -959,9 +467,9 @@ void xdebugi1appendcopy(integer_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugi1appendcopy(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugi1appendcopy(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -993,9 +501,9 @@ void xdebugi1outeven(const ae_int_t n, integer_1d_array &a, const xparams _xpara
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugi1outeven(n, const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugi1outeven(n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1024,11 +532,44 @@ double xdebugr1sum(const real_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::xdebugr1sum(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    double result = alglib_impl::xdebugr1sum(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
+    return double(result);
+}
+
+/*************************************************************************
+This is debug function intended for testing ALGLIB interface generator.
+Never use it in any real life project.
+
+Returns sum of elements in the array.
+
+Internally it creates a copy of the array.
+
+  -- ALGLIB --
+     Copyright 11.10.2013 by Bochkanov Sergey
+*************************************************************************/
+double xdebugr1internalcopyandsum(const real_1d_array &a, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::xdebugr1internalcopyandsum(a.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
 }
 
 /*************************************************************************
@@ -1041,7 +582,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugr1neg(const real_1d_array &a, const xparams _xparams)
+void xdebugr1neg(real_1d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -1056,9 +597,9 @@ void xdebugr1neg(const real_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugr1neg(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugr1neg(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1088,9 +629,9 @@ void xdebugr1appendcopy(real_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugr1appendcopy(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugr1appendcopy(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1122,9 +663,9 @@ void xdebugr1outeven(const ae_int_t n, real_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugr1outeven(n, const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugr1outeven(n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1153,11 +694,11 @@ alglib::complex xdebugc1sum(const complex_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_complex result = alglib_impl::xdebugc1sum(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_complex result = alglib_impl::xdebugc1sum(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<alglib::complex*>(&result));
+    return alglib::complex(result);
 }
 
 /*************************************************************************
@@ -1170,7 +711,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugc1neg(const complex_1d_array &a, const xparams _xparams)
+void xdebugc1neg(complex_1d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -1185,9 +726,9 @@ void xdebugc1neg(const complex_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugc1neg(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugc1neg(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1217,9 +758,9 @@ void xdebugc1appendcopy(complex_1d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugc1appendcopy(const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugc1appendcopy(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1251,9 +792,9 @@ void xdebugc1outeven(const ae_int_t n, complex_1d_array &a, const xparams _xpara
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugc1outeven(n, const_cast<alglib_impl::ae_vector*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugc1outeven(n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1282,11 +823,11 @@ ae_int_t xdebugb2count(const boolean_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::xdebugb2count(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::xdebugb2count(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -1299,7 +840,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugb2not(const boolean_2d_array &a, const xparams _xparams)
+void xdebugb2not(boolean_2d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -1314,9 +855,9 @@ void xdebugb2not(const boolean_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugb2not(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugb2not(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1346,9 +887,9 @@ void xdebugb2transpose(boolean_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugb2transpose(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugb2transpose(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1378,9 +919,9 @@ void xdebugb2outsin(const ae_int_t m, const ae_int_t n, boolean_2d_array &a, con
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugb2outsin(m, n, const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugb2outsin(m, n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1409,11 +950,11 @@ ae_int_t xdebugi2sum(const integer_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::xdebugi2sum(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::xdebugi2sum(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -1426,7 +967,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugi2neg(const integer_2d_array &a, const xparams _xparams)
+void xdebugi2neg(integer_2d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -1441,9 +982,9 @@ void xdebugi2neg(const integer_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugi2neg(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugi2neg(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1473,9 +1014,9 @@ void xdebugi2transpose(integer_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugi2transpose(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugi2transpose(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1505,9 +1046,9 @@ void xdebugi2outsin(const ae_int_t m, const ae_int_t n, integer_2d_array &a, con
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugi2outsin(m, n, const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugi2outsin(m, n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1536,11 +1077,44 @@ double xdebugr2sum(const real_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::xdebugr2sum(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    double result = alglib_impl::xdebugr2sum(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
+    return double(result);
+}
+
+/*************************************************************************
+This is debug function intended for testing ALGLIB interface generator.
+Never use it in any real life project.
+
+Returns sum of elements in the array.
+
+Internally it creates a copy of a.
+
+  -- ALGLIB --
+     Copyright 11.10.2013 by Bochkanov Sergey
+*************************************************************************/
+double xdebugr2internalcopyandsum(const real_2d_array &a, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::xdebugr2internalcopyandsum(a.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
 }
 
 /*************************************************************************
@@ -1553,7 +1127,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugr2neg(const real_2d_array &a, const xparams _xparams)
+void xdebugr2neg(real_2d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -1568,9 +1142,9 @@ void xdebugr2neg(const real_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugr2neg(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugr2neg(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1600,9 +1174,9 @@ void xdebugr2transpose(real_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugr2transpose(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugr2transpose(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1632,9 +1206,9 @@ void xdebugr2outsin(const ae_int_t m, const ae_int_t n, real_2d_array &a, const 
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugr2outsin(m, n, const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugr2outsin(m, n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1663,11 +1237,11 @@ alglib::complex xdebugc2sum(const complex_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_complex result = alglib_impl::xdebugc2sum(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_complex result = alglib_impl::xdebugc2sum(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<alglib::complex*>(&result));
+    return alglib::complex(result);
 }
 
 /*************************************************************************
@@ -1680,7 +1254,7 @@ Array is passed using "shared" convention.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-void xdebugc2neg(const complex_2d_array &a, const xparams _xparams)
+void xdebugc2neg(complex_2d_array &a, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -1695,9 +1269,9 @@ void xdebugc2neg(const complex_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugc2neg(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugc2neg(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1727,9 +1301,9 @@ void xdebugc2transpose(complex_2d_array &a, const xparams _xparams)
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugc2transpose(const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugc2transpose(a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1759,9 +1333,9 @@ void xdebugc2outsincos(const ae_int_t m, const ae_int_t n, complex_2d_array &a, 
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::xdebugc2outsincos(m, n, const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), &_alglib_env_state);
+    alglib_impl::xdebugc2outsincos(m, n, a.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -1790,11 +1364,551 @@ double xdebugmaskedbiasedproductsum(const ae_int_t m, const ae_int_t n, const re
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    double result = alglib_impl::xdebugmaskedbiasedproductsum(m, n, const_cast<alglib_impl::ae_matrix*>(a.c_ptr()), const_cast<alglib_impl::ae_matrix*>(b.c_ptr()), const_cast<alglib_impl::ae_matrix*>(c.c_ptr()), &_alglib_env_state);
+    double result = alglib_impl::xdebugmaskedbiasedproductsum(m, n, a.c_ptr(), b.c_ptr(), c.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<double*>(&result));
+    return double(result);
+}
+#endif
+
+#if defined(AE_COMPILE_HQRND) || !defined(AE_PARTIAL_BUILD)
+/*************************************************************************
+Portable high quality random number generator state.
+Initialized with HQRNDRandomize() or HQRNDSeed().
+
+Fields:
+    S1, S2      -   seed values
+    V           -   precomputed value
+    MagicV      -   'magic' value used to determine whether State structure
+                    was correctly initialized.
+*************************************************************************/
+_hqrndstate_owner::_hqrndstate_owner()
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _state;
+    
+    alglib_impl::ae_state_init(&_state);
+    if( setjmp(_break_jump) )
+    {
+        if( p_struct!=NULL )
+        {
+            alglib_impl::_hqrndstate_destroy(p_struct);
+            alglib_impl::ae_free(p_struct);
+        }
+        p_struct = NULL;
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_state.error_msg);
+        return;
+#endif
+    }
+    alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
+    p_struct = NULL;
+    p_struct = (alglib_impl::hqrndstate*)alglib_impl::ae_malloc(sizeof(alglib_impl::hqrndstate), &_state);
+    memset(p_struct, 0, sizeof(alglib_impl::hqrndstate));
+    alglib_impl::_hqrndstate_init(p_struct, &_state, ae_false);
+    ae_state_clear(&_state);
+    is_attached = false;
+}
+
+_hqrndstate_owner::_hqrndstate_owner(alglib_impl::hqrndstate *attach_to)
+{
+    p_struct = attach_to;
+    is_attached = true;
+}
+
+_hqrndstate_owner::_hqrndstate_owner(const _hqrndstate_owner &rhs)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _state;
+    
+    alglib_impl::ae_state_init(&_state);
+    if( setjmp(_break_jump) )
+    {
+        if( p_struct!=NULL )
+        {
+            alglib_impl::_hqrndstate_destroy(p_struct);
+            alglib_impl::ae_free(p_struct);
+        }
+        p_struct = NULL;
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_state.error_msg);
+        return;
+#endif
+    }
+    alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
+    p_struct = NULL;
+    alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: hqrndstate copy constructor failure (source is not initialized)", &_state);
+    p_struct = (alglib_impl::hqrndstate*)alglib_impl::ae_malloc(sizeof(alglib_impl::hqrndstate), &_state);
+    memset(p_struct, 0, sizeof(alglib_impl::hqrndstate));
+    alglib_impl::_hqrndstate_init_copy(p_struct, const_cast<alglib_impl::hqrndstate*>(rhs.p_struct), &_state, ae_false);
+    ae_state_clear(&_state);
+    is_attached = false;
+}
+
+_hqrndstate_owner& _hqrndstate_owner::operator=(const _hqrndstate_owner &rhs)
+{
+    if( this==&rhs )
+        return *this;
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _state;
+    
+    alglib_impl::ae_state_init(&_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_state.error_msg);
+        return *this;
+#endif
+    }
+    alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
+    alglib_impl::ae_assert(p_struct!=NULL, "ALGLIB: hqrndstate assignment constructor failure (destination is not initialized)", &_state);
+    alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: hqrndstate assignment constructor failure (source is not initialized)", &_state);
+    alglib_impl::ae_assert(!is_attached, "ALGLIB: hqrndstate assignment constructor failure (can not assign to the structure which is attached to something else)", &_state);
+    alglib_impl::_hqrndstate_destroy(p_struct);
+    memset(p_struct, 0, sizeof(alglib_impl::hqrndstate));
+    alglib_impl::_hqrndstate_init_copy(p_struct, const_cast<alglib_impl::hqrndstate*>(rhs.p_struct), &_state, ae_false);
+    ae_state_clear(&_state);
+    return *this;
+}
+
+_hqrndstate_owner::~_hqrndstate_owner()
+{
+    if( p_struct!=NULL && !is_attached )
+    {
+        alglib_impl::_hqrndstate_destroy(p_struct);
+        ae_free(p_struct);
+    }
+}
+
+alglib_impl::hqrndstate* _hqrndstate_owner::c_ptr()
+{
+    return p_struct;
+}
+
+const alglib_impl::hqrndstate* _hqrndstate_owner::c_ptr() const
+{
+    return p_struct;
+}
+hqrndstate::hqrndstate() : _hqrndstate_owner() 
+{
+}
+
+hqrndstate::hqrndstate(alglib_impl::hqrndstate *attach_to):_hqrndstate_owner(attach_to) 
+{
+}
+
+hqrndstate::hqrndstate(const hqrndstate &rhs):_hqrndstate_owner(rhs) 
+{
+}
+
+hqrndstate& hqrndstate::operator=(const hqrndstate &rhs)
+{
+    if( this==&rhs )
+        return *this;
+    _hqrndstate_owner::operator=(rhs);
+    return *this;
+}
+
+hqrndstate::~hqrndstate()
+{
+}
+
+/*************************************************************************
+HQRNDState  initialization  with  random  values  which come from standard
+RNG.
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndrandomize(hqrndstate &state, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndrandomize(state.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+HQRNDState initialization with seed values
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndseed(const ae_int_t s1, const ae_int_t s2, hqrndstate &state, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndseed(s1, s2, state.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+This function generates random real number in (0,1),
+not including interval boundaries
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+double hqrnduniformr(hqrndstate &state, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::hqrnduniformr(state.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
+}
+
+/*************************************************************************
+This function generates random integer number in [0, N)
+
+1. State structure must be initialized with HQRNDRandomize() or HQRNDSeed()
+2. N can be any positive number except for very large numbers:
+   * close to 2^31 on 32-bit systems
+   * close to 2^62 on 64-bit systems
+   An exception will be generated if N is too large.
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+ae_int_t hqrnduniformi(hqrndstate &state, const ae_int_t n, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::ae_int_t result = alglib_impl::hqrnduniformi(state.c_ptr(), n, &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return ae_int_t(result);
+}
+
+/*************************************************************************
+Random number generator: normal numbers
+
+This function generates one random number from normal distribution.
+Its performance is equal to that of HQRNDNormal2()
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+double hqrndnormal(hqrndstate &state, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::hqrndnormal(state.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
+}
+
+/*************************************************************************
+Random number generator: vector with random entries (normal distribution)
+
+This function generates N random numbers from normal distribution.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalv(hqrndstate &state, const ae_int_t n, real_1d_array &x, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndnormalv(state.c_ptr(), n, x.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+Random number generator: matrix with random entries (normal distribution)
+
+This function generates MxN random matrix.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalm(hqrndstate &state, const ae_int_t m, const ae_int_t n, real_2d_array &x, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndnormalm(state.c_ptr(), m, n, x.c_ptr(), &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+Random number generator: random X and Y such that X^2+Y^2=1
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndunit2(hqrndstate &state, double &x, double &y, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndunit2(state.c_ptr(), &x, &y, &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+Random number generator: normal numbers
+
+This function generates two independent random numbers from normal
+distribution. Its performance is equal to that of HQRNDNormal()
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormal2(hqrndstate &state, double &x1, double &x2, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    alglib_impl::hqrndnormal2(state.c_ptr(), &x1, &x2, &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return;
+}
+
+/*************************************************************************
+Random number generator: exponential distribution
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 11.08.2007 by Bochkanov Sergey
+*************************************************************************/
+double hqrndexponential(hqrndstate &state, const double lambdav, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::hqrndexponential(state.c_ptr(), lambdav, &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
+}
+
+/*************************************************************************
+This function generates  random number from discrete distribution given by
+finite sample X.
+
+INPUT PARAMETERS
+    State   -   high quality random number generator, must be
+                initialized with HQRNDRandomize() or HQRNDSeed().
+        X   -   finite sample
+        N   -   number of elements to use, N>=1
+
+RESULT
+    this function returns one of the X[i] for random i=0..N-1
+
+  -- ALGLIB --
+     Copyright 08.11.2011 by Bochkanov Sergey
+*************************************************************************/
+double hqrnddiscrete(hqrndstate &state, const real_1d_array &x, const ae_int_t n, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::hqrnddiscrete(state.c_ptr(), x.c_ptr(), n, &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
+}
+
+/*************************************************************************
+This function generates random number from continuous  distribution  given
+by finite sample X.
+
+INPUT PARAMETERS
+    State   -   high quality random number generator, must be
+                initialized with HQRNDRandomize() or HQRNDSeed().
+        X   -   finite sample, array[N] (can be larger, in this  case only
+                leading N elements are used). THIS ARRAY MUST BE SORTED BY
+                ASCENDING.
+        N   -   number of elements to use, N>=1
+
+RESULT
+    this function returns random number from continuous distribution which
+    tries to approximate X as mush as possible. min(X)<=Result<=max(X).
+
+  -- ALGLIB --
+     Copyright 08.11.2011 by Bochkanov Sergey
+*************************************************************************/
+double hqrndcontinuous(hqrndstate &state, const real_1d_array &x, const ae_int_t n, const xparams _xparams)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state _alglib_env_state;
+    alglib_impl::ae_state_init(&_alglib_env_state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(_alglib_env_state.error_msg);
+        return 0;
+#endif
+    }
+    ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
+        ae_state_set_flags(&_alglib_env_state, _xparams.flags);
+    double result = alglib_impl::hqrndcontinuous(state.c_ptr(), x.c_ptr(), n, &_alglib_env_state);
+    alglib_impl::ae_state_clear(&_alglib_env_state);
+    return double(result);
 }
 #endif
 
@@ -1832,6 +1946,13 @@ _kdtreerequestbuffer_owner::_kdtreerequestbuffer_owner()
     memset(p_struct, 0, sizeof(alglib_impl::kdtreerequestbuffer));
     alglib_impl::_kdtreerequestbuffer_init(p_struct, &_state, ae_false);
     ae_state_clear(&_state);
+    is_attached = false;
+}
+
+_kdtreerequestbuffer_owner::_kdtreerequestbuffer_owner(alglib_impl::kdtreerequestbuffer *attach_to)
+{
+    p_struct = attach_to;
+    is_attached = true;
 }
 
 _kdtreerequestbuffer_owner::_kdtreerequestbuffer_owner(const _kdtreerequestbuffer_owner &rhs)
@@ -1862,6 +1983,7 @@ _kdtreerequestbuffer_owner::_kdtreerequestbuffer_owner(const _kdtreerequestbuffe
     memset(p_struct, 0, sizeof(alglib_impl::kdtreerequestbuffer));
     alglib_impl::_kdtreerequestbuffer_init_copy(p_struct, const_cast<alglib_impl::kdtreerequestbuffer*>(rhs.p_struct), &_state, ae_false);
     ae_state_clear(&_state);
+    is_attached = false;
 }
 
 _kdtreerequestbuffer_owner& _kdtreerequestbuffer_owner::operator=(const _kdtreerequestbuffer_owner &rhs)
@@ -1884,6 +2006,7 @@ _kdtreerequestbuffer_owner& _kdtreerequestbuffer_owner::operator=(const _kdtreer
     alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
     alglib_impl::ae_assert(p_struct!=NULL, "ALGLIB: kdtreerequestbuffer assignment constructor failure (destination is not initialized)", &_state);
     alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: kdtreerequestbuffer assignment constructor failure (source is not initialized)", &_state);
+    alglib_impl::ae_assert(!is_attached, "ALGLIB: kdtreerequestbuffer assignment constructor failure (can not assign to the structure which is attached to something else)", &_state);
     alglib_impl::_kdtreerequestbuffer_destroy(p_struct);
     memset(p_struct, 0, sizeof(alglib_impl::kdtreerequestbuffer));
     alglib_impl::_kdtreerequestbuffer_init_copy(p_struct, const_cast<alglib_impl::kdtreerequestbuffer*>(rhs.p_struct), &_state, ae_false);
@@ -1893,7 +2016,7 @@ _kdtreerequestbuffer_owner& _kdtreerequestbuffer_owner::operator=(const _kdtreer
 
 _kdtreerequestbuffer_owner::~_kdtreerequestbuffer_owner()
 {
-    if( p_struct!=NULL )
+    if( p_struct!=NULL && !is_attached )
     {
         alglib_impl::_kdtreerequestbuffer_destroy(p_struct);
         ae_free(p_struct);
@@ -1905,11 +2028,15 @@ alglib_impl::kdtreerequestbuffer* _kdtreerequestbuffer_owner::c_ptr()
     return p_struct;
 }
 
-alglib_impl::kdtreerequestbuffer* _kdtreerequestbuffer_owner::c_ptr() const
+const alglib_impl::kdtreerequestbuffer* _kdtreerequestbuffer_owner::c_ptr() const
 {
-    return const_cast<alglib_impl::kdtreerequestbuffer*>(p_struct);
+    return p_struct;
 }
 kdtreerequestbuffer::kdtreerequestbuffer() : _kdtreerequestbuffer_owner() 
+{
+}
+
+kdtreerequestbuffer::kdtreerequestbuffer(alglib_impl::kdtreerequestbuffer *attach_to):_kdtreerequestbuffer_owner(attach_to) 
 {
 }
 
@@ -1960,6 +2087,13 @@ _kdtree_owner::_kdtree_owner()
     memset(p_struct, 0, sizeof(alglib_impl::kdtree));
     alglib_impl::_kdtree_init(p_struct, &_state, ae_false);
     ae_state_clear(&_state);
+    is_attached = false;
+}
+
+_kdtree_owner::_kdtree_owner(alglib_impl::kdtree *attach_to)
+{
+    p_struct = attach_to;
+    is_attached = true;
 }
 
 _kdtree_owner::_kdtree_owner(const _kdtree_owner &rhs)
@@ -1990,6 +2124,7 @@ _kdtree_owner::_kdtree_owner(const _kdtree_owner &rhs)
     memset(p_struct, 0, sizeof(alglib_impl::kdtree));
     alglib_impl::_kdtree_init_copy(p_struct, const_cast<alglib_impl::kdtree*>(rhs.p_struct), &_state, ae_false);
     ae_state_clear(&_state);
+    is_attached = false;
 }
 
 _kdtree_owner& _kdtree_owner::operator=(const _kdtree_owner &rhs)
@@ -2012,6 +2147,7 @@ _kdtree_owner& _kdtree_owner::operator=(const _kdtree_owner &rhs)
     alglib_impl::ae_state_set_break_jump(&_state, &_break_jump);
     alglib_impl::ae_assert(p_struct!=NULL, "ALGLIB: kdtree assignment constructor failure (destination is not initialized)", &_state);
     alglib_impl::ae_assert(rhs.p_struct!=NULL, "ALGLIB: kdtree assignment constructor failure (source is not initialized)", &_state);
+    alglib_impl::ae_assert(!is_attached, "ALGLIB: kdtree assignment constructor failure (can not assign to the structure which is attached to something else)", &_state);
     alglib_impl::_kdtree_destroy(p_struct);
     memset(p_struct, 0, sizeof(alglib_impl::kdtree));
     alglib_impl::_kdtree_init_copy(p_struct, const_cast<alglib_impl::kdtree*>(rhs.p_struct), &_state, ae_false);
@@ -2021,7 +2157,7 @@ _kdtree_owner& _kdtree_owner::operator=(const _kdtree_owner &rhs)
 
 _kdtree_owner::~_kdtree_owner()
 {
-    if( p_struct!=NULL )
+    if( p_struct!=NULL && !is_attached )
     {
         alglib_impl::_kdtree_destroy(p_struct);
         ae_free(p_struct);
@@ -2033,11 +2169,15 @@ alglib_impl::kdtree* _kdtree_owner::c_ptr()
     return p_struct;
 }
 
-alglib_impl::kdtree* _kdtree_owner::c_ptr() const
+const alglib_impl::kdtree* _kdtree_owner::c_ptr() const
 {
-    return const_cast<alglib_impl::kdtree*>(p_struct);
+    return p_struct;
 }
 kdtree::kdtree() : _kdtree_owner() 
+{
+}
+
+kdtree::kdtree(alglib_impl::kdtree *attach_to):_kdtree_owner(attach_to) 
 {
 }
 
@@ -2068,17 +2208,17 @@ Important properties of s_out:
 * although  serializer  uses  spaces and CR+LF as separators, you can 
   replace any separator character by arbitrary combination of spaces,
   tabs, Windows or Unix newlines. It allows flexible reformatting  of
-  the  string  in  case you want to include it into text or XML file. 
+  the  string in case you want to include it into a text or XML file. 
   But you should not insert separators into the middle of the "words"
-  nor you should change case of letters.
+  nor should you change the case of letters.
 * s_out can be freely moved between 32-bit and 64-bit systems, little
   and big endian machines, and so on. You can serialize structure  on
   32-bit machine and unserialize it on 64-bit one (or vice versa), or
   serialize  it  on  SPARC  and  unserialize  on  x86.  You  can also 
-  serialize  it  in  C++ version of ALGLIB and unserialize in C# one, 
+  serialize it in C++ version of ALGLIB and unserialize it in C# one, 
   and vice versa.
 *************************************************************************/
-void kdtreeserialize(kdtree &obj, std::string &s_out)
+void kdtreeserialize(const kdtree &obj, std::string &s_out)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state state;
@@ -2110,35 +2250,6 @@ void kdtreeserialize(kdtree &obj, std::string &s_out)
     alglib_impl::ae_state_clear(&state);
 }
 /*************************************************************************
-This function unserializes data structure from string.
-*************************************************************************/
-void kdtreeunserialize(const std::string &s_in, kdtree &obj)
-{
-    jmp_buf _break_jump;
-    alglib_impl::ae_state state;
-    alglib_impl::ae_serializer serializer;
-
-    alglib_impl::ae_state_init(&state);
-    if( setjmp(_break_jump) )
-    {
-#if !defined(AE_NO_EXCEPTIONS)
-        _ALGLIB_CPP_EXCEPTION(state.error_msg);
-#else
-        _ALGLIB_SET_ERROR_FLAG(state.error_msg);
-        return;
-#endif
-    }
-    ae_state_set_break_jump(&state, &_break_jump);
-    alglib_impl::ae_serializer_init(&serializer);
-    alglib_impl::ae_serializer_ustart_str(&serializer, &s_in);
-    alglib_impl::kdtreeunserialize(&serializer, obj.c_ptr(), &state);
-    alglib_impl::ae_serializer_stop(&serializer, &state);
-    alglib_impl::ae_serializer_clear(&serializer);
-    alglib_impl::ae_state_clear(&state);
-}
-
-
-/*************************************************************************
 This function serializes data structure to C++ stream.
 
 Data stream generated by this function is same as  string  representation
@@ -2149,7 +2260,7 @@ spaces and CR+LF.
 We recommend you to read comments on string version of serializer to find
 out more about serialization of AlGLIB objects.
 *************************************************************************/
-void kdtreeserialize(kdtree &obj, std::ostream &s_out)
+void kdtreeserialize(const kdtree &obj, std::ostream &s_out)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state state;
@@ -2172,6 +2283,33 @@ void kdtreeserialize(kdtree &obj, std::ostream &s_out)
     alglib_impl::ae_serializer_get_alloc_size(&serializer); // not actually needed, but we have to ask
     alglib_impl::ae_serializer_sstart_stream(&serializer, &s_out);
     alglib_impl::kdtreeserialize(&serializer, obj.c_ptr(), &state);
+    alglib_impl::ae_serializer_stop(&serializer, &state);
+    alglib_impl::ae_serializer_clear(&serializer);
+    alglib_impl::ae_state_clear(&state);
+}
+/*************************************************************************
+This function unserializes data structure from string.
+*************************************************************************/
+void kdtreeunserialize(const std::string &s_in, kdtree &obj)
+{
+    jmp_buf _break_jump;
+    alglib_impl::ae_state state;
+    alglib_impl::ae_serializer serializer;
+
+    alglib_impl::ae_state_init(&state);
+    if( setjmp(_break_jump) )
+    {
+#if !defined(AE_NO_EXCEPTIONS)
+        _ALGLIB_CPP_EXCEPTION(state.error_msg);
+#else
+        _ALGLIB_SET_ERROR_FLAG(state.error_msg);
+        return;
+#endif
+    }
+    ae_state_set_break_jump(&state, &_break_jump);
+    alglib_impl::ae_serializer_init(&serializer);
+    alglib_impl::ae_serializer_ustart_str(&serializer, &s_in);
+    alglib_impl::kdtreeunserialize(&serializer, obj.c_ptr(), &state);
     alglib_impl::ae_serializer_stop(&serializer, &state);
     alglib_impl::ae_serializer_clear(&serializer);
     alglib_impl::ae_state_clear(&state);
@@ -2254,9 +2392,9 @@ void kdtreebuild(const real_2d_array &xy, const ae_int_t n, const ae_int_t nx, c
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreebuild(const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), n, nx, ny, normtype, const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreebuild(xy.c_ptr(), n, nx, ny, normtype, kdt.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -2308,9 +2446,9 @@ void kdtreebuild(const real_2d_array &xy, const ae_int_t nx, const ae_int_t ny, 
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreebuild(const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), n, nx, ny, normtype, const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreebuild(xy.c_ptr(), n, nx, ny, normtype, kdt.c_ptr(), &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
@@ -2369,9 +2507,9 @@ void kdtreebuildtagged(const real_2d_array &xy, const integer_1d_array &tags, co
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreebuildtagged(const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), const_cast<alglib_impl::ae_vector*>(tags.c_ptr()), n, nx, ny, normtype, const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreebuildtagged(xy.c_ptr(), tags.c_ptr(), n, nx, ny, normtype, kdt.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -2426,9 +2564,9 @@ void kdtreebuildtagged(const real_2d_array &xy, const integer_1d_array &tags, co
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreebuildtagged(const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), const_cast<alglib_impl::ae_vector*>(tags.c_ptr()), n, nx, ny, normtype, const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreebuildtagged(xy.c_ptr(), tags.c_ptr(), n, nx, ny, normtype, kdt.c_ptr(), &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
@@ -2477,9 +2615,9 @@ void kdtreecreaterequestbuffer(const kdtree &kdt, kdtreerequestbuffer &buf, cons
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreecreaterequestbuffer(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreecreaterequestbuffer(kdt.c_ptr(), buf.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -2518,7 +2656,7 @@ these results:
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreequeryknn(const kdtree &kdt, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const xparams _xparams)
+ae_int_t kdtreequeryknn(kdtree &kdt, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -2533,11 +2671,11 @@ ae_int_t kdtreequeryknn(const kdtree &kdt, const real_1d_array &x, const ae_int_
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryknn(kdt.c_ptr(), x.c_ptr(), k, selfmatch, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -2575,7 +2713,7 @@ these results:
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreequeryknn(const kdtree &kdt, const real_1d_array &x, const ae_int_t k, const xparams _xparams)
+ae_int_t kdtreequeryknn(kdtree &kdt, const real_1d_array &x, const ae_int_t k, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -2586,9 +2724,9 @@ ae_int_t kdtreequeryknn(const kdtree &kdt, const real_1d_array &x, const ae_int_
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryknn(kdt.c_ptr(), x.c_ptr(), k, selfmatch, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -2636,7 +2774,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryknn(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const xparams _xparams)
+ae_int_t kdtreetsqueryknn(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -2651,11 +2789,11 @@ ae_int_t kdtreetsqueryknn(const kdtree &kdt, const kdtreerequestbuffer &buf, con
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryknn(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), k, selfmatch, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -2700,7 +2838,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreetsqueryknn(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const xparams _xparams)
+ae_int_t kdtreetsqueryknn(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -2711,9 +2849,9 @@ ae_int_t kdtreetsqueryknn(const kdtree &kdt, const kdtreerequestbuffer &buf, con
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryknn(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), k, selfmatch, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -2759,7 +2897,7 @@ actual results:
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreequeryrnn(const kdtree &kdt, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
+ae_int_t kdtreequeryrnn(kdtree &kdt, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -2774,11 +2912,11 @@ ae_int_t kdtreequeryrnn(const kdtree &kdt, const real_1d_array &x, const double 
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnn(kdt.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -2821,7 +2959,7 @@ actual results:
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreequeryrnn(const kdtree &kdt, const real_1d_array &x, const double r, const xparams _xparams)
+ae_int_t kdtreequeryrnn(kdtree &kdt, const real_1d_array &x, const double r, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -2832,9 +2970,9 @@ ae_int_t kdtreequeryrnn(const kdtree &kdt, const real_1d_array &x, const double 
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnn(kdt.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -2879,7 +3017,7 @@ As indicated by "U" suffix, this function returns unordered results.
   -- ALGLIB --
      Copyright 01.11.2018 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreequeryrnnu(const kdtree &kdt, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
+ae_int_t kdtreequeryrnnu(kdtree &kdt, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -2894,11 +3032,11 @@ ae_int_t kdtreequeryrnnu(const kdtree &kdt, const real_1d_array &x, const double
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnnu(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnnu(kdt.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -2940,7 +3078,7 @@ As indicated by "U" suffix, this function returns unordered results.
      Copyright 01.11.2018 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreequeryrnnu(const kdtree &kdt, const real_1d_array &x, const double r, const xparams _xparams)
+ae_int_t kdtreequeryrnnu(kdtree &kdt, const real_1d_array &x, const double r, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -2951,9 +3089,9 @@ ae_int_t kdtreequeryrnnu(const kdtree &kdt, const real_1d_array &x, const double
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnnu(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryrnnu(kdt.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -3006,7 +3144,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryrnn(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
+ae_int_t kdtreetsqueryrnn(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -3021,11 +3159,11 @@ ae_int_t kdtreetsqueryrnn(const kdtree &kdt, const kdtreerequestbuffer &buf, con
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnn(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -3075,7 +3213,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreetsqueryrnn(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const xparams _xparams)
+ae_int_t kdtreetsqueryrnn(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -3086,9 +3224,9 @@ ae_int_t kdtreetsqueryrnn(const kdtree &kdt, const kdtreerequestbuffer &buf, con
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnn(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -3140,7 +3278,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryrnnu(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
+ae_int_t kdtreetsqueryrnnu(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const bool selfmatch, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -3155,11 +3293,11 @@ ae_int_t kdtreetsqueryrnnu(const kdtree &kdt, const kdtreerequestbuffer &buf, co
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnnu(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnnu(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -3208,7 +3346,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreetsqueryrnnu(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const xparams _xparams)
+ae_int_t kdtreetsqueryrnnu(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const double r, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -3219,9 +3357,9 @@ ae_int_t kdtreetsqueryrnnu(const kdtree &kdt, const kdtreerequestbuffer &buf, co
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnnu(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), r, selfmatch, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryrnnu(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), r, selfmatch, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -3269,7 +3407,7 @@ these results:
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreequeryaknn(const kdtree &kdt, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const double eps, const xparams _xparams)
+ae_int_t kdtreequeryaknn(kdtree &kdt, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const double eps, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -3284,11 +3422,11 @@ ae_int_t kdtreequeryaknn(const kdtree &kdt, const real_1d_array &x, const ae_int
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryaknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, eps, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryaknn(kdt.c_ptr(), x.c_ptr(), k, selfmatch, eps, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -3333,7 +3471,7 @@ these results:
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreequeryaknn(const kdtree &kdt, const real_1d_array &x, const ae_int_t k, const double eps, const xparams _xparams)
+ae_int_t kdtreequeryaknn(kdtree &kdt, const real_1d_array &x, const ae_int_t k, const double eps, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -3344,9 +3482,9 @@ ae_int_t kdtreequeryaknn(const kdtree &kdt, const real_1d_array &x, const ae_int
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryaknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, eps, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequeryaknn(kdt.c_ptr(), x.c_ptr(), k, selfmatch, eps, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -3401,7 +3539,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryaknn(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const double eps, const xparams _xparams)
+ae_int_t kdtreetsqueryaknn(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const bool selfmatch, const double eps, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -3416,11 +3554,11 @@ ae_int_t kdtreetsqueryaknn(const kdtree &kdt, const kdtreerequestbuffer &buf, co
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryaknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, eps, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryaknn(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), k, selfmatch, eps, &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -3472,7 +3610,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
 #if !defined(AE_NO_EXCEPTIONS)
-ae_int_t kdtreetsqueryaknn(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const double eps, const xparams _xparams)
+ae_int_t kdtreetsqueryaknn(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &x, const ae_int_t k, const double eps, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;    
@@ -3483,9 +3621,9 @@ ae_int_t kdtreetsqueryaknn(const kdtree &kdt, const kdtreerequestbuffer &buf, co
     if( setjmp(_break_jump) )
         _ALGLIB_CPP_EXCEPTION(_alglib_env_state.error_msg);
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryaknn(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(x.c_ptr()), k, selfmatch, eps, &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsqueryaknn(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), k, selfmatch, eps, &_alglib_env_state);
 
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return *(reinterpret_cast<ae_int_t*>(&result));
@@ -3526,7 +3664,7 @@ NOTE: this particular query returns unordered results, because there is no
   -- ALGLIB --
      Copyright 14.05.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreequerybox(const kdtree &kdt, const real_1d_array &boxmin, const real_1d_array &boxmax, const xparams _xparams)
+ae_int_t kdtreequerybox(kdtree &kdt, const real_1d_array &boxmin, const real_1d_array &boxmax, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -3541,11 +3679,11 @@ ae_int_t kdtreequerybox(const kdtree &kdt, const real_1d_array &boxmin, const re
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreequerybox(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(boxmin.c_ptr()), const_cast<alglib_impl::ae_vector*>(boxmax.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreequerybox(kdt.c_ptr(), boxmin.c_ptr(), boxmax.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -3588,7 +3726,7 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 14.05.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsquerybox(const kdtree &kdt, const kdtreerequestbuffer &buf, const real_1d_array &boxmin, const real_1d_array &boxmax, const xparams _xparams)
+ae_int_t kdtreetsquerybox(const kdtree &kdt, kdtreerequestbuffer &buf, const real_1d_array &boxmin, const real_1d_array &boxmax, const xparams _xparams)
 {
     jmp_buf _break_jump;
     alglib_impl::ae_state _alglib_env_state;
@@ -3603,11 +3741,11 @@ ae_int_t kdtreetsquerybox(const kdtree &kdt, const kdtreerequestbuffer &buf, con
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::ae_int_t result = alglib_impl::kdtreetsquerybox(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(boxmin.c_ptr()), const_cast<alglib_impl::ae_vector*>(boxmax.c_ptr()), &_alglib_env_state);
+    alglib_impl::ae_int_t result = alglib_impl::kdtreetsquerybox(kdt.c_ptr(), buf.c_ptr(), boxmin.c_ptr(), boxmax.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
-    return *(reinterpret_cast<ae_int_t*>(&result));
+    return ae_int_t(result);
 }
 
 /*************************************************************************
@@ -3659,9 +3797,9 @@ void kdtreequeryresultsx(const kdtree &kdt, real_2d_array &x, const xparams _xpa
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultsx(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_matrix*>(x.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultsx(kdt.c_ptr(), x.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -3716,9 +3854,9 @@ void kdtreequeryresultsxy(const kdtree &kdt, real_2d_array &xy, const xparams _x
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultsxy(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultsxy(kdt.c_ptr(), xy.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -3773,9 +3911,9 @@ void kdtreequeryresultstags(const kdtree &kdt, integer_1d_array &tags, const xpa
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultstags(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(tags.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultstags(kdt.c_ptr(), tags.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -3829,9 +3967,9 @@ void kdtreequeryresultsdistances(const kdtree &kdt, real_1d_array &r, const xpar
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultsdistances(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(r.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultsdistances(kdt.c_ptr(), r.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -3882,9 +4020,9 @@ void kdtreetsqueryresultsx(const kdtree &kdt, const kdtreerequestbuffer &buf, re
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreetsqueryresultsx(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_matrix*>(x.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreetsqueryresultsx(kdt.c_ptr(), buf.c_ptr(), x.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -3936,9 +4074,9 @@ void kdtreetsqueryresultsxy(const kdtree &kdt, const kdtreerequestbuffer &buf, r
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreetsqueryresultsxy(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreetsqueryresultsxy(kdt.c_ptr(), buf.c_ptr(), xy.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -3995,9 +4133,9 @@ void kdtreetsqueryresultstags(const kdtree &kdt, const kdtreerequestbuffer &buf,
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreetsqueryresultstags(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(tags.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreetsqueryresultstags(kdt.c_ptr(), buf.c_ptr(), tags.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -4053,9 +4191,9 @@ void kdtreetsqueryresultsdistances(const kdtree &kdt, const kdtreerequestbuffer 
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreetsqueryresultsdistances(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::kdtreerequestbuffer*>(buf.c_ptr()), const_cast<alglib_impl::ae_vector*>(r.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreetsqueryresultsdistances(kdt.c_ptr(), buf.c_ptr(), r.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -4087,9 +4225,9 @@ void kdtreequeryresultsxi(const kdtree &kdt, real_2d_array &x, const xparams _xp
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultsxi(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_matrix*>(x.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultsxi(kdt.c_ptr(), x.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -4121,9 +4259,9 @@ void kdtreequeryresultsxyi(const kdtree &kdt, real_2d_array &xy, const xparams _
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultsxyi(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_matrix*>(xy.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultsxyi(kdt.c_ptr(), xy.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -4155,9 +4293,9 @@ void kdtreequeryresultstagsi(const kdtree &kdt, integer_1d_array &tags, const xp
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultstagsi(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(tags.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultstagsi(kdt.c_ptr(), tags.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -4189,9 +4327,9 @@ void kdtreequeryresultsdistancesi(const kdtree &kdt, real_1d_array &r, const xpa
 #endif
     }
     ae_state_set_break_jump(&_alglib_env_state, &_break_jump);
-    if( _xparams.flags!=0x0 )
+    if( _xparams.flags!=(alglib_impl::ae_uint64_t)0x0 )
         ae_state_set_flags(&_alglib_env_state, _xparams.flags);
-    alglib_impl::kdtreequeryresultsdistancesi(const_cast<alglib_impl::kdtree*>(kdt.c_ptr()), const_cast<alglib_impl::ae_vector*>(r.c_ptr()), &_alglib_env_state);
+    alglib_impl::kdtreequeryresultsdistancesi(kdt.c_ptr(), r.c_ptr(), &_alglib_env_state);
     alglib_impl::ae_state_clear(&_alglib_env_state);
     return;
 }
@@ -4205,26 +4343,24 @@ void kdtreequeryresultsdistancesi(const kdtree &kdt, real_1d_array &r, const xpa
 /////////////////////////////////////////////////////////////////////////
 namespace alglib_impl
 {
+#if defined(AE_COMPILE_XDEBUG) || !defined(AE_PARTIAL_BUILD)
+
+
+#endif
 #if defined(AE_COMPILE_HQRND) || !defined(AE_PARTIAL_BUILD)
 static ae_int_t hqrnd_hqrndmax = 2147483561;
 static ae_int_t hqrnd_hqrndm1 = 2147483563;
 static ae_int_t hqrnd_hqrndm2 = 2147483399;
 static ae_int_t hqrnd_hqrndmagic = 1634357784;
-static ae_int_t hqrnd_hqrndintegerbase(hqrndstate* state,
-     ae_state *_state);
-
-
-#endif
-#if defined(AE_COMPILE_XDEBUG) || !defined(AE_PARTIAL_BUILD)
 
 
 #endif
 #if defined(AE_COMPILE_NEARESTNEIGHBOR) || !defined(AE_PARTIAL_BUILD)
 static ae_int_t nearestneighbor_splitnodesize = 6;
 static ae_int_t nearestneighbor_kdtreefirstversion = 0;
-static ae_int_t nearestneighbor_tsqueryrnn(kdtree* kdt,
+static ae_int_t nearestneighbor_tsqueryrnn(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      double r,
      ae_bool selfmatch,
      ae_bool orderedbydist,
@@ -4243,16 +4379,16 @@ static void nearestneighbor_kdtreegeneratetreerec(kdtree* kdt,
      ae_int_t i2,
      ae_int_t maxleafsize,
      ae_state *_state);
-static void nearestneighbor_kdtreequerynnrec(kdtree* kdt,
+static void nearestneighbor_kdtreequerynnrec(const kdtree* kdt,
      kdtreerequestbuffer* buf,
      ae_int_t offs,
      ae_state *_state);
-static void nearestneighbor_kdtreequeryboxrec(kdtree* kdt,
+static void nearestneighbor_kdtreequeryboxrec(const kdtree* kdt,
      kdtreerequestbuffer* buf,
      ae_int_t offs,
      ae_state *_state);
-static void nearestneighbor_kdtreeinitbox(kdtree* kdt,
-     /* Real    */ ae_vector* x,
+static void nearestneighbor_kdtreeinitbox(const kdtree* kdt,
+     /* Real    */ const ae_vector* x,
      kdtreerequestbuffer* buf,
      ae_state *_state);
 static void nearestneighbor_kdtreeallocdatasetindependent(kdtree* kdt,
@@ -4264,567 +4400,13 @@ static void nearestneighbor_kdtreeallocdatasetdependent(kdtree* kdt,
      ae_int_t nx,
      ae_int_t ny,
      ae_state *_state);
-static void nearestneighbor_checkrequestbufferconsistency(kdtree* kdt,
-     kdtreerequestbuffer* buf,
+static void nearestneighbor_checkrequestbufferconsistency(const kdtree* kdt,
+     const kdtreerequestbuffer* buf,
      ae_state *_state);
 
 
 #endif
 
-#if defined(AE_COMPILE_HQRND) || !defined(AE_PARTIAL_BUILD)
-
-
-/*************************************************************************
-HQRNDState  initialization  with  random  values  which come from standard
-RNG.
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndrandomize(hqrndstate* state, ae_state *_state)
-{
-    ae_int_t s0;
-    ae_int_t s1;
-
-    _hqrndstate_clear(state);
-
-    s0 = ae_randominteger(hqrnd_hqrndm1, _state);
-    s1 = ae_randominteger(hqrnd_hqrndm2, _state);
-    hqrndseed(s0, s1, state, _state);
-}
-
-
-/*************************************************************************
-HQRNDState initialization with seed values
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndseed(ae_int_t s1,
-     ae_int_t s2,
-     hqrndstate* state,
-     ae_state *_state)
-{
-
-    _hqrndstate_clear(state);
-
-    
-    /*
-     * Protection against negative seeds:
-     *
-     *     SEED := -(SEED+1)
-     *
-     * We can use just "-SEED" because there exists such integer number  N
-     * that N<0, -N=N<0 too. (This number is equal to 0x800...000).   Need
-     * to handle such seed correctly forces us to use  a  bit  complicated
-     * formula.
-     */
-    if( s1<0 )
-    {
-        s1 = -(s1+1);
-    }
-    if( s2<0 )
-    {
-        s2 = -(s2+1);
-    }
-    state->s1 = s1%(hqrnd_hqrndm1-1)+1;
-    state->s2 = s2%(hqrnd_hqrndm2-1)+1;
-    state->magicv = hqrnd_hqrndmagic;
-}
-
-
-/*************************************************************************
-This function generates random real number in (0,1),
-not including interval boundaries
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-double hqrnduniformr(hqrndstate* state, ae_state *_state)
-{
-    double result;
-
-
-    result = (double)(hqrnd_hqrndintegerbase(state, _state)+1)/(double)(hqrnd_hqrndmax+2);
-    return result;
-}
-
-
-/*************************************************************************
-This function generates random integer number in [0, N)
-
-1. State structure must be initialized with HQRNDRandomize() or HQRNDSeed()
-2. N can be any positive number except for very large numbers:
-   * close to 2^31 on 32-bit systems
-   * close to 2^62 on 64-bit systems
-   An exception will be generated if N is too large.
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-ae_int_t hqrnduniformi(hqrndstate* state, ae_int_t n, ae_state *_state)
-{
-    ae_int_t maxcnt;
-    ae_int_t mx;
-    ae_int_t a;
-    ae_int_t b;
-    ae_int_t result;
-
-
-    ae_assert(n>0, "HQRNDUniformI: N<=0!", _state);
-    maxcnt = hqrnd_hqrndmax+1;
-    
-    /*
-     * Two branches: one for N<=MaxCnt, another for N>MaxCnt.
-     */
-    if( n>maxcnt )
-    {
-        
-        /*
-         * N>=MaxCnt.
-         *
-         * We have two options here:
-         * a) N is exactly divisible by MaxCnt
-         * b) N is not divisible by MaxCnt
-         *
-         * In both cases we reduce problem on interval spanning [0,N)
-         * to several subproblems on intervals spanning [0,MaxCnt).
-         */
-        if( n%maxcnt==0 )
-        {
-            
-            /*
-             * N is exactly divisible by MaxCnt.
-             *
-             * [0,N) range is dividided into N/MaxCnt bins,
-             * each of them having length equal to MaxCnt.
-             *
-             * We generate:
-             * * random bin number B
-             * * random offset within bin A
-             * Both random numbers are generated by recursively
-             * calling HQRNDUniformI().
-             *
-             * Result is equal to A+MaxCnt*B.
-             */
-            ae_assert(n/maxcnt<=maxcnt, "HQRNDUniformI: N is too large", _state);
-            a = hqrnduniformi(state, maxcnt, _state);
-            b = hqrnduniformi(state, n/maxcnt, _state);
-            result = a+maxcnt*b;
-        }
-        else
-        {
-            
-            /*
-             * N is NOT exactly divisible by MaxCnt.
-             *
-             * [0,N) range is dividided into Ceil(N/MaxCnt) bins,
-             * each of them having length equal to MaxCnt.
-             *
-             * We generate:
-             * * random bin number B in [0, Ceil(N/MaxCnt)-1]
-             * * random offset within bin A
-             * * if both of what is below is true
-             *   1) bin number B is that of the last bin
-             *   2) A >= N mod MaxCnt
-             *   then we repeat generation of A/B.
-             *   This stage is essential in order to avoid bias in the result.
-             * * otherwise, we return A*MaxCnt+N
-             */
-            ae_assert(n/maxcnt+1<=maxcnt, "HQRNDUniformI: N is too large", _state);
-            result = -1;
-            do
-            {
-                a = hqrnduniformi(state, maxcnt, _state);
-                b = hqrnduniformi(state, n/maxcnt+1, _state);
-                if( b==n/maxcnt&&a>=n%maxcnt )
-                {
-                    continue;
-                }
-                result = a+maxcnt*b;
-            }
-            while(result<0);
-        }
-    }
-    else
-    {
-        
-        /*
-         * N<=MaxCnt
-         *
-         * Code below is a bit complicated because we can not simply
-         * return "HQRNDIntegerBase() mod N" - it will be skewed for
-         * large N's in [0.1*HQRNDMax...HQRNDMax].
-         */
-        mx = maxcnt-maxcnt%n;
-        do
-        {
-            result = hqrnd_hqrndintegerbase(state, _state);
-        }
-        while(result>=mx);
-        result = result%n;
-    }
-    return result;
-}
-
-
-/*************************************************************************
-Random number generator: normal numbers
-
-This function generates one random number from normal distribution.
-Its performance is equal to that of HQRNDNormal2()
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-double hqrndnormal(hqrndstate* state, ae_state *_state)
-{
-    double v1;
-    double v2;
-    double result;
-
-
-    hqrndnormal2(state, &v1, &v2, _state);
-    result = v1;
-    return result;
-}
-
-
-/*************************************************************************
-Random number generator: vector with random entries (normal distribution)
-
-This function generates N random numbers from normal distribution.
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndnormalv(hqrndstate* state,
-     ae_int_t n,
-     /* Real    */ ae_vector* x,
-     ae_state *_state)
-{
-    ae_int_t i;
-    ae_int_t n2;
-    double v1;
-    double v2;
-
-    ae_vector_clear(x);
-
-    n2 = n/2;
-    rallocv(n, x, _state);
-    for(i=0; i<=n2-1; i++)
-    {
-        hqrndnormal2(state, &v1, &v2, _state);
-        x->ptr.p_double[2*i+0] = v1;
-        x->ptr.p_double[2*i+1] = v2;
-    }
-    if( n%2!=0 )
-    {
-        hqrndnormal2(state, &v1, &v2, _state);
-        x->ptr.p_double[n-1] = v1;
-    }
-}
-
-
-/*************************************************************************
-Random number generator: matrix with random entries (normal distribution)
-
-This function generates MxN random matrix.
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndnormalm(hqrndstate* state,
-     ae_int_t m,
-     ae_int_t n,
-     /* Real    */ ae_matrix* x,
-     ae_state *_state)
-{
-    ae_int_t i;
-    ae_int_t j;
-    ae_int_t n2;
-    double v1;
-    double v2;
-
-    ae_matrix_clear(x);
-
-    n2 = n/2;
-    ae_matrix_set_length(x, m, n, _state);
-    for(i=0; i<=m-1; i++)
-    {
-        for(j=0; j<=n2-1; j++)
-        {
-            hqrndnormal2(state, &v1, &v2, _state);
-            x->ptr.pp_double[i][2*j+0] = v1;
-            x->ptr.pp_double[i][2*j+1] = v2;
-        }
-        if( n%2!=0 )
-        {
-            hqrndnormal2(state, &v1, &v2, _state);
-            x->ptr.pp_double[i][n-1] = v1;
-        }
-    }
-}
-
-
-/*************************************************************************
-Random number generator: random X and Y such that X^2+Y^2=1
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndunit2(hqrndstate* state, double* x, double* y, ae_state *_state)
-{
-    double v;
-    double mx;
-    double mn;
-
-    *x = 0;
-    *y = 0;
-
-    do
-    {
-        hqrndnormal2(state, x, y, _state);
-    }
-    while(!(ae_fp_neq(*x,(double)(0))||ae_fp_neq(*y,(double)(0))));
-    mx = ae_maxreal(ae_fabs(*x, _state), ae_fabs(*y, _state), _state);
-    mn = ae_minreal(ae_fabs(*x, _state), ae_fabs(*y, _state), _state);
-    v = mx*ae_sqrt(1+ae_sqr(mn/mx, _state), _state);
-    *x = *x/v;
-    *y = *y/v;
-}
-
-
-/*************************************************************************
-Random number generator: normal numbers
-
-This function generates two independent random numbers from normal
-distribution. Its performance is equal to that of HQRNDNormal()
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 02.12.2009 by Bochkanov Sergey
-*************************************************************************/
-void hqrndnormal2(hqrndstate* state,
-     double* x1,
-     double* x2,
-     ae_state *_state)
-{
-    double u;
-    double v;
-    double s;
-
-    *x1 = 0;
-    *x2 = 0;
-
-    for(;;)
-    {
-        u = 2*hqrnduniformr(state, _state)-1;
-        v = 2*hqrnduniformr(state, _state)-1;
-        s = ae_sqr(u, _state)+ae_sqr(v, _state);
-        if( ae_fp_greater(s,(double)(0))&&ae_fp_less(s,(double)(1)) )
-        {
-            
-            /*
-             * two Sqrt's instead of one to
-             * avoid overflow when S is too small
-             */
-            s = ae_sqrt(-2*ae_log(s, _state), _state)/ae_sqrt(s, _state);
-            *x1 = u*s;
-            *x2 = v*s;
-            return;
-        }
-    }
-}
-
-
-/*************************************************************************
-Random number generator: exponential distribution
-
-State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
-
-  -- ALGLIB --
-     Copyright 11.08.2007 by Bochkanov Sergey
-*************************************************************************/
-double hqrndexponential(hqrndstate* state,
-     double lambdav,
-     ae_state *_state)
-{
-    double result;
-
-
-    ae_assert(ae_fp_greater(lambdav,(double)(0)), "HQRNDExponential: LambdaV<=0!", _state);
-    result = -ae_log(hqrnduniformr(state, _state), _state)/lambdav;
-    return result;
-}
-
-
-/*************************************************************************
-This function generates  random number from discrete distribution given by
-finite sample X.
-
-INPUT PARAMETERS
-    State   -   high quality random number generator, must be
-                initialized with HQRNDRandomize() or HQRNDSeed().
-        X   -   finite sample
-        N   -   number of elements to use, N>=1
-
-RESULT
-    this function returns one of the X[i] for random i=0..N-1
-
-  -- ALGLIB --
-     Copyright 08.11.2011 by Bochkanov Sergey
-*************************************************************************/
-double hqrnddiscrete(hqrndstate* state,
-     /* Real    */ ae_vector* x,
-     ae_int_t n,
-     ae_state *_state)
-{
-    double result;
-
-
-    ae_assert(n>0, "HQRNDDiscrete: N<=0", _state);
-    ae_assert(n<=x->cnt, "HQRNDDiscrete: Length(X)<N", _state);
-    result = x->ptr.p_double[hqrnduniformi(state, n, _state)];
-    return result;
-}
-
-
-/*************************************************************************
-This function generates random number from continuous  distribution  given
-by finite sample X.
-
-INPUT PARAMETERS
-    State   -   high quality random number generator, must be
-                initialized with HQRNDRandomize() or HQRNDSeed().
-        X   -   finite sample, array[N] (can be larger, in this  case only
-                leading N elements are used). THIS ARRAY MUST BE SORTED BY
-                ASCENDING.
-        N   -   number of elements to use, N>=1
-
-RESULT
-    this function returns random number from continuous distribution which  
-    tries to approximate X as mush as possible. min(X)<=Result<=max(X).
-
-  -- ALGLIB --
-     Copyright 08.11.2011 by Bochkanov Sergey
-*************************************************************************/
-double hqrndcontinuous(hqrndstate* state,
-     /* Real    */ ae_vector* x,
-     ae_int_t n,
-     ae_state *_state)
-{
-    double mx;
-    double mn;
-    ae_int_t i;
-    double result;
-
-
-    ae_assert(n>0, "HQRNDContinuous: N<=0", _state);
-    ae_assert(n<=x->cnt, "HQRNDContinuous: Length(X)<N", _state);
-    if( n==1 )
-    {
-        result = x->ptr.p_double[0];
-        return result;
-    }
-    i = hqrnduniformi(state, n-1, _state);
-    mn = x->ptr.p_double[i];
-    mx = x->ptr.p_double[i+1];
-    ae_assert(ae_fp_greater_eq(mx,mn), "HQRNDDiscrete: X is not sorted by ascending", _state);
-    if( ae_fp_neq(mx,mn) )
-    {
-        result = (mx-mn)*hqrnduniformr(state, _state)+mn;
-    }
-    else
-    {
-        result = mn;
-    }
-    return result;
-}
-
-
-/*************************************************************************
-This function returns random integer in [0,HQRNDMax]
-
-L'Ecuyer, Efficient and portable combined random number generators
-*************************************************************************/
-static ae_int_t hqrnd_hqrndintegerbase(hqrndstate* state,
-     ae_state *_state)
-{
-    ae_int_t k;
-    ae_int_t result;
-
-
-    ae_assert(state->magicv==hqrnd_hqrndmagic, "HQRNDIntegerBase: State is not correctly initialized!", _state);
-    k = state->s1/53668;
-    state->s1 = 40014*(state->s1-k*53668)-k*12211;
-    if( state->s1<0 )
-    {
-        state->s1 = state->s1+2147483563;
-    }
-    k = state->s2/52774;
-    state->s2 = 40692*(state->s2-k*52774)-k*3791;
-    if( state->s2<0 )
-    {
-        state->s2 = state->s2+2147483399;
-    }
-    
-    /*
-     * Result
-     */
-    result = state->s1-state->s2;
-    if( result<1 )
-    {
-        result = result+2147483562;
-    }
-    result = result-1;
-    return result;
-}
-
-
-void _hqrndstate_init(void* _p, ae_state *_state, ae_bool make_automatic)
-{
-    hqrndstate *p = (hqrndstate*)_p;
-    ae_touch_ptr((void*)p);
-}
-
-
-void _hqrndstate_init_copy(void* _dst, void* _src, ae_state *_state, ae_bool make_automatic)
-{
-    hqrndstate *dst = (hqrndstate*)_dst;
-    hqrndstate *src = (hqrndstate*)_src;
-    dst->s1 = src->s1;
-    dst->s2 = src->s2;
-    dst->magicv = src->magicv;
-}
-
-
-void _hqrndstate_clear(void* _p)
-{
-    hqrndstate *p = (hqrndstate*)_p;
-    ae_touch_ptr((void*)p);
-}
-
-
-void _hqrndstate_destroy(void* _p)
-{
-    hqrndstate *p = (hqrndstate*)_p;
-    ae_touch_ptr((void*)p);
-}
-
-
-#endif
 #if defined(AE_COMPILE_XDEBUG) || !defined(AE_PARTIAL_BUILD)
 
 
@@ -4857,12 +4439,35 @@ void xdebuginitrecord1(xdebugrecord1* rec1, ae_state *_state)
 This is debug function intended for testing ALGLIB interface generator.
 Never use it in any real life project.
 
+Creates and returns XDebugRecord1 structure:
+* integer and complex fields of Rec1 are set to 1 and 1+i correspondingly
+* array field of Rec1 is set to [2,3]
+
+  -- ALGLIB --
+     Copyright 27.05.2014 by Bochkanov Sergey
+*************************************************************************/
+void xdebugupdaterecord1(xdebugrecord1* rec1, ae_state *_state)
+{
+
+
+    rec1->i = rec1->i+1;
+    rec1->c.x = rec1->c.x+(double)2;
+    rec1->c.y = rec1->c.y+(double)3;
+    rvectorresize(&rec1->a, rec1->a.cnt+1, _state);
+    rec1->a.ptr.p_double[rec1->a.cnt-1] = rec1->a.ptr.p_double[rec1->a.cnt-2]+(double)3;
+}
+
+
+/*************************************************************************
+This is debug function intended for testing ALGLIB interface generator.
+Never use it in any real life project.
+
 Counts number of True values in the boolean 1D array.
 
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t xdebugb1count(/* Boolean */ ae_vector* a, ae_state *_state)
+ae_int_t xdebugb1count(/* Boolean */ const ae_vector* a, ae_state *_state)
 {
     ae_int_t i;
     ae_int_t result;
@@ -4971,7 +4576,7 @@ Returns sum of elements in the array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t xdebugi1sum(/* Integer */ ae_vector* a, ae_state *_state)
+ae_int_t xdebugi1sum(/* Integer */ const ae_vector* a, ae_state *_state)
 {
     ae_int_t i;
     ae_int_t result;
@@ -5086,7 +4691,7 @@ Returns sum of elements in the array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-double xdebugr1sum(/* Real    */ ae_vector* a, ae_state *_state)
+double xdebugr1sum(/* Real    */ const ae_vector* a, ae_state *_state)
 {
     ae_int_t i;
     double result;
@@ -5097,6 +4702,39 @@ double xdebugr1sum(/* Real    */ ae_vector* a, ae_state *_state)
     {
         result = result+a->ptr.p_double[i];
     }
+    return result;
+}
+
+
+/*************************************************************************
+This is debug function intended for testing ALGLIB interface generator.
+Never use it in any real life project.
+
+Returns sum of elements in the array.
+
+Internally it creates a copy of the array.
+
+  -- ALGLIB --
+     Copyright 11.10.2013 by Bochkanov Sergey
+*************************************************************************/
+double xdebugr1internalcopyandsum(/* Real    */ const ae_vector* _a,
+     ae_state *_state)
+{
+    ae_frame _frame_block;
+    ae_vector a;
+    ae_int_t i;
+    double result;
+
+    ae_frame_make(_state, &_frame_block);
+    memset(&a, 0, sizeof(a));
+    ae_vector_init_copy(&a, _a, _state, ae_true);
+
+    result = (double)(0);
+    for(i=0; i<=a.cnt-1; i++)
+    {
+        result = result+a.ptr.p_double[i];
+    }
+    ae_frame_leave(_state);
     return result;
 }
 
@@ -5182,7 +4820,7 @@ void xdebugr1outeven(ae_int_t n,
     {
         if( i%2==0 )
         {
-            a->ptr.p_double[i] = i*0.25;
+            a->ptr.p_double[i] = (double)i*0.25;
         }
         else
         {
@@ -5201,7 +4839,7 @@ Returns sum of elements in the array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-ae_complex xdebugc1sum(/* Complex */ ae_vector* a, ae_state *_state)
+ae_complex xdebugc1sum(/* Complex */ const ae_vector* a, ae_state *_state)
 {
     ae_int_t i;
     ae_complex result;
@@ -5297,8 +4935,8 @@ void xdebugc1outeven(ae_int_t n,
     {
         if( i%2==0 )
         {
-            a->ptr.p_complex[i].x = i*0.250;
-            a->ptr.p_complex[i].y = i*0.125;
+            a->ptr.p_complex[i].x = (double)i*0.250;
+            a->ptr.p_complex[i].y = (double)i*0.125;
         }
         else
         {
@@ -5317,7 +4955,7 @@ Counts number of True values in the boolean 2D array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t xdebugb2count(/* Boolean */ ae_matrix* a, ae_state *_state)
+ae_int_t xdebugb2count(/* Boolean */ const ae_matrix* a, ae_state *_state)
 {
     ae_int_t i;
     ae_int_t j;
@@ -5446,7 +5084,7 @@ Returns sum of elements in the array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t xdebugi2sum(/* Integer */ ae_matrix* a, ae_state *_state)
+ae_int_t xdebugi2sum(/* Integer */ const ae_matrix* a, ae_state *_state)
 {
     ae_int_t i;
     ae_int_t j;
@@ -5572,7 +5210,7 @@ Returns sum of elements in the array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-double xdebugr2sum(/* Real    */ ae_matrix* a, ae_state *_state)
+double xdebugr2sum(/* Real    */ const ae_matrix* a, ae_state *_state)
 {
     ae_int_t i;
     ae_int_t j;
@@ -5587,6 +5225,43 @@ double xdebugr2sum(/* Real    */ ae_matrix* a, ae_state *_state)
             result = result+a->ptr.pp_double[i][j];
         }
     }
+    return result;
+}
+
+
+/*************************************************************************
+This is debug function intended for testing ALGLIB interface generator.
+Never use it in any real life project.
+
+Returns sum of elements in the array.
+
+Internally it creates a copy of a.
+
+  -- ALGLIB --
+     Copyright 11.10.2013 by Bochkanov Sergey
+*************************************************************************/
+double xdebugr2internalcopyandsum(/* Real    */ const ae_matrix* _a,
+     ae_state *_state)
+{
+    ae_frame _frame_block;
+    ae_matrix a;
+    ae_int_t i;
+    ae_int_t j;
+    double result;
+
+    ae_frame_make(_state, &_frame_block);
+    memset(&a, 0, sizeof(a));
+    ae_matrix_init_copy(&a, _a, _state, ae_true);
+
+    result = (double)(0);
+    for(i=0; i<=a.rows-1; i++)
+    {
+        for(j=0; j<=a.cols-1; j++)
+        {
+            result = result+a.ptr.pp_double[i][j];
+        }
+    }
+    ae_frame_leave(_state);
     return result;
 }
 
@@ -5698,7 +5373,7 @@ Returns sum of elements in the array.
   -- ALGLIB --
      Copyright 11.10.2013 by Bochkanov Sergey
 *************************************************************************/
-ae_complex xdebugc2sum(/* Complex */ ae_matrix* a, ae_state *_state)
+ae_complex xdebugc2sum(/* Complex */ const ae_matrix* a, ae_state *_state)
 {
     ae_int_t i;
     ae_int_t j;
@@ -5827,9 +5502,9 @@ Returns sum of a[i,j]*(1+b[i,j]) such that c[i,j] is True
 *************************************************************************/
 double xdebugmaskedbiasedproductsum(ae_int_t m,
      ae_int_t n,
-     /* Real    */ ae_matrix* a,
-     /* Real    */ ae_matrix* b,
-     /* Boolean */ ae_matrix* c,
+     /* Real    */ const ae_matrix* a,
+     /* Real    */ const ae_matrix* b,
+     /* Boolean */ const ae_matrix* c,
      ae_state *_state)
 {
     ae_int_t i;
@@ -5850,7 +5525,7 @@ double xdebugmaskedbiasedproductsum(ae_int_t m,
         {
             if( c->ptr.pp_bool[i][j] )
             {
-                result = result+a->ptr.pp_double[i][j]*(1+b->ptr.pp_double[i][j]);
+                result = result+a->ptr.pp_double[i][j]*((double)1+b->ptr.pp_double[i][j]);
             }
         }
     }
@@ -5866,10 +5541,10 @@ void _xdebugrecord1_init(void* _p, ae_state *_state, ae_bool make_automatic)
 }
 
 
-void _xdebugrecord1_init_copy(void* _dst, void* _src, ae_state *_state, ae_bool make_automatic)
+void _xdebugrecord1_init_copy(void* _dst, const void* _src, ae_state *_state, ae_bool make_automatic)
 {
-    xdebugrecord1 *dst = (xdebugrecord1*)_dst;
-    xdebugrecord1 *src = (xdebugrecord1*)_src;
+    xdebugrecord1       *dst = (xdebugrecord1*)_dst;
+    const xdebugrecord1 *src = (const xdebugrecord1*)_src;
     dst->i = src->i;
     dst->c = src->c;
     ae_vector_init_copy(&dst->a, &src->a, _state, make_automatic);
@@ -5889,6 +5564,578 @@ void _xdebugrecord1_destroy(void* _p)
     xdebugrecord1 *p = (xdebugrecord1*)_p;
     ae_touch_ptr((void*)p);
     ae_vector_destroy(&p->a);
+}
+
+
+#endif
+#if defined(AE_COMPILE_HQRND) || !defined(AE_PARTIAL_BUILD)
+
+
+/*************************************************************************
+HQRNDState  initialization  with  random  values  which come from standard
+RNG.
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndrandomize(hqrndstate* state, ae_state *_state)
+{
+    ae_int_t s0;
+    ae_int_t s1;
+
+    _hqrndstate_clear(state);
+
+    s0 = ae_randominteger(hqrnd_hqrndm1, _state);
+    s1 = ae_randominteger(hqrnd_hqrndm2, _state);
+    hqrndseed(s0, s1, state, _state);
+}
+
+
+/*************************************************************************
+HQRNDState initialization with seed values
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndseed(ae_int_t s1,
+     ae_int_t s2,
+     hqrndstate* state,
+     ae_state *_state)
+{
+
+    _hqrndstate_clear(state);
+
+    
+    /*
+     * Protection against negative seeds:
+     *
+     *     SEED := -(SEED+1)
+     *
+     * We can use just "-SEED" because there exists such integer number  N
+     * that N<0, -N=N<0 too. (This number is equal to 0x800...000).   Need
+     * to handle such seed correctly forces us to use  a  bit  complicated
+     * formula.
+     */
+    if( s1<0 )
+    {
+        s1 = -(s1+1);
+    }
+    if( s2<0 )
+    {
+        s2 = -(s2+1);
+    }
+    state->s1 = s1%(hqrnd_hqrndm1-1)+1;
+    state->s2 = s2%(hqrnd_hqrndm2-1)+1;
+    state->magicv = hqrnd_hqrndmagic;
+}
+
+
+/*************************************************************************
+This function generates random real number in (0,1),
+not including interval boundaries
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+double hqrnduniformr(hqrndstate* state, ae_state *_state)
+{
+    double result;
+
+
+    result = (double)(hqrndintegerbase(state, _state)+1)/(double)(hqrnd_hqrndmax+2);
+    return result;
+}
+
+
+/*************************************************************************
+This function generates random integer number in [0, N)
+
+1. State structure must be initialized with HQRNDRandomize() or HQRNDSeed()
+2. N can be any positive number except for very large numbers:
+   * close to 2^31 on 32-bit systems
+   * close to 2^62 on 64-bit systems
+   An exception will be generated if N is too large.
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+ae_int_t hqrnduniformi(hqrndstate* state, ae_int_t n, ae_state *_state)
+{
+    ae_int_t maxcnt;
+    ae_int_t mx;
+    ae_int_t a;
+    ae_int_t b;
+    ae_int_t result;
+
+
+    ae_assert(n>0, "HQRNDUniformI: N<=0!", _state);
+    maxcnt = hqrnd_hqrndmax+1;
+    
+    /*
+     * Two branches: one for N<=MaxCnt, another for N>MaxCnt.
+     */
+    if( n>maxcnt )
+    {
+        
+        /*
+         * N>=MaxCnt.
+         *
+         * We have two options here:
+         * a) N is exactly divisible by MaxCnt
+         * b) N is not divisible by MaxCnt
+         *
+         * In both cases we reduce problem on interval spanning [0,N)
+         * to several subproblems on intervals spanning [0,MaxCnt).
+         */
+        if( n%maxcnt==0 )
+        {
+            
+            /*
+             * N is exactly divisible by MaxCnt.
+             *
+             * [0,N) range is dividided into N/MaxCnt bins,
+             * each of them having length equal to MaxCnt.
+             *
+             * We generate:
+             * * random bin number B
+             * * random offset within bin A
+             * Both random numbers are generated by recursively
+             * calling HQRNDUniformI().
+             *
+             * Result is equal to A+MaxCnt*B.
+             */
+            ae_assert(n/maxcnt<=maxcnt, "HQRNDUniformI: N is too large", _state);
+            a = hqrnduniformi(state, maxcnt, _state);
+            b = hqrnduniformi(state, n/maxcnt, _state);
+            result = a+maxcnt*b;
+        }
+        else
+        {
+            
+            /*
+             * N is NOT exactly divisible by MaxCnt.
+             *
+             * [0,N) range is dividided into Ceil(N/MaxCnt) bins,
+             * each of them having length equal to MaxCnt.
+             *
+             * We generate:
+             * * random bin number B in [0, Ceil(N/MaxCnt)-1]
+             * * random offset within bin A
+             * * if both of what is below is true
+             *   1) bin number B is that of the last bin
+             *   2) A >= N mod MaxCnt
+             *   then we repeat generation of A/B.
+             *   This stage is essential in order to avoid bias in the result.
+             * * otherwise, we return A*MaxCnt+N
+             */
+            ae_assert(n/maxcnt+1<=maxcnt, "HQRNDUniformI: N is too large", _state);
+            result = -1;
+            do
+            {
+                a = hqrnduniformi(state, maxcnt, _state);
+                b = hqrnduniformi(state, n/maxcnt+1, _state);
+                if( b==n/maxcnt&&a>=n%maxcnt )
+                {
+                    continue;
+                }
+                result = a+maxcnt*b;
+            }
+            while(result<0);
+        }
+    }
+    else
+    {
+        
+        /*
+         * N<=MaxCnt
+         *
+         * Code below is a bit complicated because we can not simply
+         * return "HQRNDIntegerBase() mod N" - it will be skewed for
+         * large N's in [0.1*HQRNDMax...HQRNDMax].
+         */
+        mx = maxcnt-maxcnt%n;
+        do
+        {
+            result = hqrndintegerbase(state, _state);
+        }
+        while(result>=mx);
+        result = result%n;
+    }
+    return result;
+}
+
+
+/*************************************************************************
+Random number generator: normal numbers
+
+This function generates one random number from normal distribution.
+Its performance is equal to that of HQRNDNormal2()
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+double hqrndnormal(hqrndstate* state, ae_state *_state)
+{
+    double v1;
+    double v2;
+    double result;
+
+
+    hqrndnormal2(state, &v1, &v2, _state);
+    result = v1;
+    return result;
+}
+
+
+/*************************************************************************
+Random number generator: vector with random entries (normal distribution)
+
+This function generates N random numbers from normal distribution.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalv(hqrndstate* state,
+     ae_int_t n,
+     /* Real    */ ae_vector* x,
+     ae_state *_state)
+{
+    ae_int_t i;
+    ae_int_t n2;
+    double v1;
+    double v2;
+
+    ae_vector_clear(x);
+
+    n2 = n/2;
+    rallocv(n, x, _state);
+    for(i=0; i<=n2-1; i++)
+    {
+        hqrndnormal2(state, &v1, &v2, _state);
+        x->ptr.p_double[2*i+0] = v1;
+        x->ptr.p_double[2*i+1] = v2;
+    }
+    if( n%2!=0 )
+    {
+        hqrndnormal2(state, &v1, &v2, _state);
+        x->ptr.p_double[n-1] = v1;
+    }
+}
+
+
+/*************************************************************************
+Random number generator: matrix with random entries (normal distribution)
+
+This function generates MxN random matrix.
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormalm(hqrndstate* state,
+     ae_int_t m,
+     ae_int_t n,
+     /* Real    */ ae_matrix* x,
+     ae_state *_state)
+{
+    ae_int_t i;
+    ae_int_t j;
+    ae_int_t n2;
+    double v1;
+    double v2;
+
+    ae_matrix_clear(x);
+
+    n2 = n/2;
+    ae_matrix_set_length(x, m, n, _state);
+    for(i=0; i<=m-1; i++)
+    {
+        for(j=0; j<=n2-1; j++)
+        {
+            hqrndnormal2(state, &v1, &v2, _state);
+            x->ptr.pp_double[i][2*j+0] = v1;
+            x->ptr.pp_double[i][2*j+1] = v2;
+        }
+        if( n%2!=0 )
+        {
+            hqrndnormal2(state, &v1, &v2, _state);
+            x->ptr.pp_double[i][n-1] = v1;
+        }
+    }
+}
+
+
+/*************************************************************************
+Random number generator: random X and Y such that X^2+Y^2=1
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndunit2(hqrndstate* state, double* x, double* y, ae_state *_state)
+{
+    double v;
+    double mx;
+    double mn;
+
+    *x = 0.0;
+    *y = 0.0;
+
+    do
+    {
+        hqrndnormal2(state, x, y, _state);
+    }
+    while(!(ae_fp_neq(*x,(double)(0))||ae_fp_neq(*y,(double)(0))));
+    mx = ae_maxreal(ae_fabs(*x, _state), ae_fabs(*y, _state), _state);
+    mn = ae_minreal(ae_fabs(*x, _state), ae_fabs(*y, _state), _state);
+    v = mx*ae_sqrt((double)1+ae_sqr(mn/mx, _state), _state);
+    *x = *x/v;
+    *y = *y/v;
+}
+
+
+/*************************************************************************
+Random number generator: normal numbers
+
+This function generates two independent random numbers from normal
+distribution. Its performance is equal to that of HQRNDNormal()
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 02.12.2009 by Bochkanov Sergey
+*************************************************************************/
+void hqrndnormal2(hqrndstate* state,
+     double* x1,
+     double* x2,
+     ae_state *_state)
+{
+    double u;
+    double v;
+    double s;
+
+    *x1 = 0.0;
+    *x2 = 0.0;
+
+    for(;;)
+    {
+        u = (double)2*hqrnduniformr(state, _state)-(double)1;
+        v = (double)2*hqrnduniformr(state, _state)-(double)1;
+        s = ae_sqr(u, _state)+ae_sqr(v, _state);
+        if( ae_fp_greater(s,(double)(0))&&ae_fp_less(s,(double)(1)) )
+        {
+            
+            /*
+             * two Sqrt's instead of one to
+             * avoid overflow when S is too small
+             */
+            s = ae_sqrt(-(double)2*ae_log(s, _state), _state)/ae_sqrt(s, _state);
+            *x1 = u*s;
+            *x2 = v*s;
+            return;
+        }
+    }
+}
+
+
+/*************************************************************************
+Random number generator: exponential distribution
+
+State structure must be initialized with HQRNDRandomize() or HQRNDSeed().
+
+  -- ALGLIB --
+     Copyright 11.08.2007 by Bochkanov Sergey
+*************************************************************************/
+double hqrndexponential(hqrndstate* state,
+     double lambdav,
+     ae_state *_state)
+{
+    double result;
+
+
+    ae_assert(ae_fp_greater(lambdav,(double)(0)), "HQRNDExponential: LambdaV<=0!", _state);
+    result = -ae_log(hqrnduniformr(state, _state), _state)/lambdav;
+    return result;
+}
+
+
+/*************************************************************************
+This function returns HQRNDMax
+
+L'Ecuyer, Efficient and portable combined random number generators
+*************************************************************************/
+ae_int_t hqrndgetmax(ae_state *_state)
+{
+    ae_int_t result;
+
+
+    result = hqrnd_hqrndmax;
+    return result;
+}
+
+
+/*************************************************************************
+This function returns random integer in [0,HQRNDMax], basecase for other
+RNG functions.
+
+L'Ecuyer, Efficient and portable combined random number generators
+*************************************************************************/
+ae_int_t hqrndintegerbase(hqrndstate* state, ae_state *_state)
+{
+    ae_int_t k;
+    ae_int_t result;
+
+
+    if( state->magicv!=hqrnd_hqrndmagic )
+    {
+        ae_assert(ae_false, "HQRNDIntegerBase: State is not correctly initialized!", _state);
+    }
+    k = state->s1/53668;
+    state->s1 = 40014*(state->s1-k*53668)-k*12211;
+    if( state->s1<0 )
+    {
+        state->s1 = state->s1+2147483563;
+    }
+    k = state->s2/52774;
+    state->s2 = 40692*(state->s2-k*52774)-k*3791;
+    if( state->s2<0 )
+    {
+        state->s2 = state->s2+2147483399;
+    }
+    
+    /*
+     * Result
+     */
+    result = state->s1-state->s2;
+    if( result<1 )
+    {
+        result = result+2147483562;
+    }
+    result = result-1;
+    return result;
+}
+
+
+/*************************************************************************
+This function generates  random number from discrete distribution given by
+finite sample X.
+
+INPUT PARAMETERS
+    State   -   high quality random number generator, must be
+                initialized with HQRNDRandomize() or HQRNDSeed().
+        X   -   finite sample
+        N   -   number of elements to use, N>=1
+
+RESULT
+    this function returns one of the X[i] for random i=0..N-1
+
+  -- ALGLIB --
+     Copyright 08.11.2011 by Bochkanov Sergey
+*************************************************************************/
+double hqrnddiscrete(hqrndstate* state,
+     /* Real    */ const ae_vector* x,
+     ae_int_t n,
+     ae_state *_state)
+{
+    double result;
+
+
+    ae_assert(n>0, "HQRNDDiscrete: N<=0", _state);
+    ae_assert(n<=x->cnt, "HQRNDDiscrete: Length(X)<N", _state);
+    result = x->ptr.p_double[hqrnduniformi(state, n, _state)];
+    return result;
+}
+
+
+/*************************************************************************
+This function generates random number from continuous  distribution  given
+by finite sample X.
+
+INPUT PARAMETERS
+    State   -   high quality random number generator, must be
+                initialized with HQRNDRandomize() or HQRNDSeed().
+        X   -   finite sample, array[N] (can be larger, in this  case only
+                leading N elements are used). THIS ARRAY MUST BE SORTED BY
+                ASCENDING.
+        N   -   number of elements to use, N>=1
+
+RESULT
+    this function returns random number from continuous distribution which  
+    tries to approximate X as mush as possible. min(X)<=Result<=max(X).
+
+  -- ALGLIB --
+     Copyright 08.11.2011 by Bochkanov Sergey
+*************************************************************************/
+double hqrndcontinuous(hqrndstate* state,
+     /* Real    */ const ae_vector* x,
+     ae_int_t n,
+     ae_state *_state)
+{
+    double mx;
+    double mn;
+    ae_int_t i;
+    double result;
+
+
+    ae_assert(n>0, "HQRNDContinuous: N<=0", _state);
+    ae_assert(n<=x->cnt, "HQRNDContinuous: Length(X)<N", _state);
+    if( n==1 )
+    {
+        result = x->ptr.p_double[0];
+        return result;
+    }
+    i = hqrnduniformi(state, n-1, _state);
+    mn = x->ptr.p_double[i];
+    mx = x->ptr.p_double[i+1];
+    ae_assert(ae_fp_greater_eq(mx,mn), "HQRNDDiscrete: X is not sorted by ascending", _state);
+    if( ae_fp_neq(mx,mn) )
+    {
+        result = (mx-mn)*hqrnduniformr(state, _state)+mn;
+    }
+    else
+    {
+        result = mn;
+    }
+    return result;
+}
+
+
+void _hqrndstate_init(void* _p, ae_state *_state, ae_bool make_automatic)
+{
+    hqrndstate *p = (hqrndstate*)_p;
+    ae_touch_ptr((void*)p);
+}
+
+
+void _hqrndstate_init_copy(void* _dst, const void* _src, ae_state *_state, ae_bool make_automatic)
+{
+    hqrndstate       *dst = (hqrndstate*)_dst;
+    const hqrndstate *src = (const hqrndstate*)_src;
+    dst->s1 = src->s1;
+    dst->s2 = src->s2;
+    dst->magicv = src->magicv;
+}
+
+
+void _hqrndstate_clear(void* _p)
+{
+    hqrndstate *p = (hqrndstate*)_p;
+    ae_touch_ptr((void*)p);
+}
+
+
+void _hqrndstate_destroy(void* _p)
+{
+    hqrndstate *p = (hqrndstate*)_p;
+    ae_touch_ptr((void*)p);
 }
 
 
@@ -5931,7 +6178,7 @@ NOTES
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreebuild(/* Real    */ ae_matrix* xy,
+void kdtreebuild(/* Real    */ const ae_matrix* xy,
      ae_int_t n,
      ae_int_t nx,
      ae_int_t ny,
@@ -6005,8 +6252,8 @@ NOTES
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreebuildtagged(/* Real    */ ae_matrix* xy,
-     /* Integer */ ae_vector* tags,
+void kdtreebuildtagged(/* Real    */ const ae_matrix* xy,
+     /* Integer */ const ae_vector* tags,
      ae_int_t n,
      ae_int_t nx,
      ae_int_t ny,
@@ -6117,7 +6364,7 @@ IMPORTANT: KD-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-void kdtreecreaterequestbuffer(kdtree* kdt,
+void kdtreecreaterequestbuffer(const kdtree* kdt,
      kdtreerequestbuffer* buf,
      ae_state *_state)
 {
@@ -6171,7 +6418,7 @@ these results:
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
 ae_int_t kdtreequeryknn(kdtree* kdt,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      ae_int_t k,
      ae_bool selfmatch,
      ae_state *_state)
@@ -6228,9 +6475,9 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryknn(kdtree* kdt,
+ae_int_t kdtreetsqueryknn(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      ae_int_t k,
      ae_bool selfmatch,
      ae_state *_state)
@@ -6286,7 +6533,7 @@ actual results:
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
 ae_int_t kdtreequeryrnn(kdtree* kdt,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      double r,
      ae_bool selfmatch,
      ae_state *_state)
@@ -6341,7 +6588,7 @@ As indicated by "U" suffix, this function returns unordered results.
      Copyright 01.11.2018 by Bochkanov Sergey
 *************************************************************************/
 ae_int_t kdtreequeryrnnu(kdtree* kdt,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      double r,
      ae_bool selfmatch,
      ae_state *_state)
@@ -6403,9 +6650,9 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryrnn(kdtree* kdt,
+ae_int_t kdtreetsqueryrnn(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      double r,
      ae_bool selfmatch,
      ae_state *_state)
@@ -6466,9 +6713,9 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryrnnu(kdtree* kdt,
+ae_int_t kdtreetsqueryrnnu(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      double r,
      ae_bool selfmatch,
      ae_state *_state)
@@ -6526,7 +6773,7 @@ these results:
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
 ae_int_t kdtreequeryaknn(kdtree* kdt,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      ae_int_t k,
      ae_bool selfmatch,
      double eps,
@@ -6588,9 +6835,9 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsqueryaknn(kdtree* kdt,
+ae_int_t kdtreetsqueryaknn(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      ae_int_t k,
      ae_bool selfmatch,
      double eps,
@@ -6630,11 +6877,11 @@ ae_int_t kdtreetsqueryaknn(kdtree* kdt,
     buf->selfmatch = selfmatch;
     if( kdt->normtype==2 )
     {
-        buf->approxf = 1/ae_sqr(1+eps, _state);
+        buf->approxf = (double)1/ae_sqr((double)1+eps, _state);
     }
     else
     {
-        buf->approxf = 1/(1+eps);
+        buf->approxf = (double)1/((double)1+eps);
     }
     buf->kcur = 0;
     
@@ -6700,8 +6947,8 @@ NOTE: this particular query returns unordered results, because there is no
      Copyright 14.05.2016 by Bochkanov Sergey
 *************************************************************************/
 ae_int_t kdtreequerybox(kdtree* kdt,
-     /* Real    */ ae_vector* boxmin,
-     /* Real    */ ae_vector* boxmax,
+     /* Real    */ const ae_vector* boxmin,
+     /* Real    */ const ae_vector* boxmax,
      ae_state *_state)
 {
     ae_int_t result;
@@ -6752,10 +6999,10 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 14.05.2016 by Bochkanov Sergey
 *************************************************************************/
-ae_int_t kdtreetsquerybox(kdtree* kdt,
+ae_int_t kdtreetsquerybox(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* boxmin,
-     /* Real    */ ae_vector* boxmax,
+     /* Real    */ const ae_vector* boxmin,
+     /* Real    */ const ae_vector* boxmax,
      ae_state *_state)
 {
     ae_int_t j;
@@ -6840,7 +7087,7 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultsx(kdtree* kdt,
+void kdtreequeryresultsx(const kdtree* kdt,
      /* Real    */ ae_matrix* x,
      ae_state *_state)
 {
@@ -6885,7 +7132,7 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultsxy(kdtree* kdt,
+void kdtreequeryresultsxy(const kdtree* kdt,
      /* Real    */ ae_matrix* xy,
      ae_state *_state)
 {
@@ -6930,7 +7177,7 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultstags(kdtree* kdt,
+void kdtreequeryresultstags(const kdtree* kdt,
      /* Integer */ ae_vector* tags,
      ae_state *_state)
 {
@@ -6974,7 +7221,7 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultsdistances(kdtree* kdt,
+void kdtreequeryresultsdistances(const kdtree* kdt,
      /* Real    */ ae_vector* r,
      ae_state *_state)
 {
@@ -7015,8 +7262,8 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreetsqueryresultsx(kdtree* kdt,
-     kdtreerequestbuffer* buf,
+void kdtreetsqueryresultsx(const kdtree* kdt,
+     const kdtreerequestbuffer* buf,
      /* Real    */ ae_matrix* x,
      ae_state *_state)
 {
@@ -7072,8 +7319,8 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreetsqueryresultsxy(kdtree* kdt,
-     kdtreerequestbuffer* buf,
+void kdtreetsqueryresultsxy(const kdtree* kdt,
+     const kdtreerequestbuffer* buf,
      /* Real    */ ae_matrix* xy,
      ae_state *_state)
 {
@@ -7134,8 +7381,8 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreetsqueryresultstags(kdtree* kdt,
-     kdtreerequestbuffer* buf,
+void kdtreetsqueryresultstags(const kdtree* kdt,
+     const kdtreerequestbuffer* buf,
      /* Integer */ ae_vector* tags,
      ae_state *_state)
 {
@@ -7195,8 +7442,8 @@ SEE ALSO
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreetsqueryresultsdistances(kdtree* kdt,
-     kdtreerequestbuffer* buf,
+void kdtreetsqueryresultsdistances(const kdtree* kdt,
+     const kdtreerequestbuffer* buf,
      /* Real    */ ae_vector* r,
      ae_state *_state)
 {
@@ -7256,7 +7503,7 @@ when you call it from command line.
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultsxi(kdtree* kdt,
+void kdtreequeryresultsxi(const kdtree* kdt,
      /* Real    */ ae_matrix* x,
      ae_state *_state)
 {
@@ -7279,7 +7526,7 @@ when you call it from command line.
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultsxyi(kdtree* kdt,
+void kdtreequeryresultsxyi(const kdtree* kdt,
      /* Real    */ ae_matrix* xy,
      ae_state *_state)
 {
@@ -7302,7 +7549,7 @@ when you call it from command line.
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultstagsi(kdtree* kdt,
+void kdtreequeryresultstagsi(const kdtree* kdt,
      /* Integer */ ae_vector* tags,
      ae_state *_state)
 {
@@ -7325,7 +7572,7 @@ when you call it from command line.
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-void kdtreequeryresultsdistancesi(kdtree* kdt,
+void kdtreequeryresultsdistancesi(const kdtree* kdt,
      /* Real    */ ae_vector* r,
      ae_state *_state)
 {
@@ -7346,7 +7593,7 @@ This function assumes that output buffers are preallocated by caller.
   -- ALGLIB --
      Copyright 20.06.2016 by Bochkanov Sergey
 *************************************************************************/
-void kdtreeexplorebox(kdtree* kdt,
+void kdtreeexplorebox(const kdtree* kdt,
      /* Real    */ ae_vector* boxmin,
      /* Real    */ ae_vector* boxmax,
      ae_state *_state)
@@ -7383,7 +7630,7 @@ OUTPUT VALUES:
   -- ALGLIB --
      Copyright 20.06.2016 by Bochkanov Sergey
 *************************************************************************/
-void kdtreeexplorenodetype(kdtree* kdt,
+void kdtreeexplorenodetype(const kdtree* kdt,
      ae_int_t node,
      ae_int_t* nodetype,
      ae_state *_state)
@@ -7432,7 +7679,7 @@ OUTPUT VALUES:
   -- ALGLIB --
      Copyright 20.06.2016 by Bochkanov Sergey
 *************************************************************************/
-void kdtreeexploreleaf(kdtree* kdt,
+void kdtreeexploreleaf(const kdtree* kdt,
      ae_int_t node,
      /* Real    */ ae_matrix* xy,
      ae_int_t* k,
@@ -7484,7 +7731,7 @@ OUTPUT VALUES:
   -- ALGLIB --
      Copyright 20.06.2016 by Bochkanov Sergey
 *************************************************************************/
-void kdtreeexploresplit(kdtree* kdt,
+void kdtreeexploresplit(const kdtree* kdt,
      ae_int_t node,
      ae_int_t* d,
      double* s,
@@ -7494,7 +7741,7 @@ void kdtreeexploresplit(kdtree* kdt,
 {
 
     *d = 0;
-    *s = 0;
+    *s = 0.0;
     *nodele = 0;
     *nodege = 0;
 
@@ -7521,7 +7768,7 @@ Serializer: allocation
   -- ALGLIB --
      Copyright 14.03.2011 by Bochkanov Sergey
 *************************************************************************/
-void kdtreealloc(ae_serializer* s, kdtree* tree, ae_state *_state)
+void kdtreealloc(ae_serializer* s, const kdtree* tree, ae_state *_state)
 {
 
 
@@ -7554,7 +7801,9 @@ Serializer: serialization
   -- ALGLIB --
      Copyright 14.03.2011 by Bochkanov Sergey
 *************************************************************************/
-void kdtreeserialize(ae_serializer* s, kdtree* tree, ae_state *_state)
+void kdtreeserialize(ae_serializer* s,
+     const kdtree* tree,
+     ae_state *_state)
 {
 
 
@@ -7621,6 +7870,101 @@ void kdtreeunserialize(ae_serializer* s, kdtree* tree, ae_state *_state)
 
 
 /*************************************************************************
+This function returns an approximate cost (measured in CPU  cycles)  of  a
+R-NN query with some fixed R.
+
+A VERY CRUDE APPROXIMATION IS RETURNED, ONLY AN ORDER OF MAGNITUDE CORRECT
+
+This approximation can be used in a multithreaded code which decides whether
+it makes sense to activate multithreading or not.
+
+Internally this function is implemented by performing some small (about 50)
+amount of random queries and computing an average number of R-neighbors of
+a node. This number is multiplied by log2(NPoints), and then  by  a  crude
+estimate of how many CPU cycles is required to perform a split during kd-tree
+search.
+
+This function is deterministic, i.e. it always uses a fixed seed to initialize
+its internal RNG.
+
+IMPORTANT: this function can not be used in multithreaded code because  it
+           uses internal temporary buffer of kd-tree object, which can not
+           be shared between multiple threads.
+           
+           See kdtreeapproxrnnquerycost() for a thread-safe alternative.
+
+INPUT PARAMETERS
+    KDT         -   KD-tree
+    R           -   radius of sphere (in corresponding norm), R>0
+
+RESULT
+    double precision number, approximate query cost
+
+  -- ALGLIB --
+     Copyright 24.11.2023 by Bochkanov Sergey
+*************************************************************************/
+double kdtreeapproxrnnquerycost(kdtree* kdt, double r, ae_state *_state)
+{
+    double result;
+
+
+    result = kdtreetsapproxrnnquerycost(kdt, &kdt->innerbuf, r, _state);
+    return result;
+}
+
+
+/*************************************************************************
+This function returns an approximate cost (measured in CPU  cycles)  of  a
+R-NN query with some fixed R.
+
+A thread-safe version of kdtreeapproxrnnquerycost() using a request buffer.
+
+  -- ALGLIB --
+     Copyright 24.11.2023 by Bochkanov Sergey
+*************************************************************************/
+double kdtreetsapproxrnnquerycost(const kdtree* kdt,
+     kdtreerequestbuffer* buf,
+     double r,
+     ae_state *_state)
+{
+    ae_frame _frame_block;
+    ae_int_t i;
+    ae_int_t j;
+    ae_int_t k;
+    ae_int_t cnt;
+    ae_int_t nx;
+    double log2n;
+    double avgrnn;
+    hqrndstate rs;
+    double result;
+
+    ae_frame_make(_state, &_frame_block);
+    memset(&rs, 0, sizeof(rs));
+    _hqrndstate_init(&rs, _state, ae_true);
+
+    ae_assert(ae_isfinite(r, _state)&&ae_fp_greater(r,(double)(0)), "KDTreeApproxRNNQueryCost: incorrect R!", _state);
+    hqrndseed(46532, 66356, &rs, _state);
+    nx = kdt->nx;
+    cnt = ae_minint(50, kdt->n, _state);
+    log2n = ae_log((double)(1+kdt->n), _state)/ae_log((double)(2), _state);
+    avgrnn = (double)(0);
+    rallocv(nx, &buf->xqc, _state);
+    for(i=0; i<=cnt-1; i++)
+    {
+        k = hqrnduniformi(&rs, kdt->n, _state);
+        for(j=0; j<=nx-1; j++)
+        {
+            buf->xqc.ptr.p_double[j] = kdt->xy.ptr.pp_double[k][nx+j];
+        }
+        avgrnn = avgrnn+(double)nearestneighbor_tsqueryrnn(kdt, buf, &buf->xqc, r, ae_true, ae_false, _state)/(double)cnt;
+    }
+    result = avgrnn*log2n*(double)15;
+    ae_frame_leave(_state);
+    return result;
+}
+
+
+/*************************************************************************
 R-NN query: all points within  R-sphere  centered  at  X,  using  external
 thread-local buffer, sorted by distance between point and X (by ascending)
 
@@ -7666,9 +8010,9 @@ IMPORTANT: kd-tree buffer should be used only with  KD-tree  object  which
   -- ALGLIB --
      Copyright 18.03.2016 by Bochkanov Sergey
 *************************************************************************/
-static ae_int_t nearestneighbor_tsqueryrnn(kdtree* kdt,
+static ae_int_t nearestneighbor_tsqueryrnn(const kdtree* kdt,
      kdtreerequestbuffer* buf,
-     /* Real    */ ae_vector* x,
+     /* Real    */ const ae_vector* x,
      double r,
      ae_bool selfmatch,
      ae_bool orderedbydist,
@@ -8067,7 +8411,7 @@ Recursive subroutine for NN queries.
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-static void nearestneighbor_kdtreequerynnrec(kdtree* kdt,
+static void nearestneighbor_kdtreequerynnrec(const kdtree* kdt,
      kdtreerequestbuffer* buf,
      ae_int_t offs,
      ae_state *_state)
@@ -8134,7 +8478,7 @@ static void nearestneighbor_kdtreequerynnrec(kdtree* kdt,
             /*
              * Skip points with zero distance if self-matches are turned off
              */
-            if( ptdist==0&&!buf->selfmatch )
+            if( ptdist==(double)0&&!buf->selfmatch )
             {
                 continue;
             }
@@ -8143,7 +8487,7 @@ static void nearestneighbor_kdtreequerynnrec(kdtree* kdt,
              * We CAN'T process point if R-criterion isn't satisfied,
              * i.e. (RNeeded<>0) AND (PtDist>R).
              */
-            if( buf->rneeded==0||ptdist<=buf->rneeded )
+            if( buf->rneeded==(double)0||ptdist<=buf->rneeded )
             {
                 
                 /*
@@ -8291,7 +8635,7 @@ static void nearestneighbor_kdtreequerynnrec(kdtree* kdt,
             /*
              * Decide: to dive into cell or not to dive
              */
-            if( buf->rneeded!=0&&buf->curdist>buf->rneeded )
+            if( buf->rneeded!=(double)0&&buf->curdist>buf->rneeded )
             {
                 todive = ae_false;
             }
@@ -8344,7 +8688,7 @@ Recursive subroutine for box queries.
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-static void nearestneighbor_kdtreequeryboxrec(kdtree* kdt,
+static void nearestneighbor_kdtreequeryboxrec(const kdtree* kdt,
      kdtreerequestbuffer* buf,
      ae_int_t offs,
      ae_state *_state)
@@ -8465,8 +8809,8 @@ Initializes Buf.CurBox[].
   -- ALGLIB --
      Copyright 28.02.2010 by Bochkanov Sergey
 *************************************************************************/
-static void nearestneighbor_kdtreeinitbox(kdtree* kdt,
-     /* Real    */ ae_vector* x,
+static void nearestneighbor_kdtreeinitbox(const kdtree* kdt,
+     /* Real    */ const ae_vector* x,
      kdtreerequestbuffer* buf,
      ae_state *_state)
 {
@@ -8610,8 +8954,8 @@ dimensions of kd-tree object.
   -- ALGLIB --
      Copyright 02.04.2016 by Bochkanov Sergey
 *************************************************************************/
-static void nearestneighbor_checkrequestbufferconsistency(kdtree* kdt,
-     kdtreerequestbuffer* buf,
+static void nearestneighbor_checkrequestbufferconsistency(const kdtree* kdt,
+     const kdtreerequestbuffer* buf,
      ae_state *_state)
 {
 
@@ -8637,13 +8981,14 @@ void _kdtreerequestbuffer_init(void* _p, ae_state *_state, ae_bool make_automati
     ae_vector_init(&p->buf, 0, DT_REAL, _state, make_automatic);
     ae_vector_init(&p->curboxmin, 0, DT_REAL, _state, make_automatic);
     ae_vector_init(&p->curboxmax, 0, DT_REAL, _state, make_automatic);
+    ae_vector_init(&p->xqc, 0, DT_REAL, _state, make_automatic);
 }
 
 
-void _kdtreerequestbuffer_init_copy(void* _dst, void* _src, ae_state *_state, ae_bool make_automatic)
+void _kdtreerequestbuffer_init_copy(void* _dst, const void* _src, ae_state *_state, ae_bool make_automatic)
 {
-    kdtreerequestbuffer *dst = (kdtreerequestbuffer*)_dst;
-    kdtreerequestbuffer *src = (kdtreerequestbuffer*)_src;
+    kdtreerequestbuffer       *dst = (kdtreerequestbuffer*)_dst;
+    const kdtreerequestbuffer *src = (const kdtreerequestbuffer*)_src;
     ae_vector_init_copy(&dst->x, &src->x, _state, make_automatic);
     ae_vector_init_copy(&dst->boxmin, &src->boxmin, _state, make_automatic);
     ae_vector_init_copy(&dst->boxmax, &src->boxmax, _state, make_automatic);
@@ -8658,6 +9003,7 @@ void _kdtreerequestbuffer_init_copy(void* _dst, void* _src, ae_state *_state, ae
     ae_vector_init_copy(&dst->curboxmin, &src->curboxmin, _state, make_automatic);
     ae_vector_init_copy(&dst->curboxmax, &src->curboxmax, _state, make_automatic);
     dst->curdist = src->curdist;
+    ae_vector_init_copy(&dst->xqc, &src->xqc, _state, make_automatic);
 }
 
 
@@ -8673,6 +9019,7 @@ void _kdtreerequestbuffer_clear(void* _p)
     ae_vector_clear(&p->buf);
     ae_vector_clear(&p->curboxmin);
     ae_vector_clear(&p->curboxmax);
+    ae_vector_clear(&p->xqc);
 }
 
 
@@ -8688,6 +9035,7 @@ void _kdtreerequestbuffer_destroy(void* _p)
     ae_vector_destroy(&p->buf);
     ae_vector_destroy(&p->curboxmin);
     ae_vector_destroy(&p->curboxmax);
+    ae_vector_destroy(&p->xqc);
 }
 
 
@@ -8705,10 +9053,10 @@ void _kdtree_init(void* _p, ae_state *_state, ae_bool make_automatic)
 }
 
 
-void _kdtree_init_copy(void* _dst, void* _src, ae_state *_state, ae_bool make_automatic)
+void _kdtree_init_copy(void* _dst, const void* _src, ae_state *_state, ae_bool make_automatic)
 {
-    kdtree *dst = (kdtree*)_dst;
-    kdtree *src = (kdtree*)_src;
+    kdtree       *dst = (kdtree*)_dst;
+    const kdtree *src = (const kdtree*)_src;
     dst->n = src->n;
     dst->nx = src->nx;
     dst->ny = src->ny;
@@ -8756,3 +9104,4 @@ void _kdtree_destroy(void* _p)
 
 }
 
+// clang-format on

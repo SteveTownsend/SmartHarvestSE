@@ -14,46 +14,58 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "keyword": [ "VendorItemAnimalPart" ]
+          "keyword": [
+            "VendorItemAnimalPart"
+          ]
         }
       }
     },
-
     {
       "name": "Daedric Wielder",
       "description": "Every Daedric Artifact",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "signature": [ "ARMO", "BOOK", "MISC", "SLGM", "WEAP" ],
-          "keyword": [ "VendorItemDaedricArtifact" ]
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "SLGM",
+            "WEAP"
+          ],
+          "keyword": [
+            "VendorItemDaedricArtifact"
+          ]
         }
       }
     },
-
     {
       "name": "Baggage Handler",
       "description": "Every Pouch and Carrier",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "signature": [ "ARMO" ],
-          "keyword": [ "WAF_ClothingPouch" ]
+          "signature": [
+            "ARMO"
+          ],
+          "keyword": [
+            "WAF_ClothingPouch"
+          ]
         }
       }
     },
-
     {
       "name": "Witch's Brew",
       "description": "Every Ingredient in the game",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "signature": [ "INGR" ]
+          "signature": [
+            "INGR"
+          ]
         }
       }
     },
-
     {
       "name": "Regular Weapons",
       "policy": {
@@ -62,9 +74,10 @@
         "repeat": false
       },
       "description": "Unenchanted weapons looted once for curiosity",
-      "category": [ "weapon" ]
+      "category": [
+        "weapon"
+      ]
     },
-
     {
       "name": "Enchanted Weapons",
       "policy": {
@@ -73,9 +86,10 @@
         "repeat": true
       },
       "description": "Enchanted weapons looted always",
-      "category": [ "enchantedWeapon" ]
+      "category": [
+        "enchantedWeapon"
+      ]
     },
-
     {
       "name": "Glow All Unread Books",
       "policy": {
@@ -84,9 +98,12 @@
         "repeat": true
       },
       "description": "Glow unread books of all stripes",
-      "category": [ "book", "skillbook", "spellbook" ]
+      "category": [
+        "book",
+        "skillbook",
+        "spellbook"
+      ]
     },
-
     {
       "name": "Dwemer Boat Anchors",
       "description": "Misc Dwemer Clutter",
@@ -101,13 +118,25 @@
           "forms": [
             {
               "plugin": "Skyrim.esm",
-              "form": [ "000aebf1", "000c8861", "000c8868", "000c886e", "000c886a", "000c8870", "000c886c", "000c8878", "000c8864", "000c8872", "000c8866", "000c8874" ]
+              "form": [
+                "000aebf1",
+                "000c8861",
+                "000c8868",
+                "000c886e",
+                "000c886a",
+                "000c8870",
+                "000c886c",
+                "000c8878",
+                "000c8864",
+                "000c8872",
+                "000c8866",
+                "000c8874"
+              ]
             }
           ]
         }
       }
     },
-
     {
       "name": "Dwemer Boat Anchors (Named)",
       "description": "Misc Dwemer Clutter by name",
@@ -126,7 +155,9 @@
                 "nameMatch": {
                   "isNPC": false,
                   "matchIf": "startsWith",
-                  "names": [ "Dwemer" ]
+                  "names": [
+                    "Dwemer"
+                  ]
                 }
               }
             },
@@ -136,7 +167,14 @@
                 "nameMatch": {
                   "isNPC": false,
                   "matchIf": "contains",
-                  "names": [ "Metal", "Strut", "Lever", "Cog", "Gear", "Gyro" ]
+                  "names": [
+                    "Metal",
+                    "Strut",
+                    "Lever",
+                    "Cog",
+                    "Gear",
+                    "Gyro"
+                  ]
                 }
               }
             },
@@ -146,7 +184,9 @@
                 "nameMatch": {
                   "isNPC": false,
                   "matchIf": "omits",
-                  "names": [ "Handle" ]
+                  "names": [
+                    "Handle"
+                  ]
                 }
               }
             }
@@ -154,7 +194,6 @@
         }
       }
     },
-
     {
       "name": "Dragon It Out",
       "description": "Grab Dragon Bones and Scales",
@@ -169,7 +208,11 @@
           "forms": [
             {
               "plugin": "Skyrim.esm",
-              "form": [ "0003ada4", "000d0756", "0003ada3" ]
+              "form": [
+                "0003ada4",
+                "000d0756",
+                "0003ada3"
+              ]
             }
           ]
         }
@@ -190,7 +233,10 @@
           "nameMatch": {
             "isNPC": false,
             "matchIf": "equals",
-            "names": [ "Salmon", "Raw Salmon Fillet" ]
+            "names": [
+              "Salmon",
+              "Raw Salmon Fillet"
+            ]
           }
         }
       }
@@ -214,7 +260,9 @@
                 "nameMatch": {
                   "isNPC": false,
                   "matchIf": "contains",
-                  "names": [ "Salmon" ]
+                  "names": [
+                    "Salmon"
+                  ]
                 }
               }
             },
@@ -224,7 +272,10 @@
                 "nameMatch": {
                   "isNPC": false,
                   "matchIf": "notEquals",
-                  "names": [ "Raw Salmon Fillet", "Salmon" ]
+                  "names": [
+                    "Raw Salmon Fillet",
+                    "Salmon"
+                  ]
                 }
               }
             }
@@ -244,11 +295,15 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "signature": [ "WEAP" ],
+          "signature": [
+            "WEAP"
+          ],
           "nameMatch": {
             "isNPC": false,
             "matchIf": "contains",
-            "names": [ "Staff " ]
+            "names": [
+              "Staff "
+            ]
           }
         }
       }
@@ -265,11 +320,15 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "signature": [ "MISC" ],
+          "signature": [
+            "MISC"
+          ],
           "nameMatch": {
             "isNPC": false,
             "matchIf": "contains",
-            "names": [ "in a Jar" ]
+            "names": [
+              "in a Jar"
+            ]
           }
         }
       }
@@ -289,7 +348,9 @@
           "nameMatch": {
             "isNPC": true,
             "matchIf": "contains",
-            "names": [ "Spider" ]
+            "names": [
+              "Spider"
+            ]
           }
         }
       }
@@ -301,13 +362,52 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "OBIS SE.esp" ],
-          "signature": [ "ARMO" ],
+          "plugin": [
+            "OBIS SE.esp"
+          ],
+          "signature": [
+            "ARMO"
+          ],
           "nameMatch": {
             "isNPC": false,
             "matchIf": "startsWith",
-            "names": [ "Face" ]
+            "names": [
+              "Face"
+            ]
           }
+        }
+      }
+    },
+    {
+      "$comment": "Ordinator Bone Collector materials",
+      "name": "Dem Bones, Dem Bones",
+      "description": "Bone Collector materials for Ordinator",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "forms": [
+            {
+              "plugin": "Ordinator - Perks of Skyrim.esp",
+              "form": [
+                "00072e1a",
+                "00072e15",
+                "00072e14",
+                "00072e13",
+                "00072e12",
+                "00072e11",
+                "00072e10",
+                "00072e0f",
+                "00072e0e",
+                "00072e0d",
+                "00072e0c"
+              ]
+            }
+          ]
         }
       }
     }

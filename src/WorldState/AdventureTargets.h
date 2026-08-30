@@ -20,140 +20,155 @@ http://www.fsf.org/licensing/licenses
 #pragma once
 #include "WorldState/PositionData.h"
 
-namespace shse
-{
+namespace shse {
 
 enum class AdventureTargetType : uint32_t {
-	AnimalDen = 0,
-	AshSpawnLair,
-	AyleidRuin,
-	BanditCamp,
-	Cave,
-	Clearable,
-	DragonLair,
-	DragonPriestLair,
-	DraugrCrypt,
-	Dungeon,
-	DwarvenRuin,
+  AnimalDen = 0,
+  AshSpawnLair,
+  AyleidRuin,
+  BanditCamp,
+  Cave,
+  Clearable,
+  DragonLair,
+  DragonPriestLair,
+  DraugrCrypt,
+  Dungeon,
+  DwarvenRuin,
 #if _DEBUG
-	FakeForTesting,
+  FakeForTesting,
 #endif
-	FalmerHive,
-	ForswornCamp,
-	Fort,
-	GiantCamp,
-	GoblinDen,
-	Grove,
-	HagravenNest,
-	Mine,
-	NordicRuin,
-	OgreDen,
-	OrcStronghold,
-	RieklingCamp,
-	RuinedFort,
-	Settlement,
-	Shipwreck,
-	VampireLair,
-	WerebeastLair,
-	WarlockLair,
-	WitchmanLair,
-	MAX
+  FalmerHive,
+  ForswornCamp,
+  Fort,
+  GiantCamp,
+  GoblinDen,
+  Grove,
+  HagravenNest,
+  Mine,
+  NordicRuin,
+  OgreDen,
+  OrcStronghold,
+  RieklingCamp,
+  RuinedFort,
+  Settlement,
+  Shipwreck,
+  VampireLair,
+  WerebeastLair,
+  WarlockLair,
+  WitchmanLair,
+  MAX
 };
 
 std::string AdventureTargetName(const AdventureTargetType adventureTarget);
 inline std::string AdventureTargetNameByIndex(const size_t index) {
-	return AdventureTargetName(AdventureTargetType(std::min(index, size_t(AdventureTargetType::MAX))));
+  return AdventureTargetName(
+      AdventureTargetType(std::min(index, size_t(AdventureTargetType::MAX))));
 }
 
-enum class AdventureEventType : uint32_t {
-	Started = 0,
-	Complete,
-	Abandoned
-};
+enum class AdventureEventType : uint32_t { Started = 0, Complete, Abandoned };
 
 class AdventureEvent {
 public:
-	static AdventureEvent StartedAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime);
-	static AdventureEvent CompletedAdventure(const float gameTime);
-	static AdventureEvent AbandonedAdventure(const float gameTime);
+  static AdventureEvent StartedAdventure(const RE::TESWorldSpace *world,
+                                         const RE::BGSLocation *location,
+                                         const float gameTime);
+  static AdventureEvent CompletedAdventure(const float gameTime);
+  static AdventureEvent AbandonedAdventure(const float gameTime);
 
-	static AdventureEvent StartAdventure(const RE::TESWorldSpace* world, const RE::BGSLocation* location);
-	static AdventureEvent CompleteAdventure();
-	static AdventureEvent AbandonAdventure();
+  static AdventureEvent StartAdventure(const RE::TESWorldSpace *world,
+                                       const RE::BGSLocation *location);
+  static AdventureEvent CompleteAdventure();
+  static AdventureEvent AbandonAdventure();
 
-	inline float GameTime() const { return m_gameTime; }
-	std::string AsString() const;
-	static void ResetSagaState();
+  inline float GameTime() const { return m_gameTime; }
+  std::string AsString() const;
+  static void ResetSagaState();
 
-	void AsJSON(nlohmann::json& j) const;
+  void AsJSON(nlohmann::json &j) const;
 
 private:
-	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location, const float gameTime);
-	AdventureEvent(const AdventureEventType eventType, const RE::TESWorldSpace* world, const RE::BGSLocation* location);
-	AdventureEvent(const AdventureEventType eventType, const float gameTime);
-	AdventureEvent(const AdventureEventType eventType);
+  AdventureEvent(const AdventureEventType eventType,
+                 const RE::TESWorldSpace *world,
+                 const RE::BGSLocation *location, const float gameTime);
+  AdventureEvent(const AdventureEventType eventType,
+                 const RE::TESWorldSpace *world,
+                 const RE::BGSLocation *location);
+  AdventureEvent(const AdventureEventType eventType, const float gameTime);
+  AdventureEvent(const AdventureEventType eventType);
 
-	const AdventureEventType m_eventType;
-	const RE::TESWorldSpace* m_world;
-	const RE::BGSLocation* m_location;
-	const float m_gameTime;
-	static const RE::BGSLocation* m_lastTarget;
+  const AdventureEventType m_eventType;
+  const RE::TESWorldSpace *m_world;
+  const RE::BGSLocation *m_location;
+  const float m_gameTime;
+  static const RE::BGSLocation *m_lastTarget;
 };
 
-void to_json(nlohmann::json& j, const AdventureEvent& adventureEvent);
+void to_json(nlohmann::json &j, const AdventureEvent &adventureEvent);
 
-class AdventureTargets
-{
+class AdventureTargets {
 public:
-	static AdventureTargets& Instance();
-	AdventureTargets();
+  static AdventureTargets &Instance();
+  AdventureTargets();
 
-	void Reset();
-	void Categorize();
+  void Reset();
+  void Categorize();
 
-	size_t AvailableAdventureTypes() const;
-	// use mapping list to convert MCM index to true index
-	std::string AdventureTypeName(const size_t adventureType) const;
-	size_t ViableWorldCount(const size_t adventureType) const;
-	std::string ViableWorldNameByIndexInView(const size_t worldIndex) const;
-	void SelectCurrentDestination(const size_t worldIndex);
-	void CheckReachedCurrentDestination(const RE::BGSLocation* newLocation);
-	void AbandonCurrentDestination();
-	const RE::TESWorldSpace* TargetWorld(void) const;
-	const RE::BGSLocation* TargetLocation(void) const;
-	Position TargetPosition(void) const;
-	bool HasActiveTarget(void) const;
-	std::unordered_map<const RE::BGSLocation*, Position> GetWorldMarkedPlaces(const RE::TESWorldSpace* world) const;
-	void AsJSON(nlohmann::json& j) const;
-	void UpdateFrom(const nlohmann::json& j);
+  size_t AvailableAdventureTypes() const;
+  // use mapping list to convert MCM index to true index
+  std::string AdventureTypeName(const size_t adventureType) const;
+  size_t ViableWorldCount(const size_t adventureType) const;
+  std::string ViableWorldNameByIndexInView(const size_t worldIndex) const;
+  void SelectCurrentDestination(const size_t worldIndex);
+  void CheckReachedCurrentDestination(const RE::BGSLocation *newLocation);
+  void AbandonCurrentDestination();
+  const RE::TESWorldSpace *TargetWorld(void) const;
+  const RE::BGSLocation *TargetLocation(void) const;
+  Position TargetPosition(void) const;
+  bool HasActiveTarget(void) const;
+  std::unordered_map<const RE::BGSLocation *, Position>
+  GetWorldMarkedPlaces(const RE::TESWorldSpace *world) const;
+  void AsJSON(nlohmann::json &j) const;
+  void UpdateFrom(const nlohmann::json &j);
 
 private:
-	void LinkLocationToWorld(const RE::BGSLocation* location, const RE::TESWorldSpace* world) const;
-	Position GetInteriorCellPosition(const RE::TESObjectCELL* cell, const RE::BGSLocation* location) const;
-	Position GetRefHandlePosition(const RE::ObjectRefHandle handle, const RE::BGSLocation* location) const;
-	RE::TESWorldSpace* GetRefHandleWorld(const RE::ObjectRefHandle handle) const;
-	Position GetRefIDPosition(const RE::FormID refID, const RE::BGSLocation* location) const;
-	Position GetRefrPosition(const RE::TESObjectREFR* refr, const RE::BGSLocation* location) const;
-	void RecordEvent(const AdventureEvent& event);
+  void LinkLocationToWorld(const RE::BGSLocation *location,
+                           const RE::TESWorldSpace *world) const;
+  Position GetInteriorCellPosition(const RE::TESObjectCELL *cell,
+                                   const RE::BGSLocation *location) const;
+  Position GetRefHandlePosition(const RE::ObjectRefHandle handle,
+                                const RE::BGSLocation *location) const;
+  RE::TESWorldSpace *GetRefHandleWorld(const RE::ObjectRefHandle handle) const;
+  Position GetRefIDPosition(const RE::FormID refID,
+                            const RE::BGSLocation *location) const;
+  Position GetRefrPosition(const RE::TESObjectREFR *refr,
+                           const RE::BGSLocation *location) const;
+  void RecordEvent(const AdventureEvent &event);
 
-	static std::unique_ptr<AdventureTargets> m_instance;
-	std::array<std::unordered_set<const RE::BGSLocation*>, int(AdventureTargetType::MAX)> m_locationsByType;
-	mutable std::vector<AdventureTargetType> m_validAdventureTypes;
+  static std::unique_ptr<AdventureTargets> m_instance;
+  std::array<std::unordered_set<const RE::BGSLocation *>,
+             int(AdventureTargetType::MAX)>
+      m_locationsByType;
+  mutable std::vector<AdventureTargetType> m_validAdventureTypes;
 
-	mutable std::unordered_map<const RE::BGSLocation*, const RE::TESWorldSpace*> m_worldByLocation;
-	std::unordered_map<const RE::BGSLocation*, Position> m_locationCoordinates;
+  mutable std::unordered_map<const RE::BGSLocation *, const RE::TESWorldSpace *>
+      m_worldByLocation;
+  std::unordered_map<const RE::BGSLocation *, Position> m_locationCoordinates;
 
-	std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_markedLocationsByWorld;
-	mutable std::unordered_map<const RE::TESWorldSpace*, std::unordered_set<const RE::BGSLocation*>> m_unvisitedLocationsByWorld;
-	mutable std::vector<const RE::TESWorldSpace*> m_sortedWorlds;
+  std::unordered_map<const RE::TESWorldSpace *,
+                     std::unordered_set<const RE::BGSLocation *>>
+      m_markedLocationsByWorld;
+  mutable std::unordered_map<const RE::TESWorldSpace *,
+                             std::unordered_set<const RE::BGSLocation *>>
+      m_unvisitedLocationsByWorld;
+  mutable std::vector<const RE::TESWorldSpace *> m_sortedWorlds;
 
-	std::vector<AdventureEvent> m_adventureEvents;
+  std::vector<AdventureEvent> m_adventureEvents;
 
-	const RE::BGSLocation* m_targetLocation;
-	const RE::TESWorldSpace* m_targetWorld;
-	mutable RecursiveLock m_adventureLock;
+  const RE::BGSLocation *m_targetLocation;
+  const RE::TESWorldSpace *m_targetWorld;
+  mutable RecursiveLock m_adventureLock;
 };
 
-void to_json(nlohmann::json& j, const AdventureTargets& visitedPlaces);
+void to_json(nlohmann::json &j, const AdventureTargets &visitedPlaces);
 
-}
+} // namespace shse

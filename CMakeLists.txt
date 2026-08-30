@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.28.1)
 # #######################################################################################################################
 set(NAME "SmartHarvestSE")
 set(PRETTY_NAME "Smart Harvest SE")
-set(VERSION 5.9.5)
+set(VERSION 6.3.4)
 
 set(spdlog_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -46,6 +46,14 @@ set(sources
         src/alglib/alglibmisc.h
         src/alglib/ap.cpp
         src/alglib/ap.h
+        src/alglib/linalg.cpp
+        src/alglib/linalg.h
+        src/alglib/kernels_avx2.cpp
+        src/alglib/kernels_avx2.h
+        src/alglib/kernels_fma.cpp
+        src/alglib/kernels_fma.h
+        src/alglib/kernels_sse2.cpp
+        src/alglib/kernels_sse2.h
         src/Collections/Collection.cpp
         src/Collections/Collection.h
         src/Collections/CollectionFactory.cpp

@@ -14,60 +14,87 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "BGCollectables.esp" ],
-          "signature": [ "BOOK", "MISC" ]
+          "plugin": [
+            "BGCollectables.esp"
+          ],
+          "signature": [
+            "BOOK",
+            "MISC"
+          ]
         }
       }
     },
-
     {
       "name": "SUTch a Great Find",
       "description": "Items added by Skyrim's Unique Treasures",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "SkyrimsUniqueTreasures.esp" ],
-          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+          "plugin": [
+            "SkyrimsUniqueTreasures.esp"
+          ],
+          "signature": [
+            "ALCH",
+            "ARMO",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "X Marks the Spot",
       "description": "Treasure Hunter SSE and New Treasure Hunt SSE Maps",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "TreasureHunter.esp", "treasure_hunt.esl" ],
-          "signature": [ "BOOK", "KEYM" ]
+          "plugin": [
+            "TreasureHunter.esp",
+            "treasure_hunt.esl"
+          ],
+          "signature": [
+            "BOOK",
+            "KEYM"
+          ]
         }
       }
     },
-
     {
       "name": "Oblivious",
       "description": "Items added by Oblivion Artifacts",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "WZOblivionArtifacts.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "WZOblivionArtifacts.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Zimmersed",
       "description": "Items added by Zim's Immersive Artifacts",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "ZIA_Complete Pack.esp" ],
-          "signature": [ "ARMO", "BOOK", "INGR", "WEAP" ]
+          "plugin": [
+            "ZIA_Complete Pack.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "INGR",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Novocaine Optional",
       "description": "Dragon teeth from Zim's Dragon Improvements",
@@ -79,159 +106,246 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Zim's Dragon Improvements.esp" ],
-          "signature": [ "INGR", "MISC" ]
+          "plugin": [
+            "Zim's Dragon Improvements.esp"
+          ],
+          "signature": [
+            "INGR",
+            "MISC"
+          ]
         }
       }
     },
-
     {
       "name": "Fetcher",
       "description": "Items added by Morrowloot Ultimate and Patches",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "MLU.esp", "MLU - Immersive Armors.esp", "MLU - Summermyst.esp" ],
-          "signature": [ "ARMO", "BOOK", "KEYM", "MISC", "WEAP" ]
+          "plugin": [
+            "MLU.esp",
+            "MLU - Immersive Armors.esp",
+            "MLU - Summermyst.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "KEYM",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Artifactial Intelligence",
       "description": "Items added by Artifacts of Skyrim",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Artifacts.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "Artifacts.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Philosophy 101",
       "description": "Items added by Aurlyn Dawnstone",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Aurlyn.esp" ],
-          "signature": [ "ARMO", "BOOK", "INGR", "WEAP" ]
+          "plugin": [
+            "Aurlyn.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "INGR",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Rigmor of Bruma",
       "description": "Items added by Rigmor of Bruma",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Rigmor.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "Rigmor.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Rigmor of Cyrodiil",
       "description": "Items added by Rigmor of Cyrodiil",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "RigmorCyrodiil.esm" ],
-          "signature": [ "ARMO", "BOOK", "INGR", "MISC", "WEAP" ]
+          "plugin": [
+            "RigmorCyrodiil.esm"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "INGR",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Bordering on Obsession",
       "description": "Items added by Joop van Die Borders trilogy",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Folkstead.esp", "Jehanna.esp", "Nyhus.esp" ],
-          "signature": [ "ARMO", "BOOK", "INGR", "MISC", "WEAP" ]
+          "plugin": [
+            "Folkstead.esp",
+            "Jehanna.esp",
+            "Nyhus.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "INGR",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Back From The Brink",
       "description": "Items added by Carved Brink",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Haem Projects Goblands.esp" ],
-          "signature": [ "ALCH", "ARMO", "BOOK", "INGR", "MISC", "WEAP" ]
+          "plugin": [
+            "Haem Projects Goblands.esp"
+          ],
+          "signature": [
+            "ALCH",
+            "ARMO",
+            "BOOK",
+            "INGR",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Hammet Got them All Yet",
       "description": "Items added by Hammet's Dungeons",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "HammetDungeons.esm" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "HammetDungeons.esm"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Vominheim",
       "description": "Items added by Land of Vominheim",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Vominheim.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "Vominheim.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Sewer Rat",
       "description": "Items added by Skyrim Sewers",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "SkyrimSewers.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "SkyrimSewers.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Easier Peasier",
       "description": "Items added in Easier Riders Dungeon Pack SSE",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "EasierRidersDungeonPackSSE.esp" ],
-          "signature": [ "ARMO", "BOOK", "MISC", "WEAP" ]
+          "plugin": [
+            "EasierRidersDungeonPackSSE.esp"
+          ],
+          "signature": [
+            "ARMO",
+            "BOOK",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Payback With Interest",
       "description": "Items added in Interesting NPCs",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "3DNPC.esp" ],
-          "signature": [ "ALCH", "ARMO", "BOOK", "KEYM", "MISC", "WEAP" ]
+          "plugin": [
+            "3DNPC.esp"
+          ],
+          "signature": [
+            "ALCH",
+            "ARMO",
+            "BOOK",
+            "KEYM",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "Palaeontologist",
-      "description": "All the fossils added by Fossil Mining",
+      "description": "All the fossils added by Fossil Mining (pre-LotD v6)",
       "policy": {
         "action": "take",
         "notify": true,
@@ -240,57 +354,77 @@
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Fossilsyum.esp" ],
-          "signature": [ "ALCH", "ARMO", "MISC", "WEAP" ]
+          "plugin": [
+            "Fossilsyum.esp"
+          ],
+          "signature": [
+            "ALCH",
+            "ARMO",
+            "MISC",
+            "WEAP"
+          ]
         }
       }
     },
-
     {
       "name": "A Hot Meal",
       "description": "Every Cooked Food Item",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Complete Alchemy & Cooking Overhaul.esp" ],
-          "keyword": [ "VendorItemFoodCooked" ]
+          "plugin": [
+            "Complete Alchemy & Cooking Overhaul.esp"
+          ],
+          "keyword": [
+            "VendorItemFoodCooked"
+          ]
         }
       }
     },
-
     {
       "name": "Cloaking Device",
       "description": "Every Cloak of Skyrim",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "Cloaks.esp", "Cloaks - Dawnguard.esp" ],
-          "signature": [ "ARMO" ],
-          "keyword": [ "VendorItemClothing" ]
+          "plugin": [
+            "Cloaks.esp",
+            "Cloaks - Dawnguard.esp"
+          ],
+          "signature": [
+            "ARMO"
+          ],
+          "keyword": [
+            "VendorItemClothing"
+          ]
         }
       }
     },
-
     {
       "name": "Keys to the City",
       "description": "Every Key in the Forgotten City",
       "rootFilter": {
         "operator": "AND",
         "condition": {
-          "plugin": [ "ForgottenCity.esp" ],
+          "plugin": [
+            "ForgottenCity.esp"
+          ],
           "subFilter": [
             {
               "operator": "OR",
               "condition": {
-                "signature": [ "KEYM" ],
-                "keyword": [ "VendorItemKey" ]
+                "signature": [
+                  "KEYM"
+                ],
+                "keyword": [
+                  "VendorItemKey"
+                ]
               }
             }
           ]
         }
       }
     },
-
     {
       "name": "LoTD Non-Display Items",
       "description": "Fate Cards, Paintings",
@@ -302,11 +436,33 @@
       "rootFilter": {
         "operator": "OR",
         "condition": {
-          "keyword": [ "VendorItemFateCards" ],
+          "keyword": [
+            "VendorItemFateCards"
+          ],
           "formList": [
             {
               "listPlugin": "LegacyoftheDragonborn.esm",
               "formID": "0034675F"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Cheesemod for everyone",
+      "description": "Collects all cheese from the Prince of Madness",
+      "policy": {
+        "action": "take",
+        "notify": true,
+        "repeat": true
+      },
+      "rootFilter": {
+        "operator": "AND",
+        "condition": {
+          "formList": [
+            {
+              "listPlugin": "yumcheese.esp",
+              "formID": "3100A4AE"
             }
           ]
         }

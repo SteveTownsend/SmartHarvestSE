@@ -19,36 +19,36 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
-class ReferenceFilter
-{
+class ReferenceFilter {
 public:
-	ReferenceFilter(DistanceToTarget& refs, IRangeChecker& rangeCheck, const bool respectDoors, const size_t limit);
-	static Lootability CheckLootable(const RE::TESObjectREFR* refr);
-	void FindLootableReferences();
-	void FindAllCandidates();
-	void FindActors();
+  ReferenceFilter(DistanceToTarget &refs, IRangeChecker &rangeCheck,
+                  const bool respectDoors, const size_t limit);
+  static Lootability CheckLootable(const RE::TESObjectREFR *refr);
+  void FindLootableReferences();
+  void FindAllCandidates();
+  void FindActors();
 
 private:
-	typedef std::function<bool(const RE::TESObjectREFR*)> REFRPredicate;
-	void FilterNearbyReferences();
-	void RecordReference(RE::TESObjectREFR* refr);
-	void RecordCellReferences(RE::TESObjectCELL* cell, const bool indoors);
+  typedef std::function<bool(const RE::TESObjectREFR *)> REFRPredicate;
+  void FilterNearbyReferences();
+  void RecordReference(RE::TESObjectREFR *refr);
+  void RecordCellReferences(RE::TESObjectCELL *cell, const bool indoors);
 
-	Lootability AnalyzeREFR(const RE::TESObjectREFR* refr, const bool dryRun) const;
-	// predicates supported
-	bool CanLoot(const RE::TESObjectREFR* refr) const;
-	bool IsLootCandidate(const RE::TESObjectREFR* refr) const;
-	bool IsFollowerOrDead(const RE::TESObjectREFR* refr) const;
+  Lootability AnalyzeREFR(const RE::TESObjectREFR *refr,
+                          const bool dryRun) const;
+  // predicates supported
+  bool CanLoot(const RE::TESObjectREFR *refr) const;
+  bool IsLootCandidate(const RE::TESObjectREFR *refr) const;
+  bool IsFollowerOrDead(const RE::TESObjectREFR *refr) const;
 
-	DistanceToTarget& m_refs;
-	IRangeChecker& m_rangeCheck;
-	const bool m_respectDoors;
-	double m_nearestDoor;
-	size_t m_limit;
-	mutable REFRPredicate m_predicate;
+  DistanceToTarget &m_refs;
+  IRangeChecker &m_rangeCheck;
+  const bool m_respectDoors;
+  double m_nearestDoor;
+  size_t m_limit;
+  mutable REFRPredicate m_predicate;
 };
 
-}
+} // namespace shse

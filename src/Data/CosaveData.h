@@ -19,23 +19,22 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
 class CosaveData {
 public:
-	static CosaveData& Instance();
-	CosaveData();
-	void Clear();
-	void SeedState();
+  static CosaveData &Instance();
+  CosaveData();
+  void Clear();
+  void SeedState();
 
-	bool Serialize(SKSE::SerializationInterface* intf);
-	bool Deserialize(SKSE::SerializationInterface* intf);
+  bool Serialize(SKSE::SerializationInterface *intf);
+  bool Deserialize(SKSE::SerializationInterface *intf);
 
 private:
-	static std::unique_ptr<CosaveData> m_instance;
-	mutable RecursiveLock m_cosaveLock;
-	std::map<shse::SerializationRecordType, nlohmann::json> m_records;
+  static std::unique_ptr<CosaveData> m_instance;
+  mutable RecursiveLock m_cosaveLock;
+  std::map<shse::SerializationRecordType, nlohmann::json> m_records;
 };
 
-}
+} // namespace shse

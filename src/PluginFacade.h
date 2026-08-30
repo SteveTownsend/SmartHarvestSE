@@ -19,45 +19,40 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
 class PluginFacade {
 public:
-	static PluginFacade& Instance();
-	PluginFacade();
+  static PluginFacade &Instance();
+  PluginFacade();
 
-	bool Init();
-	void PrepareForReloadOrNewGame();
-	void ResetTransientState(const bool gameReload);
-	void OnVMSync();
-	void OnGameLoaded();
-	void OnSettingsPushed(void);
-	bool ScanAllowed() const;
-	bool IsSynced() const;
+  bool Init();
+  void PrepareToPlay();
+  void ResetTransientState(const bool gameReload);
+  void OnVMSync();
+  void OnGameLoaded();
+  void OnSettingsPushed(void);
+  bool ScanAllowed() const;
+  bool IsSynced() const;
 
-	// give the debug message time to catch up during calibration
-	static constexpr double CalibrationThreadDelaySeconds = 5.0;
+  // give the debug message time to catch up during calibration
+  static constexpr double CalibrationThreadDelaySeconds = 5.0;
 
 private:
-	bool OneTimeLoad(void);
-	bool Load();
-	void Start();
-	static void ScanThread(void);
-	bool Loaded() const;
+  bool OneTimeLoad(void);
+  bool Load();
+  void Start();
+  static void ScanThread(void);
+  bool Loaded() const;
 
-	static std::unique_ptr<PluginFacade> m_instance;
-	mutable RecursiveLock m_pluginLock;
-	enum class LoadProgress : uint8_t {
-		NotStarted,
-		Started,
-		Complete
-	};
-	LoadProgress m_loadProgress;
-	bool m_threadStarted;
-	bool m_pluginSynced;
-	bool m_loadedSettings;
-	bool m_ready;
+  static std::unique_ptr<PluginFacade> m_instance;
+  mutable RecursiveLock m_pluginLock;
+  enum class LoadProgress : uint8_t { NotStarted, Started, Complete };
+  LoadProgress m_loadProgress;
+  bool m_threadStarted;
+  bool m_pluginSynced;
+  bool m_loadedSettings;
+  bool m_ready;
 };
 
-}
+} // namespace shse

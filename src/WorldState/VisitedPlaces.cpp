@@ -24,229 +24,206 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/Saga.h"
 #include "Data/LoadOrder.h"
 
-namespace shse
-{
+namespace shse {
 
-VisitedPlace VisitedPlace::m_lastPlace(nullptr, nullptr, InvalidForm, InvalidPosition, 0.0);
-const RE::TESWorldSpace* VisitedPlace::m_lastWorld(nullptr);
-const RE::BGSLocation* VisitedPlace::m_lastLocation(nullptr);
+VisitedPlace VisitedPlace::m_lastPlace(nullptr, nullptr, InvalidForm,
+                                       InvalidPosition, 0.0);
+const RE::TESWorldSpace *VisitedPlace::m_lastWorld(nullptr);
+const RE::BGSLocation *VisitedPlace::m_lastLocation(nullptr);
 
-void VisitedPlace::ResetSagaState()
-{
-	m_lastPlace = VisitedPlace(nullptr, nullptr, InvalidForm, InvalidPosition, 0.0);
-	m_lastWorld = nullptr;
-	m_lastLocation = nullptr;
+void VisitedPlace::ResetSagaState() {
+  m_lastPlace =
+      VisitedPlace(nullptr, nullptr, InvalidForm, InvalidPosition, 0.0);
+  m_lastWorld = nullptr;
+  m_lastLocation = nullptr;
 }
 
-VisitedPlace::VisitedPlace(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::FormID cellID, const Position position, const float gameTime) :
-	m_worldspace(worldspace), m_location(location), m_cellID(cellID), m_position(position), m_gameTime(gameTime)
-{
+VisitedPlace::VisitedPlace(const RE::TESWorldSpace *worldspace,
+                           const RE::BGSLocation *location,
+                           const RE::FormID cellID, const Position position,
+                           const float gameTime)
+    : m_worldspace(worldspace), m_location(location), m_cellID(cellID),
+      m_position(position), m_gameTime(gameTime) {}
+
+bool VisitedPlace::operator==(const VisitedPlace &rhs) const {
+  return m_worldspace == rhs.m_worldspace && m_location == rhs.m_location &&
+         m_cellID == rhs.m_cellID;
 }
 
-bool VisitedPlace::operator==(const VisitedPlace& rhs) const
-{
-	return m_worldspace == rhs.m_worldspace && m_location == rhs.m_location && m_cellID == rhs.m_cellID;
+std::string VisitedPlace::AsString() const {
+  // skip redundant entries
+  if (m_lastPlace == *this)
+    return "";
+  std::ostringstream stream;
+  bool wrote(false);
+  if (m_location != m_lastLocation) {
+    std::string departed;
+    if (m_lastLocation) {
+      stream << "I left " << m_lastLocation->GetName();
+      departed = m_lastLocation->GetName();
+      m_lastLocation = nullptr;
+      wrote = true;
+    }
+    if (m_location) {
+      std::string newLocation(m_location->GetName());
+      if (newLocation != departed) {
+        if (departed.empty()) {
+          stream << "I ";
+        } else {
+          stream << " and ";
+        }
+        stream << "entered " << m_location->GetName();
+        m_lastLocation = m_location;
+        wrote = true;
+      }
+    }
+  } else if (!m_location) {
+    // event between locations: print position info relative to nearby Location
+    static const bool historic(true);
+    std::string locationStr(
+        LocationTracker::Instance().LocationRelativeToNearestMapMarker(
+            AlglibPosition({m_position[0], m_position[1], m_position[2]}),
+            true));
+    if (locationStr.empty()) {
+      stream << "I was exploring";
+    } else {
+      stream << locationStr;
+    }
+    wrote = true;
+  }
+  // only output WorldSpace for the first event in scope
+  if (m_worldspace != m_lastWorld) {
+    if (m_worldspace) {
+      stream << " in " << m_worldspace->GetName();
+      wrote = true;
+    }
+    m_lastWorld = m_worldspace;
+  }
+  if (wrote) {
+    stream << '.';
+    return stream.str();
+  } else {
+    return "";
+  }
 }
 
-std::string VisitedPlace::AsString() const
-{
-	// skip redundant entries
-	if (m_lastPlace == *this)
-		return "";
-	std::ostringstream stream;
-	bool wrote(false);
-	if (m_location != m_lastLocation)
-	{
-		std::string departed;
-		if (m_lastLocation)
-		{
-			stream << "I left " << m_lastLocation->GetName();
-			departed = m_lastLocation->GetName();
-			m_lastLocation = nullptr;
-			wrote = true;
-		}
-		if (m_location)
-		{
-			std::string newLocation(m_location->GetName());
-			if (newLocation != departed)
-			{
-				if (departed.empty())
-				{
-					stream << "I ";
-				}
-				else
-				{
-					stream << " and ";
-				}
-				stream << "entered " << m_location->GetName();
-				m_lastLocation = m_location;
-				wrote = true;
-			}
-		}
-	}
-	else if (!m_location)
-	{
-		// event between locations: print position info relative to nearby Location
-		static const bool historic(true);
-		std::string locationStr(LocationTracker::Instance().LocationRelativeToNearestMapMarker(
-			AlglibPosition({ m_position[0], m_position[1], m_position[2] }), true));
-		if (locationStr.empty())
-		{
-			stream << "I was exploring";
-		}
-		else
-		{
-			stream << locationStr;
-		}
-		wrote = true;
-	}
-	// only output WorldSpace for the first event in scope
-	if (m_worldspace != m_lastWorld)
-	{
-		if (m_worldspace)
-		{
-			stream << " in " << m_worldspace->GetName();
-			wrote = true;
-		}
-		m_lastWorld = m_worldspace;
-	}
-	if (wrote)
-	{
-		stream << '.';
-		return stream.str();
-	}
-	else
-	{
-		return "";
-	}
+void VisitedPlace::AsJSON(nlohmann::json &j) const {
+  j["time"] = m_gameTime;
+  if (m_worldspace) {
+    j["worldspace"] = StringUtils::FromFormID(m_worldspace->GetFormID());
+  }
+  if (m_location) {
+    j["location"] = StringUtils::FromFormID(m_location->GetFormID());
+  }
+  if (m_cellID != InvalidForm) {
+    j["cell"] = StringUtils::FromFormID(m_cellID);
+  }
+  j["position"] = nlohmann::json(m_position);
 }
 
-void VisitedPlace::AsJSON(nlohmann::json& j) const
-{
-	j["time"] = m_gameTime;
-	if (m_worldspace)
-	{
-		j["worldspace"] = StringUtils::FromFormID(m_worldspace->GetFormID());
-	}
-	if (m_location)
-	{
-		j["location"] = StringUtils::FromFormID(m_location->GetFormID());
-	}
-	if (m_cellID != InvalidForm)
-	{
-		j["cell"] = StringUtils::FromFormID(m_cellID);
-	}
-	j["position"] = nlohmann::json(m_position);
-}
-
-void to_json(nlohmann::json& j, const VisitedPlace& visitedPlace)
-{
-	visitedPlace.AsJSON(j);
+void to_json(nlohmann::json &j, const VisitedPlace &visitedPlace) {
+  visitedPlace.AsJSON(j);
 }
 
 std::unique_ptr<VisitedPlaces> VisitedPlaces::m_instance;
 
-VisitedPlaces& VisitedPlaces::Instance()
-{
-	if (!m_instance)
-	{
-		m_instance = std::make_unique<VisitedPlaces>();
-	}
-	return *m_instance;
+VisitedPlaces &VisitedPlaces::Instance() {
+  if (!m_instance) {
+    m_instance = std::make_unique<VisitedPlaces>();
+  }
+  return *m_instance;
 }
 
-VisitedPlaces::VisitedPlaces()
-{
+VisitedPlaces::VisitedPlaces() {}
+
+void VisitedPlaces::Reset() {
+  RecursiveLockGuard guard(m_visitedLock);
+  m_visited.clear();
 }
 
-void VisitedPlaces::Reset()
-{
-	RecursiveLockGuard guard(m_visitedLock);
-	m_visited.clear();
+void VisitedPlaces::RecordVisit(const RE::TESWorldSpace *worldspace,
+                                const RE::BGSLocation *location,
+                                const RE::FormID cellID,
+                                const Position &position,
+                                const float gameTime) {
+  bool isNew(false);
+  RecursiveLockGuard guard(m_visitedLock);
+  if (m_visited.empty()) {
+    isNew = true;
+  } else {
+    const VisitedPlace &currentPlace(m_visited.back());
+    isNew = worldspace != currentPlace.Worldspace() ||
+            location != currentPlace.Location() ||
+            cellID != currentPlace.CellID();
+  }
+  if (isNew) {
+    m_visited.emplace_back(worldspace, location, cellID, position, gameTime);
+    Saga::Instance().AddEvent(m_visited.back());
+    if (location) {
+      m_knownLocations.insert(location);
+    }
+  }
 }
 
-void VisitedPlaces::RecordVisit(const RE::TESWorldSpace* worldspace, const RE::BGSLocation* location, const RE::FormID cellID,
-	const Position& position, const float gameTime)
-{
-	bool isNew(false);
-	RecursiveLockGuard guard(m_visitedLock);
-	if (m_visited.empty())
-	{
-		isNew = true;
-	}
-	else
-	{
-		const VisitedPlace& currentPlace(m_visited.back());
-		isNew = worldspace != currentPlace.Worldspace() || location != currentPlace.Location() || cellID != currentPlace.CellID();
-	}
-	if (isNew)
-	{ 
-		m_visited.emplace_back(worldspace, location, cellID, position, gameTime);
-		Saga::Instance().AddEvent(m_visited.back());
-		if (location)
-		{
-			m_knownLocations.insert(location);
-		}
-	}
-}
-
-void VisitedPlaces::AsJSON(nlohmann::json& j) const
-{
-	RecursiveLockGuard guard(m_visitedLock);
-	j["visited"] = nlohmann::json::array();
-	for (const auto& visited : m_visited)
-	{
-		j["visited"].push_back(visited);
-	}
+void VisitedPlaces::AsJSON(nlohmann::json &j) const {
+  RecursiveLockGuard guard(m_visitedLock);
+  j["visited"] = nlohmann::json::array();
+  for (const auto &visited : m_visited) {
+    j["visited"].push_back(visited);
+  }
 }
 
 // rehydrate from cosave data
-void VisitedPlaces::UpdateFrom(const nlohmann::json& j)
-{
-	REL_MESSAGE("Cosave Visited Places\n{}", j.dump(2));
-	RecursiveLockGuard guard(m_visitedLock);
-	m_visited.clear();
-	m_visited.reserve(j["visited"].size());
-	for (const nlohmann::json& place : j["visited"])
-	{
-		const float gameTime(place["time"].get<float>());
-		const auto worldspace(place.find("worldspace"));
-		const RE::TESWorldSpace* worldspaceForm(worldspace != place.cend() ?
-			LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(StringUtils::ToFormID(worldspace->get<std::string>())) : nullptr);
-		const auto location(place.find("location"));
-		const RE::BGSLocation* locationForm(location != place.cend() ?
-			LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(StringUtils::ToFormID(location->get<std::string>())) : nullptr);
-		// CELLs may not be in-RAM so we do not rehydrate, but map the FormID all the same
-		RE::FormID modMaskHint(InvalidForm);
-		if (worldspaceForm)
-		{
-			modMaskHint = LoadOrder::Instance().AsMask(worldspaceForm->GetFormID());
-		}
-		else if (locationForm)
-		{
-			modMaskHint = LoadOrder::Instance().AsMask(locationForm->GetFormID());
-		}
-		const auto cell(place.find("cell"));
-		const RE::FormID cellFormID(cell != place.cend() ?
-			LoadOrder::Instance().MapCosaveFormID(StringUtils::ToFormID(cell->get<std::string>()), modMaskHint) : InvalidForm);
-		// the list was ordered by game time before saving - player position recorded
-		RecordVisit(worldspaceForm, locationForm, cellFormID, Position(place["position"]), gameTime);
-		if (locationForm)
-		{
-			m_knownLocations.insert(locationForm);
-		}
-	}
+void VisitedPlaces::UpdateFrom(const nlohmann::json &j) {
+  REL_MESSAGE("Cosave Visited Places\n{}", j.dump(2));
+  RecursiveLockGuard guard(m_visitedLock);
+  m_visited.clear();
+  m_visited.reserve(j["visited"].size());
+  for (const nlohmann::json &place : j["visited"]) {
+    const float gameTime(place["time"].get<float>());
+    const auto worldspace(place.find("worldspace"));
+    const RE::TESWorldSpace *worldspaceForm(
+        worldspace != place.cend()
+            ? LoadOrder::Instance().RehydrateCosaveFormAs<RE::TESWorldSpace>(
+                  StringUtils::ToFormID(worldspace->get<std::string>()))
+            : nullptr);
+    const auto location(place.find("location"));
+    const RE::BGSLocation *locationForm(
+        location != place.cend()
+            ? LoadOrder::Instance().RehydrateCosaveFormAs<RE::BGSLocation>(
+                  StringUtils::ToFormID(location->get<std::string>()))
+            : nullptr);
+    // CELLs may not be in-RAM so we do not rehydrate, but map the FormID all
+    // the same
+    RE::FormID modMaskHint(InvalidForm);
+    if (worldspaceForm) {
+      modMaskHint = LoadOrder::Instance().AsMask(worldspaceForm->GetFormID());
+    } else if (locationForm) {
+      modMaskHint = LoadOrder::Instance().AsMask(locationForm->GetFormID());
+    }
+    const auto cell(place.find("cell"));
+    const RE::FormID cellFormID(
+        cell != place.cend()
+            ? LoadOrder::Instance().MapCosaveFormID(
+                  StringUtils::ToFormID(cell->get<std::string>()), modMaskHint)
+            : InvalidForm);
+    // the list was ordered by game time before saving - player position
+    // recorded
+    RecordVisit(worldspaceForm, locationForm, cellFormID,
+                Position(place["position"]), gameTime);
+    if (locationForm) {
+      m_knownLocations.insert(locationForm);
+    }
+  }
 }
 
-bool VisitedPlaces::IsKnown(const RE::BGSLocation* location) const
-{
-	RecursiveLockGuard guard(m_visitedLock);
-	return m_knownLocations.contains(location);
+bool VisitedPlaces::IsKnown(const RE::BGSLocation *location) const {
+  RecursiveLockGuard guard(m_visitedLock);
+  return m_knownLocations.contains(location);
 }
 
-void to_json(nlohmann::json& j, const VisitedPlaces& visitedPlaces)
-{
-	visitedPlaces.AsJSON(j);
+void to_json(nlohmann::json &j, const VisitedPlaces &visitedPlaces) {
+  visitedPlaces.AsJSON(j);
 }
 
-}
+} // namespace shse

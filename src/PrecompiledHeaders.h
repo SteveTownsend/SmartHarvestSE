@@ -33,7 +33,7 @@ using namespace std::literals;
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
-#include <tuple> 
+#include <tuple>
 
 #include "Utilities/RecursiveLock.h"
 #include "Utilities/LogWrapper.h"

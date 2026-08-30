@@ -39,12 +39,18 @@ Function SaveIniFile() global native
 Function SetLootableForProducer(Form producer, Form lootable) global native
 Function ClearLootableForProducer(Form producer) global native
 Function SetHarvested(ObjectReference refr) global native
+bool Function ContextValid(int context) global native
+Function TryShipLotDSupplies() global native
 
 Function PrepareSPERGMining() global native
 Function PostprocessSPERGMining() global native
-Function PeriodicReminder(Message mesg) global native
-Function PeriodicReminderString(String msg) global native
+Function PeriodicReminder(Form context, Message mesg) global native
+Function PeriodicReminderString(Form context, String msg) global native
 Function UnblockMineable(ObjectReference mineable) global native
+bool Function IsLotDv6() global native
+bool Function IsArcheologyLeveledUp(int skillValue) global native
+int Function GetNextDig(Form digSite) global native
+Function SetNextDig(Form digSite, int refreshTime) global native
 
 Function AllowSearch() global native
 Function DisallowSearch() global native

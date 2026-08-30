@@ -32,6 +32,10 @@ AchievementsScript property AchievementsQuest auto
 Message property DisposeMsg auto
 Container Property NameToDisplay auto
 
+; Excess Inventory loot targets
+ReferenceAlias[] Property lootTargets Auto
+Int Property LootTargetMax Auto  
+
 ; INIFile::PrimaryType
 int type_Common = 1
 int type_Harvest = 2
@@ -60,12 +64,23 @@ int resource_Volcanic
 int resource_VolcanicDigSite
 
 bool hasFossilMining = False
+; thread-safe singleton, multiplex all dig-sites over this
 int NextDig
 LeveledItem FOS_LItemFossilTierOneGeode
 LeveledItem FOS_LItemFossilTierOneVolcanic
 LeveledItem FOS_LItemFossilTierOneyum
+; incorrect, obsolete - leave to avoid script errors
 LeveledItem FOS_LItemFossilTierOneVolcanicDigSite
 LeveledItem FOS_LItemFossilTierTwoVolcanic
+; LotD v6 only
+LeveledItem DBM_FossilFragmentDrop90
+GlobalVariable FOS_NDrop
+GlobalVariable FOS_CDrop
+GlobalVariable FOS_VDrop
+GlobalVariable DBM_ArcCap
+GlobalVariable DBM_ArcPerkToSpend
+GlobalVariable DBM_ArcSkill
+Sound UILevelUp ;  00057B45
 
 bool hasExtendedCutSaintsAndSeducers = False
 bool hasCCSaintsAndSeducers = False
@@ -174,10 +189,53 @@ Form[] Function CreateArrayFromFormList(FormList oldList, int oldSize)
 EndFunction
 
 Function CreateTransferListArrays()
-    transferList = Utility.CreateFormArray(64, None)
-    transferListInUse = Utility.CreateBoolArray(64, false)
-    transferNames = Utility.CreateStringArray(64, "")
+    transferList = Utility.CreateFormArray(LootTargetMax, None)
+    transferListInUse = Utility.CreateBoolArray(LootTargetMax, false)
+    transferNames = Utility.CreateStringArray(LootTargetMax, "")
     transferListSize = 0
+EndFunction
+
+; truncates, discarding overflow
+Function ConvertExcessInventoryTargetsToRefAlias(int oldLimit, int newLimit)
+    AlwaysTrace("Converting Transfer List REFRs to RefAlias, limit " + oldLimit + " to new limit " + newLimit)
+    if !transferList || transferList.Length != oldLimit
+        return
+    endIf
+    ; in-place Utility.ResizexxxArray does not work
+    bool[] newListInUse = Utility.CreateBoolArray(newLimit)
+    string[] newNames = Utility.CreateStringArray(newLimit)
+    int index = 0
+    int aliasIndex = 0
+    ; compacts the old list
+    while index < oldLimit
+        if transferList[index]
+            if aliasIndex < oldLimit
+                lootTargets[aliasIndex].ForceRefTo(transferList[index] as ObjectReference)
+                newListInUse[aliasIndex] = transferListInUse[index]
+                newNames[aliasIndex] = transferNames[index]
+                AlwaysTrace("Migrated old target " + transferList[index] + " as alias " + lootTargets[aliasIndex])
+                aliasIndex = aliasIndex + 1
+            else
+                AlwaysTrace("Discarding old target " + transferList[index] + " - alias list is full")
+            endif
+        endif
+        index += 1
+    endWhile
+    while aliasIndex < newLimit
+        lootTargets[aliasIndex].TryToClear()
+        newListInUse[aliasIndex] = False
+        newNames[aliasIndex] = ""
+        aliasIndex += 1
+    endWhile
+    transferListInUse = Utility.CreateBoolArray(newLimit)
+    transferNames = Utility.CreateStringArray(newLimit)
+    aliasIndex = 0
+    while aliasIndex < newLimit
+        transferListInUse[aliasIndex] = False
+        transferNames[aliasIndex] = newNames[aliasIndex]
+        aliasIndex += 1
+    endWhile
+    AlwaysTrace("Converted " + transferListSize + " Transfer List REFRs to RefAlias, limit " + oldLimit + " to new limit " + newLimit)
 EndFunction
 
 Function MigrateTransferListArrays(int oldLimit, int newLimit)
@@ -222,7 +280,7 @@ EndFunction
 
 Function ResetExcessInventoryTargets(bool updated)
     int index = 0
-    while index < 64
+    while index < LootTargetMax
         ; reset transfer target - the old setting could be corrupt
         transferListInUse[index] = False
         index += 1
@@ -256,6 +314,23 @@ Form[] Function GetTransferList()
     return transferList
 EndFunction
 
+Function ValidateLootTargets()
+    int index = 0
+    while index < LootTargetMax
+        if lootTargets[index]
+            AlwaysTrace("MCM: Loot Transfer Alias[" + index + "] " + lootTargets[index] + " referencing " + lootTargets[index].GetReference())
+        else
+            AlwaysTrace("MCM: Loot Transfer Alias[" + index + "] empty")
+        endif
+        index = index + 1
+    endwhile
+endFunction
+
+ReferenceAlias[] Function GetLootTargets()
+    ValidateLootTargets()
+    return lootTargets
+EndFunction
+
 string[] Function GetTransferNames()
     return transferNames
 EndFunction
@@ -279,14 +354,14 @@ Function SyncList(int listNum, Form[] forms, int formCount)
 endFunction
 
 ; merge FormList with plugin data
-Function SyncTransferList(Form[] forms, string[] names, int formCount)
+Function SyncTransferList(ReferenceAlias[] aliases, string[] names, int formCount)
     ; plugin resets to empty baseline
     ResetList(list_type_transfer)
     ; ensure BlackList/WhiteList members are present in the plugin's list
     int index = 0
     while index < formCount
         ; Transfer List is sparse. Include empty entries to keep plugin in sync.
-        AddEntryToTransferList(forms[index], names[index])
+        AddEntryToTransferList(aliases[index].GetReference(), names[index])
         index += 1
     endwhile
 endFunction
@@ -330,23 +405,23 @@ Function UpdateTransferListForms(int activeEntries, form[] updateList, bool[] up
         ; iterate blank entries
         while xrefIndex < indices[index]
             transferListInUse[xrefIndex] = False
-            transferList[xrefIndex] = None
+            lootTargets[xrefIndex].TryToClear()
             transferNames[xrefIndex] = ""
-            ;DebugTrace("Skip blank transfer list xref-index " + xrefIndex + " index " + index)
+            AlwaysTrace("Skip blank transfer list xref-index " + xrefIndex + " index " + index)
             xrefIndex += 1
         endWhile
 
         if flags[index]
             transferListInUse[xRefIndex] = updateInUse[index]
-            transferList[xRefIndex] = updateList[index]
+            lootTargets[xRefIndex].ForceRefTo(updateList[index] as ObjectReference)
             transferNames[xRefIndex] = updateNames[index]
-            ;DebugTrace("In-use transfer list xref-index " + xrefIndex + " index " + index + " " + transferNames[xRefIndex])
+            AlwaysTrace("In-use transfer list xref-index " + xrefIndex + " index " + index + " " + transferNames[xRefIndex])
         else
             transferListInUse[xrefIndex] = False
-            transferList[xrefIndex] = None
+            lootTargets[xrefIndex].TryToClear()
             transferNames[xrefIndex] = ""
             transferListSize -= 1
-            ;DebugTrace("Unused transfer list xref-index " + xrefIndex + " index " + index)
+            AlwaysTrace("Unused transfer list xref-index " + xrefIndex + " index " + index)
         
             string translation = GetTranslation(trans)
             if (translation)
@@ -371,7 +446,7 @@ EndFunction
 
 Function UpdateTransferList(int activeEntries, bool[] updateInUse, Form[] updateList, int[] indices, string[] names, bool[] flags, string trans)
     UpdateTransferListForms(activeEntries, updateList, updateInUse, indices, names, flags, trans)
-    SyncTransferList(transferList, transferNames, 64)
+    SyncTransferList(lootTargets, transferNames, LootTargetMax)
 EndFunction
 
 ;push updated lists to plugin
@@ -379,7 +454,7 @@ Function SyncLists(bool reload, bool updateLists)
     if updateLists
         ; force plugin refresh of player's current worn and equipped items
         ResetList(list_type_in_use_items)
-        SyncTransferList(transferList, transferNames, 64)
+        SyncTransferList(lootTargets, transferNames, LootTargetMax)
         SyncList(location_type_whitelist, whiteListedForms, whiteListSize)
         SyncList(location_type_blacklist, blackListedForms, blackListSize)
     endIf
@@ -410,8 +485,8 @@ endFunction
 
 int Function ClearTransferListEntry(int listMax, int index)
     if index < listMax
-        AlwaysTrace("Removing " + transferList[index] + ", entry " + index + " of " + listMax)
-        transferList[index] = None
+        AlwaysTrace("Removing " + lootTargets[index] + ", entry " + index + " of " + listMax)
+        lootTargets[index].TryToClear()
         transferNames[index] = ""
         transferListInUse[index] = False
         transferListSize -= 1
@@ -594,7 +669,15 @@ function AddToBlackList(Form target)
 endFunction
 
 int function RemoveFromTransferList(string locationName, Form target)
-    int match = transferList.find(target)
+    int match = -1
+    int index = 0
+    while match == -1 && index < LootTargetMax
+        if target == lootTargets[index].GetReference()
+            match = index
+        else
+            index = index + 1
+        endif
+    endwhile
     if match != -1
         if transferListInUse[match]
             string translation = GetTranslation("$SHSE_TRANSFERLIST_CANNOT_REMOVE_IN_USE")
@@ -613,7 +696,7 @@ int function RemoveFromTransferList(string locationName, Form target)
                 Debug.Notification(msg)
             endif
         endif
-        ClearTransferListEntry(64, match)
+        ClearTransferListEntry(LootTargetMax, match)
         AlwaysTrace(transferListSize + " entries on TransferList")
         return 1
     endIf
@@ -629,7 +712,7 @@ function AddToTransferList(string locationName, Form target)
         return
     endIf
     string name = locationName + "/" + containerName
-    if transferListSize == 64
+    if transferListSize == LootTargetMax
         string translation = GetTranslation("$SHSE_TRANSFERLIST_FULL")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", name)
@@ -639,7 +722,20 @@ function AddToTransferList(string locationName, Form target)
         endif
         return
     endIf
-    if transferList.find(target) == -1
+    int match = -1
+    int empty = -1
+    int index = 0
+    while match == -1 && index < LootTargetMax
+        if target == lootTargets[index].GetReference()
+            match = index
+        else
+            if empty == -1 && !lootTargets[index].GetReference()
+                empty = index
+            endif
+            index = index + 1
+        endif
+    endwhile
+    if match == -1
         string translation = GetTranslation("$SHSE_TRANSFERLIST_ADDED")
         if (translation)
             string msg = Replace(translation, "{ITEMNAME}", name)
@@ -648,18 +744,22 @@ function AddToTransferList(string locationName, Form target)
             endif
         endif
         ; find a free entry
-        int index = 0
-        while index < 64
-            if transferList[index] == None
-                transferList[index] = target
-                transferListInUse[index] = False
-                transferNames[index] = name
-                transferListSize += 1
-                AlwaysTrace(target + " added to TransferList at index " + index + ", size now " + transferListSize)
-                return
+        if empty != -1
+            lootTargets[empty].ForceRefTo(target as ObjectReference)
+            transferListInUse[empty] = False
+            transferNames[empty] = name
+            transferListSize += 1
+            AlwaysTrace(target + " added to TransferList at index " + empty + ", size now " + transferListSize)
+            return
+        endif
+        ; full, apparently - unexpected
+        translation = GetTranslation("$SHSE_TRANSFERLIST_FULL")
+        if (translation)
+            string msg = Replace(translation, "{ITEMNAME}", name)
+            if (msg)
+                Debug.Notification(msg)
             endif
-            index += 1
-        endWhile
+        endif
     else
         AlwaysTrace(target + " already on TransferList")
     endif
@@ -879,11 +979,21 @@ Function HandleCrosshairPauseHotKey(ObjectReference targetedRefr)
     if locationName != ""
         ; add or remove the REFR, not the Base, to avoid blocking other REFRs with same Base
         ToggleStatusInTransferList(locationName, refrToStore)
-        SyncTransferList(transferList, transferNames, 64)
+        SyncTransferList(lootTargets, transferNames, LootTargetMax)
     else
         Debug.Notification("$SHSE_HOTKEY_NOT_VALID_FOR_TRANSFERLIST")
     endIf
 EndFunction
+
+Event OnInit()
+    AlwaysTrace("SHSE_EventsAlias:OnInit")
+    ValidateLootTargets()
+EndEvent
+
+Event OnPlayerLoadGame()
+    AlwaysTrace("SHSE_EventsAlias:OnPlayerLoadGame")
+    ValidateLootTargets()
+EndEvent
 
 Event OnKeyUp(Int keyCode, Float holdTime)
     if (UI.IsTextInputEnabled())
@@ -904,9 +1014,13 @@ Event OnKeyUp(Int keyCode, Float holdTime)
                     HandleCrosshairPauseHotKey(targetedRefr)
                     keyHandlingActive = false
                     return
+                elseif holdTime < 5.0
+                    ; try LotD supply shipment
+                    TryShipLotDSupplies()
+                    return
                 endIf
                 ; trigger shader test on really long press
-                ToggleCalibration(holdTime > 5.0)
+                ToggleCalibration(holdTime > 10.0)
             else
                 Pause()
             endif
@@ -972,13 +1086,11 @@ Event OnKeyUp(Int keyCode, Float holdTime)
             if keyCode == pauseKeyCode
                 HandlePauseKeyPress(itemForm)
             else
-                if IsQuestTarget(itemForm)
+                ; https://github.com/SteveTownsend/SmartHarvestSE/issues/584
+                ; Blacklisting Quest Item is OK, just disallow Whitelist
+                if keyCode == whiteListKeyCode && IsQuestTarget(itemForm)
                     string msg
-                    if keyCode == whiteListKeyCode
-                        msg = "$SHSE_WHITELIST_QUEST_TARGET"
-                    else
-                        msg = "$SHSE_BLACKLIST_QUEST_TARGET"
-                    endIf
+                    msg = "$SHSE_WHITELIST_QUEST_TARGET"
                     Debug.Notification(msg)
                     keyHandlingActive = false
                     return
@@ -1019,7 +1131,7 @@ bool Function CanMine(MineOreScript handler, int available)
     ; in ResourceCount and the remaining amount in ResourceCountCurrent 
     ;DebugTrace("Available ore: " + available)
     if available == 0
-        PeriodicReminder(handler.DepletedMessage)
+        PeriodicReminder(handler as Form, handler.DepletedMessage)
         return False
     endif
     ; Cidhna Mine special case
@@ -1041,7 +1153,7 @@ bool Function LacksRequiredTools(MineOreScript handler)
     ; Nor do we check that a correct item is being used, as in Advanced Mining: only check player has tool in inventory
     ;DebugTrace("Tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
     if miningToolsRequired && !handler.playerHasTools()
-        PeriodicReminder(handler.FailureMessage)
+        PeriodicReminder(handler as Form, handler.FailureMessage)
         return True
     endif
     return False
@@ -1051,7 +1163,7 @@ bool Function CanMineCACO(CACO_MineOreScript handler, int available)
     ; 'available' is set to -1 before the vein is initialized - after we call giveOre the amount received is
     ; in ResourceCount and the remaining amount in ResourceCountCurrent 
     if available == 0
-        PeriodicReminder(handler.DepletedMessage)
+        PeriodicReminder(handler as Form, handler.DepletedMessage)
         return False
     endif
     ; duplicate vanilla Cidhna Mine processing
@@ -1073,7 +1185,7 @@ bool Function LacksRequiredToolsCACO(CACO_MineOreScript handler)
     ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
     ;DebugTrace("CACO tools required: " + miningToolsRequired + ", PlayerHasTools:" + handler.playerHasTools())
     if miningToolsRequired && !handler.playerHasTools()
-        PeriodicReminder(handler.FailureMessage)
+        PeriodicReminder(handler as Form, handler.FailureMessage)
         return True
     endif
     return False
@@ -1085,18 +1197,24 @@ bool Function LacksRequiredToolsFossils(FOS_DigsiteScript handler)
     ; Nor do we check that a correct item is being used, per Advanced Mining - just that player has one in inventory
     ;DebugTrace("Fossil tools required: " + miningToolsRequired + ", PlayerHasTools:" + thisPlayer.GetItemCount(handler.mineOreToolsList))
     if miningToolsRequired && !thisPlayer.GetItemCount(handler.mineOreToolsList)
-        PeriodicReminderString("You lack a pick")
+        PeriodicReminderString(handler as Form, "You lack a pick")
         return True
     endif
     return False
 endFunction
 
 ; brute force mineable resource gathering to bypass immersive but slow MineOreScript/Furniture handshaking and animations
-Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNotify, bool isFirehose)
+Event OnMining(ObjectReference akMineable, int context, int resourceType, bool manualLootNotify, bool isFirehose)
     if logEvent
         DebugTrace("OnMining: " + akMineable.GetDisplayName() + "RefID(" +  akMineable.GetFormID() + ")  BaseID(" + akMineable.GetBaseObject().GetFormID() + ")" ) 
         DebugTrace("resource type: " + resourceType + ", notify for manual loot: " + manualLootNotify)
     endIf
+    if !ContextValid(context)
+        AlwaysTrace("OnMining: aborting after CELL changed for" + akMineable)
+        UnblockMineable(akMineable)
+        return
+    endif
+
     int miningStrikes = 0
     int targetResourceTotal = 0
     int strikesToCollect = 0
@@ -1252,6 +1370,7 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
             endIf            
             ; housekeeping
             float now = Utility.GetCurrentGameTime()
+            NextDig = GetNextDig(akMineable)
             if FOSMinable.GetLinkedRef().IsDisabled() && now >= NextDig
                 FOSMinable.GetLinkedRef().Enable()
             endif
@@ -1264,13 +1383,28 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
                 ; allow retry, player might acquire tools in the interim
                 UnblockMineable(akMineable)
             elseif now >= NextDig
-                NextDig = (now + 30) as Int
-                thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanicDigSite, 1)
+                SetNextDig(akMineable, (now + FOSMinable.FOS_ResetTime.GetValue()) as Int)
+                int fos_index = FOS_VDrop.GetValue() as int
+                fos_index += 1
+                While fos_index
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
+                    fos_index -= 1
+                EndWhile
                 thisPlayer.AddItem(FOS_LItemFossilTierTwoVolcanic, 1)
-                PeriodicReminderString("Dig site is exhausted")
+                if IsLotDv6()
+                    If DBM_ArcSkill.GetValue() < DBM_ArcCap.GetValue()	
+                        DBM_ArcSkill.SetValue(DBM_ArcSkill.GetValue() + 1)
+                        ; extra logic if this triggers a level-up
+                        if IsArcheologyLeveledUp(DBM_ArcSkill.Value as int)
+                            DBM_ArcPerkToSpend.SetValue(DBM_ArcPerkToSpend.GetValue() + 1)
+                            UILevelUp.Play(thisPlayer)
+                        endif
+                    endif
+                endif
+                PeriodicReminderString(FOSMinable as Form, "Dig site is exhausted")
                 FOSMinable.GetLinkedRef().Disable() 
             else
-                PeriodicReminderString("Dig site is exhausted, check back at a later time.")    
+                PeriodicReminderString(FOSMinable as Form, "Dig site is exhausted, check back at a later time.")    
             endif
             handled = true
         endif
@@ -1292,14 +1426,29 @@ Event OnMining(ObjectReference akMineable, int resourceType, bool manualLootNoti
         if (dropFactor <= miningStrikes)
             if logEvent
                 DebugTrace("Fossil Mining: provide loot!")
-            endIf            
+            endIf
+            int fos_index
             if (resourceType == resource_Geode)
-                thisPlayer.AddItem(FOS_LItemFossilTierOneGeode, 1)
-            Elseif (resourceType == resource_Volcanic)
-                thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
-            Elseif (resourceType == resource_Ore)
-                thisPlayer.AddItem(FOS_LItemFossilTierOneyum, 1)
-            Endif
+                fos_index = FOS_CDrop.GetValue() as int
+            elseif (resourceType == resource_Volcanic)
+                fos_index = FOS_VDrop.GetValue() as int
+            elseif (resourceType == resource_Ore)
+                    fos_index = FOS_NDrop.GetValue() as int
+            endif
+            fos_index += 1
+            While fos_index
+                if (resourceType == resource_Geode)
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneGeode, 1)
+                Elseif (resourceType == resource_Volcanic)
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneVolcanic, 1)
+                Elseif (resourceType == resource_Ore)
+                    thisPlayer.AddItem(FOS_LItemFossilTierOneyum, 1)
+                Endif
+                if IsLotDv6()
+                    thisPlayer.AddItem(DBM_FossilFragmentDrop90, 1)
+                endif
+                fos_index -= 1
+            EndWhile
         Endif
     Endif
 
@@ -1317,13 +1466,18 @@ int Function SyntheticFloraActivateCount(ObjectReference target)
 EndFunction
 
 ; don't worry about interrupting Fishing, the minigame won't yield this type of object
-Event OnHarvestSyntheticFlora(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
+Event OnHarvestSyntheticFlora(ObjectReference akTarget, int context, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
     Form baseForm = akTarget.GetBaseObject()
     int baseID = baseForm.GetFormID()
     bool activated = False
+    if !ContextValid(context)
+        AlwaysTrace("OnHarvestSyntheticFlora: aborting after CELL changed for" + akTarget)
+        NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+        return
+    endif
 
     ;DebugTrace("OnHarvestSyntheticFlora: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if !akTarget.IsActivationBlocked() && IsInHarvestableState(akTarget)
@@ -1375,7 +1529,7 @@ bool Function CanHarvest(int objectType)
     return True
 endFunction
 
-Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
+Event OnHarvestCritter(ObjectReference akTarget, int context, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
@@ -1383,24 +1537,33 @@ Event OnHarvestCritter(ObjectReference akTarget, Form itemForm, string baseName,
     int baseID = baseForm.GetFormID()
     bool activated = False
 
-    ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
-    if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
-        activated = ActivateItem2(akTarget, thisPlayer, silent, 1)
-        if !activated
-            AlwaysTrace("OnHarvestCritter: Activate failed for " + akTarget)
-        endIf
-        ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
+    if ContextValid(context)
+        ;DebugTrace("OnHarvestCritter: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
+        if !akTarget.IsActivationBlocked() && CanHarvestCritter(akTarget)
+            activated = ActivateItem2(akTarget, thisPlayer, silent, 1)
+            if !activated
+                AlwaysTrace("OnHarvestCritter: Activate failed for " + akTarget)
+            endIf
+            ;DebugTrace("OnHarvestCritter:Activated:" + akTarget)
+        endif
+    else
+        AlwaysTrace("OnHarvestCritter: aborting after CELL changed for" + akTarget)
     endif
     NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
 endEvent
 
-Event OnHarvest(ObjectReference akTarget, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
+Event OnHarvest(ObjectReference akTarget, int context, Form itemForm, string baseName, int itemType, int count, bool silent, bool collectible, float ingredientCount, bool isWhitelisted)
     bool notify = false
     ; capture values now, dynamic REFRs can become invalid before we need them
     int refrID = akTarget.GetFormID()
     Form baseForm = akTarget.GetBaseObject()
     int baseID = baseForm.GetFormID()
     bool activated = False
+    if !ContextValid(context)
+        AlwaysTrace("OnHarvest: aborting after CELL changed for" + akTarget)
+        NotifyActivated(itemForm, itemType, collectible, refrID, baseID, notify, baseName, count, activated, silent, isWhitelisted)
+        return
+    endif
 
     ;DebugTrace("OnHarvest: target " + akTarget + ", base " + itemForm + ", item type: " + itemType + ", do not notify: " + silent)
     if (IsBookObject(itemType))
@@ -1656,7 +1819,11 @@ Function DoObjectGlow(ObjectReference akTargetRef, int duration, int reason)
 endFunction
 
 ; This only handles ore-veins
-Event OnObjectGlow(ObjectReference akTargetRef, int duration, int reason)
+Event OnObjectGlow(ObjectReference akTargetRef, int context, int duration, int reason)
+    if !ContextValid(context)
+        AlwaysTrace("OnObjectGlow: aborting after CELL changed for" + akTargetRef)
+        return
+    endif
     ; do not glow ore-vein if it's depleted. Various checks.
     MineOreScript mineable = akTargetRef as MineOreScript
     bool oreHandled = False
@@ -1775,15 +1942,33 @@ Event OnGameReady()
         endif
     endif
 
-    ;look for Fossil Mining form IDs, to handle fossil handout after mining
-    FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
-    if FOS_LItemFossilTierOneGeode
-        AlwaysTrace("Fossil Mining found in Load Order")
+    ;check for LotD v6, which includes Fossil Mining
+    if IsLotDv6()
+        AlwaysTrace("Fossil Mining via LotD v6")
         hasFossilMining = True
-        FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierOneVolcanicDigSite = Game.GetFormFromFile(0x3f41f, "Fossilsyum.esp") as LeveledItem
-        FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
+        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0xf0b39, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0xf0b36, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0xf0b2f, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0xf0b37, "LegacyoftheDragonborn.esm") as LeveledItem
+        DBM_FossilFragmentDrop90 = Game.GetFormFromFile(0x21647, "LegacyoftheDragonborn.esm") as LeveledItem
+        FOS_NDrop = Game.GetFormFromFile(0xf0ae3, "LegacyoftheDragonborn.esm") as GlobalVariable
+        FOS_CDrop = Game.GetFormFromFile(0xf0ae4, "LegacyoftheDragonborn.esm") as GlobalVariable
+        FOS_VDrop = Game.GetFormFromFile(0xf0ae5, "LegacyoftheDragonborn.esm") as GlobalVariable
+        DBM_ArcCap = Game.GetFormFromFile(0x84157, "LegacyoftheDragonborn.esm") as GlobalVariable
+        DBM_ArcPerkToSpend = Game.GetFormFromFile(0x1c6624, "LegacyoftheDragonborn.esm") as GlobalVariable
+        DBM_ArcSkill = Game.GetFormFromFile(0x39fce0, "LegacyoftheDragonborn.esm") as GlobalVariable
+        UILevelUp = Game.GetFormFromFile(0x57b45, "Skyrim.esm") as Sound
+
+    else
+        ;look for Fossil Mining form IDs, to handle fossil handout after mining
+        FOS_LItemFossilTierOneGeode = Game.GetFormFromFile(0x3ee7d, "Fossilsyum.esp") as LeveledItem
+        if FOS_LItemFossilTierOneGeode
+            AlwaysTrace("Fossil Mining found in Load Order")
+            hasFossilMining = True
+            FOS_LItemFossilTierOneVolcanic = Game.GetFormFromFile(0x3ee7a, "Fossilsyum.esp") as LeveledItem
+            FOS_LItemFossilTierOneyum = Game.GetFormFromFile(0x3c77, "Fossilsyum.esp") as LeveledItem
+            FOS_LItemFossilTierTwoVolcanic = Game.GetFormFromFile(0x3ee7b, "Fossilsyum.esp") as LeveledItem
+        endif
     endif
 
     ; Check for CC Saints and Seducers

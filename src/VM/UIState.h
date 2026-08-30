@@ -22,32 +22,30 @@ http://www.fsf.org/licensing/licenses
 #include <condition_variable>
 #include <mutex>
 
-namespace shse
-{
+namespace shse {
 class UIState {
 public:
+  static UIState &Instance();
+  UIState();
 
-	static UIState& Instance();
-	UIState();
-
-	void WaitUntilVMGoodToGo();
-	void ReportVMGoodToGo(const bool delayed, const int nonce);
-	void Reset();
-	void SetMCMState(const bool isOpen);
-	ScanStatus OKToScan() const;
+  void WaitUntilVMGoodToGo();
+  void ReportVMGoodToGo(const bool delayed, const int nonce);
+  void Reset();
+  void SetMCMState(const bool isOpen);
+  ScanStatus OKToScan() const;
 
 private:
-	// Worker thread loop delays once UI ready
-	static constexpr double OnUIClosedThreadDelaySeconds = 1.0;
+  // Worker thread loop delays once UI ready
+  static constexpr double OnUIClosedThreadDelaySeconds = 1.0;
 
-	static std::unique_ptr<UIState> m_instance;
-	int m_nonce;
-	std::condition_variable m_uiReport;
-	std::mutex m_uiLock;
-	bool m_vmResponded;
-	bool m_uiDelayed;
-	bool m_waiting;
-	bool m_mcmOpen;
+  static std::unique_ptr<UIState> m_instance;
+  int m_nonce;
+  std::condition_variable m_uiReport;
+  std::mutex m_uiLock;
+  bool m_vmResponded;
+  bool m_uiDelayed;
+  bool m_waiting;
+  bool m_mcmOpen;
 };
 
-}
+} // namespace shse

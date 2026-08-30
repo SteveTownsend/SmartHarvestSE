@@ -21,55 +21,48 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/dataCase.h"
 
-namespace shse
-{
+namespace shse {
 
-void LeveledItemCategorizer::CategorizeContents()
-{
-	ProcessContentsAtLevel(m_rootItem);
+void LeveledItemCategorizer::CategorizeContents() {
+  ProcessContentsAtLevel(m_rootItem);
 }
 
-LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem* rootItem) :
-	m_rootItem(rootItem)
-{
-	m_lvliSeen.insert(m_rootItem);
+LeveledItemCategorizer::LeveledItemCategorizer(const RE::TESLevItem *rootItem)
+    : m_rootItem(rootItem) {
+  m_lvliSeen.insert(m_rootItem);
 }
 
-LeveledItemCategorizer::~LeveledItemCategorizer()
-{
+LeveledItemCategorizer::~LeveledItemCategorizer() {}
+
+void LeveledItemCategorizer::ProcessContentsAtLevel(
+    const RE::TESLevItem *leveledItem) {
+  for (const RE::LEVELED_OBJECT &leveledObject : leveledItem->entries) {
+    RE::TESForm *itemForm(leveledObject.form);
+    if (!itemForm)
+      continue;
+    // Handle nesting of leveled items
+    RE::TESLevItem *leveledItemForm(itemForm->As<RE::TESLevItem>());
+    if (leveledItemForm) {
+      // only process LVLI if not already seen
+      if (m_lvliSeen.insert(leveledItemForm).second) {
+        ProcessContentsAtLevel(leveledItemForm);
+      }
+      continue;
+    }
+    ObjectType itemType(
+        DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
+    if (itemType != ObjectType::unknown) {
+      RE::TESBoundObject *boundItem = itemForm->As<RE::TESBoundObject>();
+      if (!boundItem) {
+        REL_WARNING("LVLI 0x{:08x} has content leaf {}/0x{:08x} that is not "
+                    "TESBoundObject",
+                    m_rootItem->GetFormID(), itemForm->GetName(),
+                    itemForm->GetFormID());
+        return;
+      }
+      ProcessContentLeaf(boundItem, itemType);
+    }
+  }
 }
 
-void LeveledItemCategorizer::ProcessContentsAtLevel(const RE::TESLevItem* leveledItem)
-{
-	for (const RE::LEVELED_OBJECT& leveledObject : leveledItem->entries)
-	{
-		RE::TESForm* itemForm(leveledObject.form);
-		if (!itemForm)
-			continue;
-		// Handle nesting of leveled items
-		RE::TESLevItem* leveledItemForm(itemForm->As<RE::TESLevItem>());
-		if (leveledItemForm)
-		{
-			// only process LVLI if not already seen
-			if (m_lvliSeen.insert(leveledItemForm).second)
-			{
-				ProcessContentsAtLevel(leveledItemForm);
-			}
-			continue;
-		}
-		ObjectType itemType(DataCase::GetInstance()->GetObjectTypeForForm(itemForm));
-		if (itemType != ObjectType::unknown)
-		{
-			RE::TESBoundObject* boundItem = itemForm->As<RE::TESBoundObject>();
-			if (!boundItem)
-			{
-				REL_WARNING("LVLI 0x{:08x} has content leaf {}/0x{:08x} that is not TESBoundObject", m_rootItem->GetFormID(),
-					itemForm->GetName(), itemForm->GetFormID());
-				return;
-			}
-			ProcessContentLeaf(boundItem, itemType);
-		}
-	}
-}
-    
-}
+} // namespace shse

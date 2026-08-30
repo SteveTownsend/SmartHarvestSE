@@ -21,34 +21,37 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/iniSettings.h"
 
-namespace shse
-{
+namespace shse {
 #ifdef GetObject
 #undef GetObject
 #endif
 
-class InventoryItem
-{
+class InventoryItem {
 public:
-	InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry, std::ptrdiff_t a_count, const EnchantedObjectHandling enchantedObjectHandling);
-	InventoryItem(const InventoryItem& rhs);
+  InventoryItem(std::unique_ptr<RE::InventoryEntryData> a_entry,
+                std::ptrdiff_t a_count,
+                const EnchantedObjectHandling enchantedObjectHandling);
+  InventoryItem(const InventoryItem &rhs);
 
-	// returns number of objects added
-	size_t TakeAll(RE::TESObjectREFR* container, RE::TESObjectREFR* target, const bool inlineTransfer);
+  // returns number of objects added
+  size_t TakeAll(RE::TESObjectREFR *container, RE::TESObjectREFR *target,
+                 const bool inlineTransfer);
 
-	inline RE::TESBoundObject* BoundObject() const { return m_entry->GetObject(); }
-	inline ObjectType LootObjectType() const { return m_objectType; }
-	inline std::ptrdiff_t Count() const { return m_count; }
-	void MakeCopies(RE::TESObjectREFR* target, size_t count);
+  inline RE::TESBoundObject *BoundObject() const {
+    return m_entry->GetObject();
+  }
+  inline ObjectType LootObjectType() const { return m_objectType; }
+  inline std::ptrdiff_t Count() const { return m_count; }
+  void MakeCopies(RE::TESObjectREFR *target, size_t count);
 
 private:
-	void Remove(
-		RE::TESObjectREFR* container, RE::TESObjectREFR* target, RE::ExtraDataList* extraDataList, ptrdiff_t count);
+  void Remove(RE::TESObjectREFR *container, RE::TESObjectREFR *target,
+              RE::ExtraDataList *extraDataList, ptrdiff_t count);
 
-	bool m_inlineTransfer;
-	mutable std::unique_ptr<RE::InventoryEntryData> m_entry;
-	const std::ptrdiff_t m_count;
-	ObjectType m_objectType;
+  bool m_inlineTransfer;
+  mutable std::unique_ptr<RE::InventoryEntryData> m_entry;
+  const std::ptrdiff_t m_count;
+  ObjectType m_objectType;
 };
 
-}
+} // namespace shse

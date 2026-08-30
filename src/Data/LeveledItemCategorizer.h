@@ -19,25 +19,24 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
+namespace shse {
 
-class LeveledItemCategorizer
-{
+class LeveledItemCategorizer {
 public:
-	LeveledItemCategorizer(const RE::TESLevItem* rootItem);
-	virtual ~LeveledItemCategorizer();
-	void CategorizeContents();
+  LeveledItemCategorizer(const RE::TESLevItem *rootItem);
+  virtual ~LeveledItemCategorizer();
+  void CategorizeContents();
 
 private:
-	void ProcessContentsAtLevel(const RE::TESLevItem* leveledItem);
+  void ProcessContentsAtLevel(const RE::TESLevItem *leveledItem);
 
 protected:
-	virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) = 0;
+  virtual void ProcessContentLeaf(RE::TESBoundObject *itemForm,
+                                  ObjectType itemType) = 0;
 
-	const RE::TESLevItem* m_rootItem;
-	// prevent infinite recursion
-	std::unordered_set<const RE::TESLevItem*> m_lvliSeen;
+  const RE::TESLevItem *m_rootItem;
+  // prevent infinite recursion
+  std::unordered_set<const RE::TESLevItem *> m_lvliSeen;
 };
 
-}
+} // namespace shse

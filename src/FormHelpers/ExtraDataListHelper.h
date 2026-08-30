@@ -19,12 +19,12 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #pragma once
 
-namespace shse
-{
-namespace ExtraDataList
-{
-	RE::EnchantmentItem* GetEnchantment(const RE::ExtraDataList* extraData);
-	bool IsItemQuestObject(const RE::TESBoundObject* item, const RE::ExtraDataList* extraData);
-	bool IsREFRQuestObject(const RE::TESObjectREFR* refr, const RE::ExtraDataList* extraData);
-}
-}
+namespace shse {
+namespace ExtraDataList {
+RE::EnchantmentItem *GetEnchantment(const RE::ExtraDataList *extraData);
+bool IsItemQuestObject(const RE::TESBoundObject *item,
+                       const RE::ExtraDataList *extraData);
+bool IsREFRQuestObject(const RE::TESObjectREFR *refr,
+                       const RE::ExtraDataList *extraData);
+} // namespace ExtraDataList
+} // namespace shse

@@ -23,36 +23,41 @@ http://www.fsf.org/licensing/licenses
 #include "FormHelpers/WeaponHelper.h"
 #include "Utilities/utils.h"
 
-namespace shse
-{
+namespace shse {
 
-uint32_t TESObjectWEAPHelper::GetGoldValue(void) const
-{
-	if (!m_weapon)
-		return 0;
+uint32_t TESObjectWEAPHelper::GetGoldValue(void) const {
+  if (!m_weapon)
+    return 0;
 
-	static const RE::BSFixedString fEnchantmentPointsMult = "fEnchantmentPointsMult";
-	static const double fEPM = utils::GetGameSettingFloat(fEnchantmentPointsMult);
-	static const RE::BSFixedString fEnchantmentEffectPointsMult = "fEnchantmentEffectPointsMult";
-	static const double fEEPM = utils::GetGameSettingFloat(fEnchantmentEffectPointsMult);
+  static const RE::BSFixedString fEnchantmentPointsMult =
+      "fEnchantmentPointsMult";
+  static const double fEPM = utils::GetGameSettingFloat(fEnchantmentPointsMult);
+  static const RE::BSFixedString fEnchantmentEffectPointsMult =
+      "fEnchantmentEffectPointsMult";
+  static const double fEEPM =
+      utils::GetGameSettingFloat(fEnchantmentEffectPointsMult);
 
-	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
-	if (!ench)
-		return static_cast<uint32_t>(m_weapon->value);
+  RE::EnchantmentItem *ench =
+      TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects)
+          .GetEnchantment();
+  if (!ench)
+    return static_cast<uint32_t>(m_weapon->value);
 
-	int16_t charge = this->GetMaxCharge();
-	uint32_t cost = static_cast<uint32_t>(ench->data.costOverride);
-	return static_cast<uint32_t>((m_weapon->value * 2) + (fEPM * charge) + (fEEPM * cost));
+  int16_t charge = this->GetMaxCharge();
+  uint32_t cost = static_cast<uint32_t>(ench->data.costOverride);
+  return static_cast<uint32_t>((m_weapon->value * 2) + (fEPM * charge) +
+                               (fEEPM * cost));
 }
 
-int16_t TESObjectWEAPHelper::GetMaxCharge() const
-{
-	if (!m_weapon)
-		return 0;
-	RE::EnchantmentItem* ench = TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects).GetEnchantment();
-	if (ench)
-        return static_cast<int16_t>(m_weapon->amountofEnchantment);
-	return 0;
+int16_t TESObjectWEAPHelper::GetMaxCharge() const {
+  if (!m_weapon)
+    return 0;
+  RE::EnchantmentItem *ench =
+      TESFormHelper(m_weapon, INIFile::SecondaryType::itemObjects)
+          .GetEnchantment();
+  if (ench)
+    return static_cast<int16_t>(m_weapon->amountofEnchantment);
+  return 0;
 }
 
-}
+} // namespace shse

@@ -21,24 +21,24 @@ http://www.fsf.org/licensing/licenses
 
 #include <exception>
 
-class PluginError : public std::runtime_error
-{
-	static constexpr std::string_view ErrorName = "PluginError: ";
+class PluginError : public std::runtime_error {
+  static constexpr std::string_view ErrorName = "PluginError: ";
+
 public:
-	PluginError(const char* pluginName);
+  PluginError(const char *pluginName);
 };
 
-class KeywordError : public std::runtime_error
-{
-	static constexpr std::string_view ErrorName = "KeywordError: ";
+class KeywordError : public std::runtime_error {
+  static constexpr std::string_view ErrorName = "KeywordError: ";
+
 public:
-	KeywordError(const char* keyword);
+  KeywordError(const char *keyword);
 };
 
-class FileNotFound : public std::runtime_error
-{
-	static constexpr std::string_view ErrorName = "FileNotFound: ";
+class FileNotFound : public std::runtime_error {
+  static constexpr std::string_view ErrorName = "FileNotFound: ";
+
 public:
-	FileNotFound(const wchar_t* filename);
-	FileNotFound(const char* filename);
+  FileNotFound(const wchar_t *filename);
+  FileNotFound(const char *filename);
 };

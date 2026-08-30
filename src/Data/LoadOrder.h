@@ -27,87 +27,90 @@ constexpr RE::FormID ESPFERawMask = 0x00000FFF;
 constexpr RE::FormID InvalidForm = 0x0;
 constexpr RE::FormID InvalidPlugin = 0xFFFFFFFF;
 
-namespace shse
-{
+namespace shse {
 
 class LoadOrder {
 public:
-	static LoadOrder& Instance();
-	LoadOrder();
-	bool Analyze(void);
-	RE::FormID GetFormIDMask(const std::string& modName) const;
+  static LoadOrder &Instance();
+  LoadOrder();
+  bool Analyze(void);
+  RE::FormID GetFormIDMask(const std::string &modName) const;
 
-	// Proxies for CommonLibSSE-NG to handle merged plugins using MergeMapper
-	RE::TESForm* LookupForm(RE::FormID a_localFormID, std::string_view a_modName);
-	template <class T>
-	T* LookupForm(RE::FormID a_localFormID, std::string_view a_modName)
-	{
-		auto form = LookupForm(a_localFormID, a_modName);
-		if (!form) {
-			return nullptr;
-		}
+  // Proxies for CommonLibSSE-NG to handle merged plugins using MergeMapper
+  RE::TESForm *LookupForm(RE::FormID a_localFormID, std::string_view a_modName);
+  template <class T>
+  T *LookupForm(RE::FormID a_localFormID, std::string_view a_modName) {
+    auto form = LookupForm(a_localFormID, a_modName);
+    if (!form) {
+      return nullptr;
+    }
 
-		return form->Is(T::FORMTYPE) ? static_cast<T*>(form) : nullptr;
-	}
+    return form->Is(T::FORMTYPE) ? static_cast<T *>(form) : nullptr;
+  }
 
-	bool IncludesMod(const std::string& modName) const;
-	bool ModPrecedesSHSE(const std::string& modName) const;
-	bool ModOwnsForm(const std::string& modName, const RE::FormID formID) const;
-	void AsJSON(nlohmann::json& j) const;
-	void UpdateFrom(const nlohmann::json& j);
-	RE::TESForm* RehydrateCosaveForm(const RE::FormID cosaveID) const;
-	template <typename T>
-	T* RehydrateCosaveFormAs(const RE::FormID cosaveID) const
-	{
-		RE::TESForm* form(RehydrateCosaveForm(cosaveID));
-		return form ? form->As<T>() : nullptr;
-	}
-	RE::FormID MapCosaveFormID(const RE::FormID cosaveID, const RE::FormID modMaskHint) const;
+  bool IncludesMod(const std::string &modName) const;
+  bool ModPrecedesSHSE(const std::string &modName) const;
+  bool ModOwnsForm(const std::string &modName, const RE::FormID formID) const;
+  void AsJSON(nlohmann::json &j) const;
+  void UpdateFrom(const nlohmann::json &j);
+  RE::TESForm *RehydrateCosaveForm(const RE::FormID cosaveID) const;
+  template <typename T>
+  T *RehydrateCosaveFormAs(const RE::FormID cosaveID) const {
+    RE::TESForm *form(RehydrateCosaveForm(cosaveID));
+    return form ? form->As<T>() : nullptr;
+  }
+  RE::FormID MapCosaveFormID(const RE::FormID cosaveID,
+                             const RE::FormID modMaskHint) const;
 
-	inline RE::FormID AsMask(const RE::FormID formID) const
-	{
-		if ((formID & ESPFETypeMask) == ESPFETypeMask)
-			return formID & ESPFEMask;
-		return formID & ESPMask;
-	}
-	inline RE::FormID AsRaw(const RE::FormID formID) const
-	{
-		if ((formID & ESPFETypeMask) == ESPFETypeMask)
-			return formID & ESPFERawMask;
-		return formID & FullRawMask;
-	}
-	inline RE::FormID MakeFormID(const RE::FormID modMask, const RE::FormID rawID) const
-	{
-		return modMask | rawID;
-	}
+  inline RE::FormID AsMask(const RE::FormID formID) const {
+    if ((formID & ESPFETypeMask) == ESPFETypeMask)
+      return formID & ESPFEMask;
+    return formID & ESPMask;
+  }
+  inline RE::FormID AsRaw(const RE::FormID formID) const {
+    if ((formID & ESPFETypeMask) == ESPFETypeMask)
+      return formID & ESPFERawMask;
+    return formID & FullRawMask;
+  }
+  inline RE::FormID MakeFormID(const RE::FormID modMask,
+                               const RE::FormID rawID) const {
+    return modMask | rawID;
+  }
 
-	struct LoadInfo {
-		inline bool operator==(const LoadInfo& rhs) const
-		{
-			return m_mask == rhs.m_mask && m_priority == rhs.m_priority;
-		}
-		RE::FormID m_mask;
-		int m_priority;
-	};
+  struct LoadInfo {
+    inline bool operator==(const LoadInfo &rhs) const {
+      return m_mask == rhs.m_mask && m_priority == rhs.m_priority;
+    }
+    RE::FormID m_mask;
+    int m_priority;
+  };
+
+  inline LotDState GetLotDState() const { return m_lotdState; }
+  bool CellPersistenceReliable(RE::TESObjectCELL *cell) const;
 
 private:
-	static constexpr RE::FormID LightFormIDSentinel = 0xfe000000;
-	static constexpr RE::FormID LightFormIDMask = 0xfefff000;
-	static constexpr RE::FormID RegularFormIDMask = 0xff000000;
-	// no lock as all public functions are const once loaded
-	static std::unique_ptr<LoadOrder> m_instance;
-	mutable RecursiveLock m_loadLock;
+  static constexpr RE::FormID LightFormIDSentinel = 0xfe000000;
+  static constexpr RE::FormID LightFormIDMask = 0xfefff000;
+  static constexpr RE::FormID RegularFormIDMask = 0xff000000;
+  // no lock as all public functions are const once loaded
+  static std::unique_ptr<LoadOrder> m_instance;
+  mutable RecursiveLock m_loadLock;
 
-	std::unordered_map<std::string, LoadInfo> m_loadInfoByName;
-	std::unordered_map<std::string, LoadInfo> m_cosaveLoadInfoByName;
-	std::unordered_map <RE::FormID, std::string> m_cosaveModNameByMask;
-	int m_shsePriority;
-	int m_cosaveShsePriority;
-	bool m_coSaveLoadOrderDiffers;
+  std::unordered_map<std::string, LoadInfo> m_loadInfoByName;
+  std::unordered_map<std::string, LoadInfo> m_cosaveLoadInfoByName;
+  std::unordered_map<RE::FormID, std::string> m_cosaveModNameByMask;
+  std::vector<std::string> m_eslMasters;
+  int m_shsePriority;
+  int m_cosaveShsePriority;
+  bool m_coSaveLoadOrderDiffers;
+  LotDState m_lotdState;
 };
 
-inline bool operator<(const LoadOrder::LoadInfo& lhs, const LoadOrder::LoadInfo& rhs) { return lhs.m_priority < rhs.m_priority; }
-
-void to_json(nlohmann::json& j, const LoadOrder& p);
-
+inline bool operator<(const LoadOrder::LoadInfo &lhs,
+                      const LoadOrder::LoadInfo &rhs) {
+  return lhs.m_priority < rhs.m_priority;
 }
+
+void to_json(nlohmann::json &j, const LoadOrder &p);
+
+} // namespace shse

@@ -21,39 +21,41 @@ http://www.fsf.org/licensing/licenses
 
 #include "Data/LeveledItemCategorizer.h"
 
-namespace shse
-{
+namespace shse {
 
-class ProducerLootables
-{
+class ProducerLootables {
 private:
-	static std::unique_ptr<ProducerLootables> m_instance;
-	mutable RecursiveLock m_producerIngredientLock;
-	std::unordered_map<const RE::TESForm*, RE::TESBoundObject*> m_producerLootable;
+  static std::unique_ptr<ProducerLootables> m_instance;
+  mutable RecursiveLock m_producerIngredientLock;
+  std::unordered_map<const RE::TESForm *, RE::TESBoundObject *>
+      m_producerLootable;
 
-	class SyntheticFloraCategorizer : public LeveledItemCategorizer
-	{
-	public:
-		SyntheticFloraCategorizer(const RE::TESObjectACTI* producer, const RE::TESLevItem* rootItem);
-		inline ObjectType ContentsType() const { return m_contentsType; }
+  class SyntheticFloraCategorizer : public LeveledItemCategorizer {
+  public:
+    SyntheticFloraCategorizer(const RE::TESObjectACTI *producer,
+                              const RE::TESLevItem *rootItem);
+    inline ObjectType ContentsType() const { return m_contentsType; }
 
-	protected:
-		virtual void ProcessContentLeaf(RE::TESBoundObject* itemForm, ObjectType itemType) override;
+  protected:
+    virtual void ProcessContentLeaf(RE::TESBoundObject *itemForm,
+                                    ObjectType itemType) override;
 
-	private:
-		const RE::TESObjectACTI* m_producer;
-		const RE::TESForm* m_contents;
-		ObjectType m_contentsType;
-	};
+  private:
+    const RE::TESObjectACTI *m_producer;
+    const RE::TESForm *m_contents;
+    ObjectType m_contentsType;
+  };
 
 public:
-	static ProducerLootables& Instance();
-	ProducerLootables() {}
+  static ProducerLootables &Instance();
+  ProducerLootables() {}
 
-	bool SetLootableForProducer(const RE::TESForm* producer, RE::TESBoundObject* ingredient);
-	bool ResolveLootableForProducer(RE::TESForm* producer, RE::TESLevItem* leveledItem);
-	void ClearLootableForProducer(const RE::TESForm* producer);
-	RE::TESBoundObject* GetLootableForProducer(RE::TESForm* producer) const;
+  bool SetLootableForProducer(const RE::TESForm *producer,
+                              RE::TESBoundObject *ingredient);
+  bool ResolveLootableForProducer(RE::TESForm *producer,
+                                  RE::TESLevItem *leveledItem);
+  void ClearLootableForProducer(const RE::TESForm *producer);
+  RE::TESBoundObject *GetLootableForProducer(RE::TESForm *producer) const;
 };
 
-}
+} // namespace shse
