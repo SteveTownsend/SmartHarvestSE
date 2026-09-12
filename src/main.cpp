@@ -198,7 +198,7 @@ void InitializeDiagnostics() {
               Version::IsVR());
 }
 
-EXTERN_C __declspec(dllexport) bool SKSEAPI
+EXTERN_C __declspec(dllexport) bool __cdecl
 SKSEPlugin_Load(const SKSE::LoadInterface *skse) {
   SKSE::Init(skse);
   SKSE::GetMessagingInterface()->RegisterListener(SKSEMessageHandler);

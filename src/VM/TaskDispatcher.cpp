@@ -42,7 +42,7 @@ TaskDispatcher::TaskDispatcher()
 }
 
 void TaskDispatcher::EnqueueTask(const TaskType task_type,
-                                 SKSE::TaskInterface::TaskFn a_task) {
+                                 std::function<void()> a_task) {
   int context(LocationTracker::Instance().GetCellSequence());
   // wrap the task with a check on context before progressing
   m_taskInterface->AddTask([=](void) {
