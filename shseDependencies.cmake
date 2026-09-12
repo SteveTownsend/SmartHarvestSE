@@ -32,7 +32,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.12.0
+  GIT_TAG        v3.16.0
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(Catch2)
@@ -40,7 +40,7 @@ FetchContent_MakeAvailable(Catch2)
 FetchContent_Declare(
   rapidcsv
   GIT_REPOSITORY https://github.com/d99kris/rapidcsv
-  GIT_TAG        v8.90
+  GIT_TAG        v9.07
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(rapidcsv)
@@ -52,8 +52,8 @@ set(BUILD_TESTS OFF)
 FetchContent_Declare(
   CommonLibSSE
   GIT_REPOSITORY https://github.com/alandtse/CommonLibVR
-  # Dec 12 2025 -> Jan 22 2026
-  GIT_TAG        5d341d47108de8f1e70de7db9fa8244d34544fd6
+  # August 30 2026 -> Sept 12 2026
+  GIT_TAG        v7.5.4
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(CommonLibSSE)
@@ -61,7 +61,7 @@ FetchContent_MakeAvailable(CommonLibSSE)
 FetchContent_Declare(
   MergeMapper
   GIT_REPOSITORY https://github.com/alandtse/MergeMapper
-  GIT_TAG        v1.5.0
+  GIT_TAG        v1.6.1
 )
 FetchContent_GetProperties(MergeMapper)
 if(NOT MergeMapper_POPULATED)
