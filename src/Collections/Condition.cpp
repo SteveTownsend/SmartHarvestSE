@@ -19,8 +19,8 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
-#include "Data/LoadOrder.h"
 #include "Collections/Condition.h"
+#include "Data/LoadOrder.h"
 #include "Looting/objects.h"
 #include "Utilities/Exception.h"
 #include "Utilities/utils.h"
@@ -162,6 +162,7 @@ void FormsCondition::AsJSON(nlohmann::json &j) const {
     for (const auto form : pluginData.second) {
       next["form"].push_back(StringUtils::FromFormID(form->GetFormID()));
     }
+    j["forms"].push_back(next);
   }
 }
 
