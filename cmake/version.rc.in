@@ -20,7 +20,7 @@ BEGIN
 			VALUE "FileDescription", "@PROJECT_DESCRIPTION@"
 			VALUE "FileVersion", "@PROJECT_VERSION@"
 			VALUE "InternalName", "@PROJECT_NAME@"
-			VALUE "LegalCopyright", "MIT License, Copyright (C) 2021, 2022"
+			VALUE "LegalCopyright", "GNU GENERAL PUBLIC LICENSE, Version 3, Copyright (C) 2026"
 			VALUE "ProductName", "@PROJECT_FRIENDLY_NAME@"
 			VALUE "ProductVersion", "@PROJECT_VERSION@"
 			VALUE "CompanyName", "towawot, SteveTownsend"
