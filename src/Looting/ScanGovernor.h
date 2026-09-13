@@ -21,8 +21,8 @@ http://www.fsf.org/licensing/licenses
 
 #include "PluginFacade.h"
 
-#include "Looting/containerLister.h"
 #include "Looting/IRangeChecker.h"
+#include "Looting/containerLister.h"
 #include "Utilities/utils.h"
 #include "VM/EventPublisher.h"
 #include "VM/UIState.h"
@@ -136,9 +136,12 @@ private:
   mutable RecursiveLock m_stateLock;
   mutable std::atomic<bool> m_fhiRunning;
 
+  // Storing RefHandle with custom hasher avoids problems with REFR reuse or
+  // deletion
   std::unordered_map<
-      const RE::TESObjectREFR *,
-      std::chrono::time_point<std::chrono::high_resolution_clock>>
+      RE::ObjectRefHandle,
+      std::chrono::time_point<std::chrono::high_resolution_clock>,
+      RE::BSCRC32<RE::ObjectRefHandle>>
       m_glowExpiration;
 
   // Record looted REFRs to avoid re-scan of empty or looted chest and dead

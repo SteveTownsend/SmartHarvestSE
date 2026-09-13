@@ -18,9 +18,10 @@ http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
 #include "PrecompiledHeaders.h"
-#include "WorldState/ActorTracker.h"
+
 #include "Data/dataCase.h"
 #include "Looting/objects.h"
+#include "WorldState/ActorTracker.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/Saga.h"
 
@@ -96,8 +97,8 @@ bool ActorTracker::SeenAlive(const RE::Actor *actor) const {
 // their death
 void ActorTracker::RecordTimeOfDeath(RE::TESObjectREFR *refr) {
   RecursiveLockGuard guard(m_actorLock);
-  m_apparentTimeOfDeath.emplace_back(
-      std::make_pair(refr, std::chrono::high_resolution_clock::now()));
+  m_apparentTimeOfDeath.push_back({refr->GetHandle(), refr->GetFormID(),
+                                   std::chrono::high_resolution_clock::now()});
   DBG_MESSAGE("Enqueued dead body to loot later 0x{:08x}", refr->GetFormID());
 }
 
@@ -138,23 +139,26 @@ void ActorTracker::ReleaseIfReliablyDead(DistanceToTarget &refs) {
       std::chrono::high_resolution_clock::now() -
       std::chrono::milliseconds(static_cast<long long>(interval * 1000.0)));
   while (!m_apparentTimeOfDeath.empty() &&
-         m_apparentTimeOfDeath.front().second <= cutoffPoint) {
+         m_apparentTimeOfDeath.front().registeredAt <= cutoffPoint) {
     // this actor died long enough ago that we trust actor->GetContainer not to
     // crash, provided the ID is still usable
     const auto nextActor(m_apparentTimeOfDeath.front());
-    RE::TESObjectREFR *refr(nextActor.first);
-    if (!RE::TESForm::LookupByID<RE::TESObjectREFR>(refr->GetFormID())) {
-      DBG_MESSAGE("Process enqueued dead body 0x{:08x}", refr->GetFormID());
-    } else {
-      DBG_MESSAGE("Suspect enqueued dead body ID 0x{:08x}", refr->GetFormID());
+    m_apparentTimeOfDeath.pop_front();
+    // Resolve after the wait and retain ownership through synchronous
+    // processing.
+    const auto refr = nextActor.handle.get();
+    if (!refr || refr->IsDeleted()) {
+      DBG_MESSAGE("Skip unavailable enqueued dead body 0x{:08x}",
+                  nextActor.formID);
+      continue;
     }
+    DBG_MESSAGE("Process enqueued dead body 0x{:08x}", nextActor.formID);
     RE::Actor *actor(refr->As<RE::Actor>());
     if (actor) {
       RecordIfKilledByParty(actor);
     }
-    m_apparentTimeOfDeath.pop_front();
-    // use distance 0. to prioritize looting
-    refs.emplace_back(0., refr);
+    // Use distance 0. to prioritize looting
+    refs.emplace_back(0., refr.get());
   }
 }
 

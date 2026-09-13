@@ -20,6 +20,7 @@ http://www.fsf.org/licensing/licenses
 #include "PrecompiledHeaders.h"
 
 #include "VM/TaskDispatcher.h"
+
 #include "Collections/CollectionManager.h"
 #include "Looting/TheftCoordinator.h"
 #include "Utilities/utils.h"
@@ -58,7 +59,11 @@ void TaskDispatcher::EnqueueObjectGlow(RE::TESObjectREFR *refr,
                                        const int duration,
                                        const GlowReason glowReason) {
   RecursiveLockGuard lock(m_queueLock);
-  m_queuedGlow.emplace_back(refr, duration, glowReason);
+  const auto handle(refr->GetHandle());
+  // skip if handle is already invalid
+  if (handle) {
+    m_queuedGlow.emplace_back(handle, duration, glowReason);
+  }
 }
 
 void TaskDispatcher::GlowObjects() {
@@ -82,15 +87,17 @@ void TaskDispatcher::GlowObjects() {
     }
   }
   // Pass in current queued requests by value, as this executes asynchronously
-  EnqueueTask(TaskType::Glow, [=](void) {
-    RE::TESObjectREFR *refr;
+  EnqueueTask(TaskType::Glow, [this, queued](void) {
+    RE::ObjectRefHandle handle;
     int duration;
     GlowReason glowReason;
     std::unordered_set<RE::FormID> doneRefrs;
     for (const auto request : queued) {
-      std::tie(refr, duration, glowReason) = request;
-      if (!refr) {
-        REL_WARNING("Skipping invalid glow request for null REFR");
+      std::tie(handle, duration, glowReason) = request;
+      // Keep the resolved NiPointer alive through all reference access.
+      const auto refr = handle.get();
+      if (!refr || refr->IsDeleted()) {
+        REL_WARNING("Skipping glow request for unavailable REFR");
         continue;
       }
       if (!doneRefrs.insert(refr->GetFormID()).second) {
@@ -134,7 +141,11 @@ void TaskDispatcher::EnqueueLootFromNPC(RE::TESObjectREFR *npc,
   if (!npc || !item)
     return;
   RecursiveLockGuard lock(m_queueLock);
-  m_queuedNPCLoot.emplace_back(npc, item, count, objectType);
+  // NPC references may disappear before the task reaches the main thread.
+  const auto handle(npc->GetHandle());
+  if (handle) {
+    m_queuedNPCLoot.emplace_back(handle, item, count, objectType);
+  }
 }
 
 void TaskDispatcher::LootNPCs() {
@@ -151,13 +162,19 @@ void TaskDispatcher::LootNPCs() {
   }
   DBG_VMESSAGE("Dispatch {} queued Loot NPC requests", queued.size());
   // Pass in current queued requests by value, as this executes asynchronously
-  EnqueueTask(TaskType::Loot, [=](void) {
-    RE::TESObjectREFR *npc;
+  EnqueueTask(TaskType::Loot, [this, queued](void) {
+    RE::ObjectRefHandle handle;
     RE::TESBoundObject *item;
     int count;
     ObjectType objectType;
     for (const auto request : queued) {
-      std::tie(npc, item, count, objectType) = request;
+      std::tie(handle, item, count, objectType) = request;
+      // Hold the NPC through collection bookkeeping and item removal.
+      const auto npc = handle.get();
+      // RemoveItem does not require loaded 3D; keep distant NPC loot requests.
+      if (!npc || npc->IsDeleted()) {
+        continue;
+      }
       DBG_VMESSAGE("Loot NPC: REFR 0x{:08x} to NPC {}/0x{:08x} {} of item {}",
                    npc->GetFormID(), npc->GetBaseObject()->GetName(),
                    npc->GetBaseObject()->GetFormID(), count, item->GetName());

@@ -843,6 +843,7 @@ void CollectionManager::ResolveMembership(void) {
 
 // clear state before game reload, including reset of item state
 void CollectionManager::Clear(void) {
+  RecursiveLockGuard guard(m_collectionLock);
   REL_MESSAGE("Reset Collections");
   // m_collectionsByObjectType is not cleared - it is based on one-time load of
   // JSON files and therefore invariant

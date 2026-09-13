@@ -41,11 +41,11 @@ public:
   void EnqueueReviewExcessInventory(bool force);
 
 private:
-  void EnqueueTask(const TaskType task_type,
-                   std::function<void()> a_task);
-  typedef std::tuple<RE::TESObjectREFR *, const int, const GlowReason>
+  void EnqueueTask(const TaskType task_type, std::function<void()> a_task);
+  // Async operations keep handles in order to safety-check the target REFR.
+  typedef std::tuple<RE::ObjectRefHandle, const int, const GlowReason>
       GlowRequest;
-  typedef std::tuple<RE::TESObjectREFR *, RE::TESBoundObject *, const int,
+  typedef std::tuple<RE::ObjectRefHandle, RE::TESBoundObject *, const int,
                      const ObjectType>
       NPCLootRequest;
   static TaskDispatcher *m_instance;

@@ -19,30 +19,29 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
-#include "Data/dataCase.h"
+#include "Collections/CollectionManager.h"
 #include "Data/LoadOrder.h"
 #include "Data/SettingsCache.h"
-#include "Looting/TryLootREFR.h"
-#include "Looting/ScanGovernor.h"
-#include "Utilities/utils.h"
-#include "WorldState/ActorTracker.h"
-#include "WorldState/LocationTracker.h"
-#include "Looting/ManagedLists.h"
-#include "Looting/objects.h"
-#include "Looting/LootableREFR.h"
-#include "WorldState/PopulationCenters.h"
+#include "Data/dataCase.h"
 #include "FormHelpers/FormHelper.h"
-#include "Collections/CollectionManager.h"
+#include "Looting/LootableREFR.h"
+#include "Looting/ManagedLists.h"
 #include "Looting/NPCFilter.h"
-#include "Looting/ReferenceFilter.h"
-#include "WorldState/PlayerHouses.h"
-#include "WorldState/PlayerState.h"
 #include "Looting/ProducerLootables.h"
+#include "Looting/ReferenceFilter.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/TheftCoordinator.h"
-#include "Collections/CollectionManager.h"
+#include "Looting/TryLootREFR.h"
+#include "Looting/objects.h"
+#include "Utilities/utils.h"
 #include "VM/EventPublisher.h"
 #include "VM/TaskDispatcher.h"
 #include "VM/papyrus.h"
+#include "WorldState/ActorTracker.h"
+#include "WorldState/LocationTracker.h"
+#include "WorldState/PlayerHouses.h"
+#include "WorldState/PlayerState.h"
+#include "WorldState/PopulationCenters.h"
 
 #include <chrono>
 #include <thread>
@@ -1159,7 +1158,10 @@ void ScanGovernor::GlowObject(RE::TESObjectREFR *refr, const int duration,
   // item remains in the list until we change cell but there should never be so
   // many in a cell that this is a problem.
   RecursiveLockGuard guard(m_stateLock);
-  const auto existingGlow(m_glowExpiration.find(refr));
+  // save RefHandle for REFR in hand, to guard against reference reuse or
+  // deletion
+  const auto handle = refr->GetHandle();
+  const auto existingGlow(m_glowExpiration.find(handle));
   auto currentTime(std::chrono::high_resolution_clock::now());
   if (existingGlow != m_glowExpiration.cend() &&
       existingGlow->second > currentTime)
@@ -1168,7 +1170,7 @@ void ScanGovernor::GlowObject(RE::TESObjectREFR *refr, const int duration,
   auto expiry =
       currentTime + std::chrono::milliseconds(
                         static_cast<long long>(duration * 1000.0) - 500LL);
-  m_glowExpiration[refr] = expiry;
+  m_glowExpiration[handle] = expiry;
   DBG_VMESSAGE("Trigger glow {} for {}/0x{:08x}", GlowName(glowReason),
                refr->GetName(), refr->formID);
   if (objectType == ObjectType::oreVein) {

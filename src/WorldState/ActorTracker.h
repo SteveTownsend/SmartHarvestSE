@@ -21,9 +21,9 @@ http://www.fsf.org/licensing/licenses
 
 #include <deque>
 
+#include "Collections/CollectionManager.h"
 #include "Looting/IRangeChecker.h"
 #include "WorldState/PartyMembers.h"
-#include "Collections/CollectionManager.h"
 
 namespace shse {
 
@@ -77,10 +77,13 @@ private:
   // sorted out their state for unlocked introspection using GetContainer().
   // When looting during combat, we could try to loot _very soon_ (microseconds,
   // potentially) after game registers the Actor's demise.
-  std::deque<
-      std::pair<RE::TESObjectREFR *,
-                std::chrono::time_point<std::chrono::high_resolution_clock>>>
-      m_apparentTimeOfDeath;
+  // Keep a handle across the wait; the saved FormID is only for logging.
+  struct PendingDeadBody {
+    RE::ObjectRefHandle handle;
+    RE::FormID formID;
+    std::chrono::time_point<std::chrono::high_resolution_clock> registeredAt;
+  };
+  std::deque<PendingDeadBody> m_apparentTimeOfDeath;
 
   // Actors we encountered alive at any point of this visit to the cell
   std::unordered_set<const RE::TESObjectREFR *> m_seenAlive;
