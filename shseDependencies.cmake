@@ -53,7 +53,7 @@ FetchContent_Declare(
   CommonLibSSE
   GIT_REPOSITORY https://github.com/alandtse/CommonLibVR
   # August 30 2026 -> Sept 12 2026
-  GIT_TAG        v7.5.4
+  GIT_TAG        v8.0.0
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(CommonLibSSE)
