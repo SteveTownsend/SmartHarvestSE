@@ -57,13 +57,53 @@ ScanGovernor &ScanGovernor::Instance() {
   return *m_instance;
 }
 
+ScanGovernor::ScanGuard::~ScanGuard() {
+  bool scanActive(true);
+  if (!ScanGovernor::Instance().m_scanning.compare_exchange_strong(scanActive,
+                                                                   false)) {
+    REL_ERROR("ScanGovernor::ScanGuard: scanActive was false on exit");
+  }
+}
+
 ScanGovernor::ScanGovernor()
-    : m_pendingNotifies(0), m_pendingHarvests(0), m_searchAllowed(false),
-      m_searchNotPaused(false), m_targetType(INIFile::SecondaryType::NONE2),
-      m_spergInProgress(0), m_calibrating(false),
-      m_calibrateRadius(CalibrationRangeDelta),
+    : m_scanning(false), m_pendingNotifies(0), m_pendingHarvests(0),
+      m_searchAllowed(false), m_searchNotPaused(false),
+      m_targetType(INIFile::SecondaryType::NONE2), m_spergInProgress(0),
+      m_calibrating(false), m_calibrateRadius(CalibrationRangeDelta),
       m_calibrateDelta(ScanGovernor::CalibrationRangeDelta), m_glowDemo(false),
       m_nextGlow(GlowReason::SimpleTarget), m_fhiRunning(false) {}
+
+bool ScanGovernor::CanScan() {
+  bool scanStarted(false);
+  if (!m_scanning.compare_exchange_strong(scanStarted, true)) {
+    REL_WARNING("Ignore async scan request");
+    return false;
+  } else {
+    REL_VMESSAGE("Allow async scan request");
+    return true;
+  }
+}
+
+bool ScanGovernor::ScanAllowed() const {
+  // no lock needed here - called components lock as needed.
+  // Limited looting is possible on a per-item basis, so proceed with scan if
+  // this is the only reason to skip
+  static const bool allowIfRestricted(true);
+  const bool allowIfRestrictedHome(
+      SettingsCache::Instance().LootAllowedItemsInPlayerHouse());
+  if (!LocationTracker::Instance().IsPlayerInLootablePlace(
+          allowIfRestricted, allowIfRestrictedHome)) {
+    DBG_MESSAGE("Location cannot be looted");
+    return false;
+  } else if (!PlayerState::Instance().CanLoot()) {
+    DBG_MESSAGE("Player State prevents looting");
+    return false;
+  } else if (!ScanGovernor::Instance().CanSearch()) {
+    DBG_MESSAGE("search disallowed or paused");
+    return false;
+  }
+  return true;
+}
 
 // Dynamic REFR looting is not delayed - the visuals may be less appealing, but
 // delaying risks CTD as REFRs can be recycled very quickly.

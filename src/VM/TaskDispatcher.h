@@ -28,6 +28,7 @@ class TaskDispatcher {
 public:
   static TaskDispatcher &Instance();
   TaskDispatcher();
+  void EnqueuePeriodicScan();
   void EnqueueObjectGlow(RE::TESObjectREFR *refr, const int duration,
                          const GlowReason glowReason);
   void GlowObjects();

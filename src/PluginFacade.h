@@ -32,7 +32,6 @@ public:
   void OnVMSync();
   void OnGameLoaded();
   void OnSettingsPushed(void);
-  bool ScanAllowed() const;
   bool IsSynced() const;
 
   // give the debug message time to catch up during calibration

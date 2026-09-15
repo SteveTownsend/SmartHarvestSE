@@ -34,6 +34,14 @@ class ScanGovernor {
 public:
   static ScanGovernor &Instance();
   ScanGovernor();
+  bool CanScan();
+  bool ScanAllowed() const;
+
+  class ScanGuard {
+  public:
+    ScanGuard() = default;
+    ~ScanGuard();
+  };
 
   // make sure load spike handling works OK
   // limit the outstanding Harvest or Glow Loot operations to spread the
@@ -126,6 +134,7 @@ private:
   mutable size_t m_pendingNotifies;
   mutable size_t m_pendingHarvests;
 
+  std::atomic<bool> m_scanning;
   bool m_searchAllowed;
   bool m_searchNotPaused;
   INIFile::SecondaryType m_targetType;

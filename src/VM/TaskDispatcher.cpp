@@ -22,6 +22,7 @@ http://www.fsf.org/licensing/licenses
 #include "VM/TaskDispatcher.h"
 
 #include "Collections/CollectionManager.h"
+#include "Looting/ScanGovernor.h"
 #include "Looting/TheftCoordinator.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
@@ -52,6 +53,43 @@ void TaskDispatcher::EnqueueTask(const TaskType task_type,
       return;
     }
     a_task();
+  });
+}
+
+void TaskDispatcher::EnqueuePeriodicScan() {
+  // CELL-related sequencing not required - brittle subtasks use it, though
+  m_taskInterface->AddTask([=](void) {
+    // clean up scan state however we exit
+    ScanGovernor::ScanGuard guard;
+    // Do not progress if Player Cell is invalid
+    if (!RE::PlayerCharacter::GetSingleton()->parentCell) {
+      REL_VMESSAGE("Location or cell not stable yet");
+      return;
+    }
+    if (LocationTracker::Instance().UseLocationPolling()) {
+      LocationTracker::Instance().Refresh(
+          RE::PlayerCharacter::GetSingleton()->parentCell);
+    }
+
+    static const bool onMCMPush(false);
+    static const bool onGameReload(false);
+    PlayerState::Instance().Refresh(onMCMPush, onGameReload);
+
+    // process any queued added items since last time
+    CollectionManager::Collectibles().ProcessAddedItems();
+
+    // reconcile SPERG mined items
+    ScanGovernor::Instance().ReconcileSPERGMined();
+
+    // Skip loot-OK checks if calibrating
+    ReferenceScanType scanType(ReferenceScanType::NoLoot);
+    if (ScanGovernor::Instance().Calibrating()) {
+      scanType = ReferenceScanType::Calibration;
+    } else if (ScanGovernor::Instance().ScanAllowed()) {
+      scanType = ReferenceScanType::Loot;
+    }
+
+    ScanGovernor::Instance().DoPeriodicSearch(scanType);
   });
 }
 
@@ -313,7 +351,7 @@ void TaskDispatcher::EnqueueReviewExcessInventory(bool force) {
     // to manually sell items or doing other stuff that does not favour
     // inventory manipulation per
     // https://github.com/SteveTownsend/SmartHarvestSE/issues/252
-    if (PluginFacade::Instance().ScanAllowed()) {
+    if (ScanGovernor::Instance().ScanAllowed()) {
       PlayerState::Instance().ReviewExcessInventory(force);
     }
   });

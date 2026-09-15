@@ -17,15 +17,17 @@ A copy of the GNU General Public License is available at
 http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
-#include "PrecompiledHeaders.h"
 #include "PluginFacade.h"
+#include "PrecompiledHeaders.h"
 
 #include "Collections/CollectionManager.h"
 #include "Data/CosaveData.h"
-#include "Data/dataCase.h"
 #include "Data/LoadOrder.h"
 #include "Data/SettingsCache.h"
+#include "Data/dataCase.h"
+#include "VM/TaskDispatcher.h"
 #include "VM/UIState.h"
+#include "Ver.h"
 #include "WorldState/ActorTracker.h"
 #include "WorldState/AdventureTargets.h"
 #include "WorldState/LocationTracker.h"
@@ -35,7 +37,6 @@ http://www.fsf.org/licensing/licenses
 #include "WorldState/PopulationCenters.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
-#include "Ver.h"
 
 namespace shse {
 
@@ -147,27 +148,6 @@ bool PluginFacade::IsSynced() const {
   return m_pluginSynced && m_loadedSettings;
 }
 
-bool PluginFacade::ScanAllowed() const {
-  RecursiveLockGuard guard(m_pluginLock);
-  // Limited looting is possible on a per-item basis, so proceed with scan if
-  // this is the only reason to skip
-  static const bool allowIfRestricted(true);
-  const bool allowIfRestrictedHome(
-      SettingsCache::Instance().LootAllowedItemsInPlayerHouse());
-  if (!LocationTracker::Instance().IsPlayerInLootablePlace(
-          allowIfRestricted, allowIfRestrictedHome)) {
-    DBG_MESSAGE("Location cannot be looted");
-    return false;
-  } else if (!PlayerState::Instance().CanLoot()) {
-    DBG_MESSAGE("Player State prevents looting");
-    return false;
-  } else if (!ScanGovernor::Instance().CanSearch()) {
-    DBG_MESSAGE("search disallowed or paused");
-    return false;
-  }
-  return true;
-}
-
 bool PluginFacade::Loaded() const {
   return m_loadProgress == LoadProgress::Complete &&
          PlayerState::Instance().IsValid();
@@ -191,36 +171,12 @@ void PluginFacade::ScanThread() {
 
     // block until UI is good to go
     UIState::Instance().WaitUntilVMGoodToGo();
-
-    // Do not progress if Player Cell is invalid
-    if (!RE::PlayerCharacter::GetSingleton()->parentCell) {
-      REL_VMESSAGE("Location or cell not stable yet");
-      continue;
+    // state is OK to scan - indirect via TaskInterface to reduce likelihood of
+    // toxic cross-thread interactions, Only one scan at a time should be
+    // enqueued.
+    if (ScanGovernor::Instance().CanScan()) {
+      TaskDispatcher::Instance().EnqueuePeriodicScan();
     }
-    if (LocationTracker::Instance().UseLocationPolling()) {
-      LocationTracker::Instance().Refresh(
-          RE::PlayerCharacter::GetSingleton()->parentCell);
-    }
-
-    static const bool onMCMPush(false);
-    static const bool onGameReload(false);
-    PlayerState::Instance().Refresh(onMCMPush, onGameReload);
-
-    // process any queued added items since last time
-    CollectionManager::Collectibles().ProcessAddedItems();
-
-    // reconcile SPERG mined items
-    ScanGovernor::Instance().ReconcileSPERGMined();
-
-    // Skip loot-OK checks if calibrating
-    ReferenceScanType scanType(ReferenceScanType::NoLoot);
-    if (ScanGovernor::Instance().Calibrating()) {
-      scanType = ReferenceScanType::Calibration;
-    } else if (Instance().ScanAllowed()) {
-      scanType = ReferenceScanType::Loot;
-    }
-
-    ScanGovernor::Instance().DoPeriodicSearch(scanType);
   }
 }
 
