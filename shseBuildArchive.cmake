@@ -10,6 +10,7 @@ file(GLOB_RECURSE EXAMPLE_COLLECTIONS "${CMAKE_CURRENT_SOURCE_DIR}/Collections/E
 file(GLOB_RECURSE LOOT_FILTERS "${CMAKE_CURRENT_SOURCE_DIR}/Filters/SHSE.Filter.*.json")
 file(GLOB_RECURSE GLOW_TEXTURES "${CMAKE_CURRENT_SOURCE_DIR}/Textures/**/*.dds")
 file(GLOB_RECURSE TRANSLATION_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Interface/**/SmartHarvestSE_*.txt")
+file(GLOB_RECURSE CHINESE_TRANSLATION_FILES "${CMAKE_CURRENT_SOURCE_DIR}/Interface/chinese/SmartHarvestSE_*.txt")
 
 set(ZIP_DIR "${CMAKE_CURRENT_BINARY_DIR}/zip/${CMAKE_BUILD_TYPE}")
 set(ARTIFACTS_DIR "${CMAKE_CURRENT_BINARY_DIR}/zip/${CMAKE_BUILD_TYPE}/artifacts")
@@ -19,8 +20,9 @@ add_custom_target(build-time-make-directory ALL
                 "${ARTIFACTS_DIR}/Collections/Edit Scripts/"
                 "${ARTIFACTS_DIR}/Collections/Examples/"
                 "${ARTIFACTS_DIR}/Filters/"
-                "${ARTIFACTS_DIR}/Interface/towawot/"
-                "${ARTIFACTS_DIR}/Interface/translations/"
+                "${ARTIFACTS_DIR}/interface/towawot/"
+                "${ARTIFACTS_DIR}/interface/translations/"
+                "${ARTIFACTS_DIR}/interface/chinese/"
                 "${ARTIFACTS_DIR}/Scripts/Source/"
                 "${ARTIFACTS_DIR}/textures/effects/gradients/"
                 )
@@ -81,6 +83,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 message("Copying Translations ${TRANSLATION_FILES}.")
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${TRANSLATION_FILES} "${ARTIFACTS_DIR}/interface/translations/")
+message("Copying Chinese Translations ${CHINESE_TRANSLATION_FILES}.")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CHINESE_TRANSLATION_FILES} "${ARTIFACTS_DIR}/interface/chinese/")
                         
 set(TARGET_ZIP "${PRETTY_NAME}-${PROJECT_VERSION}.rar")
 message("Zipping ${ARTIFACTS_DIR} to ${ZIP_DIR}/${TARGET_ZIP}.")

@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
   brotli
   GIT_REPOSITORY https://github.com/google/brotli
-  GIT_TAG        v1.2.0
+  GIT_TAG        v1.2.1
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(brotli)
@@ -11,7 +11,7 @@ FetchContent_MakeAvailable(brotli)
 FetchContent_Declare(
   nlohmann_json_schema_validator
   GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
-  GIT_TAG        2.4.0
+  GIT_TAG        2.4.1
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(nlohmann_json_schema_validator)
@@ -32,7 +32,7 @@ endif()
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2
-  GIT_TAG        v3.16.0
+  GIT_TAG        v3.16.1
   OVERRIDE_FIND_PACKAGE
   )
 FetchContent_MakeAvailable(Catch2)
@@ -52,8 +52,8 @@ set(BUILD_TESTS OFF)
 FetchContent_Declare(
   CommonLibSSE
   GIT_REPOSITORY https://github.com/alandtse/CommonLibVR
-  # Sept 13 2026 -> Sept 16 2026
-  GIT_TAG        v8.1.0
+  # Sept 16 2026 -> Oct 27 2026
+  GIT_TAG        v14.1.0
   OVERRIDE_FIND_PACKAGE
 )
 FetchContent_MakeAvailable(CommonLibSSE)
@@ -61,7 +61,7 @@ FetchContent_MakeAvailable(CommonLibSSE)
 FetchContent_Declare(
   MergeMapper
   GIT_REPOSITORY https://github.com/alandtse/MergeMapper
-  GIT_TAG        v1.6.1
+  GIT_TAG        v1.6.2
 )
 FetchContent_GetProperties(MergeMapper)
 if(NOT MergeMapper_POPULATED)
