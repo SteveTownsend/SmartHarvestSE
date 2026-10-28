@@ -19,29 +19,29 @@ http://www.fsf.org/licensing/licenses
 *************************************************************************/
 #include "PrecompiledHeaders.h"
 
-#include <winver.h>
 #include <iostream>
+#include <winver.h>
 
-#include "PluginFacade.h"
-#include "Data/dataCase.h"
+#include "Collections/CollectionManager.h"
 #include "Data/LoadOrder.h"
+#include "Data/dataCase.h"
 #include "FormHelpers/IHasValueWeight.h"
-#include "Looting/ScanGovernor.h"
 #include "Looting/ManagedLists.h"
-#include "Looting/TryLootREFR.h"
-#include "WorldState/LocationTracker.h"
-#include "WorldState/AdventureTargets.h"
 #include "Looting/ProducerLootables.h"
+#include "Looting/ScanGovernor.h"
+#include "Looting/TheftCoordinator.h"
+#include "Looting/TryLootREFR.h"
+#include "Looting/objects.h"
+#include "PluginFacade.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
-#include "Looting/objects.h"
-#include "Looting/TheftCoordinator.h"
-#include "Collections/CollectionManager.h"
 #include "VM/TaskDispatcher.h"
+#include "Ver.h"
+#include "WorldState/AdventureTargets.h"
+#include "WorldState/LocationTracker.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/QuestTargets.h"
 #include "WorldState/Saga.h"
-#include "Ver.h"
 
 namespace {
 std::string GetPluginName(RE::TESForm *thisForm) {
@@ -473,7 +473,7 @@ void NotifyActivated(RE::StaticFunctionTag *, RE::TESForm *itemForm,
                      bool notify, RE::BSFixedString baseName, int count,
                      bool activated, bool isSilent, bool isWhitelisted) {
   DBG_VMESSAGE("NotifyActivated={} for REFR 0x{:08x} to 0x{:08x}/{}", activated,
-               refrID, baseID, baseName.c_str());
+               RE::FormID(refrID), RE::FormID(baseID), baseName.c_str());
   if (activated) {
     if (notify) {
       std::string activateMsg;
@@ -492,7 +492,7 @@ void NotifyActivated(RE::StaticFunctionTag *, RE::TESForm *itemForm,
     }
     if (isWhitelisted) {
       std::string whitelistMsg = shse::DataCase::GetInstance()->GetTranslation(
-          "SHSE_WHITELIST_ITEM_LOOTED");
+          "$SHSE_WHITELIST_ITEM_LOOTED");
       StringUtils::Replace(whitelistMsg, "{ITEMNAME}", baseName.c_str());
       if (!whitelistMsg.empty()) {
         RE::SendHUDMessage::ShowHUDMessage(whitelistMsg.c_str());

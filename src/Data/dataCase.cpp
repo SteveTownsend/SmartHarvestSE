@@ -24,18 +24,18 @@ http://www.fsf.org/licensing/licenses
 #include <iostream>
 #include <sstream>
 
-#include "Data/dataCase.h"
-#include "Data/LoadOrder.h"
 #include "Collections/CollectionManager.h"
+#include "Data/LoadOrder.h"
+#include "Data/dataCase.h"
+#include "Looting/NPCFilter.h"
+#include "Looting/ScanGovernor.h"
+#include "Looting/objects.h"
 #include "Utilities/utils.h"
 #include "Utilities/version.h"
+#include "Ver.h"
 #include "WorldState/CraftingItems.h"
 #include "WorldState/PlayerHouses.h"
 #include "WorldState/PlayerState.h"
-#include "Looting/ScanGovernor.h"
-#include "Looting/objects.h"
-#include "Looting/NPCFilter.h"
-#include "Ver.h"
 
 const std::string BlacklistGroup("BlackList");
 const std::string MissivesCollection("SHSE-Missives");
@@ -1462,8 +1462,10 @@ DataCase::OreVeinResourceType(const RE::TESObjectACTI *mineable) const {
 
 const char *DataCase::GetTranslation(const char *key) const {
   const auto &translation(m_translations.find(key));
-  if (translation == m_translations.cend())
-    return nullptr;
+  if (translation == m_translations.cend()) {
+    REL_ERROR("Translation not found for key: {}", key);
+    return key; // assumed valid in calling function
+  }
   return translation->second.c_str();
 }
 
@@ -1900,7 +1902,8 @@ bool DataCase::CheckIfArcheologyLeveledUp(const int skillValue) const {
   if ((skillValue % 5) == 0 && skillValue <= 100) {
     // [12] LegacyoftheDragonborn.esm (7F85A309) \ Message \ 12079D49
     // <DBM_ArcheologySkillupPerk>
-    RE::SendHUDMessage::ShowHUDMessage("You have gained an Archeology Perk Point!");
+    RE::SendHUDMessage::ShowHUDMessage(
+        "You have gained an Archeology Perk Point!");
     return true;
   }
   return false;
