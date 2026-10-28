@@ -17,14 +17,14 @@ A copy of the GNU General Public License is available at
 http://www.fsf.org/licensing/licenses
 >>> END OF LICENSE >>>
 *************************************************************************/
-#include "PrecompiledHeaders.h"
 #include "WorldState/AdventureTargets.h"
+#include "Data/LoadOrder.h"
+#include "PrecompiledHeaders.h"
+#include "Utilities/utils.h"
+#include "VM/papyrus.h"
 #include "WorldState/PlayerState.h"
 #include "WorldState/Saga.h"
 #include "WorldState/VisitedPlaces.h"
-#include "Data/LoadOrder.h"
-#include "Utilities/utils.h"
-#include "VM/papyrus.h"
 
 #include <random>
 
@@ -486,6 +486,11 @@ void AdventureTargets::Categorize() {
           // check other LCRTs for a locatable parent CELL/WRLD
           RE::FormID parentID(csr.refData.parentSpaceID);
           RE::TESForm *parentSpace(RE::TESForm::LookupByID(parentID));
+          if (!parentSpace) {
+            REL_ERROR("Location {}/0x{:08x} has invalid parent WRLD 0x{:08x}",
+                      location->GetName(), location->GetFormID(), parentID);
+            continue;
+          }
           const auto cell(parentSpace->As<RE::TESObjectCELL>());
           if (cell) {
             if (cell->IsInteriorCell()) {
